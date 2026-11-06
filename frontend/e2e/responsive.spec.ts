@@ -47,6 +47,15 @@ const ORG_ADMIN_PAGES = [
   '/hr/grievances',
   '/hr/benefits/plans',
   '/hr/benefits/enrollments',
+  '/hr/compliance/policies',
+  '/hr/compliance/calendar',
+  '/hr/exits',
+  '/hr/reports',
+  '/hr/reports/headcount',
+  '/hr/reports/attrition',
+  '/hr/reports/leave',
+  '/hr/reports/payroll-cost',
+  '/hr/reports/recruitment',
   '/me',
   '/me/attendance',
   '/me/leave',
@@ -62,6 +71,8 @@ const ORG_ADMIN_PAGES = [
   '/me/engagement/suggestions',
   '/me/grievances',
   '/me/benefits',
+  '/me/policies',
+  '/me/exit',
   '/me/employment',
   '/me/profile',
   '/me/security',
@@ -251,6 +262,43 @@ test.describe('responsive layout', () => {
     await expect(page).toHaveURL(/\/hr\/benefits\/plans\/[0-9a-f-]+$/);
     await expect(page.getByText('Coverage options')).toBeVisible();
     await checkCurrent(page, testInfo, 'benefit-plan');
+  });
+
+  test('policy page fits the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/compliance/policies');
+    const row = page.getByRole('row').filter({ hasText: 'Acceptable use policy' }).first();
+    const found = await row.waitFor({ state: 'visible', timeout: 8000 }).then(
+      () => true,
+      () => false,
+    );
+    test.skip(!found, 'needs a policy (created by compliance.spec.ts)');
+    await row.click();
+    await expect(page).toHaveURL(/\/hr\/compliance\/policies\/[0-9a-f-]+$/);
+    await expect(page.getByText(/Version \d+ \(in force\)/)).toBeVisible();
+    await checkCurrent(page, testInfo, 'policy');
+    await page.getByRole('tab', { name: 'Acknowledgements' }).click();
+    await expect(page.getByRole('table', { name: 'Acknowledgements' })).toBeVisible();
+    await checkCurrent(page, testInfo, 'policy-acknowledgements');
+  });
+
+  test('exit case page fits the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/exits');
+    await page.getByRole('tab', { name: 'All exits' }).click();
+    const row = page.getByRole('row').filter({ hasText: 'Nikhil' }).first();
+    const found = await row.waitFor({ state: 'visible', timeout: 8000 }).then(
+      () => true,
+      () => false,
+    );
+    test.skip(!found, 'needs an exit (created by exit.spec.ts)');
+    await row.click();
+    await expect(page).toHaveURL(/\/hr\/exits\/[0-9a-f-]+$/);
+    await expect(page.getByText('Separation')).toBeVisible();
+    await checkCurrent(page, testInfo, 'exit-case');
+    await page.getByRole('tab', { name: 'Full & final' }).click();
+    await expect(page.getByText('Work out the settlement')).toBeVisible();
+    await checkCurrent(page, testInfo, 'exit-settlement');
   });
 
   test('platform pages fit the screen', async ({ page }, testInfo) => {

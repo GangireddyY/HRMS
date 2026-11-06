@@ -41,6 +41,9 @@ setup('organization owner signs up and becomes Organization Admin', async ({ req
         { featureKey: 'engagement', enabled: true, reason: 'End-to-end tests' },
         { featureKey: 'grievance', enabled: true, reason: 'End-to-end tests' },
         { featureKey: 'benefits', enabled: true, reason: 'End-to-end tests' },
+        { featureKey: 'compliance', enabled: true, reason: 'End-to-end tests' },
+        { featureKey: 'exit', enabled: true, reason: 'End-to-end tests' },
+        { featureKey: 'reports', enabled: true, reason: 'End-to-end tests' },
       ],
     },
   });

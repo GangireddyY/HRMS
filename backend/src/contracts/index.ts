@@ -18,3 +18,6 @@ export * from './training';
 export * from './engagement';
 export * from './grievance';
 export * from './benefits';
+export * from './compliance';
+export * from './exit';
+export * from './reports';

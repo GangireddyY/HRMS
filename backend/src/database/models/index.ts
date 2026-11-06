@@ -18,6 +18,8 @@ import { PerformanceCycle, PerformanceFeedback, PerformanceGoal, PerformancePip,
 import { Announcement, AnnouncementResponse, Recognition, RecognitionRecipient, Suggestion, Survey, SurveyParticipant, SurveyQuestionRecord, SurveyResponse } from './engagement.models';
 import { GrievanceAttachment, GrievanceCase, GrievanceEvent, GrievanceNote } from './grievance.models';
 import { BenefitEnrollment, BenefitEnrollmentDependent, BenefitPlan, BenefitPlanOption } from './benefits.models';
+import { ComplianceFiling, ComplianceObligation, Policy, PolicyAcknowledgement, PolicyVersion } from './compliance.models';
+import { ExitCase, ExitClearanceItem, ExitSettlement } from './exit.models';
 import { TrainingAttempt, TrainingCourse, TrainingEnrollment, TrainingQuestion, TrainingSession } from './training.models';
 import { ApplicationEvent, Candidate, Interview, InterviewPanelist, JobApplication, JobOpening, JobRequisition, Offer } from './recruitment.models';
 import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserSession } from './identity.models';
@@ -49,6 +51,8 @@ export * from './training.models';
 export * from './engagement.models';
 export * from './grievance.models';
 export * from './benefits.models';
+export * from './compliance.models';
+export * from './exit.models';
 export * from './organization.models';
 export * from './people.models';
 export * from './rbac.models';
@@ -145,6 +149,14 @@ export const ALL_MODELS = [
   BenefitPlanOption,
   BenefitEnrollment,
   BenefitEnrollmentDependent,
+  Policy,
+  PolicyVersion,
+  PolicyAcknowledgement,
+  ComplianceObligation,
+  ComplianceFiling,
+  ExitCase,
+  ExitClearanceItem,
+  ExitSettlement,
 ];
 
 /**
@@ -230,6 +242,14 @@ export const TENANT_MODELS = [
   BenefitPlanOption,
   BenefitEnrollment,
   BenefitEnrollmentDependent,
+  Policy,
+  PolicyVersion,
+  PolicyAcknowledgement,
+  ComplianceObligation,
+  ComplianceFiling,
+  ExitCase,
+  ExitClearanceItem,
+  ExitSettlement,
   // Nullable organization_id (platform-level rows exist); written with explicit organization ids.
   AuditLog,
   LoginEvent,

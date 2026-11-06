@@ -18,6 +18,9 @@ import { trainingHrRoutes, trainingSelfRoutes } from '@/modules/training/trainin
 import { engagementHrRoutes, engagementSelfRoutes } from '@/modules/engagement/engagement.routes';
 import { grievanceHrRoutes, grievanceSelfRoutes } from '@/modules/grievance/grievance.routes';
 import { benefitsHrRoutes, benefitsSelfRoutes } from '@/modules/benefits/benefits.routes';
+import { complianceHrRoutes, complianceSelfRoutes } from '@/modules/compliance/compliance.routes';
+import { exitHrRoutes, exitSelfRoutes } from '@/modules/exit/exit.routes';
+import { reportsHrRoutes } from '@/modules/reports/reports.routes';
 import { careersRoutes, recruitmentHrRoutes, recruitmentSelfRoutes } from '@/modules/recruitment/recruitment.routes';
 import { rolesRoutes } from '@/modules/roles/roles.routes';
 import { usersRoutes } from '@/modules/users/users.routes';
@@ -50,12 +53,12 @@ export const routes: RouteRecordRaw[] = [
     path: '/hr',
     component: () => import('@/layouts/HrLayout.vue'),
     meta: { access: { permissions: HR_OPERATIONS_PERMISSIONS, scope: 'TEAM' } },
-    children: [...hrRoutes, ...peopleHrRoutes, ...recruitmentHrRoutes, ...onboardingHrRoutes, ...attendanceHrRoutes, ...leaveHrRoutes, ...payrollHrRoutes, ...performanceHrRoutes, ...trainingHrRoutes, ...engagementHrRoutes, ...grievanceHrRoutes, ...benefitsHrRoutes],
+    children: [...hrRoutes, ...peopleHrRoutes, ...recruitmentHrRoutes, ...onboardingHrRoutes, ...attendanceHrRoutes, ...leaveHrRoutes, ...payrollHrRoutes, ...performanceHrRoutes, ...trainingHrRoutes, ...engagementHrRoutes, ...grievanceHrRoutes, ...benefitsHrRoutes, ...complianceHrRoutes, ...exitHrRoutes, ...reportsHrRoutes],
   },
   {
     path: '/me',
     component: () => import('@/layouts/EssLayout.vue'),
-    children: [...accountRoutes, ...peopleSelfRoutes, ...onboardingSelfRoutes, ...recruitmentSelfRoutes, ...attendanceSelfRoutes, ...leaveSelfRoutes, ...payrollSelfRoutes, ...performanceSelfRoutes, ...trainingSelfRoutes, ...engagementSelfRoutes, ...grievanceSelfRoutes, ...benefitsSelfRoutes, ...notificationsRoutes],
+    children: [...accountRoutes, ...peopleSelfRoutes, ...onboardingSelfRoutes, ...recruitmentSelfRoutes, ...attendanceSelfRoutes, ...leaveSelfRoutes, ...payrollSelfRoutes, ...performanceSelfRoutes, ...trainingSelfRoutes, ...engagementSelfRoutes, ...grievanceSelfRoutes, ...benefitsSelfRoutes, ...complianceSelfRoutes, ...exitSelfRoutes, ...notificationsRoutes],
   },
   ...careersRoutes,
   ...errorRoutes,

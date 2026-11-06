@@ -208,8 +208,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('benefits', 'benefits.enrollment', 'benefits.enroll', 'Enroll in benefits'),
 
   // Compliance
-  def('compliance', 'compliance.documents', 'compliance.view', 'View policies and compliance calendar'),
-  def('compliance', 'compliance.documents', 'compliance.manage', 'Manage policies, templates and statutory records'),
+  def('compliance', 'compliance.documents', 'compliance.view', 'View the policies that apply to you'),
+  def('compliance', 'compliance.documents', 'compliance.manage', 'Manage policies, acknowledgements and the statutory calendar'),
   def('compliance', 'compliance.documents', 'compliance.policy.acknowledge', 'Acknowledge policies'),
 
   // Exit

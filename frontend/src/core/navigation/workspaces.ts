@@ -2,6 +2,7 @@ import type { Component } from 'vue';
 import {
   Activity,
   Award,
+  BarChart3,
   BadgeCheck,
   Banknote,
   Bell,
@@ -16,6 +17,7 @@ import {
   ClipboardList,
   Clock,
   ClockAlert,
+  DoorOpen,
   Fingerprint,
   CreditCard,
   FileClock,
@@ -40,6 +42,7 @@ import {
   Receipt,
   RefreshCcw,
   Rocket,
+  ScrollText,
   Scale,
   Server,
   Settings,
@@ -90,7 +93,7 @@ export const HR_OPERATIONS_PERMISSIONS = [
   'onboarding.view', 'onboarding.manage', 'onboarding.confirmation.approve', 'attendance.view', 'attendance.manage', 'attendance.regularize.approve', 'attendance.close', 'attendance.configure',
   'leave.view', 'leave.approve', 'leave.allocate', 'leave.configure',
   'payroll.view', 'payroll.configure', 'payroll.reimbursement.approve', 'employee.salary.view', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.configure', 'training.manage', 'training.assign',
-  'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.manage', 'reports.view',
+  'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage', 'reports.view', 'reports.payroll.view', 'reports.recruitment.view',
 ];
 
 export const ADMIN_PERMISSIONS = ['organization.update', 'organization.security.manage', 'user.view', 'role.view', 'audit.view', 'audit.login_history.view'];
@@ -245,6 +248,25 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Enrolments', to: '/hr/benefits/enrollments', icon: ClipboardCheck, access: { permissions: ['benefits.manage'], feature: 'benefits' } },
         ],
       },
+      {
+        title: 'Compliance',
+        items: [
+          { label: 'Policies', to: '/hr/compliance/policies', icon: ScrollText, access: { permissions: ['compliance.manage'], feature: 'compliance' } },
+          { label: 'Statutory calendar', to: '/hr/compliance/calendar', icon: CalendarClock, access: { permissions: ['compliance.manage'], feature: 'compliance' } },
+        ],
+      },
+      {
+        title: 'Exits',
+        items: [
+          { label: 'Exits', to: '/hr/exits', icon: DoorOpen, access: { permissions: ['exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage'], scope: 'TEAM', feature: 'exit' } },
+        ],
+      },
+      {
+        title: 'Insights',
+        items: [
+          { label: 'Reports', to: '/hr/reports', icon: BarChart3, access: { permissions: ['reports.view', 'reports.payroll.view', 'reports.recruitment.view'], scope: 'TEAM', feature: 'reports' } },
+        ],
+      },
     ],
   },
   {
@@ -275,7 +297,9 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Salary & tax', to: '/me/salary', icon: Wallet, access: { tenant: true, feature: 'payroll' } },
           { label: 'Reimbursements', to: '/me/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.apply'], feature: 'payroll' } },
           { label: 'Benefits', to: '/me/benefits', icon: HeartPulse, access: { permissions: ['benefits.view'], feature: 'benefits' } },
+          { label: 'Policies', to: '/me/policies', icon: ScrollText, access: { permissions: ['compliance.view'], feature: 'compliance' } },
           { label: 'Grievances', to: '/me/grievances', icon: ShieldAlert, access: { permissions: ['grievance.submit'], feature: 'grievance' } },
+          { label: 'Resignation & exit', to: '/me/exit', icon: DoorOpen, access: { permissions: ['exit.resign'], feature: 'exit' } },
         ],
       },
       {

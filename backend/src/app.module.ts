@@ -34,6 +34,9 @@ import { TrainingModule } from './modules/training/training.module';
 import { EngagementModule } from './modules/engagement/engagement.module';
 import { GrievanceModule } from './modules/grievance/grievance.module';
 import { BenefitsModule } from './modules/benefits/benefits.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
+import { ExitModule } from './modules/exit/exit.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { OrgStructureModule } from './modules/org-structure/org-structure.module';
 
 @Module({
@@ -75,6 +78,9 @@ import { OrgStructureModule } from './modules/org-structure/org-structure.module
     EngagementModule,
     GrievanceModule,
     BenefitsModule,
+    ComplianceModule,
+    ExitModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
   providers: [

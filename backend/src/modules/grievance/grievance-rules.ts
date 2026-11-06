@@ -8,22 +8,14 @@ import {
   type GrievanceOutcome,
   type GrievanceStatus,
 } from '../../contracts';
-import { addDays } from '../../common/utils/zoned-time';
+import { addDays, addMonths } from '../../common/utils/zoned-time';
+
+export { addMonths };
 
 export const isPosh = (category: GrievanceCategory) => category === 'POSH';
 
 /** Target date: 30 days for grievances, 90 days to complete a POSH inquiry. */
 export const dueDate = (category: GrievanceCategory, submittedOn: string) => addDays(submittedOn, isPosh(category) ? POSH_INQUIRY_DAYS : GRIEVANCE_RESOLUTION_DAYS);
-
-/** Calendar months later, clamped to the month end (31 Jan + 1 month = end of February). */
-export function addMonths(date: string, months: number): string {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  const total = y * 12 + (m - 1) + months;
-  const year = Math.floor(total / 12);
-  const month = (total % 12) + 1;
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
-}
 
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);

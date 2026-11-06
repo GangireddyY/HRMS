@@ -52,6 +52,16 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Calendar months later, clamped to the month end (31 Jan + 1 month = end of February). */
+export function addMonths(date: string, months: number): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const total = y * 12 + (m - 1) + months;
+  const year = Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+
 /** 0 = Sunday … 6 = Saturday. */
 export function weekday(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
