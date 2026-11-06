@@ -1,0 +1,72 @@
+{
+  "name": "@hrms/backend",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "ts-node --transpile-only src/database/migrate.ts up",
+    "db:migrate:down": "ts-node --transpile-only src/database/migrate.ts down",
+    "db:migrate:status": "ts-node --transpile-only src/database/migrate.ts status",
+    "db:migrate:baseline": "ts-node --transpile-only src/database/migrate.ts baseline",
+    "db:seed": "ts-node --transpile-only src/database/seed.ts",
+    "migrate": "node dist/database/migrate.js up",
+    "bootstrap": "node dist/cli/bootstrap.js",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config test/jest-e2e.config.js --runInBand",
+    "docs:rbac": "nest build && node scripts/rbac-matrix.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.2.8",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.2.8",
+    "@nestjs/jwt": "11.0.2",
+    "@nestjs/platform-express": "11.2.8",
+    "@nestjs/swagger": "11.4.7",
+    "@nestjs/throttler": "6.7.1",
+    "@sendgrid/mail": "8.1.6",
+    "argon2": "0.45.2",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.4",
+    "cookie-parser": "1.4.7",
+    "dotenv": "16.6.1",
+    "helmet": "8.3.0",
+    "otplib": "12.0.1",
+    "pg": "8.23.1",
+    "pg-hstore": "2.3.4",
+    "qrcode": "1.5.4",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "sequelize": "6.37.8",
+    "sequelize-typescript": "2.1.6",
+    "sharp": "^0.34.5",
+    "umzug": "3.8.3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.24",
+    "@nestjs/schematics": "11.1.0",
+    "@nestjs/testing": "11.2.8",
+    "@types/cookie-parser": "1.4.10",
+    "@types/express": "5.0.6",
+    "@types/jest": "29.5.14",
+    "@types/node": "22.20.5",
+    "@types/qrcode": "1.5.6",
+    "@types/supertest": "6.0.3",
+    "@types/validator": "13.15.10",
+    "jest": "29.7.0",
+    "source-map-support": "0.5.21",
+    "supertest": "7.3.1",
+    "ts-jest": "29.4.15",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "allowScripts": {
+    "argon2@0.45.2": true
+  }
+}

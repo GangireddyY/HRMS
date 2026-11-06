@@ -1,0 +1,43 @@
+{
+  "name": "@hrms/frontend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && vue-tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@lucide/vue": "1.68.0",
+    "chart.js": "4.6.1",
+    "pinia": "3.0.4",
+    "vue": "3.5.44",
+    "vue-chartjs": "5.3.4",
+    "vue-router": "4.6.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "4.3.4",
+    "@types/node": "22.20.5",
+    "@vitejs/plugin-vue": "6.0.10",
+    "@vue/test-utils": "2.5.1",
+    "jsdom": "26.1.0",
+    "tailwindcss": "4.3.4",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vitest": "3.2.7",
+    "vue-tsc": "3.3.14"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

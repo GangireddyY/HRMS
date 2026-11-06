@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.tsbuildinfo
+
+# Environment files: real values stay local; *.example templates are committed.
+.env
+.env.*
+!.env*.example
+# Frontend mode files contain only public build-time values (no secrets).
+!frontend/.env.e2e
+!frontend/.env.production
+
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+backend/uploads/

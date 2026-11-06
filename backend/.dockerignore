@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+uploads
+*.log
+# Secrets are injected at runtime (env_file / orchestrator), never baked into the image.
+.env
+.env.*

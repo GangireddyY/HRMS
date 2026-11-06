@@ -1,0 +1,322 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import './themes.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Surfaces/text switch with the light/dark mode, brand colors with the color theme
+ * (themes.css) and the sidebar palette with `data-sidebar` (light | dark | brand).
+ * Components only use the semantic names below, never raw colors.
+ */
+:root {
+  --app-bg: #f4f4f5;
+  --app-canvas: #fafafa;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f4f4f5;
+  --app-surface-raised: #ffffff;
+  --app-border: #e4e4e7;
+  --app-border-strong: #d4d4d8;
+  --app-text: #18181b;
+  --app-text-muted: #52525b;
+  --app-text-subtle: #a1a1aa;
+  --app-ring: var(--brand-500);
+  --app-shadow-card: 0 1px 2px 0 rgb(24 24 27 / 0.04), 0 1px 3px 0 rgb(24 24 27 / 0.03);
+  --app-shadow-pop: 0 12px 32px -8px rgb(24 24 27 / 0.18), 0 4px 10px -4px rgb(24 24 27 / 0.08);
+  color-scheme: light;
+}
+
+.dark {
+  --app-bg: #09090b;
+  --app-canvas: #0e0e11;
+  --app-surface: #141417;
+  --app-surface-muted: #1b1b1f;
+  --app-surface-raised: #1c1c20;
+  --app-border: #27272a;
+  --app-border-strong: #3a3a40;
+  --app-text: #fafafa;
+  --app-text-muted: #a1a1aa;
+  --app-text-subtle: #71717a;
+  --app-ring: var(--brand-400);
+  --app-shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --app-shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+/* Sidebar palettes. The shell background uses the sidebar color, so the page panel floats on it. */
+:root,
+[data-sidebar='light'] {
+  --app-sidebar: var(--app-bg);
+  --app-sidebar-text: var(--app-text-muted);
+  --app-sidebar-text-strong: var(--app-text);
+  --app-sidebar-section: var(--app-text-subtle);
+  --app-sidebar-hover: color-mix(in oklab, var(--app-text) 5%, transparent);
+  --app-sidebar-active: var(--app-surface);
+  --app-sidebar-active-text: var(--app-text);
+  --app-sidebar-icon-active: var(--brand-600);
+  --app-sidebar-border: var(--app-border);
+}
+
+.dark[data-sidebar='light'],
+.dark:not([data-sidebar]) {
+  --app-sidebar-icon-active: var(--brand-400);
+  --app-sidebar-active: var(--app-surface-muted);
+}
+
+[data-sidebar='dark'] {
+  --app-sidebar: #0c0c0e;
+  --app-sidebar-text: #a1a1aa;
+  --app-sidebar-text-strong: #fafafa;
+  --app-sidebar-section: #71717a;
+  --app-sidebar-hover: rgb(255 255 255 / 0.05);
+  --app-sidebar-active: rgb(255 255 255 / 0.09);
+  --app-sidebar-active-text: #ffffff;
+  --app-sidebar-icon-active: var(--brand-400);
+  --app-sidebar-border: rgb(255 255 255 / 0.08);
+}
+
+[data-sidebar='brand'] {
+  --app-sidebar: color-mix(in oklab, var(--brand-950) 70%, #0b0b12);
+  --app-sidebar-text: color-mix(in oklab, var(--brand-100) 75%, transparent);
+  --app-sidebar-text-strong: #ffffff;
+  --app-sidebar-section: color-mix(in oklab, var(--brand-200) 50%, transparent);
+  --app-sidebar-hover: rgb(255 255 255 / 0.07);
+  --app-sidebar-active: rgb(255 255 255 / 0.13);
+  --app-sidebar-active-text: #ffffff;
+  --app-sidebar-icon-active: var(--brand-300);
+  --app-sidebar-border: rgb(255 255 255 / 0.1);
+}
+
+.dark[data-sidebar='brand'] {
+  --app-sidebar: color-mix(in oklab, var(--brand-950) 45%, #050507);
+}
+
+/* Auth canvas (sign-in, sign-up…): `ink` is the text/line colour, `solid` the highlighted element. */
+:root {
+  --hero-canvas: color-mix(in oklab, var(--brand-50) 65%, #ffffff);
+  --hero-ink: var(--brand-950);
+  --hero-accent: var(--brand-600);
+  --hero-solid: var(--brand-600);
+  --hero-on-solid: #ffffff;
+  --hero-panel: rgb(255 255 255 / 0.65);
+}
+
+.dark {
+  --hero-canvas: var(--brand-950);
+  --hero-ink: #ffffff;
+  --hero-accent: var(--brand-200);
+  --hero-solid: #ffffff;
+  --hero-on-solid: var(--brand-700);
+  --hero-panel: color-mix(in oklab, var(--brand-950) 60%, transparent);
+}
+
+/* Sign-in and sign-up share one card height on large screens, so switching between them doesn't jump. */
+@media (min-width: 1024px) {
+  .auth-page-tall {
+    display: flex;
+    flex-direction: column;
+    min-height: 634px;
+  }
+}
+
+/* Dark-mode form card on the auth canvas: brand-tinted surfaces instead of neutral black. */
+.dark .auth-card {
+  --app-surface: color-mix(in oklab, var(--brand-950) 78%, #2b2a40);
+  --app-surface-muted: color-mix(in oklab, var(--brand-900) 45%, #24233a);
+  --app-surface-raised: var(--app-surface-muted);
+  --app-canvas: var(--app-surface-muted);
+  --app-border: color-mix(in oklab, var(--brand-200) 16%, transparent);
+  --app-border-strong: color-mix(in oklab, var(--brand-200) 26%, transparent);
+  --app-text-muted: color-mix(in oklab, var(--brand-100) 62%, #a1a1aa);
+  --app-text-subtle: color-mix(in oklab, var(--brand-200) 45%, #71717a);
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', 'Inter', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --color-app: var(--app-bg);
+  --color-canvas: var(--app-canvas);
+  --color-surface: var(--app-surface);
+  --color-surface-muted: var(--app-surface-muted);
+  --color-surface-raised: var(--app-surface-raised);
+  --color-line: var(--app-border);
+  --color-line-strong: var(--app-border-strong);
+  --color-fg: var(--app-text);
+  --color-fg-muted: var(--app-text-muted);
+  --color-fg-subtle: var(--app-text-subtle);
+  --color-ring: var(--app-ring);
+  --color-sidebar: var(--app-sidebar);
+  --color-sidebar-fg: var(--app-sidebar-text);
+  --color-sidebar-fg-strong: var(--app-sidebar-text-strong);
+  --color-sidebar-section: var(--app-sidebar-section);
+  --color-sidebar-hover: var(--app-sidebar-hover);
+  --color-sidebar-active: var(--app-sidebar-active);
+  --color-sidebar-active-fg: var(--app-sidebar-active-text);
+  --color-sidebar-icon-active: var(--app-sidebar-icon-active);
+  --color-sidebar-line: var(--app-sidebar-border);
+  --color-hero-canvas: var(--hero-canvas);
+  --color-hero-ink: var(--hero-ink);
+  --color-hero-accent: var(--hero-accent);
+  --color-hero-solid: var(--hero-solid);
+  --color-hero-on-solid: var(--hero-on-solid);
+  --color-hero-panel: var(--hero-panel);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+  --shadow-card: var(--app-shadow-card);
+  --shadow-pop: var(--app-shadow-pop);
+}
+
+@theme {
+  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-slide-up: slide-up 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scale-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-aurora: aurora 18s ease-in-out infinite alternate;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-grow: grow 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-flow: flow 1.2s linear infinite;
+  --animate-draw: draw 900ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-radar-pulse: radar-pulse 3.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+@keyframes flow {
+  to { stroke-dashoffset: -24; }
+}
+
+/* For paths with pathLength="1" and stroke-dasharray="1". */
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes radar-pulse {
+  from { transform: scale(0.2); opacity: 0.7; }
+  to { transform: scale(1); opacity: 0; }
+}
+
+@keyframes aurora {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8%, -6%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, 8%, 0) scale(0.94); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes grow {
+  from { transform: scaleY(0.15); opacity: 0.4; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@layer base {
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+  body {
+    @apply bg-app text-fg font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand-500) 22%, transparent);
+  }
+  /* Tailwind 4 gives buttons the default arrow; show the hand on everything clickable. */
+  button,
+  summary,
+  select,
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='file'],
+  [role='button'],
+  [role='tab'],
+  [role='option'],
+  [role='radio'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='menuitem'],
+  [role='menuitemradio'] {
+    cursor: pointer;
+  }
+  :disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--app-ring);
+    outline-offset: 2px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-border-strong) transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+  }
+  .input-base {
+    @apply block min-h-10 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg shadow-xs
+      transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle
+      hover:border-fg-subtle/60 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none
+      disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-fg-muted;
+  }
+  select.input-base {
+    @apply cursor-pointer appearance-none bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+    background-position: right 0.65rem center;
+  }
+  .input-invalid {
+    @apply border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/15;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-fg;
+  }
+  .help-text {
+    @apply mt-1.5 text-xs text-fg-muted;
+  }
+  .error-text {
+    @apply mt-1.5 text-xs font-medium text-red-600 dark:text-red-400;
+  }
+  /* Dotted background used on hero / empty areas. */
+  .bg-dots {
+    background-image: radial-gradient(color-mix(in oklab, var(--app-text) 10%, transparent) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+}

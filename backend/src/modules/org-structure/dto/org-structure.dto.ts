@@ -1,0 +1,81 @@
+import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
+import { emptyToNull, emptyToNullUpper, optionalNullable, trim } from '../../../common/validation/transforms';
+import { IsTimeZone } from '../../../common/validation/validators';
+
+const CODE = /^[A-Za-z0-9_-]{1,30}$/;
+
+export class CreateDepartmentDto {
+  @Transform(trim) @IsString() @Length(2, 120)
+  name!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNullUpper) @optionalNullable @Matches(CODE, { message: 'code may contain letters, numbers, - and _ (max 30)' })
+  code?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsUUID()
+  parentId?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isActive?: boolean;
+}
+export class UpdateDepartmentDto extends PartialType(CreateDepartmentDto) {}
+
+export class CreateDesignationDto {
+  @Transform(trim) @IsString() @Length(2, 120)
+  name!: string;
+
+  @ApiPropertyOptional({ nullable: true, minimum: 1, maximum: 50 })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(1) @Max(50)
+  level?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isActive?: boolean;
+}
+export class UpdateDesignationDto extends PartialType(CreateDesignationDto) {}
+
+export class CreateLocationDto {
+  @Transform(trim) @IsString() @Length(2, 120)
+  name!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNullUpper) @optionalNullable @Matches(CODE, { message: 'code may contain letters, numbers, - and _ (max 30)' })
+  code?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(200)
+  addressLine1?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(100)
+  city?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(100)
+  state?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'ISO 3166-1 alpha-2' })
+  @Transform(emptyToNullUpper) @optionalNullable @Matches(/^[A-Z]{2}$/, { message: 'country must be a 2-letter ISO code' })
+  country?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsTimeZone()
+  timezone?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isActive?: boolean;
+}
+export class UpdateLocationDto extends PartialType(CreateLocationDto) {}

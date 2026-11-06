@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hrms
+          POSTGRES_PASSWORD: hrms_ci
+          POSTGRES_DB: hrms_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U hrms -d hrms_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix backend
+          npm ci --prefix frontend
+
+      - name: Create test environment (ephemeral secrets)
+        run: |
+          cat > backend/.env.test <<EOF
+          NODE_ENV=test
+          PORT=3001
+          CORS_ORIGINS=http://localhost:5174
+          APP_URL=http://localhost:5174
+          TRUST_PROXY=0
+          DB_NAME=hrms_test
+          DB_USER=hrms
+          DB_PASSWORD=hrms_ci
+          DB_HOST=localhost
+          DB_PORT=5432
+          JWT_ACCESS_SECRET=$(openssl rand -base64 48 | tr -d '\n')
+          JWT_ACCESS_TTL_SECONDS=900
+          REFRESH_TOKEN_TTL_DAYS=7
+          DATA_ENCRYPTION_KEY=$(openssl rand -base64 32 | tr -d '\n')
+          COOKIE_SECURE=false
+          MFA_ISSUER=HRMS-CI
+          ALLOW_ORGANIZATION_SIGNUP=true
+          DEFAULT_PLAN_CODE=starter
+          SENDGRID_FROM_EMAIL=no-reply@hrms.local
+          SENDGRID_FROM_NAME=HRMS
+          SUPERADMIN_EMAIL=superadmin@e2e.test
+          SUPERADMIN_PASSWORD=Sa!$(openssl rand -hex 8)9Aa
+          E2E_ORG_ADMIN_EMAIL=admin@acme.test
+          E2E_ORG_ADMIN_PASSWORD=Oa!$(openssl rand -hex 8)7Bb
+          EOF
+
+      - name: Typecheck
+        run: |
+          npm --prefix backend run typecheck
+          npm --prefix frontend run typecheck
+
+      - name: Migrations (up, down, up)
+        working-directory: backend
+        env:
+          NODE_ENV: test
+        run: |
+          npm run db:migrate
+          npm run db:migrate:down && npm run db:migrate:down && npm run db:migrate:down
+          npm run db:migrate
+
+      - name: Backend unit tests
+        run: npm --prefix backend run test
+
+      - name: Backend integration tests (PostgreSQL)
+        run: npm --prefix backend run test:e2e
+
+      - name: Frontend unit tests
+        run: npm --prefix frontend run test
+
+      - name: Build
+        run: |
+          npm --prefix backend run build
+          npm --prefix frontend run build
+
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm --prefix frontend run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t hrms-backend:${{ github.sha }} backend
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t hrms-frontend:${{ github.sha }} .

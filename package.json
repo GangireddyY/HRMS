@@ -1,0 +1,21 @@
+{
+  "name": "hrms",
+  "version": "0.3.1",
+  "private": true,
+  "description": "Enterprise multi-tenant Human Resource Management System. Helper scripts only: backend/ and frontend/ are independent npm projects with their own dependencies.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run start:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "db:migrate": "npm --prefix backend run db:migrate",
+    "db:seed": "npm --prefix backend run db:seed",
+    "test": "npm --prefix backend run test && npm --prefix backend run test:e2e && npm --prefix frontend run test",
+    "test:e2e:frontend": "npm --prefix backend run build && npm --prefix frontend run test:e2e",
+    "docs:rbac": "npm --prefix backend run docs:rbac"
+  }
+}

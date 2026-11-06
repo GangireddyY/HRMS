@@ -1,0 +1,13 @@
+import { http } from '@/core/http/http-client';
+import type { OrganizationProfile, OrgOverview, SecurityPolicy, Subscription } from '../types';
+
+export const organizationApi = {
+  get: () => http.get<OrganizationProfile>('/organizations/current'),
+  update: (body: Partial<OrganizationProfile>) => http.patch<OrganizationProfile>('/organizations/current', body),
+  securityPolicy: () => http.get<SecurityPolicy>('/organizations/current/security-policy'),
+  updateSecurityPolicy: (body: Partial<SecurityPolicy>) => http.put<SecurityPolicy>('/organizations/current/security-policy', body),
+  subscription: () => http.get<Subscription>('/organizations/current/subscription'),
+  overview: () => http.get<OrgOverview>('/organizations/current/overview'),
+  uploadLogo: (file: File) => http.upload<{ logoUrl: string }>('/organizations/current/logo', file),
+  removeLogo: () => http.delete<{ removed: boolean }>('/organizations/current/logo'),
+};

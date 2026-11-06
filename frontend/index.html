@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Enterprise Human Resource Management System" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>HRMS</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a flash of the wrong theme.
+      // Keys mirror THEME_STORAGE_KEYS in src/core/theme/themes.ts.
+      (function () {
+        try {
+          var root = document.documentElement;
+          var mode = localStorage.getItem('hrms.theme');
+          var color = localStorage.getItem('hrms.colorTheme');
+          var sidebar = localStorage.getItem('hrms.sidebar');
+          var dark = mode === 'dark' || (mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) root.classList.add('dark');
+          if (color && /^[a-z]+$/.test(color)) root.setAttribute('data-theme', color);
+          root.setAttribute('data-sidebar', sidebar && /^[a-z]+$/.test(sidebar) ? sidebar : 'light');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

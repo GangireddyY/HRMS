@@ -1,0 +1,15 @@
+# Context for frontend/Dockerfile (repository root). Only frontend/ and backend/src/contracts are needed.
+**/node_modules
+**/dist
+**/coverage
+**/*.log
+.git
+.github
+docs
+frontend/test-results
+frontend/playwright-report
+backend/uploads
+# Secrets never enter the build. frontend/.env.production holds only public build-time values.
+**/.env
+**/.env.*
+!frontend/.env.production

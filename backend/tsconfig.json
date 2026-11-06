@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "useDefineForClassFields": false,
+    "noImplicitOverride": false,
+    "declaration": false,
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}
