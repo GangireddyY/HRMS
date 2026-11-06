@@ -30,7 +30,7 @@ import { EmployeeScopeService } from './employee-scope.service';
 
 const PUBLIC_ATTRIBUTES = [
   'id', 'membershipId', 'employeeCode', 'firstName', 'lastName', 'workEmail', 'personalEmail', 'phone', 'dateOfBirth', 'gender',
-  'dateOfJoining', 'employmentType', 'status', 'departmentId', 'designationId', 'locationId', 'managerId', 'probationEndDate',
+  'dateOfJoining', 'employmentType', 'status', 'departmentId', 'designationId', 'locationId', 'managerId', 'probationEndDate', 'confirmedOn',
   'exitDate', 'address', 'emergencyContactName', 'emergencyContactPhone', 'bankAccountLast4', 'shiftId', 'gradeId', 'costCenterId',
   'maritalStatus', 'bloodGroup', 'nationality', 'permanentAddress', 'noticePeriodDays', 'createdAt', 'updatedAt',
 ];
@@ -66,6 +66,7 @@ export function toEmployee(e: Employee) {
     employmentType: e.employmentType,
     status: e.status,
     probationEndDate: e.probationEndDate,
+    confirmedOn: e.confirmedOn,
     exitDate: e.exitDate,
     address: e.address,
     emergencyContactName: e.emergencyContactName,
@@ -228,7 +229,9 @@ export class EmployeesService {
         update.exitDate = dto.status === 'EXITED' ? dto.effectiveDate : null;
         break;
       case 'CONFIRMATION':
+        if (employee.confirmedOn) throw AppError.conflict(`${fullName(employee)} was already confirmed on ${employee.confirmedOn}`);
         update.probationEndDate = dto.effectiveDate;
+        update.confirmedOn = dto.effectiveDate;
         break;
     }
     await this.validateReferences(update);

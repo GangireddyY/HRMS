@@ -9,7 +9,7 @@ export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
 export const GENDERS = ['MALE', 'FEMALE', 'NON_BINARY', 'UNDISCLOSED'] as const;
 export type Gender = (typeof GENDERS)[number];
 
-export const LIFECYCLE_EVENT_TYPES = ['JOINED', 'TRANSFER', 'PROMOTION', 'MANAGER_CHANGE', 'STATUS_CHANGE', 'CONFIRMATION'] as const;
+export const LIFECYCLE_EVENT_TYPES = ['JOINED', 'TRANSFER', 'PROMOTION', 'MANAGER_CHANGE', 'STATUS_CHANGE', 'CONFIRMATION', 'PROBATION_EXTENDED'] as const;
 export type LifecycleEventType = (typeof LIFECYCLE_EVENT_TYPES)[number];
 
 /** Lifecycle changes an HR user can record (JOINED is written when the employee is created). */

@@ -1,9 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { Op } from 'sequelize';
-import { FALLBACK_SHIFT, type AttendanceRecordStatus, type DayStatus } from '../../contracts';
+import { FALLBACK_SHIFT, type AttendanceRecordStatus, type DayStatus, type LeaveSession } from '../../contracts';
 import { AppError } from '../../common/errors/app-error';
 import { addDays, timeToMinutes, weekday, zonedInstant, zonedParts } from '../../common/utils/zoned-time';
-import { AttendancePeriod, Employee, Holiday, Location, Organization, Shift, type AttendanceRecord } from '../../database/models';
+import { AttendancePeriod, Employee, Holiday, LeaveRequest, LeaveType, Location, Organization, Shift, type AttendanceRecord } from '../../database/models';
+
+/** Approved leave on one day (from the leave module). */
+export interface DayLeave {
+  requestId: string;
+  code: string;
+  name: string;
+  color: string;
+  isPaid: boolean;
+  session: LeaveSession;
+  countsNonWorkingDays: boolean;
+}
 
 export interface EffectiveShift {
   id: string | null;
@@ -121,6 +132,25 @@ export class AttendanceRulesService {
     return { checkInAt, checkOutAt: zonedInstant(workDate, outMinutes <= inMinutes ? outMinutes + 1440 : outMinutes, timeZone) };
   }
 
+  /** Approved leave per employee and date in a range. */
+  async approvedLeave(employeeIds: string[], from: string, to: string): Promise<Map<string, Map<string, DayLeave>>> {
+    const out = new Map<string, Map<string, DayLeave>>();
+    if (!employeeIds.length) return out;
+    const rows = await LeaveRequest.findAll({
+      where: { employeeId: employeeIds, status: 'APPROVED', startDate: { [Op.lte]: to }, endDate: { [Op.gte]: from } },
+      include: [{ model: LeaveType, attributes: ['code', 'name', 'color', 'countNonWorkingDays', 'isPaid'] }],
+    });
+    for (const r of rows) {
+      const byDate = out.get(r.employeeId) ?? new Map<string, DayLeave>();
+      for (let d = r.startDate < from ? from : r.startDate; d <= r.endDate && d <= to; d = addDays(d, 1)) {
+        const session = r.startDate === r.endDate ? r.startSession : d === r.startDate && r.startSession === 'SECOND_HALF' ? 'SECOND_HALF' : d === r.endDate && r.endSession === 'FIRST_HALF' ? 'FIRST_HALF' : 'FULL';
+        byDate.set(d, { requestId: r.id, code: r.leaveType!.code, name: r.leaveType!.name, color: r.leaveType!.color, isPaid: r.leaveType!.isPaid, session, countsNonWorkingDays: r.leaveType!.countNonWorkingDays });
+      }
+      out.set(r.employeeId, byDate);
+    }
+    return out;
+  }
+
   dayStatus(
     date: string,
     today: string,
@@ -128,6 +158,7 @@ export class AttendanceRulesService {
     ctx: EmployeeContext,
     holiday: Holiday | undefined,
     record: Pick<AttendanceRecord, 'checkInAt' | 'checkOutAt' | 'status'> | undefined,
+    leave?: DayLeave,
   ): DayStatus {
     if (date < employee.dateOfJoining || (employee.exitDate && date > employee.exitDate)) return 'NOT_EMPLOYED';
     if (record?.checkInAt) {
@@ -135,6 +166,8 @@ export class AttendanceRulesService {
       const stillOpen = date === today || (ctx.shift.crossesMidnight && date === addDays(today, -1));
       return stillOpen ? 'IN_PROGRESS' : 'MISSED_PUNCH';
     }
+    const offDay = (holiday && !holiday.isOptional) || ctx.shift.weeklyOffs.includes(weekday(date));
+    if (leave && (!offDay || leave.countsNonWorkingDays)) return 'ON_LEAVE';
     if (holiday && !holiday.isOptional) return 'HOLIDAY';
     if (ctx.shift.weeklyOffs.includes(weekday(date))) return 'WEEKLY_OFF';
     return date >= today ? 'UPCOMING' : 'ABSENT';

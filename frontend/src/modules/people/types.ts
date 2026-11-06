@@ -85,6 +85,7 @@ export interface Employee {
   employmentType: EmploymentType;
   status: EmployeeStatus;
   probationEndDate: string | null;
+  confirmedOn: string | null;
   exitDate: string | null;
   address: string | null;
   emergencyContactName: string | null;

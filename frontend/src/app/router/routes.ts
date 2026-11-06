@@ -8,8 +8,17 @@ import { errorRoutes } from '@/modules/errors/errors.routes';
 import { hrRoutes } from '@/modules/hr/hr.routes';
 import { notificationsRoutes } from '@/modules/notifications/notifications.routes';
 import { organizationRoutes } from '@/modules/organization/organization.routes';
+import { leaveHrRoutes, leaveSelfRoutes } from '@/modules/leave/leave.routes';
+import { onboardingHrRoutes, onboardingSelfRoutes } from '@/modules/onboarding/onboarding.routes';
 import { peopleAdminRoutes, peopleHrRoutes, peopleSelfRoutes } from '@/modules/people/people.routes';
 import { platformRoutes } from '@/modules/platform/platform.routes';
+import { payrollHrRoutes, payrollSelfRoutes } from '@/modules/payroll/payroll.routes';
+import { performanceHrRoutes, performanceSelfRoutes } from '@/modules/performance/performance.routes';
+import { trainingHrRoutes, trainingSelfRoutes } from '@/modules/training/training.routes';
+import { engagementHrRoutes, engagementSelfRoutes } from '@/modules/engagement/engagement.routes';
+import { grievanceHrRoutes, grievanceSelfRoutes } from '@/modules/grievance/grievance.routes';
+import { benefitsHrRoutes, benefitsSelfRoutes } from '@/modules/benefits/benefits.routes';
+import { careersRoutes, recruitmentHrRoutes, recruitmentSelfRoutes } from '@/modules/recruitment/recruitment.routes';
 import { rolesRoutes } from '@/modules/roles/roles.routes';
 import { usersRoutes } from '@/modules/users/users.routes';
 
@@ -41,12 +50,13 @@ export const routes: RouteRecordRaw[] = [
     path: '/hr',
     component: () => import('@/layouts/HrLayout.vue'),
     meta: { access: { permissions: HR_OPERATIONS_PERMISSIONS, scope: 'TEAM' } },
-    children: [...hrRoutes, ...peopleHrRoutes, ...attendanceHrRoutes],
+    children: [...hrRoutes, ...peopleHrRoutes, ...recruitmentHrRoutes, ...onboardingHrRoutes, ...attendanceHrRoutes, ...leaveHrRoutes, ...payrollHrRoutes, ...performanceHrRoutes, ...trainingHrRoutes, ...engagementHrRoutes, ...grievanceHrRoutes, ...benefitsHrRoutes],
   },
   {
     path: '/me',
     component: () => import('@/layouts/EssLayout.vue'),
-    children: [...accountRoutes, ...peopleSelfRoutes, ...attendanceSelfRoutes, ...notificationsRoutes],
+    children: [...accountRoutes, ...peopleSelfRoutes, ...onboardingSelfRoutes, ...recruitmentSelfRoutes, ...attendanceSelfRoutes, ...leaveSelfRoutes, ...payrollSelfRoutes, ...performanceSelfRoutes, ...trainingSelfRoutes, ...engagementSelfRoutes, ...grievanceSelfRoutes, ...benefitsSelfRoutes, ...notificationsRoutes],
   },
+  ...careersRoutes,
   ...errorRoutes,
 ];

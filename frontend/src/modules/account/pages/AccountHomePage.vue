@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { ArrowRight, Bell, KeyRound, ShieldCheck } from '@lucide/vue';
 import { authApi } from '@/modules/auth/api/auth.api';
 import PunchCard from '@/modules/attendance/components/PunchCard.vue';
+import LeaveSummaryCard from '@/modules/leave/components/LeaveSummaryCard.vue';
 import { notificationsApi } from '@/modules/notifications/api/notifications.api';
 import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppEmptyState, AppErrorState, AppSkeleton, AppStatCard } from '@/shared/components';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
@@ -37,6 +38,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
     </div>
 
     <PunchCard v-if="auth.can('attendance.mark')" />
+    <LeaveSummaryCard v-if="auth.can('leave.apply')" />
 
     <div class="grid gap-4 sm:grid-cols-3">
       <AppStatCard label="Two-factor authentication" :value="mfa.data.value ? (mfa.data.value.enabled ? 'Enabled' : 'Off') : undefined" :loading="mfa.loading.value" :icon="ShieldCheck" :tone="mfa.data.value?.enabled ? 'success' : 'warning'" />

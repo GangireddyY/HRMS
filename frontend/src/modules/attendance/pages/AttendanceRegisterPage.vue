@@ -42,6 +42,7 @@ const statusOptions = [
   { value: 'HALF_DAY', label: 'Half day' },
   { value: 'ABSENT', label: 'Absent / not in' },
   { value: 'MISSED_PUNCH', label: 'Missed punch-out' },
+  { value: 'ON_LEAVE', label: 'On leave' },
   { value: 'LATE', label: 'Late' },
 ];
 const tiles = computed(() => {
@@ -54,6 +55,7 @@ const tiles = computed(() => {
     { key: 'LATE', label: 'Late', value: s.late, cls: 'text-orange-600 dark:text-orange-400' },
     { key: 'HALF_DAY', label: 'Half day', value: s.halfDay, cls: 'text-amber-600 dark:text-amber-400' },
     { key: 'MISSED_PUNCH', label: 'Missed punch-out', value: s.missedPunch, cls: 'text-orange-600 dark:text-orange-400' },
+    { key: 'ON_LEAVE', label: 'On leave', value: s.onLeave, cls: 'text-cyan-600 dark:text-cyan-400' },
   ];
 });
 const today = new Date().toISOString().slice(0, 10);
@@ -68,7 +70,7 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
       </template>
     </AppPageHeader>
 
-    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
       <button
         v-for="t in tiles"
         :key="t.key"

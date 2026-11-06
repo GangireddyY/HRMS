@@ -1,5 +1,25 @@
 import { AuditLog, Notification } from './activity.models';
 import { AttendancePeriod, AttendanceRecord, AttendanceRegularization, Holiday, Shift } from './attendance.models';
+import { LeaveLedgerEntry, LeaveRequest, LeaveType } from './leave.models';
+import { OnboardingCase, OnboardingTask, OnboardingTemplate, OnboardingTemplateTask, ProbationReview } from './onboarding.models';
+import {
+  EmployeeSalary,
+  PayrollAdjustment,
+  PayrollRun,
+  PayrollSettings,
+  Payslip,
+  ReimbursementClaim,
+  SalaryComponentDef,
+  SalaryStructure,
+  SalaryStructureLine,
+  TaxDeclarationRecord,
+} from './payroll.models';
+import { PerformanceCycle, PerformanceFeedback, PerformanceGoal, PerformancePip, PerformanceReview, PipCheckIn } from './performance.models';
+import { Announcement, AnnouncementResponse, Recognition, RecognitionRecipient, Suggestion, Survey, SurveyParticipant, SurveyQuestionRecord, SurveyResponse } from './engagement.models';
+import { GrievanceAttachment, GrievanceCase, GrievanceEvent, GrievanceNote } from './grievance.models';
+import { BenefitEnrollment, BenefitEnrollmentDependent, BenefitPlan, BenefitPlanOption } from './benefits.models';
+import { TrainingAttempt, TrainingCourse, TrainingEnrollment, TrainingQuestion, TrainingSession } from './training.models';
+import { ApplicationEvent, Candidate, Interview, InterviewPanelist, JobApplication, JobOpening, JobRequisition, Offer } from './recruitment.models';
 import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserSession } from './identity.models';
 import { Feature, Organization, OrganizationFeature, OrganizationLogo, OrganizationMembership, OrganizationSecurityPolicy, Plan, PlanFeature } from './organization.models';
 import {
@@ -20,6 +40,15 @@ import { MembershipRole, Permission, Role, RolePermission } from './rbac.models'
 export * from './activity.models';
 export * from './attendance.models';
 export * from './identity.models';
+export * from './leave.models';
+export * from './onboarding.models';
+export * from './recruitment.models';
+export * from './payroll.models';
+export * from './performance.models';
+export * from './training.models';
+export * from './engagement.models';
+export * from './grievance.models';
+export * from './benefits.models';
 export * from './organization.models';
 export * from './people.models';
 export * from './rbac.models';
@@ -62,6 +91,60 @@ export const ALL_MODELS = [
   AttendanceRecord,
   AttendanceRegularization,
   AttendancePeriod,
+  LeaveType,
+  LeaveRequest,
+  LeaveLedgerEntry,
+  OnboardingTemplate,
+  OnboardingTemplateTask,
+  OnboardingCase,
+  OnboardingTask,
+  ProbationReview,
+  JobRequisition,
+  JobOpening,
+  Candidate,
+  JobApplication,
+  ApplicationEvent,
+  Interview,
+  InterviewPanelist,
+  Offer,
+  PayrollSettings,
+  SalaryComponentDef,
+  SalaryStructure,
+  SalaryStructureLine,
+  EmployeeSalary,
+  TaxDeclarationRecord,
+  PayrollRun,
+  Payslip,
+  PayrollAdjustment,
+  ReimbursementClaim,
+  PerformanceCycle,
+  PerformanceReview,
+  PerformanceGoal,
+  PerformanceFeedback,
+  PerformancePip,
+  PipCheckIn,
+  TrainingCourse,
+  TrainingQuestion,
+  TrainingSession,
+  TrainingEnrollment,
+  TrainingAttempt,
+  Announcement,
+  AnnouncementResponse,
+  Survey,
+  SurveyQuestionRecord,
+  SurveyParticipant,
+  SurveyResponse,
+  Recognition,
+  RecognitionRecipient,
+  Suggestion,
+  GrievanceCase,
+  GrievanceNote,
+  GrievanceAttachment,
+  GrievanceEvent,
+  BenefitPlan,
+  BenefitPlanOption,
+  BenefitEnrollment,
+  BenefitEnrollmentDependent,
 ];
 
 /**
@@ -93,6 +176,60 @@ export const TENANT_MODELS = [
   AttendanceRecord,
   AttendanceRegularization,
   AttendancePeriod,
+  LeaveType,
+  LeaveRequest,
+  LeaveLedgerEntry,
+  OnboardingTemplate,
+  OnboardingTemplateTask,
+  OnboardingCase,
+  OnboardingTask,
+  ProbationReview,
+  JobRequisition,
+  JobOpening,
+  Candidate,
+  JobApplication,
+  ApplicationEvent,
+  Interview,
+  InterviewPanelist,
+  Offer,
+  PayrollSettings,
+  SalaryComponentDef,
+  SalaryStructure,
+  SalaryStructureLine,
+  EmployeeSalary,
+  TaxDeclarationRecord,
+  PayrollRun,
+  Payslip,
+  PayrollAdjustment,
+  ReimbursementClaim,
+  PerformanceCycle,
+  PerformanceReview,
+  PerformanceGoal,
+  PerformanceFeedback,
+  PerformancePip,
+  PipCheckIn,
+  TrainingCourse,
+  TrainingQuestion,
+  TrainingSession,
+  TrainingEnrollment,
+  TrainingAttempt,
+  Announcement,
+  AnnouncementResponse,
+  Survey,
+  SurveyQuestionRecord,
+  SurveyParticipant,
+  SurveyResponse,
+  Recognition,
+  RecognitionRecipient,
+  Suggestion,
+  GrievanceCase,
+  GrievanceNote,
+  GrievanceAttachment,
+  GrievanceEvent,
+  BenefitPlan,
+  BenefitPlanOption,
+  BenefitEnrollment,
+  BenefitEnrollmentDependent,
   // Nullable organization_id (platform-level rows exist); written with explicit organization ids.
   AuditLog,
   LoginEvent,

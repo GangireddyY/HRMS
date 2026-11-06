@@ -1,4 +1,4 @@
-import type { AttendanceRecordStatus, AttendanceSource, DayStatus, RegularizationStatus } from '@contracts';
+import type { AttendanceRecordStatus, AttendanceSource, DayStatus, LeaveSession, RegularizationStatus } from '@contracts';
 
 export interface AttendanceRecord {
   id: string;
@@ -40,6 +40,8 @@ export interface CalendarDay {
   date: string;
   status: DayStatus;
   holiday: { name: string; isOptional: boolean } | null;
+  /** Approved leave on this day. */
+  leave: { code: string; name: string; color: string; session: LeaveSession; isPaid: boolean } | null;
   record: AttendanceRecord | null;
   pendingRegularizationId: string | null;
 }
@@ -52,12 +54,13 @@ export interface AttendanceCalendar {
   closed: boolean;
   today: string;
   days: CalendarDay[];
-  summary: { present: number; halfDay: number; absent: number; missedPunch: number; holidays: number; weeklyOffs: number; lateDays: number; workedMinutes: number };
+  summary: { present: number; halfDay: number; absent: number; missedPunch: number; onLeave: number; holidays: number; weeklyOffs: number; lateDays: number; workedMinutes: number };
 }
 
 export interface DailyRow {
   employee: { id: string; name: string; employeeCode: string; department: { id: string; name: string } | null; designation: string | null };
   status: DayStatus;
+  leave: { code: string; name: string; color: string; session: LeaveSession } | null;
   record: AttendanceRecord | null;
   shift: { name: string; startTime: string; endTime: string };
 }
@@ -69,6 +72,7 @@ export interface DailySummary {
   absent: number;
   inProgress: number;
   missedPunch: number;
+  onLeave: number;
   late: number;
   off: number;
 }

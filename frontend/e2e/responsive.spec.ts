@@ -20,8 +20,49 @@ const ORG_ADMIN_PAGES = [
   '/hr/attendance/regularizations',
   '/hr/attendance/closing',
   '/hr/attendance/shifts',
+  '/hr/org-chart',
+  '/hr/documents/expiring',
+  '/hr/recruitment/requisitions',
+  '/hr/recruitment/jobs',
+  '/hr/recruitment/candidates',
+  '/hr/onboarding',
+  '/hr/onboarding/probation',
+  '/hr/onboarding/checklists',
+  '/hr/leave/requests',
+  '/hr/leave/calendar',
+  '/hr/leave/balances',
+  '/hr/leave/types',
+  '/hr/payroll/runs',
+  '/hr/payroll/salaries',
+  '/hr/payroll/reimbursements',
+  '/hr/payroll/setup',
+  '/hr/performance/reviews',
+  '/hr/performance/cycles',
+  '/hr/performance/pips',
+  '/hr/training/courses',
+  '/hr/training/team',
+  '/hr/engagement/announcements',
+  '/hr/engagement/surveys',
+  '/hr/engagement/suggestions',
+  '/hr/grievances',
+  '/hr/benefits/plans',
+  '/hr/benefits/enrollments',
   '/me',
   '/me/attendance',
+  '/me/leave',
+  '/me/onboarding',
+  '/me/interviews',
+  '/me/payslips',
+  '/me/salary',
+  '/me/reimbursements',
+  '/me/performance',
+  '/me/training',
+  '/me/training/catalog',
+  '/me/engagement',
+  '/me/engagement/suggestions',
+  '/me/grievances',
+  '/me/benefits',
+  '/me/employment',
   '/me/profile',
   '/me/security',
   '/me/appearance',
@@ -39,12 +80,16 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await page.setViewportSize(viewport);
 }
 
-async function checkPage(page: Page, testInfo: TestInfo, path: string): Promise<void> {
-  await page.goto(path);
+async function checkCurrent(page: Page, testInfo: TestInfo, name: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.waitForLoadState('networkidle');
   await expectNoHorizontalOverflow(page);
-  await capture(page, testInfo, path.replace(/\//g, '_').replace(/^_/, '') || 'root');
+  await capture(page, testInfo, name);
+}
+
+async function checkPage(page: Page, testInfo: TestInfo, path: string): Promise<void> {
+  await page.goto(path);
+  await checkCurrent(page, testInfo, path.replace(/\//g, '_').replace(/^_/, '') || 'root');
 }
 
 test.describe('responsive layout', () => {
@@ -68,6 +113,144 @@ test.describe('responsive layout', () => {
     await expect(page.getByRole('heading', { name: 'HR Manager' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await capture(page, testInfo, 'role-detail');
+  });
+
+  test('recruitment detail and careers pages fit the screen', async ({ page, browser }, testInfo) => {
+    test.setTimeout(90_000);
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/recruitment/jobs');
+    const careers = await page.getByRole('link', { name: 'Careers page' }).getAttribute('href');
+    const job = page.getByRole('row').filter({ hasText: 'Open' }).first();
+    test.skip(!(await job.isVisible().catch(() => false)), 'needs an open job (created by recruitment.spec.ts)');
+    await job.click();
+    await expect(page).toHaveURL(/\/hr\/recruitment\/jobs\/[0-9a-f-]+$/);
+    await checkCurrent(page, testInfo, 'recruitment-job');
+    const card = page.locator('#main section li button').first();
+    if (await card.isVisible()) {
+      await card.click();
+      await expect(page).toHaveURL(/\/hr\/recruitment\/applications\//);
+      await checkCurrent(page, testInfo, 'recruitment-application');
+    }
+    await page.goto('/hr/recruitment/candidates');
+    await page.getByRole('row').nth(1).click();
+    await expect(page).toHaveURL(/\/hr\/recruitment\/candidates\/[0-9a-f-]+$/);
+    await checkCurrent(page, testInfo, 'recruitment-candidate');
+
+    const visitor = await browser.newPage({ viewport: page.viewportSize()! });
+    await visitor.goto(careers!);
+    await checkCurrent(visitor, testInfo, 'careers');
+    await visitor.getByRole('link').first().click();
+    await expect(visitor.getByRole('button', { name: 'Send application' })).toBeVisible();
+    await checkCurrent(visitor, testInfo, 'careers-job');
+    await visitor.close();
+  });
+
+  test('payroll run page fits the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/payroll/runs');
+    await page.waitForLoadState('networkidle');
+    const run = page.getByRole('row').nth(1);
+    test.skip(!(await run.isVisible().catch(() => false)) || (await run.textContent())?.includes('No payroll runs'), 'needs a payroll run (created by payroll.spec.ts)');
+    await run.click();
+    await expect(page).toHaveURL(/\/hr\/payroll\/runs\/[0-9a-f-]+$/);
+    await checkCurrent(page, testInfo, 'payroll-run');
+  });
+
+  test('performance detail pages fit the screen', async ({ page }, testInfo) => {
+    test.setTimeout(90_000);
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/performance/cycles');
+    await page.waitForLoadState('networkidle');
+    const cycle = page.getByRole('row').filter({ hasText: /Closed|In progress/ }).first();
+    test.skip(!(await cycle.isVisible().catch(() => false)), 'needs a launched cycle (created by performance.spec.ts)');
+    await cycle.click();
+    await expect(page).toHaveURL(/\/hr\/performance\/cycles\/[0-9a-f-]+$/);
+    await expect(page.getByText('Rating distribution')).toBeVisible();
+    await checkCurrent(page, testInfo, 'performance-cycle');
+    const review = page.locator('#main table tbody tr').first();
+    if (await review.isVisible()) {
+      await review.click();
+      await expect(page).toHaveURL(/\/hr\/performance\/reviews\//);
+      await checkCurrent(page, testInfo, 'performance-review');
+    }
+    await page.goto('/hr/performance/pips');
+    await page.getByRole('combobox', { name: 'Filter by status' }).click();
+    await page.getByRole('option', { name: 'Completed successfully' }).click();
+    const pip = page.locator('#main table tbody tr').first();
+    if (await pip.isVisible()) {
+      await pip.click();
+      await expect(page).toHaveURL(/\/hr\/performance\/pips\//);
+      await checkCurrent(page, testInfo, 'performance-pip');
+    }
+  });
+
+  test('training course page fits the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/training/courses');
+    await page.waitForLoadState('networkidle');
+    const course = page.getByRole('row').filter({ hasText: 'Classroom' }).first();
+    test.skip(!(await course.isVisible().catch(() => false)), 'needs a classroom course (created by training.spec.ts)');
+    await course.click();
+    await expect(page).toHaveURL(/\/hr\/training\/courses\/[0-9a-f-]+$/);
+    await expect(page.getByText('Roster')).toBeVisible();
+    await checkCurrent(page, testInfo, 'training-course');
+  });
+
+  test('survey builder and results fit the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/engagement/surveys');
+    await page.getByRole('button', { name: 'New survey' }).click();
+    await expect(page.getByRole('dialog', { name: 'New survey' }).getByLabel('Question 1', { exact: true })).toBeVisible();
+    await checkCurrent(page, testInfo, 'survey-builder');
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.waitForLoadState('networkidle');
+    const results = page.getByRole('button', { name: 'Results' }).first();
+    test.skip(!(await results.isVisible().catch(() => false)), 'needs an opened survey (created by engagement.spec.ts)');
+    await results.click();
+    await expect(page).toHaveURL(/\/hr\/engagement\/surveys\/[0-9a-f-]+$/);
+    await expect(page.getByText('Response rate')).toBeVisible();
+    await checkCurrent(page, testInfo, 'survey-results');
+  });
+
+  test('grievance form and case page fit the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/me/grievances');
+    await page.getByRole('button', { name: 'Raise a grievance' }).click();
+    await expect(page.getByRole('dialog', { name: 'Raise a grievance' }).getByLabel('What happened?')).toBeVisible();
+    await checkCurrent(page, testInfo, 'grievance-form');
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.goto('/hr/grievances');
+    await page.getByRole('combobox', { name: /^Filter by status/ }).click();
+    await page.getByRole('option', { name: 'Closed', exact: true }).click();
+    const row = page.getByRole('row').filter({ hasText: /GRV-\d{4}/ }).first();
+    const found = await row.waitFor({ state: 'visible', timeout: 8000 }).then(
+      () => true,
+      () => false,
+    );
+    test.skip(!found, 'needs a closed grievance (created by grievance.spec.ts)');
+    await row.click();
+    await expect(page).toHaveURL(/\/hr\/grievances\/[0-9a-f-]+$/);
+    await expect(page.getByText('Timeline')).toBeVisible();
+    await checkCurrent(page, testInfo, 'grievance-case');
+  });
+
+  test('benefit plan form and plan page fit the screen', async ({ page }, testInfo) => {
+    await signIn(page, orgAdmin.email, orgAdmin.password);
+    await page.goto('/hr/benefits/plans');
+    await page.getByRole('button', { name: 'New plan' }).click();
+    await expect(page.getByRole('dialog', { name: 'New benefit plan' }).getByLabel('Plan name')).toBeVisible();
+    await checkCurrent(page, testInfo, 'benefit-plan-form');
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+    const row = page.getByRole('row').filter({ hasText: 'Group health' }).first();
+    const found = await row.waitFor({ state: 'visible', timeout: 8000 }).then(
+      () => true,
+      () => false,
+    );
+    test.skip(!found, 'needs a plan (created by benefits.spec.ts)');
+    await row.click();
+    await expect(page).toHaveURL(/\/hr\/benefits\/plans\/[0-9a-f-]+$/);
+    await expect(page.getByText('Coverage options')).toBeVisible();
+    await checkCurrent(page, testInfo, 'benefit-plan');
   });
 
   test('platform pages fit the screen', async ({ page }, testInfo) => {

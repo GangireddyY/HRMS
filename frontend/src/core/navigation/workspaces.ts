@@ -1,31 +1,57 @@
 import type { Component } from 'vue';
 import {
   Activity,
+  Award,
+  BadgeCheck,
+  Banknote,
   Bell,
   Briefcase,
   BriefcaseBusiness,
   Building2,
   CalendarCheck,
+  CalendarClock,
   CalendarDays,
+  CalendarRange,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   ClockAlert,
   Fingerprint,
   CreditCard,
   FileClock,
+  FilePlus2,
+  FileText,
   FileWarning,
   Gauge,
+  GraduationCap,
+  HeartPulse,
   History,
   Home,
   KeyRound,
   LayoutDashboard,
+  LifeBuoy,
+  Lightbulb,
+  ListChecks,
+  Megaphone,
+  MessagesSquare,
   Network,
   Palette,
+  Plane,
+  Receipt,
+  RefreshCcw,
+  Rocket,
+  Scale,
   Server,
   Settings,
+  Settings2,
+  ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
+  Target,
   User,
+  UserSearch,
   Users,
+  Wallet,
 } from '@lucide/vue';
 import { isAllowed, type AccessRule, type AccessSubject } from '@/core/navigation/access-rules';
 
@@ -60,11 +86,11 @@ export interface Workspace {
  * Scopable ones count only at TEAM scope or wider.
  */
 export const HR_OPERATIONS_PERMISSIONS = [
-  'employee.view', 'employee.create', 'employee.lifecycle.manage', 'recruitment.view', 'recruitment.requisition.approve',
-  'onboarding.view', 'attendance.view', 'attendance.manage', 'attendance.regularize.approve', 'attendance.close', 'attendance.configure',
-  'leave.view', 'leave.approve', 'leave.allocate',
-  'payroll.view', 'performance.view', 'performance.configure', 'training.manage', 'training.assign',
-  'engagement.announcement.manage', 'grievance.view', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.manage', 'reports.view',
+  'employee.view', 'employee.create', 'employee.lifecycle.manage', 'recruitment.view', 'recruitment.requisition.create', 'recruitment.requisition.approve',
+  'onboarding.view', 'onboarding.manage', 'onboarding.confirmation.approve', 'attendance.view', 'attendance.manage', 'attendance.regularize.approve', 'attendance.close', 'attendance.configure',
+  'leave.view', 'leave.approve', 'leave.allocate', 'leave.configure',
+  'payroll.view', 'payroll.configure', 'payroll.reimbursement.approve', 'employee.salary.view', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.configure', 'training.manage', 'training.assign',
+  'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.manage', 'reports.view',
 ];
 
 export const ADMIN_PERMISSIONS = ['organization.update', 'organization.security.manage', 'user.view', 'role.view', 'audit.view', 'audit.login_history.view'];
@@ -140,12 +166,83 @@ export const WORKSPACES: Workspace[] = [
         ],
       },
       {
+        title: 'Recruitment',
+        items: [
+          { label: 'Requisitions', to: '/hr/recruitment/requisitions', icon: FilePlus2, access: { permissions: ['recruitment.requisition.create', 'recruitment.requisition.approve', 'recruitment.view'], scope: 'TEAM', feature: 'recruitment' } },
+          { label: 'Jobs', to: '/hr/recruitment/jobs', icon: BriefcaseBusiness, access: { permissions: ['recruitment.view'], feature: 'recruitment' } },
+          { label: 'Candidates', to: '/hr/recruitment/candidates', icon: UserSearch, access: { permissions: ['recruitment.view'], feature: 'recruitment' } },
+        ],
+      },
+      {
+        title: 'Onboarding',
+        items: [
+          { label: 'Onboarding', to: '/hr/onboarding', icon: Rocket, exact: true, access: { permissions: ['onboarding.view'], scope: 'TEAM' } },
+          { label: 'Probation', to: '/hr/onboarding/probation', icon: BadgeCheck, access: { permissions: ['onboarding.view', 'onboarding.confirmation.approve'], scope: 'TEAM' } },
+          { label: 'Checklists', to: '/hr/onboarding/checklists', icon: ListChecks, access: { permissions: ['onboarding.manage'] } },
+        ],
+      },
+      {
         title: 'Attendance',
         items: [
           { label: 'Register', to: '/hr/attendance', icon: ClipboardList, exact: true, access: { permissions: ['attendance.view'], scope: 'TEAM' } },
           { label: 'Regularizations', to: '/hr/attendance/regularizations', icon: ClockAlert, access: { permissions: ['attendance.regularize.approve'], scope: 'TEAM' } },
           { label: 'Monthly closing', to: '/hr/attendance/closing', icon: CalendarCheck, access: { permissions: ['attendance.close'] } },
           { label: 'Shifts', to: '/hr/attendance/shifts', icon: Clock, access: { permissions: ['attendance.configure'] } },
+        ],
+      },
+      {
+        title: 'Leave',
+        items: [
+          { label: 'Leave requests', to: '/hr/leave/requests', icon: CalendarClock, access: { permissions: ['leave.approve', 'leave.view'], scope: 'TEAM' } },
+          { label: 'Team calendar', to: '/hr/leave/calendar', icon: CalendarRange, access: { permissions: ['leave.view'], scope: 'TEAM' } },
+          { label: 'Balances', to: '/hr/leave/balances', icon: Scale, access: { permissions: ['leave.view'], scope: 'TEAM' } },
+          { label: 'Leave types', to: '/hr/leave/types', icon: Settings2, access: { permissions: ['leave.configure'] } },
+        ],
+      },
+      {
+        title: 'Payroll',
+        items: [
+          { label: 'Payroll runs', to: '/hr/payroll/runs', icon: Banknote, access: { permissions: ['payroll.view'], feature: 'payroll' } },
+          { label: 'Salaries', to: '/hr/payroll/salaries', icon: Wallet, access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } },
+          { label: 'Reimbursements', to: '/hr/payroll/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.approve', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
+          { label: 'Payroll setup', to: '/hr/payroll/setup', icon: SlidersHorizontal, access: { permissions: ['payroll.configure', 'payroll.view'], feature: 'payroll' } },
+        ],
+      },
+      {
+        title: 'Performance',
+        items: [
+          { label: 'Reviews', to: '/hr/performance/reviews', icon: Target, access: { permissions: ['performance.review', 'performance.view', 'performance.configure'], scope: 'TEAM', feature: 'performance' } },
+          { label: 'Review cycles', to: '/hr/performance/cycles', icon: RefreshCcw, access: { permissions: ['performance.configure', 'performance.view'], scope: 'TEAM', feature: 'performance' } },
+          { label: 'Improvement plans', to: '/hr/performance/pips', icon: LifeBuoy, access: { permissions: ['performance.pip.manage'], scope: 'TEAM', feature: 'performance' } },
+        ],
+      },
+      {
+        title: 'Training',
+        items: [
+          { label: 'Courses', to: '/hr/training/courses', icon: GraduationCap, access: { permissions: ['training.manage', 'training.assign'], scope: 'TEAM', feature: 'training' } },
+          { label: 'Team training', to: '/hr/training/team', icon: Award, access: { permissions: ['training.manage', 'training.assign'], scope: 'TEAM', feature: 'training' } },
+        ],
+      },
+      {
+        title: 'Engagement',
+        items: [
+          { label: 'Announcements', to: '/hr/engagement/announcements', icon: Megaphone, access: { permissions: ['engagement.announcement.manage'], feature: 'engagement' } },
+          { label: 'Surveys', to: '/hr/engagement/surveys', icon: ClipboardList, access: { permissions: ['engagement.survey.manage'], feature: 'engagement' } },
+          { label: 'Suggestions', to: '/hr/engagement/suggestions', icon: Lightbulb, access: { permissions: ['engagement.survey.manage'], feature: 'engagement' } },
+        ],
+      },
+      {
+        title: 'Employee relations',
+        items: [
+          { label: 'Grievances', to: '/hr/grievances', icon: ShieldAlert, access: { permissions: ['grievance.view', 'grievance.manage', 'grievance.posh.access'], feature: 'grievance' } },
+          { label: 'POSH annual report', to: '/hr/grievances/posh-report', icon: FileText, access: { permissions: ['grievance.posh.access'], feature: 'grievance' } },
+        ],
+      },
+      {
+        title: 'Benefits',
+        items: [
+          { label: 'Benefit plans', to: '/hr/benefits/plans', icon: HeartPulse, access: { permissions: ['benefits.manage'], feature: 'benefits' } },
+          { label: 'Enrolments', to: '/hr/benefits/enrollments', icon: ClipboardCheck, access: { permissions: ['benefits.manage'], feature: 'benefits' } },
         ],
       },
     ],
@@ -158,12 +255,27 @@ export const WORKSPACES: Workspace[] = [
     home: '/me',
     access: () => true,
     sections: [
-      { items: [{ label: 'Home', to: '/me', icon: Home, exact: true, access: { tenant: true } }] },
+      {
+        items: [
+          { label: 'Home', to: '/me', icon: Home, exact: true, access: { tenant: true } },
+          { label: 'Company', to: '/me/engagement', icon: Megaphone, access: { permissions: ['engagement.view'], feature: 'engagement' } },
+        ],
+      },
       {
         title: 'Work',
         items: [
           { label: 'My employment', to: '/me/employment', icon: BriefcaseBusiness, access: { tenant: true } },
+          { label: 'Onboarding', to: '/me/onboarding', icon: Rocket, access: { tenant: true, feature: 'onboarding' } },
+          { label: 'Interviews', to: '/me/interviews', icon: MessagesSquare, access: { permissions: ['recruitment.interview.feedback'], feature: 'recruitment' } },
           { label: 'Attendance', to: '/me/attendance', icon: Fingerprint, access: { permissions: ['attendance.view'] } },
+          { label: 'Leave', to: '/me/leave', icon: Plane, access: { permissions: ['leave.view'] } },
+          { label: 'Performance', to: '/me/performance', icon: Target, access: { tenant: true, feature: 'performance' } },
+          { label: 'Learning', to: '/me/training', icon: GraduationCap, access: { tenant: true, feature: 'training' } },
+          { label: 'Payslips', to: '/me/payslips', icon: FileText, access: { permissions: ['payroll.payslip.view'], feature: 'payroll' } },
+          { label: 'Salary & tax', to: '/me/salary', icon: Wallet, access: { tenant: true, feature: 'payroll' } },
+          { label: 'Reimbursements', to: '/me/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.apply'], feature: 'payroll' } },
+          { label: 'Benefits', to: '/me/benefits', icon: HeartPulse, access: { permissions: ['benefits.view'], feature: 'benefits' } },
+          { label: 'Grievances', to: '/me/grievances', icon: ShieldAlert, access: { permissions: ['grievance.submit'], feature: 'grievance' } },
         ],
       },
       {

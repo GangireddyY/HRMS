@@ -9,7 +9,7 @@ export type AttendanceRecordStatus = (typeof ATTENDANCE_RECORD_STATUSES)[number]
  * IN_PROGRESS = punched in today, not out yet; MISSED_PUNCH = a past day with a punch-in but no punch-out;
  * ABSENT = a past working day without attendance; UPCOMING = a future working day; NOT_EMPLOYED = before joining / after exit.
  */
-export const DAY_STATUSES = ['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'HOLIDAY', 'WEEKLY_OFF', 'UPCOMING', 'NOT_EMPLOYED'] as const;
+export const DAY_STATUSES = ['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'HOLIDAY', 'WEEKLY_OFF', 'UPCOMING', 'NOT_EMPLOYED'] as const;
 export type DayStatus = (typeof DAY_STATUSES)[number];
 
 export const ATTENDANCE_SOURCES = ['WEB', 'REGULARIZED', 'MANUAL'] as const;

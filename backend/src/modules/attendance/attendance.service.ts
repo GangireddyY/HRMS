@@ -129,21 +129,25 @@ export class AttendanceService {
     const [year, month] = query.month.split('-').map(Number) as [number, number];
     const { from, to, days } = monthRange(year, month);
     const today = this.rules.today(ctx.timeZone);
-    const [records, holidays, pending, closed] = await Promise.all([
+    const [records, holidays, pending, closed, leave] = await Promise.all([
       AttendanceRecord.findAll({ where: { employeeId: employee.id, workDate: { [Op.between]: [from, to] } } }),
       this.rules.holidays(from, to),
       AttendanceRegularization.findAll({ where: { employeeId: employee.id, status: 'PENDING', workDate: { [Op.between]: [from, to] } }, attributes: ['id', 'workDate'] }),
       this.rules.isClosed(from),
+      this.rules.approvedLeave([employee.id], from, to),
     ]);
     const byDate = new Map(records.map((r) => [r.workDate, r]));
     const pendingDates = new Map(pending.map((p) => [p.workDate, p.id]));
+    const leaveByDate = leave.get(employee.id);
     const result = days.map((date) => {
       const holiday = holidays.get(date);
       const record = byDate.get(date);
+      const dayLeave = leaveByDate?.get(date);
       return {
         date,
-        status: this.rules.dayStatus(date, today, employee, ctx, holiday, record),
+        status: this.rules.dayStatus(date, today, employee, ctx, holiday, record, dayLeave),
         holiday: holiday ? { name: holiday.name, isOptional: holiday.isOptional } : null,
+        leave: dayLeave ? { code: dayLeave.code, name: dayLeave.name, color: dayLeave.color, session: dayLeave.session, isPaid: dayLeave.isPaid } : null,
         record: presentRecord(record),
         pendingRegularizationId: pendingDates.get(date) ?? null,
       };
@@ -162,6 +166,7 @@ export class AttendanceService {
         halfDay: count('HALF_DAY'),
         absent: count('ABSENT'),
         missedPunch: count('MISSED_PUNCH'),
+        onLeave: result.reduce((n, d) => n + (d.status === 'ON_LEAVE' ? (d.leave?.session === 'FULL' ? 1 : 0.5) : 0), 0),
         holidays: count('HOLIDAY'),
         weeklyOffs: count('WEEKLY_OFF'),
         lateDays: records.filter((r) => r.lateMinutes > 0).length,
@@ -173,7 +178,7 @@ export class AttendanceService {
   async daily(auth: AuthContext, query: DailyQueryDto) {
     const scoped = await this.scope.where(auth, 'attendance.view');
     const date = query.date ?? this.rules.today(await this.rules.organizationTimeZone(auth.organizationId!));
-    const emptySummary = { total: 0, present: 0, halfDay: 0, absent: 0, inProgress: 0, missedPunch: 0, late: 0, off: 0 };
+    const emptySummary = { total: 0, present: 0, halfDay: 0, absent: 0, inProgress: 0, missedPunch: 0, onLeave: 0, late: 0, off: 0 };
     if (!scoped) return { date, summary: emptySummary, page: new PaginatedResult([], paginationMeta(query, 0)) };
 
     const filters: WhereOptions[] = [scoped, { dateOfJoining: { [Op.lte]: date } }, { [Op.or]: [{ exitDate: null }, { exitDate: { [Op.gte]: date } }] }];
@@ -189,19 +194,22 @@ export class AttendanceService {
       order: [['firstName', 'ASC'], ['lastName', 'ASC']],
       limit: 5000,
     });
-    const [contexts, records, holidays] = await Promise.all([
+    const [contexts, records, holidays, leave] = await Promise.all([
       this.rules.contexts(auth.organizationId!, employees),
       employees.length ? AttendanceRecord.findAll({ where: { workDate: date, employeeId: employees.map((e) => e.id) } }) : [],
       this.rules.holidays(date, date),
+      this.rules.approvedLeave(employees.map((e) => e.id), date, date),
     ]);
     const byEmployee = new Map(records.map((r) => [r.employeeId, r]));
     const rows = employees.map((e) => {
       const ctx = contexts.get(e.id)!;
       const record = byEmployee.get(e.id);
-      const status = this.rules.dayStatus(date, this.rules.today(ctx.timeZone), e, ctx, holidays.get(date), record);
+      const dayLeave = leave.get(e.id)?.get(date);
+      const status = this.rules.dayStatus(date, this.rules.today(ctx.timeZone), e, ctx, holidays.get(date), record, dayLeave);
       return {
         employee: { id: e.id, name: fullName(e), employeeCode: e.employeeCode, department: e.department ? { id: e.department.id, name: e.department.name } : null, designation: e.designation?.name ?? null },
         status,
+        leave: dayLeave ? { code: dayLeave.code, name: dayLeave.name, color: dayLeave.color, session: dayLeave.session } : null,
         record: presentRecord(record),
         shift: { name: ctx.shift.name, startTime: minutesToTime(ctx.shift.startMinutes), endTime: minutesToTime(ctx.shift.endMinutes) },
       };
@@ -214,6 +222,7 @@ export class AttendanceService {
       absent: is('ABSENT') + is('UPCOMING'),
       inProgress: is('IN_PROGRESS'),
       missedPunch: is('MISSED_PUNCH'),
+      onLeave: is('ON_LEAVE'),
       late: rows.filter((r) => (r.record?.lateMinutes ?? 0) > 0).length,
       off: is('HOLIDAY') + is('WEEKLY_OFF'),
     };

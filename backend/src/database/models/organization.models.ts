@@ -131,6 +131,8 @@ export class Organization extends Model<InferAttributes<Organization>, InferCrea
   @Column(DataType.STRING(10)) locale: CreationOptional<string>;
   @Column(DataType.STRING(20)) dateFormat: CreationOptional<string>;
   @Column(DataType.SMALLINT) fiscalYearStartMonth: CreationOptional<number>;
+  /** First month of the leave year (1 = January). */
+  @Column(DataType.SMALLINT) leaveYearStartMonth: CreationOptional<number>;
   @Column(DataType.STRING(500)) logoUrl: CreationOptional<string | null>;
   @Column(DataType.DATE) activatedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) suspendedAt: CreationOptional<Date | null>;

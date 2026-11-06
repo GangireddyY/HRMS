@@ -17,7 +17,7 @@ const headers = [...WEEKDAY_SHORT.slice(1), WEEKDAY_SHORT[0]!];
 const dayNumber = (d: string) => Number(d.slice(8));
 const isToday = (d: string) => d === props.calendar.today;
 
-const legend = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSED_PUNCH', 'HOLIDAY', 'WEEKLY_OFF'] as const;
+const legend = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSED_PUNCH', 'ON_LEAVE', 'HOLIDAY', 'WEEKLY_OFF'] as const;
 </script>
 
 <template>
@@ -45,7 +45,7 @@ const legend = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSED_PUNCH', 'HOLIDAY', 'WEE
             isToday(day.date) && 'outline-2 outline-offset-1 outline-brand-500',
             selectable && day.status !== 'NOT_EMPLOYED' && 'hover:ring-brand-400',
           ]"
-          :aria-label="`${day.date}: ${DAY_STATUS_LABELS[day.status]}${day.holiday ? ` (${day.holiday.name})` : ''}`"
+          :aria-label="`${day.date}: ${DAY_STATUS_LABELS[day.status]}${day.leave ? ` (${day.leave.name}${day.leave.session !== 'FULL' ? ', half day' : ''})` : day.holiday ? ` (${day.holiday.name})` : ''}`"
           @click="selectable && day.status !== 'NOT_EMPLOYED' && emit('select', day)"
         >
           <span class="flex items-center justify-between gap-1">
@@ -54,6 +54,9 @@ const legend = ['PRESENT', 'HALF_DAY', 'ABSENT', 'MISSED_PUNCH', 'HOLIDAY', 'WEE
           </span>
           <span class="mt-auto hidden text-[11px] leading-tight sm:block">
             <template v-if="day.record?.checkInAt">{{ formatTime(day.record.checkInAt, calendar.timeZone) }}–{{ formatTime(day.record.checkOutAt, calendar.timeZone) }}</template>
+            <template v-else-if="day.leave">
+              <span class="inline-flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full" :style="{ backgroundColor: day.leave.color }" aria-hidden="true" />{{ day.leave.code }}{{ day.leave.session !== 'FULL' ? ' · ½' : '' }}</span>
+            </template>
             <template v-else-if="day.holiday">{{ day.holiday.name }}</template>
           </span>
           <span class="mt-0.5 truncate text-[10px] font-medium sm:text-[11px]">

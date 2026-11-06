@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS "suggestions";
+DROP TABLE IF EXISTS "recognition_recipients";
+DROP TABLE IF EXISTS "recognitions";
+DROP TABLE IF EXISTS "survey_responses";
+DROP TABLE IF EXISTS "survey_participants";
+DROP TABLE IF EXISTS "survey_questions";
+DROP TABLE IF EXISTS "surveys";
+DROP TABLE IF EXISTS "announcement_responses";
+DROP TABLE IF EXISTS "announcements";

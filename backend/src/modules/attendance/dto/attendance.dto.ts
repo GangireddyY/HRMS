@@ -72,8 +72,8 @@ export class DailyQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional() @IsOptional() @IsUUID() departmentId?: string;
 
-  @ApiPropertyOptional({ enum: ['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'LATE'] })
-  @IsOptional() @IsIn(['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'LATE'])
+  @ApiPropertyOptional({ enum: ['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'LATE'] })
+  @IsOptional() @IsIn(['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'LATE'])
   status?: string;
 }
 

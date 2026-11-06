@@ -139,6 +139,8 @@ export class Employee extends Model<InferAttributes<Employee>, InferCreationAttr
   /** Assigned shift; null = the organization's default shift. */
   @ForeignKey(() => Shift) @Column(DataType.UUID) shiftId: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) probationEndDate: CreationOptional<string | null>;
+  /** When probation was confirmed; null = not confirmed yet. */
+  @Column(DataType.DATEONLY) confirmedOn: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) exitDate: CreationOptional<string | null>;
   @Column(DataType.STRING(500)) address: CreationOptional<string | null>;
   @Column(DataType.STRING(120)) emergencyContactName: CreationOptional<string | null>;

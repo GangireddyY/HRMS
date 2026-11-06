@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS "reimbursement_claims";
+DROP TABLE IF EXISTS "payroll_adjustments";
+DROP TABLE IF EXISTS "payslips";
+DROP TABLE IF EXISTS "payroll_runs";
+DROP TABLE IF EXISTS "tax_declarations";
+DROP TABLE IF EXISTS "employee_salaries";
+DROP TABLE IF EXISTS "salary_structure_lines";
+DROP TABLE IF EXISTS "salary_structures";
+DROP TABLE IF EXISTS "salary_components";
+DROP TABLE IF EXISTS "payroll_settings";

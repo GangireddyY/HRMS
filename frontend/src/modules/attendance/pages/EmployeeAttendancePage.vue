@@ -44,6 +44,7 @@ const stats = computed(() => {
         ['Half days', s.halfDay],
         ['Absent', s.absent],
         ['Missed punch-out', s.missedPunch],
+        ['On leave', s.onLeave],
         ['Late days', s.lateDays],
         ['Holidays', s.holidays],
         ['Worked', formatMinutes(s.workedMinutes)],

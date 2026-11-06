@@ -314,6 +314,22 @@
   .error-text {
     @apply mt-1.5 text-xs font-medium text-red-600 dark:text-red-400;
   }
+  /* Printing (e.g. payslips): only the page content, in light colors, without the app chrome or scroll clipping. */
+  @media print {
+    aside,
+    header.sticky,
+    [role='status'] {
+      display: none !important;
+    }
+    html,
+    body,
+    #app,
+    #main {
+      height: auto !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+  }
   /* Dotted background used on hero / empty areas. */
   .bg-dots {
     background-image: radial-gradient(color-mix(in oklab, var(--app-text) 10%, transparent) 1px, transparent 1px);

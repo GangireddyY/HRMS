@@ -25,6 +25,15 @@ import { RbacModule } from './modules/rbac/rbac.module';
 import { UsersModule } from './modules/users/users.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { RecruitmentModule } from './modules/recruitment/recruitment.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { TrainingModule } from './modules/training/training.module';
+import { EngagementModule } from './modules/engagement/engagement.module';
+import { GrievanceModule } from './modules/grievance/grievance.module';
+import { BenefitsModule } from './modules/benefits/benefits.module';
 import { OrgStructureModule } from './modules/org-structure/org-structure.module';
 
 @Module({
@@ -57,6 +66,15 @@ import { OrgStructureModule } from './modules/org-structure/org-structure.module
     OrgStructureModule,
     EmployeesModule,
     AttendanceModule,
+    LeaveModule,
+    OnboardingModule,
+    RecruitmentModule,
+    PayrollModule,
+    PerformanceModule,
+    TrainingModule,
+    EngagementModule,
+    GrievanceModule,
+    BenefitsModule,
   ],
   controllers: [HealthController],
   providers: [

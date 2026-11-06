@@ -50,6 +50,15 @@ const today = () => new Date().toISOString().slice(0, 10);
 type Access = { employee: Employee; isSelf: boolean; canManage: boolean };
 
 /**
+ * Document access granted by another module that has already authorized the caller for this employee
+ * (onboarding verifiers: onboarding.document.verify on an open onboarding case). Self-verification stays impossible.
+ */
+export interface DocumentGrant {
+  employeeId: string;
+  reason: 'onboarding';
+}
+
+/**
  * Employee documents. The employee sees and uploads their own (pending until HR verifies them);
  * HR with employee.document.manage in scope uploads (verified on upload), reviews, edits and deletes.
  * Nobody verifies their own documents.
@@ -70,8 +79,8 @@ export class EmployeeDocumentsService {
     return this.present(rows);
   }
 
-  async upload(auth: AuthContext, employeeId: string, file: UploadedDocumentFile | undefined, dto: UploadDocumentDto) {
-    const { employee, canManage } = await this.access(auth, employeeId, 'upload');
+  async upload(auth: AuthContext, employeeId: string, file: UploadedDocumentFile | undefined, dto: UploadDocumentDto, grant?: DocumentGrant) {
+    const { employee, canManage } = await this.access(auth, employeeId, 'upload', grant);
     if (!file?.buffer?.length) throw AppError.validation([{ field: 'file', message: 'Choose a file to upload' }]);
     if (file.size > DOCUMENT_MAX_BYTES) throw AppError.validation([{ field: 'file', message: 'Documents must be 10 MB or smaller' }]);
     const contentType = detectDocumentType(file.buffer);
@@ -131,8 +140,8 @@ export class EmployeeDocumentsService {
     return (await this.present([doc]))[0]!;
   }
 
-  async review(auth: AuthContext, employeeId: string, documentId: string, dto: ReviewDocumentDto) {
-    const { isSelf, canManage } = await this.access(auth, employeeId, 'read');
+  async review(auth: AuthContext, employeeId: string, documentId: string, dto: ReviewDocumentDto, grant?: DocumentGrant) {
+    const { isSelf, canManage } = await this.access(auth, employeeId, 'read', grant);
     if (!canManage) throw AppError.forbidden();
     if (isSelf) throw AppError.forbidden('You cannot verify your own documents');
     if (dto.status === 'REJECTED' && !dto.note) throw AppError.validation([{ field: 'note', message: 'Tell the employee why the document was rejected' }]);
@@ -161,8 +170,8 @@ export class EmployeeDocumentsService {
     return (await this.present([doc]))[0]!;
   }
 
-  async download(auth: AuthContext, employeeId: string, documentId: string): Promise<{ doc: EmployeeDocument; stream: Readable }> {
-    const { isSelf } = await this.access(auth, employeeId, 'read');
+  async download(auth: AuthContext, employeeId: string, documentId: string, grant?: DocumentGrant): Promise<{ doc: EmployeeDocument; stream: Readable }> {
+    const { isSelf } = await this.access(auth, employeeId, 'read', grant);
     const doc = await this.find(employeeId, documentId);
     const stream = await this.storage.get(doc.storageKey);
     if (!isSelf) {
@@ -205,12 +214,13 @@ export class EmployeeDocumentsService {
 
   // ---------------------------------------------------------------------------------------------
 
-  private async access(auth: AuthContext, employeeId: string, mode: 'read' | 'upload'): Promise<Access> {
+  private async access(auth: AuthContext, employeeId: string, mode: 'read' | 'upload', grant?: DocumentGrant): Promise<Access> {
     const employee = await Employee.findByPk(employeeId, { attributes: ['id', 'organizationId', 'managerId', 'departmentId', 'firstName', 'lastName'] });
-    if (!employee || !(await this.scope.covers(auth, 'employee.view', employee))) throw AppError.notFound('Employee');
+    if (!employee || (!grant && !(await this.scope.covers(auth, 'employee.view', employee)))) throw AppError.notFound('Employee');
+    if (grant && grant.employeeId !== employee.id) throw AppError.forbidden();
     const self = await this.scope.self(auth);
     const isSelf = self?.id === employee.id;
-    const canManage = !isSelf && (await this.scope.covers(auth, 'employee.document.manage', employee));
+    const canManage = !isSelf && (!!grant || (await this.scope.covers(auth, 'employee.document.manage', employee)));
     const selfAllowed = isSelf && (mode === 'read' || auth.permissions.has('self.profile.update'));
     // HR managing their own record goes through self-service like everyone else (no self-verification).
     if (!canManage && !selfAllowed) throw isSelf ? AppError.forbidden() : AppError.forbidden('You do not have permission to manage this employee’s documents');

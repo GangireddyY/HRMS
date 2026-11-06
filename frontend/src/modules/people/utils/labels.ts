@@ -64,6 +64,7 @@ export const LIFECYCLE_LABELS: Record<LifecycleEventType, string> = {
   MANAGER_CHANGE: 'Manager change',
   STATUS_CHANGE: 'Status change',
   CONFIRMATION: 'Probation confirmed',
+  PROBATION_EXTENDED: 'Probation extended',
 };
 export const CHANGE_FIELD_LABELS: Record<string, string> = {
   departmentId: 'Department',

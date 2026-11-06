@@ -1,0 +1,337 @@
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { RESUME_MAX_BYTES } from '../../contracts';
+import type { AuthContext } from '../../common/auth/auth-context';
+import { CurrentAuth, Public, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
+import { CandidatesService, type UploadedResume } from './candidates.service';
+import { CareersService } from './careers.service';
+import {
+  AddApplicationDto,
+  ApplicationQueryDto,
+  CandidateDto,
+  CandidateQueryDto,
+  DuplicateQueryDto,
+  FeedbackDto,
+  HireDto,
+  InterviewDto,
+  JobDto,
+  JobQueryDto,
+  JobStatusDto,
+  MoveStageDto,
+  OfferDto,
+  OfferResponseDto,
+  PublicApplicationDto,
+  RequisitionDto,
+  RequisitionQueryDto,
+  ReviewRequisitionDto,
+  UpdateCandidateDto,
+  UpdateInterviewDto,
+  UpdateJobDto,
+  UpdateOfferDto,
+  UpdateRequisitionDto,
+} from './dto/recruitment.dto';
+import { JobsService } from './jobs.service';
+import { OffersService } from './offers.service';
+import { PipelineService } from './pipeline.service';
+import { RequisitionsService } from './requisitions.service';
+
+const UUID = new ParseUUIDPipe();
+const RESUME_UPLOAD = FileInterceptor('file', { limits: { fileSize: RESUME_MAX_BYTES + 512 * 1024, files: 1, fields: 20 } });
+const attachment = (name: string) => `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+
+@ApiTags('Recruitment')
+@ApiBearerAuth()
+@Controller({ path: 'recruitment', version: '1' })
+export class RecruitmentController {
+  constructor(
+    private readonly requisitions: RequisitionsService,
+    private readonly jobs: JobsService,
+    private readonly candidates: CandidatesService,
+    private readonly pipeline: PipelineService,
+    private readonly offers: OffersService,
+  ) {}
+
+  // ---- Requisitions (requesters, approvers and recruiters; visibility is decided per row) --------
+
+  @Get('requisitions')
+  @RequireTenant()
+  listRequisitions(@CurrentAuth() auth: AuthContext, @Query() query: RequisitionQueryDto) {
+    return this.requisitions.list(auth, query);
+  }
+
+  @Post('requisitions')
+  @RequirePermissions('recruitment.requisition.create')
+  createRequisition(@CurrentAuth() auth: AuthContext, @Body() dto: RequisitionDto) {
+    return this.requisitions.create(auth, dto);
+  }
+
+  @Get('requisitions/:id')
+  @RequireTenant()
+  requisition(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.requisitions.get(auth, id);
+  }
+
+  @Patch('requisitions/:id')
+  @RequirePermissions('recruitment.requisition.create')
+  updateRequisition(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: UpdateRequisitionDto) {
+    return this.requisitions.update(auth, id, dto);
+  }
+
+  @Post('requisitions/:id/approve')
+  @RequirePermissions('recruitment.requisition.approve')
+  approveRequisition(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewRequisitionDto) {
+    return this.requisitions.approve(auth, id, dto);
+  }
+
+  @Post('requisitions/:id/reject')
+  @RequirePermissions('recruitment.requisition.approve')
+  rejectRequisition(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewRequisitionDto) {
+    return this.requisitions.reject(auth, id, dto);
+  }
+
+  @Post('requisitions/:id/cancel')
+  @RequireTenant()
+  cancelRequisition(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.requisitions.cancel(auth, id);
+  }
+
+  // ---- Jobs ------------------------------------------------------------------------------------
+
+  @Get('jobs')
+  @RequirePermissions('recruitment.view')
+  listJobs(@Query() query: JobQueryDto) {
+    return this.jobs.list(query);
+  }
+
+  @Post('jobs')
+  @RequirePermissions('recruitment.manage')
+  createJob(@CurrentAuth() auth: AuthContext, @Body() dto: JobDto) {
+    return this.jobs.create(auth, dto);
+  }
+
+  @Get('jobs/:id')
+  @RequirePermissions('recruitment.view')
+  job(@Param('id', UUID) id: string) {
+    return this.jobs.get(id);
+  }
+
+  @Patch('jobs/:id')
+  @RequirePermissions('recruitment.manage')
+  updateJob(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: UpdateJobDto) {
+    return this.jobs.update(auth, id, dto);
+  }
+
+  @Post('jobs/:id/status')
+  @RequirePermissions('recruitment.manage')
+  @ApiOperation({ summary: 'Open, put on hold, close or reopen a job' })
+  jobStatus(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: JobStatusDto) {
+    return this.jobs.setStatus(auth, id, dto.status);
+  }
+
+  @Post('jobs/:id/applications')
+  @RequirePermissions('recruitment.manage')
+  addApplication(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: AddApplicationDto) {
+    return this.pipeline.add(auth, id, dto);
+  }
+
+  // ---- Candidates ------------------------------------------------------------------------------
+
+  @Get('candidates')
+  @RequirePermissions('recruitment.view')
+  listCandidates(@Query() query: CandidateQueryDto) {
+    return this.candidates.list(query);
+  }
+
+  @Get('candidates/duplicates')
+  @RequirePermissions('recruitment.view')
+  @ApiOperation({ summary: 'Existing candidates with the same email or phone' })
+  duplicates(@Query() query: DuplicateQueryDto) {
+    return this.candidates.duplicates(query.email, query.phone);
+  }
+
+  @Post('candidates')
+  @RequirePermissions('recruitment.manage')
+  createCandidate(@CurrentAuth() auth: AuthContext, @Body() dto: CandidateDto) {
+    return this.candidates.create(auth, dto);
+  }
+
+  @Get('candidates/:id')
+  @RequirePermissions('recruitment.view')
+  candidate(@Param('id', UUID) id: string) {
+    return this.candidates.get(id);
+  }
+
+  @Patch('candidates/:id')
+  @RequirePermissions('recruitment.manage')
+  updateCandidate(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: UpdateCandidateDto) {
+    return this.candidates.update(auth, id, dto);
+  }
+
+  @Delete('candidates/:id')
+  @RequirePermissions('recruitment.manage')
+  @ApiOperation({ summary: 'Delete a candidate with their applications and resume (not hired candidates)' })
+  async removeCandidate(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    await this.candidates.remove(auth, id);
+    return { deleted: true };
+  }
+
+  @Post('candidates/:id/resume')
+  @RequirePermissions('recruitment.manage')
+  @UseInterceptors(RESUME_UPLOAD)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  uploadResume(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @UploadedFile() file?: UploadedResume) {
+    return this.candidates.replaceResume(auth, id, file);
+  }
+
+  @Get('candidates/:id/resume')
+  @RequirePermissions('recruitment.view')
+  async resume(@Param('id', UUID) id: string) {
+    const r = await this.candidates.resume(id);
+    return new StreamableFile(r.stream, { type: r.contentType, length: r.size, disposition: attachment(r.fileName) });
+  }
+
+  // ---- Applications & interviews ---------------------------------------------------------------
+
+  @Get('applications')
+  @RequirePermissions('recruitment.view')
+  applications(@Query() query: ApplicationQueryDto) {
+    return this.pipeline.list(query);
+  }
+
+  @Get('applications/:id')
+  @RequirePermissions('recruitment.view')
+  application(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.pipeline.get(auth, id);
+  }
+
+  @Post('applications/:id/stage')
+  @RequirePermissions('recruitment.manage')
+  move(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: MoveStageDto) {
+    return this.pipeline.move(auth, id, dto);
+  }
+
+  @Post('applications/:id/interviews')
+  @RequirePermissions('recruitment.manage')
+  schedule(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: InterviewDto) {
+    return this.pipeline.schedule(auth, id, dto);
+  }
+
+  @Patch('interviews/:id')
+  @RequirePermissions('recruitment.manage')
+  updateInterview(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: UpdateInterviewDto) {
+    return this.pipeline.updateInterview(auth, id, dto);
+  }
+
+  @Post('interviews/:id/cancel')
+  @RequirePermissions('recruitment.manage')
+  cancelInterview(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.pipeline.setInterviewStatus(auth, id, 'CANCELLED');
+  }
+
+  @Post('interviews/:id/complete')
+  @RequirePermissions('recruitment.manage')
+  completeInterview(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.pipeline.setInterviewStatus(auth, id, 'COMPLETED');
+  }
+
+  @Get('my-interviews')
+  @RequirePermissions('recruitment.interview.feedback')
+  @ApiOperation({ summary: 'Interviews where you are on the panel' })
+  myInterviews(@CurrentAuth() auth: AuthContext) {
+    return this.pipeline.mine(auth);
+  }
+
+  @Post('interviews/:id/feedback')
+  @RequirePermissions('recruitment.interview.feedback')
+  @ApiOperation({ summary: 'Submit your feedback as a panelist (once)' })
+  feedback(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: FeedbackDto) {
+    return this.pipeline.submitFeedback(auth, id, dto);
+  }
+
+  @Get('interviews/:id/resume')
+  @RequirePermissions('recruitment.interview.feedback')
+  async interviewResume(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    const r = await this.pipeline.interviewResume(auth, id);
+    return new StreamableFile(r.stream, { type: r.contentType, length: r.size, disposition: attachment(r.fileName) });
+  }
+
+  // ---- Offers ----------------------------------------------------------------------------------
+
+  @Post('applications/:id/offers')
+  @RequirePermissions('recruitment.offer.manage')
+  createOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OfferDto) {
+    return this.offers.create(auth, id, dto);
+  }
+
+  @Get('offers/:id')
+  @RequirePermissions('recruitment.offer.manage')
+  offer(@Param('id', UUID) id: string) {
+    return this.offers.get(id);
+  }
+
+  @Patch('offers/:id')
+  @RequirePermissions('recruitment.offer.manage')
+  updateOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: UpdateOfferDto) {
+    return this.offers.update(auth, id, dto);
+  }
+
+  @Post('offers/:id/release')
+  @RequirePermissions('recruitment.offer.manage')
+  releaseOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.offers.release(auth, id);
+  }
+
+  @Post('offers/:id/response')
+  @RequirePermissions('recruitment.offer.manage')
+  @ApiOperation({ summary: "Record the candidate's answer (accepted / declined)" })
+  respondOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OfferResponseDto) {
+    return this.offers.respond(auth, id, dto);
+  }
+
+  @Post('offers/:id/withdraw')
+  @RequirePermissions('recruitment.offer.manage')
+  withdrawOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.offers.withdraw(auth, id);
+  }
+
+  @Post('offers/:id/hire')
+  @RequirePermissions('recruitment.offer.manage', 'employee.create')
+  @ApiOperation({ summary: 'Convert an accepted offer into an employee (optionally starting onboarding)' })
+  hire(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: HireDto) {
+    return this.offers.hire(auth, id, dto);
+  }
+}
+
+/** Public careers pages (no sign-in). */
+@ApiTags('Careers')
+@Controller({ path: 'careers', version: '1' })
+export class CareersController {
+  constructor(private readonly careers: CareersService) {}
+
+  @Get(':slug')
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  page(@Param('slug') slug: string) {
+    return this.careers.page(slug);
+  }
+
+  @Get(':slug/jobs/:jobId')
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  job(@Param('slug') slug: string, @Param('jobId', UUID) jobId: string) {
+    return this.careers.job(slug, jobId);
+  }
+
+  @Post(':slug/jobs/:jobId/apply')
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseInterceptors(RESUME_UPLOAD)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Apply for a public job with a resume (PDF or .docx, up to 5 MB)' })
+  apply(@Param('slug') slug: string, @Param('jobId', UUID) jobId: string, @Body() dto: PublicApplicationDto, @UploadedFile() file?: UploadedResume) {
+    return this.careers.apply(slug, jobId, dto, file);
+  }
+}

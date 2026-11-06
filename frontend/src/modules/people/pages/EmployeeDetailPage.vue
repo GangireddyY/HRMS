@@ -132,7 +132,14 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
                 <div><dt class="text-xs text-fg-muted">Shift</dt><dd class="mt-0.5 text-fg">{{ employee.data.value.shift?.name ?? 'Default shift' }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Employment type</dt><dd class="mt-0.5 text-fg">{{ EMPLOYMENT_TYPE_LABELS[employee.data.value.employmentType] }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Date of joining</dt><dd class="mt-0.5 text-fg">{{ formatDate(employee.data.value.dateOfJoining) }}</dd></div>
-                <div><dt class="text-xs text-fg-muted">Probation ends</dt><dd class="mt-0.5 text-fg">{{ employee.data.value.probationEndDate ? formatDate(employee.data.value.probationEndDate) : '—' }}</dd></div>
+                <div>
+                  <dt class="text-xs text-fg-muted">Probation</dt>
+                  <dd class="mt-0.5 text-fg">
+                    <template v-if="employee.data.value.confirmedOn">Confirmed {{ formatDate(employee.data.value.confirmedOn) }}</template>
+                    <template v-else-if="employee.data.value.probationEndDate">Ends {{ formatDate(employee.data.value.probationEndDate) }}</template>
+                    <template v-else>—</template>
+                  </dd>
+                </div>
                 <div>
                   <dt class="text-xs text-fg-muted">Notice period</dt>
                   <dd class="mt-0.5 text-fg">{{ employee.data.value.noticePeriodDays === null ? '—' : `${employee.data.value.noticePeriodDays} days` }}</dd>
