@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Download, UserPlus } from '@lucide/vue';
+import { Download, Network, Upload, UserPlus } from '@lucide/vue';
 import type { EmployeeStatus } from '@contracts';
 import { employeesApi, structureApi } from '@/modules/people/api/people.api';
 import type { Employee } from '@/modules/people/types';
 import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, employeeStatusOptions, employeeStatusTone } from '@/modules/people/utils/labels';
 import CreateFromUsersModal from '@/modules/people/components/CreateFromUsersModal.vue';
+import ImportEmployeesModal from '@/modules/people/components/ImportEmployeesModal.vue';
 import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
@@ -32,6 +33,13 @@ async function onCreated(count: number) {
   fromUsersOpen.value = false;
   feedback.success(`${count} employee record${count === 1 ? '' : 's'} created`, 'Open each one to add department, designation, manager and shift.');
   await Promise.all([table.load(), linkable.run()]);
+}
+
+const importOpen = ref(false);
+async function onImported(count: number) {
+  importOpen.value = false;
+  feedback.success(`${count.toLocaleString()} employee${count === 1 ? '' : 's'} imported`);
+  await table.load();
 }
 
 const columns: TableColumn<Employee>[] = [
@@ -60,7 +68,9 @@ async function exportCsv() {
   <div>
     <AppPageHeader title="Employees" :description="scope && scope !== 'ORGANIZATION' ? `Showing employees in your scope: ${SCOPE_LABELS[scope]?.toLowerCase()}.` : 'Everyone in your organization, their roles and reporting lines.'">
       <template #actions>
+        <AppButton variant="ghost" :icon="Network" to="/hr/org-chart">Org chart</AppButton>
         <AppButton v-if="auth.can('employee.export')" variant="secondary" :icon="Download" :loading="exporting" @click="exportCsv">Export CSV</AppButton>
+        <AppButton v-if="auth.can('employee.import') && auth.can('employee.create')" variant="secondary" :icon="Upload" @click="importOpen = true">Import</AppButton>
         <AppButton v-if="auth.can('employee.create')" :icon="UserPlus" to="/hr/employees/new">Add employee</AppButton>
       </template>
     </AppPageHeader>
@@ -114,5 +124,6 @@ async function exportCsv() {
     </AppCard>
 
     <CreateFromUsersModal :open="fromUsersOpen" :members="linkable.data.value ?? []" @close="fromUsersOpen = false" @created="onCreated" />
+    <ImportEmployeesModal :open="importOpen" @close="importOpen = false" @imported="onImported" />
   </div>
 </template>

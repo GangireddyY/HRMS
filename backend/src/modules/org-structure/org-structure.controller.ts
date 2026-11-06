@@ -3,11 +3,15 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
 import {
+  CreateCostCenterDto,
   CreateDepartmentDto,
   CreateDesignationDto,
+  CreateGradeDto,
   CreateLocationDto,
+  UpdateCostCenterDto,
   UpdateDepartmentDto,
   UpdateDesignationDto,
+  UpdateGradeDto,
   UpdateLocationDto,
 } from './dto/org-structure.dto';
 import { OrgStructureService } from './org-structure.service';
@@ -93,6 +97,58 @@ export class OrgStructureController {
   @RequirePermissions(MANAGE)
   async deleteLocation(@Param('id', ParseUUIDPipe) id: string) {
     await this.structure.remove('location', id);
+    return { deleted: true };
+  }
+
+  @Get('grades')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Grades (seniority / pay bands) with active employee counts' })
+  grades() {
+    return this.structure.listGrades();
+  }
+
+  @Post('grades')
+  @RequirePermissions(MANAGE)
+  createGrade(@CurrentAuth() auth: AuthContext, @Body() dto: CreateGradeDto) {
+    return this.structure.createGrade(auth, dto);
+  }
+
+  @Patch('grades/:id')
+  @RequirePermissions(MANAGE)
+  updateGrade(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateGradeDto) {
+    return this.structure.updateGrade(auth, id, dto);
+  }
+
+  @Delete('grades/:id')
+  @RequirePermissions(MANAGE)
+  async deleteGrade(@Param('id', ParseUUIDPipe) id: string) {
+    await this.structure.remove('grade', id);
+    return { deleted: true };
+  }
+
+  @Get('cost-centers')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Cost centers with active employee counts' })
+  costCenters() {
+    return this.structure.listCostCenters();
+  }
+
+  @Post('cost-centers')
+  @RequirePermissions(MANAGE)
+  createCostCenter(@CurrentAuth() auth: AuthContext, @Body() dto: CreateCostCenterDto) {
+    return this.structure.createCostCenter(auth, dto);
+  }
+
+  @Patch('cost-centers/:id')
+  @RequirePermissions(MANAGE)
+  updateCostCenter(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCostCenterDto) {
+    return this.structure.updateCostCenter(auth, id, dto);
+  }
+
+  @Delete('cost-centers/:id')
+  @RequirePermissions(MANAGE)
+  async deleteCostCenter(@Param('id', ParseUUIDPipe) id: string) {
+    await this.structure.remove('costCenter', id);
     return { deleted: true };
   }
 }

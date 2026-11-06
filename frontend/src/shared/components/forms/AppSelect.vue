@@ -30,9 +30,12 @@ const props = withDefaults(
     /** Offer the placeholder as a "no value" option (defaults to true when a placeholder is set). */
     clearable?: boolean;
     size?: 'sm' | 'md';
+    /** Options come from the server for the typed text (`search` event); they are not filtered locally. */
+    remote?: boolean;
   }>(),
   { searchable: undefined, clearable: undefined, size: 'md' },
 );
+const emit = defineEmits<{ search: [query: string] }>();
 
 const model = defineModel<T | null | undefined>();
 const autoId = useId();
@@ -57,6 +60,7 @@ const items = computed<Item[]>(() => [
 ]);
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase();
+  if (props.remote) return items.value.filter((i) => !q || !i.isPlaceholder);
   return q ? items.value.filter((i) => !i.isPlaceholder && i.label.toLowerCase().includes(q)) : items.value;
 });
 
@@ -93,7 +97,16 @@ function choose(item: Item | undefined) {
 
 useOutsideClose([trigger, panel], open, () => close(false));
 
-watch(query, () => (activeIndex.value = firstEnabled(0, 1)));
+watch(query, (q) => {
+  activeIndex.value = firstEnabled(0, 1);
+  emit('search', q);
+});
+watch(
+  () => props.options,
+  () => {
+    if (props.remote && open.value) activeIndex.value = firstEnabled(0, 1);
+  },
+);
 watch(activeIndex, async (i) => {
   if (!open.value || i < 0) return;
   await nextTick();

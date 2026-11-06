@@ -2,11 +2,12 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Save } from '@lucide/vue';
-import type { EmploymentType, Gender } from '@contracts';
+import type { BloodGroup, EmploymentType, Gender, MaritalStatus } from '@contracts';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import { employeesApi, structureApi } from '@/modules/people/api/people.api';
 import type { EmployeeInput } from '@/modules/people/types';
-import { employmentTypeOptions, genderOptions } from '@/modules/people/utils/labels';
+import { bloodGroupOptions, employmentTypeOptions, genderOptions, maritalStatusOptions } from '@/modules/people/utils/labels';
+import { COUNTRY_OPTIONS } from '@/shared/utils/options';
 import { AppAlert, AppButton, AppCard, AppDatePicker, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
@@ -24,6 +25,8 @@ const existing = useAsync(() => employeesApi.get(id.value!), { immediate: isEdit
 const departments = useAsync(() => structureApi.departments());
 const designations = useAsync(() => structureApi.designations());
 const locations = useAsync(() => structureApi.locations());
+const grades = useAsync(() => structureApi.grades());
+const costCenters = useAsync(() => structureApi.costCenters());
 const managers = useAsync(() => employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }));
 const linkable = useAsync(() => (auth.can('employee.create') ? employeesApi.linkableMembers() : Promise.resolve([])));
 const shifts = useAsync(() => (auth.hasFeature('attendance') ? attendanceApi.shifts() : Promise.resolve([])));
@@ -49,8 +52,15 @@ const form = reactive({
   shiftId: null as string | null,
   membershipId: null as string | null,
   address: '',
+  permanentAddress: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
+  gradeId: null as string | null,
+  costCenterId: null as string | null,
+  maritalStatus: null as MaritalStatus | null,
+  bloodGroup: null as BloodGroup | null,
+  nationality: null as string | null,
+  noticePeriodDays: '' as string | number,
 });
 
 watch(existing.data, (e) => {
@@ -70,8 +80,13 @@ watch(existing.data, (e) => {
     membershipId: e.account?.membershipId ?? null,
     shiftId: e.shift?.id ?? null,
     address: e.address ?? '',
+    permanentAddress: e.permanentAddress ?? '',
     emergencyContactName: e.emergencyContactName ?? '',
     emergencyContactPhone: e.emergencyContactPhone ?? '',
+    maritalStatus: e.maritalStatus,
+    bloodGroup: e.bloodGroup,
+    nationality: e.nationality,
+    noticePeriodDays: e.noticePeriodDays ?? '',
   });
 });
 
@@ -91,6 +106,8 @@ const active = <T extends { isActive: boolean; id: string; name: string }>(rows:
 const departmentOptions = computed(() => active(departments.data.value));
 const designationOptions = computed(() => active(designations.data.value));
 const locationOptions = computed(() => active(locations.data.value));
+const gradeOptions = computed(() => active(grades.data.value));
+const costCenterOptions = computed(() => (costCenters.data.value ?? []).filter((c) => c.isActive).map((c) => ({ value: c.id, label: `${c.code} – ${c.name}` })));
 const shiftOptions = computed(() => (shifts.data.value ?? []).filter((s) => s.isActive || s.id === form.shiftId).map((s) => ({ value: s.id, label: s.name, description: `${s.startTime}–${s.endTime}` })));
 const defaultShift = computed(() => shifts.data.value?.find((s) => s.isDefault));
 const managerOptions = computed(() => (managers.data.value?.items ?? []).filter((m) => m.id !== id.value).map((m) => ({ value: m.id, label: `${m.fullName} (${m.employeeCode})`, description: m.designation?.name })));
@@ -117,10 +134,17 @@ function body(): EmployeeInput {
     membershipId: form.membershipId,
     ...(auth.hasFeature('attendance') ? { shiftId: form.shiftId } : {}),
     address: form.address || null,
+    permanentAddress: form.permanentAddress || null,
     emergencyContactName: form.emergencyContactName || null,
     emergencyContactPhone: form.emergencyContactPhone || null,
+    maritalStatus: form.maritalStatus,
+    bloodGroup: form.bloodGroup,
+    nationality: form.nationality,
+    noticePeriodDays: form.noticePeriodDays === '' ? null : Number(form.noticePeriodDays),
   };
-  if (!isEdit.value) Object.assign(b, { departmentId: form.departmentId, designationId: form.designationId, locationId: form.locationId, managerId: form.managerId });
+  if (!isEdit.value) {
+    Object.assign(b, { departmentId: form.departmentId, designationId: form.designationId, locationId: form.locationId, managerId: form.managerId, gradeId: form.gradeId, costCenterId: form.costCenterId });
+  }
   return b;
 }
 
@@ -160,6 +184,9 @@ const today = new Date().toISOString().slice(0, 10);
           <AppInput v-model="form.lastName" label="Last name" required autocomplete="off" :error="fieldErrors.lastName" />
           <AppDatePicker v-model="form.dateOfBirth" label="Date of birth" :max="today" :error="fieldErrors.dateOfBirth" />
           <AppSelect v-model="form.gender" label="Gender" placeholder="Not specified" :options="genderOptions" :error="fieldErrors.gender" />
+          <AppSelect v-model="form.maritalStatus" label="Marital status" placeholder="Not specified" :options="maritalStatusOptions" :error="fieldErrors.maritalStatus" />
+          <AppSelect v-model="form.bloodGroup" label="Blood group" placeholder="Not specified" :options="bloodGroupOptions" :error="fieldErrors.bloodGroup" />
+          <AppSelect v-model="form.nationality" label="Nationality" placeholder="Not specified" :options="COUNTRY_OPTIONS" searchable :error="fieldErrors.nationality" />
         </div>
       </AppCard>
 
@@ -169,6 +196,7 @@ const today = new Date().toISOString().slice(0, 10);
           <AppDatePicker v-model="form.dateOfJoining" label="Date of joining" required :error="fieldErrors.dateOfJoining" />
           <AppSelect v-model="form.employmentType" label="Employment type" :options="employmentTypeOptions" :clearable="false" :error="fieldErrors.employmentType" />
           <AppDatePicker v-model="form.probationEndDate" label="Probation ends" :min="form.dateOfJoining" :error="fieldErrors.probationEndDate" />
+          <AppInput v-model="form.noticePeriodDays" label="Notice period (days)" type="number" :min="0" :max="365" :error="fieldErrors.noticePeriodDays" />
           <AppSelect
             v-if="auth.hasFeature('attendance')"
             v-model="form.shiftId"
@@ -183,6 +211,8 @@ const today = new Date().toISOString().slice(0, 10);
           <AppSelect v-model="form.designationId" label="Designation" placeholder="None" :options="designationOptions" :error="fieldErrors.designationId" />
           <AppSelect v-model="form.locationId" label="Location" placeholder="None" :options="locationOptions" :error="fieldErrors.locationId" />
           <AppSelect v-model="form.managerId" label="Reports to" placeholder="No manager" :options="managerOptions" searchable :error="fieldErrors.managerId" />
+          <AppSelect v-model="form.gradeId" label="Grade" placeholder="None" :options="gradeOptions" :error="fieldErrors.gradeId" />
+          <AppSelect v-model="form.costCenterId" label="Cost center" placeholder="None" :options="costCenterOptions" searchable :error="fieldErrors.costCenterId" />
         </div>
         <p v-if="!isEdit && !departmentOptions.length && auth.can('organization.structure.manage')" class="mt-3 text-xs text-fg-muted">
           No departments yet. <RouterLink to="/admin/structure" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Set up the organization structure</RouterLink>.
@@ -194,7 +224,8 @@ const today = new Date().toISOString().slice(0, 10);
           <AppInput v-model="form.workEmail" label="Work email" type="email" :error="fieldErrors.workEmail" />
           <AppInput v-model="form.personalEmail" label="Personal email" type="email" :error="fieldErrors.personalEmail" />
           <AppInput v-model="form.phone" label="Phone" type="tel" placeholder="+91 98765 43210" :error="fieldErrors.phone" />
-          <AppTextarea v-model="form.address" class="sm:col-span-2 xl:col-span-3" label="Address" :rows="2" :maxlength="500" :error="fieldErrors.address" />
+          <AppTextarea v-model="form.address" class="sm:col-span-2 xl:col-span-3" label="Current address" :rows="2" :maxlength="500" :error="fieldErrors.address" />
+          <AppTextarea v-model="form.permanentAddress" class="sm:col-span-2 xl:col-span-3" label="Permanent address" placeholder="Leave empty if the same as the current address" :rows="2" :maxlength="500" :error="fieldErrors.permanentAddress" />
           <AppInput v-model="form.emergencyContactName" label="Emergency contact" :error="fieldErrors.emergencyContactName" />
           <AppInput v-model="form.emergencyContactPhone" label="Emergency contact phone" type="tel" :error="fieldErrors.emergencyContactPhone" />
         </div>

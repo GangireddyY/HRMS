@@ -3,13 +3,13 @@ import { computed, ref } from 'vue';
 import { Pencil, Plus, Trash2 } from '@lucide/vue';
 import { structureApi, type StructureKind } from '@/modules/people/api/people.api';
 import StructureFormModal from '@/modules/people/components/StructureFormModal.vue';
-import type { Department, Designation, Location } from '@/modules/people/types';
+import type { CostCenter, Department, Designation, Grade, Location } from '@/modules/people/types';
 import { AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppTabs, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 
-type Row = Department | Designation | Location;
+type Row = Department | Designation | Location | Grade | CostCenter;
 
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
@@ -19,12 +19,16 @@ const tabs = [
   { key: 'departments', label: 'Departments' },
   { key: 'designations', label: 'Designations' },
   { key: 'locations', label: 'Locations' },
+  { key: 'grades', label: 'Grades' },
+  { key: 'cost-centers', label: 'Cost centers' },
 ];
 
 const departments = useAsync(() => structureApi.departments());
 const designations = useAsync(() => structureApi.designations());
 const locations = useAsync(() => structureApi.locations());
-const sources = { departments, designations, locations };
+const grades = useAsync(() => structureApi.grades());
+const costCenters = useAsync(() => structureApi.costCenters());
+const sources = { departments, designations, locations, grades, 'cost-centers': costCenters };
 const current = computed(() => sources[tab.value]);
 
 const columns = computed<TableColumn<Row>[]>(() => {
@@ -32,6 +36,8 @@ const columns = computed<TableColumn<Row>[]>(() => {
   if (tab.value === 'departments') base.push({ key: 'code', label: 'Code' }, { key: 'parent', label: 'Parent' });
   if (tab.value === 'designations') base.push({ key: 'level', label: 'Level', align: 'right' });
   if (tab.value === 'locations') base.push({ key: 'code', label: 'Code' }, { key: 'place', label: 'City' });
+  if (tab.value === 'grades') base.push({ key: 'code', label: 'Code' }, { key: 'level', label: 'Level', align: 'right' });
+  if (tab.value === 'cost-centers') base.push({ key: 'code', label: 'Code' });
   base.push({ key: 'employeeCount', label: 'Employees', align: 'right' }, { key: 'status', label: 'Status' });
   if (canManage.value) base.push({ key: 'actions', label: '', align: 'right' });
   return base;
@@ -61,12 +67,13 @@ async function remove(row: Row) {
   }
 }
 
-const singular: Record<StructureKind, string> = { departments: 'department', designations: 'designation', locations: 'location' };
+const singular: Record<StructureKind, string> = { departments: 'department', designations: 'designation', locations: 'location', grades: 'grade', 'cost-centers': 'cost center' };
+const plural: Record<StructureKind, string> = { departments: 'departments', designations: 'designations', locations: 'locations', grades: 'grades', 'cost-centers': 'cost centers' };
 </script>
 
 <template>
   <div>
-    <AppPageHeader title="Organization structure" description="Departments, designations and locations used across employee records, approvals and reports.">
+    <AppPageHeader title="Organization structure" description="Departments, designations, locations, grades and cost centers used across employee records, approvals, payroll and reports.">
       <template v-if="canManage" #actions>
         <AppButton :icon="Plus" @click="openModal()">New {{ singular[tab] }}</AppButton>
       </template>
@@ -79,7 +86,7 @@ const singular: Record<StructureKind, string> = { departments: 'department', des
           :loading="current.loading.value"
           :error="current.error.value"
           :caption="tabs.find((t) => t.key === tab)!.label"
-          :empty-title="`No ${tab} yet`"
+          :empty-title="`No ${plural[tab]} yet`"
           :empty-description="canManage ? `Create your first ${singular[tab]} to organize employees.` : undefined"
           @retry="current.run"
         >

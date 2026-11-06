@@ -40,7 +40,7 @@ export default defineConfig({
       command: 'node dist/main.js',
       cwd: '../backend',
       url: `http://localhost:${API_PORT}/api/v1/health`,
-      env: { ...apiEnv, NODE_ENV: 'test' },
+      env: { ...apiEnv, NODE_ENV: 'test', STORAGE_DRIVER: 'local', STORAGE_LOCAL_DIR: apiEnv.STORAGE_LOCAL_DIR || 'uploads-test' },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },

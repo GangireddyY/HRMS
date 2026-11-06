@@ -166,13 +166,29 @@ export const http = {
     const payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
     throw toApiError(res.status, payload?.error);
   },
-  /** multipart/form-data upload of a single file. */
-  async upload<T>(path: string, file: Blob, field = 'file'): Promise<T> {
+  /** multipart/form-data upload of a single file, with optional text fields and query parameters. */
+  async upload<T>(path: string, file: Blob, opts: { field?: string; fileName?: string; fields?: Record<string, string | null | undefined>; query?: Query } = {}): Promise<T> {
     const form = new FormData();
-    form.append(field, file);
-    return (await send('POST', path, { body: form })).data as T;
+    for (const [k, v] of Object.entries(opts.fields ?? {})) if (v !== undefined && v !== null && v !== '') form.append(k, v);
+    if (opts.fileName) form.append(opts.field ?? 'file', file, opts.fileName);
+    else form.append(opts.field ?? 'file', file);
+    return (await send('POST', path, { body: form, query: opts.query })).data as T;
   },
 };
+
+/** File name from Content-Disposition, preferring the UTF-8 `filename*` form. */
+function dispositionName(header: string | null): string | null {
+  if (!header) return null;
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header)?.[1];
+  if (star) {
+    try {
+      return decodeURIComponent(star);
+    } catch {
+      // Fall back to the plain name.
+    }
+  }
+  return /filename="?([^";]+)"?/.exec(header)?.[1] ?? null;
+}
 
 /** Downloads a file from an authenticated endpoint and saves it in the browser. */
 export async function downloadFile(path: string, query: Query | undefined, fallbackName: string): Promise<void> {
@@ -188,7 +204,7 @@ export async function downloadFile(path: string, query: Query | undefined, fallb
     const payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
     throw toApiError(res.status, payload?.error);
   }
-  const name = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+  const name = dispositionName(res.headers.get('content-disposition')) ?? fallbackName;
   const url = URL.createObjectURL(await res.blob());
   const a = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.append(a);

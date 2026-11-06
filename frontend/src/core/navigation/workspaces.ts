@@ -3,6 +3,7 @@ import {
   Activity,
   Bell,
   Briefcase,
+  BriefcaseBusiness,
   Building2,
   CalendarCheck,
   CalendarDays,
@@ -12,6 +13,7 @@ import {
   Fingerprint,
   CreditCard,
   FileClock,
+  FileWarning,
   Gauge,
   History,
   Home,
@@ -129,7 +131,14 @@ export const WORKSPACES: Workspace[] = [
     access: { permissions: HR_OPERATIONS_PERMISSIONS, scope: 'TEAM' },
     sections: [
       { items: [{ label: 'HR dashboard', to: '/hr', icon: Activity, exact: true }] },
-      { title: 'People', items: [{ label: 'Employees', to: '/hr/employees', icon: Users, access: { permissions: ['employee.view'], scope: 'TEAM' } }] },
+      {
+        title: 'People',
+        items: [
+          { label: 'Employees', to: '/hr/employees', icon: Users, access: { permissions: ['employee.view'], scope: 'TEAM' } },
+          { label: 'Org chart', to: '/hr/org-chart', icon: Network, access: { permissions: ['employee.view'], scope: 'TEAM' } },
+          { label: 'Document expiry', to: '/hr/documents/expiring', icon: FileWarning, access: { permissions: ['employee.document.manage'] } },
+        ],
+      },
       {
         title: 'Attendance',
         items: [
@@ -150,7 +159,13 @@ export const WORKSPACES: Workspace[] = [
     access: () => true,
     sections: [
       { items: [{ label: 'Home', to: '/me', icon: Home, exact: true, access: { tenant: true } }] },
-      { title: 'Work', items: [{ label: 'Attendance', to: '/me/attendance', icon: Fingerprint, access: { permissions: ['attendance.view'] } }] },
+      {
+        title: 'Work',
+        items: [
+          { label: 'My employment', to: '/me/employment', icon: BriefcaseBusiness, access: { tenant: true } },
+          { label: 'Attendance', to: '/me/attendance', icon: Fingerprint, access: { permissions: ['attendance.view'] } },
+        ],
+      },
       {
         title: 'Account',
         items: [

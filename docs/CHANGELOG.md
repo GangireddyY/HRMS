@@ -2,6 +2,19 @@
 
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow SemVer.
 
+## [0.7.0] – 2026-11-06 – Employee management completed
+
+### Added
+- Migration `20261106090000_employee_profile`: `grades`, `cost_centers`; employee columns for grade, cost center, marital status, blood group, nationality, permanent address, notice period and encrypted Aadhaar / passport (with expiry); `employee_family_members`, `employee_education`, `employee_experience` and `employee_documents` (metadata only; files live in object storage). Composite tenant foreign keys and check constraints; all models tenant-scoped.
+- Structure: `/grades` and `/cost-centers` CRUD (`organization.structure.manage`, in-use guard, audited); Structure page tabs. Grade changes are recorded as promotions and cost-center changes as transfers in the employee history.
+- Profile sections: `/employees/:id/family`, `/education`, `/experience` (list, add, edit, remove). Visible in `employee.view` scope; editable by the employee (`self.profile.update`) or HR with `employee.update` in scope; date rules (no future dates, previous employment starts before joining). Self-service also covers permanent address, marital status and blood group.
+- Identity numbers: Aadhaar and passport (number + expiry) on the sensitive endpoint, encrypted with AES-256-GCM and audited like bank details.
+- Documents: `StorageService` with local-disk (development, tests) and S3 drivers (`STORAGE_*`, `S3_*`; S3 required in production, credentials from the AWS chain, SSE-S3). `/employees/:id/documents` upload (PDF / PNG / JPG / WebP up to 10 MB, type detected from the file contents, server-generated keys, sanitized names), edit, verify / reject with a reason (employee notified; nobody verifies their own), authorized download (opening someone else's document is audited), delete; `/employees/documents/expiring`. Employees upload their own (pending verification); HR uploads are verified immediately. Deleting an employee removes their files.
+- Bulk import: `GET /employees/import/template`, `POST /employees/import` (`employee.create` + `employee.import`, `?dryRun=true` to check only). Up to 10,000 rows; RFC 4180 CSV parser; every row validated first (names, codes, emails, phones, ISO dates, gender / employment-type aliases, structure names or codes, managers from the organization or the same file, reporting loops), then all rows are created in one transaction or none. Re-imports files produced by Export CSV (now includes grade, cost center and manager code).
+- Hierarchy: `GET /employees/org-chart` (one level at a time, scoped; people whose manager exited stay visible at the top) and `GET /employees/:id/reporting-chain`.
+- Web: employee page tabs (Overview, Family & background, Documents, History) with grade, cost center, notice period and personal details; employee form fields; lifecycle dialog (cost center on transfers, grade on promotions); Bank, statutory & identity card; Import dialog (template, check, results table, import); Org chart page (expandable tree, search to focus, deep links from employee pages); Document expiry page; My Workspace → My employment (details, family & background, documents). `AppSelect` supports server-side search (`remote` + `search` event); downloads honour UTF-8 file names.
+- Tests: backend `employee-profile.e2e-spec.ts` (grades / cost centers, self-service sections and scopes, identity encryption, document upload / verification / access / audit / expiry / cleanup, CSV validation and import with in-file managers and loops, a 10,000-row import, org chart scopes) and `csv.spec.ts`; Playwright `employee-profile.spec.ts`; `people.spec.ts` updated for the tabbed employee page.
+
 ## [0.6.1] – 2026-11-05
 
 ### Added

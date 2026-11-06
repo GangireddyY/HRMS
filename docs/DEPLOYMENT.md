@@ -101,6 +101,7 @@ Release steps:
 | `CORS_ORIGINS`, `APP_URL` | Public web origin |
 | `TRUST_PROXY` | Number of proxies in front of the API (for correct client IPs / rate limits) |
 | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME` | Required in production (boot fails without a key or with `SENDGRID_SANDBOX_MODE=true`) |
+| `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION` (+ `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` for MinIO / R2) | Employee documents. `s3` is required in production; credentials come from the AWS chain (instance role or `AWS_*` variables), never from `.env` files. Keep the bucket private with Block Public Access on; objects are written with SSE-S3 and only served through authorized API endpoints. Development uses `STORAGE_DRIVER=local` (`STORAGE_LOCAL_DIR`, default `uploads/`) |
 | `ALLOW_ORGANIZATION_SIGNUP`, `DEFAULT_PLAN_CODE` | Self-service onboarding control |
 | `JWT_ACCESS_TTL_SECONDS` (900), `REFRESH_TOKEN_TTL_DAYS` (7) | Upper bounds; organization policies may be stricter |
 | `REDIS_URL` | Phase 9 (BullMQ), Phase 10 (distributed rate limiting) |

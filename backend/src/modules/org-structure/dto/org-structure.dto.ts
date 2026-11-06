@@ -79,3 +79,43 @@ export class CreateLocationDto {
   isActive?: boolean;
 }
 export class UpdateLocationDto extends PartialType(CreateLocationDto) {}
+
+export class CreateGradeDto {
+  @Transform(trim) @IsString() @Length(1, 120)
+  name!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNullUpper) @optionalNullable @Matches(CODE, { message: 'code may contain letters, numbers, - and _ (max 30)' })
+  code?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, minimum: 1, maximum: 50, description: '1 = most junior' })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(1) @Max(50)
+  level?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isActive?: boolean;
+}
+export class UpdateGradeDto extends PartialType(CreateGradeDto) {}
+
+export class CreateCostCenterDto {
+  @Transform(trim) @IsString() @Length(2, 120)
+  name!: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsString() @Matches(CODE, { message: 'code may contain letters, numbers, - and _ (max 30)' })
+  code!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isActive?: boolean;
+}
+export class UpdateCostCenterDto extends PartialType(CreateCostCenterDto) {}

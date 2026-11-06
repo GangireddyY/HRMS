@@ -80,6 +80,27 @@ export class EnvironmentVariables {
 
   @IsString() @MinLength(1)
   SENDGRID_FROM_NAME = 'HRMS';
+
+  /** Where uploaded files (employee documents) are kept: local disk for development, S3 (or compatible) in production. */
+  @IsIn(['local', 's3'])
+  STORAGE_DRIVER: 'local' | 's3' = 'local';
+
+  /** Directory for the local driver, relative to the backend folder unless absolute. */
+  @IsString() @MinLength(1)
+  STORAGE_LOCAL_DIR = 'uploads';
+
+  @IsOptional() @IsString()
+  S3_BUCKET?: string;
+
+  @IsOptional() @IsString()
+  S3_REGION?: string;
+
+  /** Custom endpoint for S3-compatible stores (MinIO, R2); leave empty for AWS. Credentials come from the standard AWS chain. */
+  @IsOptional() @IsUrl({ require_tld: false })
+  S3_ENDPOINT?: string;
+
+  @Transform(toBool) @IsBoolean()
+  S3_FORCE_PATH_STYLE = false;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
@@ -94,7 +115,9 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
   if (env.SENDGRID_API_KEY && !env.SENDGRID_API_KEY.startsWith('SG.')) {
     throw new Error('SENDGRID_API_KEY must be a SendGrid API key (starts with "SG.")');
   }
+  if (env.STORAGE_DRIVER === 's3' && (!env.S3_BUCKET || !env.S3_REGION)) throw new Error('S3_BUCKET and S3_REGION are required when STORAGE_DRIVER is s3');
   if (env.NODE_ENV === 'production') {
+    if (env.STORAGE_DRIVER !== 's3') throw new Error('STORAGE_DRIVER must be s3 in production (local disk is not shared between instances)');
     if (!env.COOKIE_SECURE) throw new Error('COOKIE_SECURE must be true in production');
     if (!env.SENDGRID_API_KEY) throw new Error('SENDGRID_API_KEY is required in production');
     if (env.SENDGRID_SANDBOX_MODE) throw new Error('SENDGRID_SANDBOX_MODE must be false in production');

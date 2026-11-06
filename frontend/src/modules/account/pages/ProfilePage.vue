@@ -82,6 +82,6 @@ async function save() {
         </dl>
       </AppCard>
     </div>
-    <MyEmploymentCard v-if="auth.organization" class="mt-6" />
+    <MyEmploymentCard v-if="auth.organization" class="mt-6" compact />
   </div>
 </template>

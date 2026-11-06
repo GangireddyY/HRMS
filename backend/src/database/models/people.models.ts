@@ -1,6 +1,18 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { EmployeeStatus, EmploymentType, Gender, LifecycleEventType } from '../../contracts';
+import type {
+  BloodGroup,
+  DocumentCategory,
+  DocumentContentType,
+  DocumentStatus,
+  EducationLevel,
+  EmployeeStatus,
+  EmploymentType,
+  FamilyRelationship,
+  Gender,
+  LifecycleEventType,
+  MaritalStatus,
+} from '../../contracts';
 // Circular with attendance.models; safe because decorators resolve `() => Shift` lazily at registration.
 import { Shift } from './attendance.models';
 import { OrganizationMembership } from './organization.models';
@@ -62,6 +74,41 @@ export class Location extends Model<InferAttributes<Location>, InferCreationAttr
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
 }
 
+/** Pay/seniority grade (e.g. L1–L8); independent of designation. */
+@Table({ tableName: 'grades', underscored: true })
+export class Grade extends Model<InferAttributes<Grade>, InferCreationAttributes<Grade>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(120)) name: string;
+  @Column(DataType.STRING(30)) code: CreationOptional<string | null>;
+  @Column(DataType.SMALLINT) level: CreationOptional<number | null>;
+  @Column(DataType.STRING(500)) description: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+}
+
+/** Accounting unit employee costs are charged to (used by payroll and reports). */
+@Table({ tableName: 'cost_centers', underscored: true })
+export class CostCenter extends Model<InferAttributes<CostCenter>, InferCreationAttributes<CostCenter>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(120)) name: string;
+  @Column(DataType.STRING(30)) code: string;
+  @Column(DataType.STRING(500)) description: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+}
+
 /**
  * Employee master record. Optionally linked to a user account (membership) so the person can sign in;
  * `managerId` drives TEAM scope and `departmentId` drives DEPARTMENT scope.
@@ -102,12 +149,26 @@ export class Employee extends Model<InferAttributes<Employee>, InferCreationAttr
   @Column({ type: DataType.STRING(4), field: 'bank_account_last4' }) bankAccountLast4: CreationOptional<string | null>;
   @Column(DataType.STRING(11)) bankIfsc: CreationOptional<string | null>;
   @Column(DataType.STRING(100)) bankName: CreationOptional<string | null>;
+  @ForeignKey(() => Grade) @Column(DataType.UUID) gradeId: CreationOptional<string | null>;
+  @ForeignKey(() => CostCenter) @Column(DataType.UUID) costCenterId: CreationOptional<string | null>;
+  @Column(DataType.STRING(20)) maritalStatus: CreationOptional<MaritalStatus | null>;
+  @Column(DataType.STRING(3)) bloodGroup: CreationOptional<BloodGroup | null>;
+  /** ISO 3166-1 alpha-2. */
+  @Column(DataType.CHAR(2)) nationality: CreationOptional<string | null>;
+  @Column(DataType.STRING(500)) permanentAddress: CreationOptional<string | null>;
+  @Column(DataType.SMALLINT) noticePeriodDays: CreationOptional<number | null>;
+  @Column(DataType.TEXT) aadhaarEncrypted: CreationOptional<string | null>;
+  @Column({ type: DataType.STRING(4), field: 'aadhaar_last4' }) aadhaarLast4: CreationOptional<string | null>;
+  @Column(DataType.TEXT) passportEncrypted: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) passportExpiry: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
 
   @BelongsTo(() => OrganizationMembership, 'membershipId') membership?: NonAttribute<OrganizationMembership | null>;
+  @BelongsTo(() => Grade, 'gradeId') grade?: NonAttribute<Grade | null>;
+  @BelongsTo(() => CostCenter, 'costCenterId') costCenter?: NonAttribute<CostCenter | null>;
   @BelongsTo(() => Department, 'departmentId') department?: NonAttribute<Department | null>;
   @BelongsTo(() => Designation, 'designationId') designation?: NonAttribute<Designation | null>;
   @BelongsTo(() => Location, 'locationId') location?: NonAttribute<Location | null>;
@@ -130,6 +191,95 @@ export class EmployeeLifecycleEvent extends Model<InferAttributes<EmployeeLifecy
   @Column(DataType.STRING(500)) note: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+}
+
+@Table({ tableName: 'employee_family_members', underscored: true })
+export class EmployeeFamilyMember extends Model<InferAttributes<EmployeeFamilyMember>, InferCreationAttributes<EmployeeFamilyMember>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(120)) name: string;
+  @Column(DataType.STRING(20)) relationship: FamilyRelationship;
+  @Column(DataType.DATEONLY) dateOfBirth: CreationOptional<string | null>;
+  @Column(DataType.STRING(20)) gender: CreationOptional<Gender | null>;
+  @Column(DataType.STRING(30)) phone: CreationOptional<string | null>;
+  /** Covered by dependent benefits (insurance, etc.). */
+  @Column(DataType.BOOLEAN) isDependent: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+}
+
+@Table({ tableName: 'employee_education', underscored: true })
+export class EmployeeEducation extends Model<InferAttributes<EmployeeEducation>, InferCreationAttributes<EmployeeEducation>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(20)) level: EducationLevel;
+  @Column(DataType.STRING(120)) qualification: string;
+  @Column(DataType.STRING(120)) specialization: CreationOptional<string | null>;
+  @Column(DataType.STRING(200)) institution: string;
+  @Column(DataType.SMALLINT) startYear: CreationOptional<number | null>;
+  @Column(DataType.SMALLINT) endYear: CreationOptional<number | null>;
+  /** Grade, percentage or CGPA as written on the certificate. */
+  @Column(DataType.STRING(30)) score: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+}
+
+/** Employment before joining this organization. */
+@Table({ tableName: 'employee_experience', underscored: true })
+export class EmployeeExperience extends Model<InferAttributes<EmployeeExperience>, InferCreationAttributes<EmployeeExperience>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(200)) company: string;
+  @Column(DataType.STRING(120)) designation: string;
+  @Column(DataType.DATEONLY) startDate: string;
+  @Column(DataType.DATEONLY) endDate: string;
+  @Column(DataType.STRING(120)) location: CreationOptional<string | null>;
+  @Column(DataType.STRING(500)) description: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+}
+
+/** Metadata for a file kept in object storage (StorageService); the bytes never live in the database. */
+@Table({ tableName: 'employee_documents', underscored: true })
+export class EmployeeDocument extends Model<InferAttributes<EmployeeDocument>, InferCreationAttributes<EmployeeDocument>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(30)) category: DocumentCategory;
+  @Column(DataType.STRING(200)) title: string;
+  @Column(DataType.STRING(255)) fileName: string;
+  @Column(DataType.STRING(100)) contentType: DocumentContentType;
+  @Column(DataType.INTEGER) byteSize: number;
+  @Column(DataType.CHAR(64)) checksum: string;
+  @Column(DataType.STRING(500)) storageKey: string;
+  @Column(DataType.DATEONLY) expiryDate: CreationOptional<string | null>;
+  @Column(DataType.STRING(20)) status: CreationOptional<DocumentStatus>;
+  @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;
+  @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) reviewedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
 
   @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
 }

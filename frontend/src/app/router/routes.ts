@@ -8,7 +8,7 @@ import { errorRoutes } from '@/modules/errors/errors.routes';
 import { hrRoutes } from '@/modules/hr/hr.routes';
 import { notificationsRoutes } from '@/modules/notifications/notifications.routes';
 import { organizationRoutes } from '@/modules/organization/organization.routes';
-import { peopleAdminRoutes, peopleHrRoutes } from '@/modules/people/people.routes';
+import { peopleAdminRoutes, peopleHrRoutes, peopleSelfRoutes } from '@/modules/people/people.routes';
 import { platformRoutes } from '@/modules/platform/platform.routes';
 import { rolesRoutes } from '@/modules/roles/roles.routes';
 import { usersRoutes } from '@/modules/users/users.routes';
@@ -46,7 +46,7 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/me',
     component: () => import('@/layouts/EssLayout.vue'),
-    children: [...accountRoutes, ...attendanceSelfRoutes, ...notificationsRoutes],
+    children: [...accountRoutes, ...peopleSelfRoutes, ...attendanceSelfRoutes, ...notificationsRoutes],
   },
   ...errorRoutes,
 ];

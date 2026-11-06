@@ -11,6 +11,7 @@ import { ResponseEnvelopeInterceptor } from './common/interceptors/response-enve
 import { AuditModule } from './infrastructure/audit/audit.module';
 import { CryptoModule } from './infrastructure/crypto/crypto.module';
 import { MailModule } from './infrastructure/mail/mail.module';
+import { StorageModule } from './infrastructure/storage/storage.module';
 import { DatabaseModule } from './database/database.module';
 import { AuditLogsModule } from './modules/audit/audit-logs.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -44,6 +45,7 @@ import { OrgStructureModule } from './modules/org-structure/org-structure.module
     DatabaseModule,
     CryptoModule,
     MailModule,
+    StorageModule,
     AuditModule,
     NotificationsModule,
     RbacModule,

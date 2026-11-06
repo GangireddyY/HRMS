@@ -2,7 +2,19 @@ import { AuditLog, Notification } from './activity.models';
 import { AttendancePeriod, AttendanceRecord, AttendanceRegularization, Holiday, Shift } from './attendance.models';
 import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserSession } from './identity.models';
 import { Feature, Organization, OrganizationFeature, OrganizationLogo, OrganizationMembership, OrganizationSecurityPolicy, Plan, PlanFeature } from './organization.models';
-import { Department, Designation, Employee, EmployeeLifecycleEvent, Location } from './people.models';
+import {
+  CostCenter,
+  Department,
+  Designation,
+  Employee,
+  EmployeeDocument,
+  EmployeeEducation,
+  EmployeeExperience,
+  EmployeeFamilyMember,
+  EmployeeLifecycleEvent,
+  Grade,
+  Location,
+} from './people.models';
 import { MembershipRole, Permission, Role, RolePermission } from './rbac.models';
 
 export * from './activity.models';
@@ -37,8 +49,14 @@ export const ALL_MODELS = [
   Department,
   Designation,
   Location,
+  Grade,
+  CostCenter,
   Employee,
   EmployeeLifecycleEvent,
+  EmployeeFamilyMember,
+  EmployeeEducation,
+  EmployeeExperience,
+  EmployeeDocument,
   Shift,
   Holiday,
   AttendanceRecord,
@@ -62,8 +80,14 @@ export const TENANT_MODELS = [
   Department,
   Designation,
   Location,
+  Grade,
+  CostCenter,
   Employee,
   EmployeeLifecycleEvent,
+  EmployeeFamilyMember,
+  EmployeeEducation,
+  EmployeeExperience,
+  EmployeeDocument,
   Shift,
   Holiday,
   AttendanceRecord,

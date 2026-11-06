@@ -1,27 +1,46 @@
 import { Injectable } from '@nestjs/common';
-import { ForeignKeyConstraintError, Op, UniqueConstraintError, type Includeable, type Order, type Transaction, type WhereOptions } from 'sequelize';
+import { col, fn, ForeignKeyConstraintError, Op, UniqueConstraintError, type Includeable, type Order, type Transaction, type WhereOptions } from 'sequelize';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta, resolveSort } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
+import { csvCell } from '../../common/utils/csv';
 import { containsPattern } from '../../common/utils/like';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Designation, Employee, EmployeeLifecycleEvent, Location, MembershipRole, OrganizationMembership, Role, Shift, User } from '../../database/models';
+import {
+  CostCenter,
+  Department,
+  Designation,
+  Employee,
+  EmployeeDocument,
+  EmployeeLifecycleEvent,
+  Grade,
+  Location,
+  MembershipRole,
+  OrganizationMembership,
+  Role,
+  Shift,
+  User,
+} from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import type { CreateEmployeeDto, EmployeeListQueryDto, LifecycleActionDto, SensitiveDetailsDto, UpdateEmployeeDto, UpdateMyEmployeeDto } from './dto/employees.dto';
 import { EmployeeScopeService } from './employee-scope.service';
 
 const PUBLIC_ATTRIBUTES = [
   'id', 'membershipId', 'employeeCode', 'firstName', 'lastName', 'workEmail', 'personalEmail', 'phone', 'dateOfBirth', 'gender',
   'dateOfJoining', 'employmentType', 'status', 'departmentId', 'designationId', 'locationId', 'managerId', 'probationEndDate',
-  'exitDate', 'address', 'emergencyContactName', 'emergencyContactPhone', 'bankAccountLast4', 'shiftId', 'createdAt', 'updatedAt',
+  'exitDate', 'address', 'emergencyContactName', 'emergencyContactPhone', 'bankAccountLast4', 'shiftId', 'gradeId', 'costCenterId',
+  'maritalStatus', 'bloodGroup', 'nationality', 'permanentAddress', 'noticePeriodDays', 'createdAt', 'updatedAt',
 ];
 
 const INCLUDE: Includeable[] = [
   { model: Department, attributes: ['id', 'name'] },
   { model: Designation, attributes: ['id', 'name'] },
   { model: Location, attributes: ['id', 'name'] },
+  { model: Grade, attributes: ['id', 'name'] },
+  { model: CostCenter, attributes: ['id', 'name', 'code'] },
   { model: Employee, as: 'manager', attributes: ['id', 'firstName', 'lastName', 'employeeCode'] },
   { model: Shift, attributes: ['id', 'name'] },
   { model: OrganizationMembership, attributes: ['id', 'status'], include: [{ model: User, attributes: ['email'] }] },
@@ -51,9 +70,16 @@ export function toEmployee(e: Employee) {
     address: e.address,
     emergencyContactName: e.emergencyContactName,
     emergencyContactPhone: e.emergencyContactPhone,
+    maritalStatus: e.maritalStatus,
+    bloodGroup: e.bloodGroup,
+    nationality: e.nationality,
+    permanentAddress: e.permanentAddress,
+    noticePeriodDays: e.noticePeriodDays,
     department: ref(e.department),
     designation: ref(e.designation),
     location: ref(e.location),
+    grade: ref(e.grade),
+    costCenter: e.costCenter ? { id: e.costCenter.id, name: e.costCenter.name, code: e.costCenter.code } : null,
     shift: ref(e.shift),
     manager: e.manager ? { id: e.manager.id, name: fullName(e.manager), employeeCode: e.manager.employeeCode } : null,
     account: e.membership ? { membershipId: e.membership.id, email: e.membership.user?.email ?? null, status: e.membership.status } : null,
@@ -70,6 +96,7 @@ export class EmployeesService {
     private readonly audit: AuditService,
     private readonly scope: EmployeeScopeService,
     private readonly crypto: EncryptionService,
+    private readonly storage: StorageService,
   ) {}
 
   async list(auth: AuthContext, query: EmployeeListQueryDto) {
@@ -178,13 +205,17 @@ export class EmployeesService {
     const has = (k: keyof LifecycleActionDto) => dto[k] !== undefined;
     switch (dto.type) {
       case 'TRANSFER':
-        if (!has('departmentId') && !has('locationId')) throw AppError.validation([{ field: 'departmentId', message: 'Choose the new department or location' }]);
+        if (!has('departmentId') && !has('locationId') && !has('costCenterId')) {
+          throw AppError.validation([{ field: 'departmentId', message: 'Choose the new department, location or cost center' }]);
+        }
         if (has('departmentId')) update.departmentId = dto.departmentId ?? null;
         if (has('locationId')) update.locationId = dto.locationId ?? null;
+        if (has('costCenterId')) update.costCenterId = dto.costCenterId ?? null;
         break;
       case 'PROMOTION':
-        if (!dto.designationId) throw AppError.validation([{ field: 'designationId', message: 'Choose the new designation' }]);
-        update.designationId = dto.designationId;
+        if (!dto.designationId && !dto.gradeId) throw AppError.validation([{ field: 'designationId', message: 'Choose the new designation or grade' }]);
+        if (dto.designationId) update.designationId = dto.designationId;
+        if (dto.gradeId) update.gradeId = dto.gradeId;
         break;
       case 'MANAGER_CHANGE':
         if (!has('managerId')) throw AppError.validation([{ field: 'managerId', message: 'Choose the new manager (or none)' }]);
@@ -235,19 +266,25 @@ export class EmployeesService {
   }
 
   async getSensitive(auth: AuthContext, id: string) {
-    const e = await this.findVisible(auth, 'employee.sensitive.view', id, ['id', 'managerId', 'departmentId', 'panEncrypted', 'uanEncrypted', 'bankAccountEncrypted', 'bankIfsc', 'bankName']);
-    await this.audit.record({ action: 'employee.sensitive_viewed', entityType: 'Employee', entityId: id, summary: 'Bank and statutory details viewed' });
+    const e = await this.findVisible(auth, 'employee.sensitive.view', id, [
+      'id', 'managerId', 'departmentId', 'panEncrypted', 'uanEncrypted', 'bankAccountEncrypted', 'bankIfsc', 'bankName', 'aadhaarEncrypted', 'passportEncrypted', 'passportExpiry',
+    ]);
+    await this.audit.record({ action: 'employee.sensitive_viewed', entityType: 'Employee', entityId: id, summary: 'Bank, statutory and identity details viewed' });
+    const dec = (v: string | null) => (v ? this.crypto.decrypt(v) : null);
     return {
-      pan: e.panEncrypted ? this.crypto.decrypt(e.panEncrypted) : null,
-      uan: e.uanEncrypted ? this.crypto.decrypt(e.uanEncrypted) : null,
-      bankAccountNumber: e.bankAccountEncrypted ? this.crypto.decrypt(e.bankAccountEncrypted) : null,
+      pan: dec(e.panEncrypted),
+      uan: dec(e.uanEncrypted),
+      bankAccountNumber: dec(e.bankAccountEncrypted),
       bankIfsc: e.bankIfsc,
       bankName: e.bankName,
+      aadhaar: dec(e.aadhaarEncrypted),
+      passportNumber: dec(e.passportEncrypted),
+      passportExpiry: e.passportExpiry,
     };
   }
 
   async updateSensitive(auth: AuthContext, id: string, dto: SensitiveDetailsDto) {
-    const employee = await this.findVisible(auth, 'employee.update', id);
+    const employee = await this.findVisible(auth, 'employee.update', id, ['id', 'passportEncrypted']);
     if (!(await this.scope.covers(auth, 'employee.sensitive.view', employee))) throw AppError.forbidden();
     const enc = (v: string | null | undefined) => (v === undefined ? undefined : v === null ? null : this.crypto.encrypt(v));
     const values = Object.fromEntries(
@@ -258,8 +295,15 @@ export class EmployeesService {
         bankAccountLast4: dto.bankAccountNumber === undefined ? undefined : (dto.bankAccountNumber?.slice(-4) ?? null),
         bankIfsc: dto.bankIfsc,
         bankName: dto.bankName,
+        aadhaarEncrypted: enc(dto.aadhaar),
+        aadhaarLast4: dto.aadhaar === undefined ? undefined : (dto.aadhaar?.slice(-4) ?? null),
+        passportEncrypted: enc(dto.passportNumber),
+        passportExpiry: dto.passportExpiry,
       }).filter(([, v]) => v !== undefined),
     );
+    if (dto.passportExpiry && !(dto.passportNumber !== undefined ? dto.passportNumber : employee.passportEncrypted)) {
+      throw AppError.validation([{ field: 'passportNumber', message: 'Enter the passport number for this expiry date' }]);
+    }
     await this.db.transaction(async (transaction) => {
       await employee.update({ ...values, updatedById: auth.userId }, { transaction });
       // Values are never written to the audit trail, only which fields changed.
@@ -343,16 +387,14 @@ export class EmployeesService {
   async exportCsv(auth: AuthContext, query: EmployeeListQueryDto): Promise<string> {
     const where = await this.listWhere(auth, query);
     const rows = where ? await Employee.findAll({ where, attributes: PUBLIC_ATTRIBUTES, include: INCLUDE, order: [['employeeCode', 'ASC']], limit: 50_000 }) : [];
-    const header = ['Employee code', 'First name', 'Last name', 'Work email', 'Phone', 'Status', 'Employment type', 'Date of joining', 'Department', 'Designation', 'Location', 'Manager'];
-    const cell = (v: unknown) => {
-      let s = v === null || v === undefined ? '' : String(v);
-      // Neutralise spreadsheet formulas (CSV injection).
-      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
+    const header = ['Employee code', 'First name', 'Last name', 'Work email', 'Phone', 'Status', 'Employment type', 'Date of joining', 'Department', 'Designation', 'Location', 'Grade', 'Cost center', 'Manager', 'Manager code'];
+    const cell = csvCell;
     const lines = rows.map((r) => {
       const e = toEmployee(r);
-      return [e.employeeCode, e.firstName, e.lastName, e.workEmail, e.phone, e.status, e.employmentType, e.dateOfJoining, e.department?.name, e.designation?.name, e.location?.name, e.manager?.name].map(cell).join(',');
+      return [
+        e.employeeCode, e.firstName, e.lastName, e.workEmail, e.phone, e.status, e.employmentType, e.dateOfJoining,
+        e.department?.name, e.designation?.name, e.location?.name, e.grade?.name, e.costCenter?.code, e.manager?.name, e.manager?.employeeCode,
+      ].map(cell).join(',');
     });
     await this.audit.record({ action: 'employee.exported', entityType: 'Employee', summary: `${rows.length} employees exported`, metadata: { count: rows.length } });
     return [header.join(','), ...lines].join('\r\n');
@@ -362,15 +404,87 @@ export class EmployeesService {
     const employee = await this.findVisible(auth, 'employee.view', id);
     const reports = await Employee.count({ where: { managerId: id } });
     if (reports) throw AppError.conflict(`${fullName(employee)} manages ${reports} employee${reports === 1 ? '' : 's'}. Assign them a new manager first.`);
+    const documents = await EmployeeDocument.findAll({ where: { employeeId: id }, attributes: ['id', 'organizationId', 'storageKey'] });
     try {
       await this.db.transaction(async (transaction) => {
+        await EmployeeDocument.destroy({ where: { employeeId: id }, transaction });
         await employee.destroy({ transaction });
-        await this.audit.record({ action: 'employee.deleted', entityType: 'Employee', entityId: id, summary: `Employee ${employee.employeeCode} – ${fullName(employee)} deleted` }, transaction);
+        await this.audit.record(
+          { action: 'employee.deleted', entityType: 'Employee', entityId: id, summary: `Employee ${employee.employeeCode} – ${fullName(employee)} deleted`, metadata: { documents: documents.length } },
+          transaction,
+        );
       });
     } catch (e) {
       if (e instanceof ForeignKeyConstraintError) throw AppError.conflict('This employee has records in other modules. Mark them as exited instead of deleting.');
       throw e;
     }
+    await this.storage.deleteQuietly(documents.map((d) => d.storageKey));
+  }
+
+  /**
+   * One level of the reporting hierarchy within the caller's employee.view scope: the direct reports of `managerId`,
+   * or the top of the visible hierarchy (people whose manager is absent or outside the caller's scope).
+   */
+  async orgChart(auth: AuthContext, managerId?: string) {
+    const scoped = await this.scope.where(auth, 'employee.view');
+    if (!scoped) return [];
+    const current = { status: ['ACTIVE', 'ON_NOTICE'] };
+    let where: WhereOptions;
+    if (managerId) {
+      await this.findVisible(auth, 'employee.view', managerId);
+      where = { [Op.and]: [scoped, current, { managerId }] };
+    } else if (this.scope.scopeOf(auth, 'employee.view') === 'ORGANIZATION') {
+      // People whose manager has left stay visible at the top until they are reassigned.
+      const exited = (await Employee.findAll({ where: { status: 'EXITED' }, attributes: ['id'], raw: true })).map((e) => e.id);
+      where = { [Op.and]: [current, { [Op.or]: [{ managerId: null }, ...(exited.length ? [{ managerId: exited }] : [])] }] };
+    } else {
+      const visible = await Employee.findAll({ where: { [Op.and]: [scoped, current] }, attributes: ['id', 'managerId'], raw: true });
+      const ids = new Set(visible.map((v) => v.id));
+      where = { id: visible.filter((v) => !v.managerId || !ids.has(v.managerId)).map((v) => v.id) };
+    }
+    const rows = await Employee.findAll({
+      where,
+      attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'status', 'managerId'],
+      include: [{ model: Designation, attributes: ['id', 'name'] }, { model: Department, attributes: ['id', 'name'] }],
+      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
+      limit: 500,
+    });
+    const counts = rows.length
+      ? ((await Employee.findAll({
+          where: { [Op.and]: [scoped, current, { managerId: rows.map((r) => r.id) }] },
+          attributes: ['managerId', [fn('COUNT', col('id')), 'count']],
+          group: ['managerId'],
+          raw: true,
+        })) as unknown as { managerId: string; count: string }[])
+      : [];
+    const reportCount = new Map(counts.map((c) => [c.managerId, Number(c.count)]));
+    return rows.map((r) => ({
+      id: r.id,
+      name: fullName(r),
+      employeeCode: r.employeeCode,
+      status: r.status,
+      designation: ref(r.designation),
+      department: ref(r.department),
+      reportCount: reportCount.get(r.id) ?? 0,
+    }));
+  }
+
+  /** Managers above the employee, nearest first, as far as the caller can see. */
+  async reportingChain(auth: AuthContext, id: string) {
+    const start = await this.findVisible(auth, 'employee.view', id);
+    const chain: { id: string; name: string; employeeCode: string; designation: { id: string; name: string } | null }[] = [];
+    const seen = new Set([start.id]);
+    for (let managerId = start.managerId; managerId && !seen.has(managerId) && chain.length < 50; ) {
+      seen.add(managerId);
+      const m = await Employee.findByPk(managerId, {
+        attributes: ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'managerId', 'departmentId'],
+        include: [{ model: Designation, attributes: ['id', 'name'] }],
+      });
+      if (!m || !(await this.scope.covers(auth, 'employee.view', m))) break;
+      chain.push({ id: m.id, name: fullName(m), employeeCode: m.employeeCode, designation: ref(m.designation) });
+      managerId = m.managerId;
+    }
+    return chain;
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -379,7 +493,7 @@ export class EmployeesService {
     const scoped = await this.scope.where(auth, 'employee.view');
     if (!scoped) return null;
     const filters: WhereOptions[] = [scoped];
-    for (const key of ['status', 'departmentId', 'designationId', 'locationId', 'managerId', 'employmentType'] as const) {
+    for (const key of ['status', 'departmentId', 'designationId', 'locationId', 'managerId', 'gradeId', 'costCenterId', 'employmentType'] as const) {
       if (query[key]) filters.push({ [key]: query[key] });
     }
     if (query.search) {
@@ -399,16 +513,26 @@ export class EmployeesService {
     return employee;
   }
 
-  private async validateReferences(dto: { departmentId?: string | null; designationId?: string | null; locationId?: string | null; managerId?: string | null; shiftId?: string | null }) {
-    const checks: [keyof typeof dto, () => Promise<unknown>][] = [
-      ['shiftId', () => Shift.findOne({ where: { id: dto.shiftId!, isActive: true }, attributes: ['id'] })],
-      ['departmentId', () => Department.findByPk(dto.departmentId!, { attributes: ['id'] })],
-      ['designationId', () => Designation.findByPk(dto.designationId!, { attributes: ['id'] })],
-      ['locationId', () => Location.findByPk(dto.locationId!, { attributes: ['id'] })],
-      ['managerId', () => Employee.findOne({ where: { id: dto.managerId!, status: ['ACTIVE', 'ON_NOTICE'] }, attributes: ['id'] })],
+  private async validateReferences(dto: {
+    departmentId?: string | null;
+    designationId?: string | null;
+    locationId?: string | null;
+    managerId?: string | null;
+    shiftId?: string | null;
+    gradeId?: string | null;
+    costCenterId?: string | null;
+  }) {
+    const checks: [keyof typeof dto, string, () => Promise<unknown>][] = [
+      ['shiftId', 'Shift not found', () => Shift.findOne({ where: { id: dto.shiftId!, isActive: true }, attributes: ['id'] })],
+      ['departmentId', 'Department not found', () => Department.findByPk(dto.departmentId!, { attributes: ['id'] })],
+      ['designationId', 'Designation not found', () => Designation.findByPk(dto.designationId!, { attributes: ['id'] })],
+      ['locationId', 'Location not found', () => Location.findByPk(dto.locationId!, { attributes: ['id'] })],
+      ['gradeId', 'Grade not found', () => Grade.findByPk(dto.gradeId!, { attributes: ['id'] })],
+      ['costCenterId', 'Cost center not found', () => CostCenter.findByPk(dto.costCenterId!, { attributes: ['id'] })],
+      ['managerId', 'Manager not found or not active', () => Employee.findOne({ where: { id: dto.managerId!, status: ['ACTIVE', 'ON_NOTICE'] }, attributes: ['id'] })],
     ];
     const issues = [];
-    for (const [field, load] of checks) if (dto[field] && !(await load())) issues.push({ field, message: field === 'managerId' ? 'Manager not found or not active' : `${field.replace('Id', '')} not found` });
+    for (const [field, message, load] of checks) if (dto[field] && !(await load())) issues.push({ field, message });
     if (issues.length) throw AppError.validation(issues);
   }
 
@@ -446,6 +570,11 @@ export class EmployeesService {
     if (field === 'departmentId') return (await Department.findByPk(value, { attributes: ['name'] }))?.name ?? value;
     if (field === 'designationId') return (await Designation.findByPk(value, { attributes: ['name'] }))?.name ?? value;
     if (field === 'locationId') return (await Location.findByPk(value, { attributes: ['name'] }))?.name ?? value;
+    if (field === 'gradeId') return (await Grade.findByPk(value, { attributes: ['name'] }))?.name ?? value;
+    if (field === 'costCenterId') {
+      const c = await CostCenter.findByPk(value, { attributes: ['name', 'code'] });
+      return c ? `${c.code} – ${c.name}` : value;
+    }
     if (field === 'managerId') {
       const m = await Employee.findByPk(value, { attributes: ['firstName', 'lastName'] });
       return m ? fullName(m) : value;

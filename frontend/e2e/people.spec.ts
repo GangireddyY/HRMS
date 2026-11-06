@@ -47,11 +47,12 @@ test.describe('organization structure and employees', () => {
 
     await expect(page.getByRole('heading', { level: 1, name: `Asha ${last}` })).toBeVisible();
     await expect(page.getByText(`${junior} · ${dept}`)).toBeVisible();
+    await page.getByRole('tab', { name: 'History' }).click();
     await expect(page.getByText('Joined', { exact: true })).toBeVisible();
 
     // Lifecycle: promotion.
     await page.getByRole('button', { name: 'Lifecycle action' }).click();
-    await page.getByRole('menuitem', { name: 'Promotion / designation change' }).click();
+    await page.getByRole('menuitem', { name: 'Promotion / grade change' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('combobox', { name: 'New designation' }).click();
     await page.getByRole('option', { name: senior, exact: true }).click();

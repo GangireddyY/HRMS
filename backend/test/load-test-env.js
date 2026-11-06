@@ -16,6 +16,9 @@ function loadTestEnv() {
     }
   }
   process.env.NODE_ENV = 'test';
+  // Uploaded files never go to real storage from tests.
+  process.env.STORAGE_DRIVER = 'local';
+  process.env.STORAGE_LOCAL_DIR = process.env.STORAGE_LOCAL_DIR || 'uploads-test';
   const dbName = process.env.DB_NAME || '';
   if (!/test/i.test(dbName)) {
     throw new Error(`Refusing to run integration tests against non-test database "${dbName}"`);

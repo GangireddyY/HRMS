@@ -3,27 +3,35 @@ import { fn, col, UniqueConstraintError, type Transaction } from 'sequelize';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Designation, Employee, Location } from '../../database/models';
+import { CostCenter, Department, Designation, Employee, Grade, Location } from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
 import type {
+  CreateCostCenterDto,
   CreateDepartmentDto,
   CreateDesignationDto,
+  CreateGradeDto,
   CreateLocationDto,
+  UpdateCostCenterDto,
   UpdateDepartmentDto,
   UpdateDesignationDto,
+  UpdateGradeDto,
   UpdateLocationDto,
 } from './dto/org-structure.dto';
 
-type StructureKind = 'department' | 'designation' | 'location';
+export type StructureKind = 'department' | 'designation' | 'location' | 'grade' | 'costCenter';
+type StructureRow = Department | Designation | Location | Grade | CostCenter;
 
-const LABEL: Record<StructureKind, string> = { department: 'Department', designation: 'Designation', location: 'Location' };
-const EMPLOYEE_FK: Record<StructureKind, 'departmentId' | 'designationId' | 'locationId'> = {
+const LABEL: Record<StructureKind, string> = { department: 'Department', designation: 'Designation', location: 'Location', grade: 'Grade', costCenter: 'Cost center' };
+const AUDIT_KEY: Record<StructureKind, string> = { department: 'department', designation: 'designation', location: 'location', grade: 'grade', costCenter: 'cost_center' };
+const EMPLOYEE_FK: Record<StructureKind, 'departmentId' | 'designationId' | 'locationId' | 'gradeId' | 'costCenterId'> = {
   department: 'departmentId',
   designation: 'designationId',
   location: 'locationId',
+  grade: 'gradeId',
+  costCenter: 'costCenterId',
 };
 
-/** Departments, designations and locations. Reads are open to every member (they label employee data). */
+/** Departments, designations, locations, grades and cost centers. Reads are open to every member (they label employee data). */
 @Injectable()
 export class OrgStructureService {
   constructor(
@@ -58,9 +66,19 @@ export class OrgStructureService {
     return rows.map((r) => ({ ...r.get({ plain: true }), employeeCount: counts.get(r.id) ?? 0 }));
   }
 
+  async listGrades() {
+    const [rows, counts] = await Promise.all([Grade.findAll({ order: [['level', 'ASC NULLS LAST'], ['name', 'ASC']] }), this.employeeCounts('grade')]);
+    return rows.map((r) => ({ ...r.get({ plain: true }), employeeCount: counts.get(r.id) ?? 0 }));
+  }
+
+  async listCostCenters() {
+    const [rows, counts] = await Promise.all([CostCenter.findAll({ order: [['code', 'ASC']] }), this.employeeCounts('costCenter')]);
+    return rows.map((r) => ({ ...r.get({ plain: true }), employeeCount: counts.get(r.id) ?? 0 }));
+  }
+
   async createDepartment(auth: AuthContext, dto: CreateDepartmentDto) {
     if (dto.parentId) await this.requireDepartment(dto.parentId, 'parentId');
-    return this.create('department', auth, (transaction) => Department.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
+    return this.create('department', (transaction) => Department.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
   }
 
   async updateDepartment(auth: AuthContext, id: string, dto: UpdateDepartmentDto) {
@@ -73,7 +91,7 @@ export class OrgStructureService {
   }
 
   createDesignation(auth: AuthContext, dto: CreateDesignationDto) {
-    return this.create('designation', auth, (transaction) => Designation.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
+    return this.create('designation', (transaction) => Designation.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
   }
 
   async updateDesignation(auth: AuthContext, id: string, dto: UpdateDesignationDto) {
@@ -81,11 +99,27 @@ export class OrgStructureService {
   }
 
   createLocation(auth: AuthContext, dto: CreateLocationDto) {
-    return this.create('location', auth, (transaction) => Location.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
+    return this.create('location', (transaction) => Location.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
   }
 
   async updateLocation(auth: AuthContext, id: string, dto: UpdateLocationDto) {
     return this.update('location', auth, await this.find('location', id), dto);
+  }
+
+  createGrade(auth: AuthContext, dto: CreateGradeDto) {
+    return this.create('grade', (transaction) => Grade.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
+  }
+
+  async updateGrade(auth: AuthContext, id: string, dto: UpdateGradeDto) {
+    return this.update('grade', auth, await this.find('grade', id), dto);
+  }
+
+  createCostCenter(auth: AuthContext, dto: CreateCostCenterDto) {
+    return this.create('costCenter', (transaction) => CostCenter.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
+  }
+
+  async updateCostCenter(auth: AuthContext, id: string, dto: UpdateCostCenterDto) {
+    return this.update('costCenter', auth, await this.find('costCenter', id), dto);
   }
 
   async remove(kind: StructureKind, id: string): Promise<void> {
@@ -97,16 +131,16 @@ export class OrgStructureService {
     }
     await this.db.transaction(async (transaction) => {
       await row.destroy({ transaction });
-      await this.audit.record({ action: `${kind}.deleted`, entityType: LABEL[kind], entityId: id, summary: `${LABEL[kind]} "${row.get('name') as string}" deleted` }, transaction);
+      await this.audit.record({ action: `${AUDIT_KEY[kind]}.deleted`, entityType: LABEL[kind], entityId: id, summary: `${LABEL[kind]} "${row.get('name') as string}" deleted` }, transaction);
     });
   }
 
   private model(kind: StructureKind) {
-    return { department: Department, designation: Designation, location: Location }[kind] as typeof Department | typeof Designation | typeof Location;
+    return { department: Department, designation: Designation, location: Location, grade: Grade, costCenter: CostCenter }[kind] as unknown as typeof Department;
   }
 
-  private async find(kind: StructureKind, id: string) {
-    const row = await (this.model(kind) as typeof Department).findByPk(id);
+  private async find(kind: StructureKind, id: string): Promise<StructureRow> {
+    const row = await this.model(kind).findByPk(id);
     if (!row) throw AppError.notFound(LABEL[kind]);
     return row;
   }
@@ -124,11 +158,11 @@ export class OrgStructureService {
     }
   }
 
-  private async create<T extends Department | Designation | Location>(kind: StructureKind, _auth: AuthContext, build: (transaction: Transaction) => Promise<T>) {
+  private async create<T extends StructureRow>(kind: StructureKind, build: (transaction: Transaction) => Promise<T>) {
     try {
       return await this.db.transaction(async (transaction) => {
         const row = await build(transaction);
-        await this.audit.record({ action: `${kind}.created`, entityType: LABEL[kind], entityId: row.id, summary: `${LABEL[kind]} "${row.get('name') as string}" created` }, transaction);
+        await this.audit.record({ action: `${AUDIT_KEY[kind]}.created`, entityType: LABEL[kind], entityId: row.id, summary: `${LABEL[kind]} "${row.get('name') as string}" created` }, transaction);
         return row;
       });
     } catch (e) {
@@ -136,12 +170,12 @@ export class OrgStructureService {
     }
   }
 
-  private async update(kind: StructureKind, auth: AuthContext, row: Department | Designation | Location, dto: object) {
+  private async update(kind: StructureKind, auth: AuthContext, row: StructureRow, dto: object) {
     const before = row.get({ plain: true, clone: true }) as Record<string, unknown>;
     try {
       await this.db.transaction(async (transaction) => {
         await (row as Department).update({ ...dto, updatedById: auth.userId }, { transaction });
-        await this.audit.record({ action: `${kind}.updated`, entityType: LABEL[kind], entityId: row.id, changes: diff(before, dto as Record<string, unknown>) }, transaction);
+        await this.audit.record({ action: `${AUDIT_KEY[kind]}.updated`, entityType: LABEL[kind], entityId: row.id, changes: diff(before, dto as Record<string, unknown>) }, transaction);
       });
     } catch (e) {
       throw this.duplicate(kind, e);
