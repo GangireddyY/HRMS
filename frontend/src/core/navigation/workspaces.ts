@@ -86,6 +86,11 @@ export interface Workspace {
   home: string;
   access: AccessRule | ((s: AccessSubject) => boolean);
   sections: NavSection[];
+  /**
+   * Pages on the bottom tab bar of phones and tablets, in order of preference (the first three the user may open),
+   * with a short label where the menu label doesn't fit.
+   */
+  mobileTabs: { to: string; label?: string }[];
 }
 
 /**
@@ -110,6 +115,7 @@ export const WORKSPACES: Workspace[] = [
     icon: Server,
     home: '/platform',
     access: { platform: 'platform.organizations.view' },
+    mobileTabs: [{ to: '/platform', label: 'Overview' }, { to: '/platform/organizations', label: 'Tenants' }, { to: '/platform/plans', label: 'Plans' }, { to: '/platform/audit-logs', label: 'Audit' }],
     sections: [
       { items: [{ label: 'Dashboard', to: '/platform', icon: LayoutDashboard, exact: true }] },
       {
@@ -129,6 +135,7 @@ export const WORKSPACES: Workspace[] = [
     icon: Settings,
     home: '/admin',
     access: { permissions: ADMIN_PERMISSIONS },
+    mobileTabs: [{ to: '/admin', label: 'Overview' }, { to: '/admin/users' }, { to: '/admin/roles', label: 'Roles' }, { to: '/admin/organization', label: 'Settings' }, { to: '/admin/audit-logs', label: 'Audit' }],
     sections: [
       { items: [{ label: 'Dashboard', to: '/admin', icon: Gauge, exact: true, access: { permissions: ['organization.view'] } }] },
       {
@@ -162,6 +169,14 @@ export const WORKSPACES: Workspace[] = [
     icon: Briefcase,
     home: '/hr',
     access: { permissions: HR_OPERATIONS_PERMISSIONS, scope: 'TEAM' },
+    mobileTabs: [
+      { to: '/hr', label: 'Overview' },
+      { to: '/hr/employees', label: 'People' },
+      { to: '/hr/leave/requests', label: 'Leave' },
+      { to: '/hr/attendance/regularizations', label: 'Approvals' },
+      { to: '/hr/payroll/runs', label: 'Payroll' },
+      { to: '/hr/recruitment/jobs', label: 'Jobs' },
+    ],
     sections: [
       { items: [{ label: 'HR dashboard', to: '/hr', icon: Activity, exact: true }] },
       {
@@ -285,6 +300,7 @@ export const WORKSPACES: Workspace[] = [
     icon: User,
     home: '/me',
     access: () => true,
+    mobileTabs: [{ to: '/me' }, { to: '/me/leave' }, { to: '/me/attendance', label: 'Attend' }, { to: '/me/payslips', label: 'Pay' }, { to: '/me/profile' }],
     sections: [
       {
         items: [
@@ -339,6 +355,18 @@ export function visibleSections(ws: Workspace, subject: AccessSubject): NavSecti
   return ws.sections
     .map((s) => ({ ...s, items: s.items.filter((i) => isAllowed(i.access, subject)) }))
     .filter((s) => s.items.length > 0);
+}
+
+/** The three bottom-tab pages of a workspace on phones and tablets, from its preferences then its menu. */
+export function mobileTabItems(ws: Workspace, subject: AccessSubject): NavItem[] {
+  const items = visibleSections(ws, subject).flatMap((s) => s.items);
+  const byPath = new Map(items.map((i) => [i.to, i]));
+  const preferred = ws.mobileTabs.flatMap((t) => {
+    const item = byPath.get(t.to);
+    return item ? [{ ...item, label: t.label ?? item.label }] : [];
+  });
+  const rest = items.filter((i) => !preferred.some((p) => p.to === i.to));
+  return [...preferred, ...rest].slice(0, 3);
 }
 
 /** Landing page after sign-in. */

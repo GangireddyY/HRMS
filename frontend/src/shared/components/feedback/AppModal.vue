@@ -166,8 +166,8 @@ onBeforeUnmount(release);
           </div>
         </div>
       </div>
-      <footer v-if="$slots.footer" class="shrink-0 border-t border-line bg-surface px-3 py-2.5 sm:px-4 2xl:px-8">
-        <div class="flex flex-wrap justify-end gap-2"><slot name="footer" /></div>
+      <footer v-if="$slots.footer" class="glass shrink-0 border-t border-line px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4 2xl:px-8">
+        <div class="flex flex-wrap justify-end gap-2 max-sm:[&>*]:h-10 max-sm:[&>*]:flex-1"><slot name="footer" /></div>
       </footer>
     </div>
   </Teleport>

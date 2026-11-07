@@ -101,7 +101,7 @@ watch(() => route.fullPath, () => {
   <Transition enter-from-class="translate-x-full opacity-0" leave-to-class="translate-x-full opacity-0" enter-active-class="transition duration-200 ease-out" leave-active-class="transition duration-150 ease-in">
     <aside
       v-if="store.open"
-      class="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line bg-surface shadow-pop sm:w-[420px]"
+      class="pt-safe pb-safe fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line bg-surface shadow-pop sm:w-[420px]"
       role="dialog"
       aria-modal="false"
       aria-labelledby="assistant-title"

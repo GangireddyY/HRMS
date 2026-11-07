@@ -12,17 +12,23 @@ export async function signIn(page: Page, email: string, password: string): Promi
 }
 
 export async function signOut(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Account menu' }).click();
-  await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  const account = page.getByRole('button', { name: 'Account menu' });
+  if (await account.isVisible()) {
+    await account.click();
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  } else {
+    await page.getByRole('navigation', { name: 'Tabs' }).getByRole('button', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Sign out' }).click();
+  }
   await expect(page).toHaveURL(/\/login/);
 }
 
 export const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}`;
 
-/** Primary navigation; on screens narrower than `lg` it lives in a drawer that is opened first. */
+/** Primary navigation; on screens narrower than `lg` it is in the "More" menu of the tab bar, opened first. */
 export async function primaryNav(page: Page): Promise<Locator> {
-  const menu = page.getByRole('button', { name: 'Open navigation' });
-  if (await menu.isVisible()) await menu.click();
+  const more = page.getByRole('navigation', { name: 'Tabs' }).getByRole('button', { name: 'More' });
+  if ((await more.isVisible()) && (await more.getAttribute('aria-expanded')) !== 'true') await more.click();
   const nav = page.getByRole('navigation', { name: 'Primary navigation' });
   await expect(nav).toBeVisible();
   return nav;

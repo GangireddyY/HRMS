@@ -340,19 +340,35 @@ test.describe('responsive layout', () => {
     }
   });
 
-  test('navigation drawer opens, navigates and closes on small screens', async ({ page }) => {
+  test('tab bar and More menu navigate on small screens', async ({ page }) => {
     test.skip((page.viewportSize()?.width ?? 0) >= 1024, 'the sidebar is always visible on large screens');
     await signIn(page, orgAdmin.email, orgAdmin.password);
 
+    const tabs = page.getByRole('navigation', { name: 'Tabs' });
     const nav = page.getByRole('navigation', { name: 'Primary navigation' });
-    await expect(nav).toBeHidden();
-    await (await primaryNav(page)).getByRole('link', { name: 'Users' }).click();
-    await expect(page).toHaveURL(/\/admin\/users$/);
+    await expect(tabs).toBeVisible();
     await expect(nav).toBeHidden();
 
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-    await expect(nav).toBeVisible();
+    await tabs.getByRole('link', { name: 'Users' }).click();
+    await expect(page).toHaveURL(/\/admin\/users$/);
+    await expect(tabs.getByRole('link', { name: 'Users' })).toHaveAttribute('aria-current', 'page');
+
+    await (await primaryNav(page)).getByRole('link', { name: 'Holidays' }).click();
+    await expect(page).toHaveURL(/\/admin\/holidays$/);
+    await expect(nav).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Back' })).toBeHidden();
+
+    await primaryNav(page);
     await page.keyboard.press('Escape');
     await expect(nav).toBeHidden();
+
+    // Forms opened as pages hide the tab bar; inner pages get Back in the top bar.
+    await page.goto('/admin/users?invite=1');
+    await expect(page.getByRole('dialog', { name: 'Invite user' })).toBeVisible();
+    await expect(tabs).toBeHidden();
+    await page.goto('/admin/users');
+    await page.locator('#main table tbody tr').first().click();
+    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page).toHaveURL(/\/admin\/users$/);
   });
 });

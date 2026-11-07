@@ -13,10 +13,15 @@ const tones = {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-3 sm:inset-x-auto sm:right-5 sm:bottom-5 sm:items-end" aria-live="polite" aria-relevant="additions">
+  <!-- Phones and tablets: at the top, clear of the tab bar and the thumb; desktop: bottom right. -->
+  <div
+    class="pointer-events-none fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-[60] flex flex-col items-center gap-2 px-3 lg:inset-x-auto lg:top-auto lg:right-5 lg:bottom-5 lg:items-end"
+    aria-live="polite"
+    aria-relevant="additions"
+  >
     <TransitionGroup
       enter-active-class="transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      enter-from-class="opacity-0 translate-y-3 scale-95"
+      enter-from-class="opacity-0 -translate-y-3 scale-95 lg:translate-y-3"
       leave-active-class="transition duration-150"
       leave-to-class="opacity-0 scale-95"
     >

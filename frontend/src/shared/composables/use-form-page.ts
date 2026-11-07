@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import type { Router } from 'vue-router';
 
 /**
@@ -18,6 +19,8 @@ interface Entry {
 }
 
 const stack: Entry[] = [];
+/** How many form pages are open (the mobile tab bar hides while one is). */
+export const openFormPages = ref(0);
 let nextId = 1;
 let popping = false;
 let selfBack = false;
@@ -75,10 +78,12 @@ export function openFormPage(close: () => void): () => void {
   const entry: Entry = { id: nextId++, close, pushed: true, href: location.href };
   history.pushState({ ...history.state, [KEY]: entry.id }, '');
   stack.push(entry);
+  openFormPages.value = stack.length;
   return () => {
     const i = stack.indexOf(entry);
     if (i < 0) return;
     stack.splice(i, 1);
+    openFormPages.value = stack.length;
     if (!entry.pushed) return;
     entry.pushed = false;
     // A navigation started by the same action (e.g. save, then open the new record) replaces the entry instead;
