@@ -72,7 +72,7 @@ async function save() {
       <div>
         <AppSelect v-model="pick" label="Interviewers" required placeholder="Add an interviewer…" :options="options" searchable :error="fieldErrors.panelistIds" />
         <ul v-if="form.panel.length" class="mt-2 flex flex-wrap gap-2">
-          <li v-for="pid in form.panel" :key="pid" class="inline-flex items-center gap-1.5 rounded-full bg-surface-muted py-1 pr-1.5 pl-3 text-sm text-fg">
+          <li v-for="pid in form.panel" :key="pid" class="inline-flex items-center gap-2 rounded-full bg-surface-muted py-1 pe-2 ps-3 text-sm text-fg">
             {{ byId.get(pid)?.fullName ?? pid }}
             <button type="button" class="rounded-full p-0.5 text-fg-subtle hover:bg-surface hover:text-fg" :aria-label="`Remove ${byId.get(pid)?.fullName}`" @click="form.panel = form.panel.filter((x) => x !== pid)"><X :size="13" /></button>
           </li>

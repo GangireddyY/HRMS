@@ -47,7 +47,7 @@ const options = computed(() =>
     <AppSelect v-if="multiple" v-model="pick" :label="label" :required="required" :options="options" :placeholder="placeholder ?? 'Search by name…'" searchable remote @search="search" />
     <AppSelect v-else v-model="single" :label="label" :required="required" :options="options" :placeholder="placeholder ?? 'Search by name…'" searchable remote @search="search" />
     <ul v-if="multiple && many.length" class="mt-2 flex flex-wrap gap-2">
-      <li v-for="id in many" :key="id" class="inline-flex items-center gap-1.5 rounded-full bg-surface-muted py-1 pr-1.5 pl-3 text-sm text-fg">
+      <li v-for="id in many" :key="id" class="inline-flex items-center gap-2 rounded-full bg-surface-muted py-1 pe-2 ps-3 text-sm text-fg">
         {{ known.get(id)?.name ?? 'Colleague' }}
         <button type="button" class="rounded-full p-0.5 text-fg-subtle hover:bg-surface hover:text-fg" :aria-label="`Remove ${known.get(id)?.name}`" @click="many = many.filter((x) => x !== id)"><X :size="13" /></button>
       </li>

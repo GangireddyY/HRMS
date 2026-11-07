@@ -172,7 +172,7 @@ async function save() {
       </div>
       <div v-if="duplicates.length" class="rounded-xl bg-amber-500/10 p-3 text-sm ring-1 ring-amber-500/30">
         <p class="flex items-center gap-2 font-medium text-amber-800 dark:text-amber-200"><AlertTriangle :size="15" aria-hidden="true" />{{ emailTaken ? 'This person is already in your candidate database' : 'Possible duplicate' }}</p>
-        <ul class="mt-1.5 space-y-1">
+        <ul class="mt-2 space-y-1">
           <li v-for="d in duplicates" :key="d.id" class="flex flex-wrap items-center justify-between gap-2 text-fg-muted">
             <span>{{ d.name }} · {{ d.email }} <span class="text-xs">(same {{ d.match === 'EMAIL' ? 'email' : 'phone' }})</span></span>
             <AppButton size="xs" variant="secondary" @click="emit('existing', d.id)">{{ jobId ? 'Add them to this job' : 'Open' }}</AppButton>

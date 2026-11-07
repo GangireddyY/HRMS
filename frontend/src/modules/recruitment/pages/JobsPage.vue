@@ -45,7 +45,7 @@ const total = (j: Job) => Object.values(j.pipeline).reduce((n, v) => n + (v ?? 0
       </template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search jobs" aria-label="Search jobs" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
@@ -64,7 +64,7 @@ const total = (j: Job) => Object.values(j.pipeline).reduce((n, v) => n + (v ?? 0
         @row-click="(row) => router.push(`/hr/recruitment/jobs/${row.id}`)"
       >
         <template #cell-title="{ row }">
-          <p class="font-medium text-fg">{{ row.title }} <AppBadge v-if="row.isPublic" size="sm" tone="info" class="ml-1">Public</AppBadge></p>
+          <p class="font-medium text-fg">{{ row.title }} <AppBadge v-if="row.isPublic" size="sm" tone="info" class="ms-1">Public</AppBadge></p>
           <p class="text-xs text-fg-muted">{{ [row.requisition.code, row.requisition.department?.name, row.requisition.location?.name].filter(Boolean).join(' · ') }}</p>
         </template>
         <template #cell-pipeline="{ row }">

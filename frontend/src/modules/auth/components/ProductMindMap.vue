@@ -104,8 +104,15 @@ onBeforeUnmount(() => clearInterval(timer));
 </script>
 
 <template>
-  <div @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
-    <svg :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="xMinYMid meet" class="h-auto max-h-[min(54vh,560px)] w-full overflow-visible" role="group" aria-label="Everything HRMS covers">
+  <!-- Scales to the space it is given (the parent sets the height on large screens), keeping its proportions. -->
+  <div class="flex min-h-0 flex-col" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
+    <svg
+      :viewBox="`0 0 ${W} ${H}`"
+      preserveAspectRatio="xMinYMid meet"
+      class="h-full max-h-[560px] min-h-0 w-full flex-1 overflow-visible"
+      role="group"
+      aria-label="Everything HRMS covers"
+    >
       <!-- Connectors -->
       <g fill="none" stroke-linecap="round">
         <template v-for="(branch, bi) in branches" :key="`c-${branch.key}`">
@@ -252,21 +259,21 @@ onBeforeUnmount(() => clearInterval(timer));
     </svg>
 
     <!-- Featured item -->
-    <div class="mt-4 flex min-h-[52px] items-start gap-3" aria-live="off">
+    <div class="mt-4 flex min-h-[52px] shrink-0 items-start gap-3 short:mt-2" aria-live="off">
       <Transition mode="out-in" enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 translate-y-1" leave-active-class="transition duration-150" leave-to-class="opacity-0">
         <div :key="current.leaf.key" class="flex items-start gap-3">
           <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-[0_8px_20px_-8px_var(--brand-500)]">
             <component :is="current.leaf.icon" :size="18" aria-hidden="true" />
           </span>
           <div class="min-w-0">
-            <p class="text-[15px] font-semibold">
+            <p class="text-base font-semibold">
               {{ current.leaf.label }} <span class="font-medium text-hero-ink/50">· {{ current.branch.label }}</span>
             </p>
             <p class="text-sm text-hero-ink/70">{{ current.leaf.description }}</p>
           </div>
         </div>
       </Transition>
-      <span class="ml-auto shrink-0 pt-1 text-xs font-medium text-hero-ink/50 tabular-nums">{{ String(active + 1).padStart(2, '0') }} / {{ items.length }}</span>
+      <span class="ms-auto shrink-0 pt-1 text-xs font-medium text-hero-ink/50 tabular-nums">{{ String(active + 1).padStart(2, '0') }} / {{ items.length }}</span>
     </div>
   </div>
 </template>

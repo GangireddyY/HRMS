@@ -14,7 +14,7 @@ const timezones = computed(() => timezoneOptions(model.value.timezone));
     <div class="grid gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Company</p>
-        <p class="mt-1 text-[13px] text-fg-muted">How your organization appears across the product and on documents.</p>
+        <p class="mt-1 text-sm text-fg-muted">How your organization appears across the product and on documents.</p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <AppInput v-model="model.name" label="Display name" required :error="errors.name" />
@@ -28,7 +28,7 @@ const timezones = computed(() => timezoneOptions(model.value.timezone));
     <div class="grid gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Contact &amp; address</p>
-        <p class="mt-1 text-[13px] text-fg-muted">Registered office and the contact details employees and partners see.</p>
+        <p class="mt-1 text-sm text-fg-muted">Registered office and the contact details employees and partners see.</p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <AppInput v-model="model.email" label="Email" type="email" :error="errors.email" />
@@ -45,7 +45,7 @@ const timezones = computed(() => timezoneOptions(model.value.timezone));
     <div class="grid gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Regional settings</p>
-        <p class="mt-1 text-[13px] text-fg-muted">Defaults for dates, money and the financial year.</p>
+        <p class="mt-1 text-sm text-fg-muted">Defaults for dates, money and the financial year.</p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <AppSelect v-model="model.timezone" label="Time zone" :options="timezones" :error="errors.timezone" />

@@ -21,12 +21,12 @@ const deliveryOptions = COURSE_DELIVERIES.map((d) => ({ value: d, label: DELIVER
     </div>
     <AppSkeleton v-if="table.loading.value && !table.rows.value.length" :lines="6" />
     <AppErrorState v-else-if="table.error.value" :error="table.error.value" @retry="table.load" />
-    <AppEmptyState v-else-if="!table.rows.value.length" class="rounded-2xl bg-surface ring-1 ring-line" :icon="GraduationCap" title="No courses found" description="Try another search, or check back later." />
+    <AppEmptyState v-else-if="!table.rows.value.length" class="card" :icon="GraduationCap" title="No courses found" description="Try another search, or check back later." />
     <template v-else>
       <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <li v-for="c in table.rows.value" :key="c.id">
-          <RouterLink :to="`/me/training/courses/${c.id}`" class="flex h-full flex-col rounded-2xl bg-surface p-4 ring-1 ring-line transition hover:ring-brand-400">
-            <div class="mb-2 flex flex-wrap gap-1.5">
+          <RouterLink :to="`/me/training/courses/${c.id}`" class="flex h-full flex-col card p-4 transition hover:ring-brand-400">
+            <div class="mb-2 flex flex-wrap gap-2">
               <AppBadge size="sm">{{ CATEGORY_LABELS[c.category] }}</AppBadge>
               <AppBadge v-if="c.mandatory" size="sm" tone="warning">Mandatory</AppBadge>
               <AppBadge v-if="c.myEnrollment" size="sm" :tone="enrollmentTone[c.myEnrollment.status]">{{ ENROLLMENT_STATUS_LABELS[c.myEnrollment.status] }}</AppBadge>

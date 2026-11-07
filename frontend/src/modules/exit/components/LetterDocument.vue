@@ -18,7 +18,7 @@ const contact = computed(() => [props.letter.letterhead.phone, props.letter.lett
 
 <template>
   <article
-    class="relative mx-auto min-h-[60rem] max-w-[52rem] overflow-hidden rounded-2xl bg-white px-8 py-10 text-[15px] leading-relaxed text-zinc-900 shadow-sm ring-1 ring-zinc-200 sm:px-14 print:min-h-0 print:max-w-none print:rounded-none print:p-0 print:shadow-none print:ring-0"
+    class="relative mx-auto min-h-[60rem] max-w-[52rem] overflow-hidden rounded-2xl bg-white px-8 py-10 text-base leading-relaxed text-zinc-900 shadow-sm ring-1 ring-zinc-200 sm:px-14 print:min-h-0 print:max-w-none print:rounded-none print:p-0 print:shadow-none print:ring-0"
     :aria-label="`${letter.subject} ${letter.reference}`"
   >
     <p
@@ -33,7 +33,7 @@ const contact = computed(() => [props.letter.letterhead.phone, props.letter.lett
         <img v-if="logo" :src="logo" alt="" class="max-h-16 max-w-44 object-contain" />
         <p class="text-xl font-semibold tracking-tight">{{ letter.letterhead.name }}</p>
       </div>
-      <div class="text-right text-xs leading-5 text-zinc-600">
+      <div class="text-end text-xs leading-5 text-zinc-600">
         <p v-for="line in letter.letterhead.address" :key="line">{{ line }}</p>
         <p v-if="contact">{{ contact }}</p>
       </div>

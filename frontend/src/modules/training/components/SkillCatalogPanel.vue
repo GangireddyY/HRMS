@@ -61,7 +61,7 @@ async function remove(s: Skill) {
 
 <template>
   <AppCard :padded="false">
-    <div class="flex justify-end border-b border-line p-4"><AppButton :icon="Plus" @click="edit(null)">Add skill</AppButton></div>
+    <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2"><AppButton :icon="Plus" @click="edit(null)">Add skill</AppButton></div>
     <AppDataTable :columns="columns" :rows="skills.data.value ?? []" :loading="skills.loading.value" :error="skills.error.value" caption="Skills" empty-title="No skills yet" empty-description="Add the skills your organization cares about." @retry="skills.run">
       <template #cell-name="{ row }">
         <p class="font-medium text-fg">{{ row.name }} <AppBadge v-if="!row.isActive" size="sm">Inactive</AppBadge></p>

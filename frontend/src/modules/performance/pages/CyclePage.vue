@@ -121,13 +121,13 @@ const columns: TableColumn<ReviewRow>[] = [
       <div class="mb-4 grid items-start gap-4 lg:grid-cols-3">
         <AppCard title="Setup">
           <dl class="space-y-2 text-sm">
-            <div class="flex justify-between gap-3"><dt class="text-fg-muted">Score</dt><dd class="text-right">Goals {{ c.goalsWeight }}%{{ c.goalsWeight < 100 ? ` · competencies ${100 - c.goalsWeight}%` : '' }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-fg-muted">Score</dt><dd class="text-end">Goals {{ c.goalsWeight }}%{{ c.goalsWeight < 100 ? ` · competencies ${100 - c.goalsWeight}%` : '' }}</dd></div>
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Goals due</dt><dd>{{ c.goalsDue ? formatDate(c.goalsDue) : '—' }}</dd></div>
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Self-review due</dt><dd>{{ c.selfReviewDue ? formatDate(c.selfReviewDue) : '—' }}</dd></div>
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Manager review due</dt><dd>{{ c.managerReviewDue ? formatDate(c.managerReviewDue) : '—' }}</dd></div>
-            <div class="flex justify-between gap-3"><dt class="text-fg-muted">Who takes part</dt><dd class="text-right">{{ c.departments.length ? c.departments.map((d) => d.name).join(', ') : 'All departments' }}{{ c.eligibilityCutoff ? `, joined by ${formatDate(c.eligibilityCutoff)}` : '' }}</dd></div>
+            <div class="flex justify-between gap-3"><dt class="text-fg-muted">Who takes part</dt><dd class="text-end">{{ c.departments.length ? c.departments.map((d) => d.name).join(', ') : 'All departments' }}{{ c.eligibilityCutoff ? `, joined by ${formatDate(c.eligibilityCutoff)}` : '' }}</dd></div>
           </dl>
-          <div v-if="c.competencies.length" class="mt-4 flex flex-wrap gap-1.5 border-t border-line/70 pt-3">
+          <div v-if="c.competencies.length" class="mt-4 flex flex-wrap gap-2 border-t border-line/70 pt-3">
             <AppBadge v-for="k in c.competencies" :key="k.key" size="sm" :title="k.description ?? undefined">{{ k.name }}</AppBadge>
           </div>
         </AppCard>
@@ -147,14 +147,14 @@ const columns: TableColumn<ReviewRow>[] = [
                 <p class="mb-0.5 text-fg-muted">{{ ratingText(n, c.ratingLabels) }}</p>
                 <div class="h-2 rounded-full bg-surface-muted"><div class="h-2 rounded-full bg-brand-500" :style="{ width: `${(c.distribution[n] ?? 0) / maxBar * 100}%` }" /></div>
               </div>
-              <span class="w-6 text-right tabular-nums text-fg">{{ c.distribution[n] ?? 0 }}</span>
+              <span class="w-6 text-end tabular-nums text-fg">{{ c.distribution[n] ?? 0 }}</span>
             </li>
           </ul>
         </AppCard>
       </div>
 
       <AppCard v-if="c.participants" :padded="false">
-        <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_240px]">
+        <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_240px]">
           <AppSearchInput v-model="table.search.value" placeholder="Search employees" aria-label="Search reviews" />
           <AppSelect v-model="table.filters.stage" :options="stageOptions" placeholder="All stages" aria-label="Filter by stage" />
         </div>
@@ -171,7 +171,7 @@ const columns: TableColumn<ReviewRow>[] = [
           <template #cell-reviewer="{ row }"><span :class="row.reviewer ? 'text-fg-muted' : 'text-amber-700 dark:text-amber-300'">{{ row.reviewer?.name ?? 'Not assigned' }}</span></template>
           <template #cell-stage="{ row }"><AppBadge :tone="stageTone[row.stage]" dot>{{ STAGE_LABELS[row.stage] }}</AppBadge></template>
           <template #cell-rating="{ row }">
-            <span v-if="row.finalRating" class="font-medium tabular-nums">{{ row.finalRating }}<span v-if="row.calibrated" class="ml-1 text-xs text-fg-muted">(calibrated)</span></span>
+            <span v-if="row.finalRating" class="font-medium tabular-nums">{{ row.finalRating }}<span v-if="row.calibrated" class="ms-1 text-xs text-fg-muted">(calibrated)</span></span>
             <span v-else class="text-fg-subtle">—</span>
           </template>
         </AppDataTable>

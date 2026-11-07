@@ -69,7 +69,7 @@ async function save() {
           <p class="truncate text-sm text-fg-muted">{{ auth.user?.email }}</p>
         </div>
         <dl class="mt-4 space-y-3 text-sm">
-          <div class="flex justify-between gap-3"><dt class="text-fg-muted">Organization</dt><dd class="text-right text-fg">{{ auth.organization?.name ?? '—' }}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-fg-muted">Organization</dt><dd class="text-end text-fg">{{ auth.organization?.name ?? '—' }}</dd></div>
           <div class="flex justify-between gap-3">
             <dt class="text-fg-muted">Roles</dt>
             <dd class="flex flex-wrap justify-end gap-1">

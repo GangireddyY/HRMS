@@ -116,7 +116,7 @@ async function remove() {
             <div><dt class="text-xs text-fg-muted">Location</dt><dd class="text-fg">{{ c.location ?? '—' }}</dd></div>
             <div v-if="c.skills.length">
               <dt class="text-xs text-fg-muted">Skills</dt>
-              <dd class="mt-1 flex flex-wrap gap-1.5"><AppBadge v-for="s in c.skills" :key="s" size="sm">{{ s }}</AppBadge></dd>
+              <dd class="mt-1 flex flex-wrap gap-2"><AppBadge v-for="s in c.skills" :key="s" size="sm">{{ s }}</AppBadge></dd>
             </div>
             <div v-if="c.referredBy"><dt class="text-xs text-fg-muted">Referred by</dt><dd class="text-fg">{{ c.referredBy.name }}</dd></div>
             <div v-if="c.consentAt"><dt class="text-xs text-fg-muted">Consent</dt><dd class="text-fg">Given {{ formatDate(c.consentAt) }} (careers page)</dd></div>

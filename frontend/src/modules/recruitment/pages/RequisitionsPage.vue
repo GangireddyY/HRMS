@@ -101,8 +101,8 @@ const pipelineText = (r: Requisition) =>
     </AppPageHeader>
     <AppTabs v-model="view" :tabs="tabs">
       <AppCard :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="table.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="table.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable
           :columns="columns"

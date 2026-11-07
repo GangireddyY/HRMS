@@ -12,7 +12,7 @@ const deductions = computed(() => props.settlement.lines.filter((l) => l.kind ==
 </script>
 
 <template>
-  <section class="rounded-2xl bg-surface p-4 ring-1 ring-line print:p-0 print:ring-0" aria-label="Full and final settlement statement">
+  <section class="card p-4 print:p-0 print:ring-0" aria-label="Full and final settlement statement">
     <header class="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
       <div>
         <p v-if="organization" class="text-xs font-medium tracking-wide text-fg-muted uppercase">{{ organization }}</p>
@@ -24,7 +24,7 @@ const deductions = computed(() => props.settlement.lines.filter((l) => l.kind ==
           {{ TYPE_LABELS[settlement.exitType] }} · joined {{ formatDate(settlement.employee.dateOfJoining) }} · last working day {{ settlement.lastWorkingDay ? formatDate(settlement.lastWorkingDay) : '—' }}
         </p>
       </div>
-      <div class="text-right">
+      <div class="text-end">
         <AppBadge :tone="settlementTone[settlement.status]" dot>{{ SETTLEMENT_LABELS[settlement.status] }}</AppBadge>
         <p class="mt-1 text-xs" :class="settlement.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">
           <template v-if="settlement.paidOn">Paid {{ formatDate(settlement.paidOn) }}{{ settlement.paymentReference ? ` · ref ${settlement.paymentReference}` : '' }}</template>

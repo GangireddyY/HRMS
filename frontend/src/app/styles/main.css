@@ -1,8 +1,12 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
+/* Inter with the optical-size axis: small text gets the open text cut, headings the tighter display cut. */
+@import '@fontsource-variable/inter/opsz.css';
 @import './themes.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Height breakpoints, so full-screen pages (sign-in) fit without scrolling: laptops with browser chrome and phones. */
+@custom-variant short (@media (max-height: 800px));
+@custom-variant tiny (@media (max-height: 640px));
 
 /*
  * Design tokens. Surfaces/text switch with the light/dark mode, brand colors with the color theme
@@ -21,7 +25,10 @@
   --app-text-muted: #52525b;
   --app-text-subtle: #a1a1aa;
   --app-ring: var(--brand-500);
-  --app-shadow-card: none;
+  /* Elevation: xs for controls, card for resting surfaces, lift for hovered cards, pop for menus and dialogs. */
+  --app-shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --app-shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.05);
+  --app-shadow-lift: 0 12px 24px -6px rgb(16 24 40 / 0.1), 0 4px 8px -4px rgb(16 24 40 / 0.06);
   --app-shadow-pop: 0 8px 24px -6px rgb(24 24 27 / 0.16), 0 2px 6px -2px rgb(24 24 27 / 0.08);
   color-scheme: light;
 }
@@ -38,7 +45,10 @@
   --app-text-muted: #a1a1aa;
   --app-text-subtle: #71717a;
   --app-ring: var(--brand-400);
-  --app-shadow-card: none;
+  /* Dark surfaces read as raised through a faint top highlight rather than a shadow. */
+  --app-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --app-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --app-shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 14px 30px -10px rgb(0 0 0 / 0.65);
   --app-shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
   color-scheme: dark;
 }
@@ -110,13 +120,10 @@
   --hero-panel: color-mix(in oklab, var(--brand-950) 60%, transparent);
 }
 
-/* Sign-in and sign-up share one card height on large screens, so switching between them doesn't jump. */
-@media (min-width: 1024px) {
-  .auth-page-tall {
-    display: flex;
-    flex-direction: column;
-    min-height: 634px;
-  }
+/* Auth card pages: a column whose footer link sits at the end. The card fits its content (no fixed height). */
+.auth-page-tall {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Dark-mode form card on the auth canvas: brand-tinted surfaces instead of neutral black. */
@@ -132,7 +139,11 @@
 }
 
 @theme inline {
-  --font-sans: 'Inter Variable', 'Inter', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  /* Latin from Inter; other scripts (Devanagari, Tamil, Arabic, CJK…) fall back to the platform's Noto / system fonts. */
+  --font-sans:
+    'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Nirmala UI', 'Helvetica Neue', Arial,
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
   --color-app: var(--app-bg);
   --color-canvas: var(--app-canvas);
   --color-surface: var(--app-surface);
@@ -170,7 +181,9 @@
   --color-brand-800: var(--brand-800);
   --color-brand-900: var(--brand-900);
   --color-brand-950: var(--brand-950);
+  --shadow-xs: var(--app-shadow-xs);
   --shadow-card: var(--app-shadow-card);
+  --shadow-lift: var(--app-shadow-lift);
   --shadow-pop: var(--app-shadow-pop);
 }
 
@@ -187,6 +200,41 @@
   --radius-2xl: 4px;
   --radius-3xl: 6px;
   --radius-4xl: 6px;
+}
+
+/*
+ * Design standard (Fluent 2 / Material 3 type ramps, WCAG 2.2 AA):
+ * - Type ramp with 4 px line-height steps: 2xs 11/16 (badges and counters only), xs 12/16 (captions, table
+ *   headers), sm 14/20 (body, labels, controls), base 16/24, lg 18/28, xl 20/28 (page titles), 2xl 24/32, 3xl 30/36.
+ * - Spacing on a 4 px grid (8 px for layout): page margins 16 / 24 / 32, card padding 16, gaps 8 / 12 / 16.
+ * - Controls 36 px (sm 32, lg 40); table header 40 px, rows 44 px; targets never below 24 px.
+ * Principles shared by the leading systems (Apple HIG, Material 3, Fluent 2, Carbon, Atlassian, Polaris, Lightning,
+ * Primer, and the Linear / Stripe product style), and how they apply here:
+ * - Content first, chrome quiet: hairline dividers over boxes, colour only where it means something (status, leave
+ *   type, today), no decorative accent bars.
+ * - One pattern per job: lists are an index table (toolbar, table, results count; page controls only when paged),
+ *   summaries a stat strip or stat cards, dates the calendar components, forms pages with a guide.
+ * - Show what matters, hide what doesn't: no "Page 1 of 1", no empty filter rows, details on demand (cards, popovers).
+ * - Fit the screen: full-height tools (calendars, timelines) fill the space instead of scrolling inside a box.
+ * - Direct manipulation and feedback: select to filter, select an item to see it, visible focus, motion under 200 ms.
+ */
+@theme {
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
 }
 
 @theme {
@@ -279,12 +327,26 @@
     text-size-adjust: 100%;
   }
   body {
-    @apply bg-app text-fg font-sans antialiased;
+    @apply bg-app text-fg font-sans text-sm antialiased;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
+    font-optical-sizing: auto;
     text-rendering: optimizeLegibility;
   }
   h1, h2, h3 {
     @apply tracking-tight;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  /* Figures line up in columns (amounts, days, counts, times). */
+  table,
+  time,
+  kbd {
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: start;
   }
   ::selection {
     background: color-mix(in oklab, var(--brand-500) 22%, transparent);
@@ -329,16 +391,20 @@
 
 @layer components {
   .card {
-    @apply rounded-md border border-line bg-surface;
+    @apply rounded-md border border-line bg-surface shadow-card;
+  }
+  /* Cards that open something: lift on hover. */
+  .card-interactive {
+    @apply transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lift motion-reduce:hover:translate-y-0;
   }
   .input-base {
-    @apply block min-h-8 w-full rounded-md border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-fg
+    @apply block min-h-9 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-fg shadow-xs
       transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle
-      hover:border-fg-subtle/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
+      hover:border-fg-subtle/60 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none
       disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-fg-muted;
   }
   select.input-base {
-    @apply cursor-pointer appearance-none bg-no-repeat pr-9;
+    @apply cursor-pointer appearance-none bg-no-repeat pe-9;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
     background-position: right 0.65rem center;
   }
@@ -346,7 +412,7 @@
     @apply border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/15;
   }
   .label {
-    @apply mb-1 block text-[13px] font-medium text-fg;
+    @apply mb-1 block text-sm font-medium text-fg;
   }
   .help-text {
     @apply mt-1 text-xs text-fg-muted;
@@ -400,4 +466,21 @@
     background-image: radial-gradient(color-mix(in oklab, var(--app-text) 10%, transparent) 1px, transparent 1px);
     background-size: 16px 16px;
   }
+  /* Loading placeholder with a light sweeping across it. */
+  .skeleton {
+    background:
+      linear-gradient(90deg, transparent, color-mix(in oklab, var(--app-surface) 70%, transparent), transparent) 0 0 / 40% 100% no-repeat,
+      var(--app-surface-muted);
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  /* Concentric rings fading out behind an empty state's icon. */
+  .empty-rings {
+    background-image: repeating-radial-gradient(circle at center, transparent 0 23px, var(--app-border) 23px 24px);
+    mask-image: radial-gradient(circle at center, #000 0, transparent 70%);
+  }
+}
+
+@keyframes shimmer {
+  from { background-position: -40% 0, 0 0; }
+  to { background-position: 140% 0, 0 0; }
 }

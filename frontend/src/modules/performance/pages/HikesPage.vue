@@ -219,7 +219,7 @@ async function apply() {
       </AppAlert>
       <AppAlert v-if="comp && comp.counts.APPROVED && !comp.effectiveFrom" tone="warning" class="mb-4">Set the date the increases take effect (Guidelines) before applying them.</AppAlert>
       <AppAlert v-if="failed.length" tone="warning" class="mb-4" :title="`${failed.length} increase${failed.length === 1 ? ' was' : 's were'} not applied`">
-        <ul class="list-disc pl-4">
+        <ul class="list-disc ps-4">
           <li v-for="f in failed" :key="f.employee">{{ f.employee }}: {{ f.reason }}</li>
         </ul>
       </AppAlert>
@@ -239,7 +239,7 @@ async function apply() {
       </div>
 
       <AppCard :padded="false">
-        <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[240px_240px]">
+        <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[240px_240px]">
           <AppSelect v-if="hr" :model-value="view" :options="viewOptions" :clearable="false" aria-label="Whose reviews" @update:model-value="(v: string | null | undefined) => (view = v === 'mine' ? 'mine' : 'all')" />
           <AppSelect v-model="status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
@@ -253,7 +253,7 @@ async function apply() {
               </div>
             </div>
           </template>
-          <template #cell-rating="{ row }"><span class="font-medium tabular-nums">{{ row.rating }}</span><span v-if="row.ratingLabel" class="ml-1 text-xs text-fg-muted">{{ row.ratingLabel }}</span></template>
+          <template #cell-rating="{ row }"><span class="font-medium tabular-nums">{{ row.rating }}</span><span v-if="row.ratingLabel" class="ms-1 text-xs text-fg-muted">{{ row.ratingLabel }}</span></template>
           <template #cell-guideline="{ row }"><span class="text-fg-muted">{{ range(row.guideline) }}</span></template>
           <template #cell-current="{ row }"><span class="tabular-nums">{{ row.currentCtc === null ? 'No salary' : rupees(row.currentCtc) }}</span></template>
           <template #cell-increase="{ row }">
@@ -337,7 +337,7 @@ async function apply() {
               <span>Rating</span><span>Minimum %</span><span>Target %</span><span>Maximum %</span>
             </div>
             <div v-for="g in guideForm.matrix" :key="g.rating" role="group" :aria-label="`Rating ${g.rating}`" class="grid grid-cols-3 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(3,7.5rem)] sm:items-center">
-              <p class="col-span-3 text-fg sm:col-span-1">{{ g.rating }}<span class="ml-1 text-xs text-fg-muted">{{ comp?.cycle.ratingLabels[g.rating - 1] }}</span></p>
+              <p class="col-span-3 text-fg sm:col-span-1">{{ g.rating }}<span class="ms-1 text-xs text-fg-muted">{{ comp?.cycle.ratingLabels[g.rating - 1] }}</span></p>
               <div v-for="f in GUIDE_FIELDS" :key="f.key" class="min-w-0">
                 <span class="mb-1 block text-xs text-fg-muted sm:hidden" aria-hidden="true">{{ f.label }}</span>
                 <AppInput v-model="g[f.key]" :aria-label="`${f.label} for rating ${g.rating}`" type="number" :min="0" :max="MAX_HIKE_PERCENT" :step="0.5" />

@@ -56,7 +56,7 @@ const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ui.moreOpen && (ui.mor
 onMounted(() => window.addEventListener('keydown', onKey));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
-const row = 'flex w-full items-center gap-3 border-b border-line/70 px-4 py-3 text-left text-sm last:border-b-0 active:bg-surface-muted';
+const row = 'flex w-full items-center gap-3 border-b border-line/70 px-4 py-3 text-start text-sm last:border-b-0 active:bg-surface-muted';
 </script>
 
 <template>
@@ -65,7 +65,7 @@ const row = 'flex w-full items-center gap-3 border-b border-line/70 px-4 py-3 te
     id="mobile-more"
     ref="panel"
     tabindex="-1"
-    class="absolute inset-0 z-20 animate-fade-in overflow-y-auto bg-canvas bg-ai-wash bg-no-repeat px-3 pt-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none"
+    class="absolute inset-0 z-20 animate-fade-in overflow-y-auto bg-canvas bg-ai-wash bg-no-repeat px-4 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none"
   >
     <div class="space-y-4">
       <RouterLink to="/me/profile" class="card flex items-center gap-3 p-4">

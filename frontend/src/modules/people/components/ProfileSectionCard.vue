@@ -73,7 +73,7 @@ function duration(e: Experience) {
           <template v-if="section === 'family'">
             <p class="font-medium text-fg">
               {{ (item as FamilyMember).name }}
-              <AppBadge v-if="(item as FamilyMember).isDependent" tone="info" size="sm" class="ml-1.5">Dependent</AppBadge>
+              <AppBadge v-if="(item as FamilyMember).isDependent" tone="info" size="sm" class="ms-2">Dependent</AppBadge>
             </p>
             <p class="text-fg-muted">
               {{ [RELATIONSHIP_LABELS[(item as FamilyMember).relationship], (item as FamilyMember).gender ? GENDER_LABELS[(item as FamilyMember).gender!] : null, (item as FamilyMember).dateOfBirth ? `Born ${formatDate((item as FamilyMember).dateOfBirth!)}` : null, (item as FamilyMember).phone].filter(Boolean).join(' · ') }}

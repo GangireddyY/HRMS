@@ -73,8 +73,8 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
     <AppPageHeader title="Probation" description="Confirm employees or extend probation. A manager or HR recommends; someone else with approval rights decides." />
     <AppTabs v-model="tab" :tabs="tabs">
       <AppCard v-if="tab === 'decisions'" :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="reviews.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="reviews.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable
           :columns="reviewColumns"
@@ -109,7 +109,7 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
             <p v-if="row.reviewedBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.reviewedBy }}</p>
           </template>
           <template #cell-actions="{ row }">
-            <div v-if="row.status === 'PENDING'" class="flex justify-end gap-1.5">
+            <div v-if="row.status === 'PENDING'" class="flex justify-end gap-2">
               <AppButton size="sm" variant="secondary" :icon="X" @click="deciding = { review: row, action: 'reject' }; note = ''">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="deciding = { review: row, action: 'approve' }; note = ''">Approve</AppButton>
             </div>
@@ -118,8 +118,8 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
       </AppCard>
 
       <AppCard v-else :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="days" class="w-56" :options="windowOptions" :clearable="false" aria-label="Window" />
+        <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="days" class="w-56" :options="windowOptions" :clearable="false" aria-label="Window" />
         </div>
         <AppDataTable :columns="dueColumns" :rows="due.data.value ?? []" :loading="due.loading.value" :error="due.error.value" caption="Probations ending soon" empty-title="No probations ending soon" @retry="due.run">
           <template #cell-employee="{ row }">

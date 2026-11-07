@@ -206,8 +206,8 @@ function onSearchKey(e: KeyboardEvent) {
         :aria-describedby="describedby"
         :disabled="disabled"
         :class="[
-          'input-base flex cursor-pointer items-center gap-2 text-left disabled:cursor-not-allowed',
-          size === 'sm' && 'min-h-7 py-0.5 text-[13px]',
+          'input-base flex cursor-pointer items-center gap-2 text-start disabled:cursor-not-allowed',
+          size === 'sm' && 'min-h-8 py-1 text-sm',
           invalid && 'input-invalid',
           open && !invalid && 'border-brand-500 ring-2 ring-brand-500/20',
         ]"
@@ -231,7 +231,7 @@ function onSearchKey(e: KeyboardEvent) {
             :style="{ ...floating.style.value, minWidth: '12rem' }"
             class="z-[70] flex flex-col overflow-hidden rounded-xl border border-line bg-surface-raised shadow-pop"
           >
-            <div v-if="isSearchable" class="border-b border-line p-1.5">
+            <div v-if="isSearchable" class="border-b border-line p-2">
               <div class="relative">
                 <Search :size="15" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
                 <input
@@ -245,7 +245,7 @@ function onSearchKey(e: KeyboardEvent) {
                   :aria-activedescendant="activeIndex >= 0 ? optionId(activeIndex) : undefined"
                   :aria-label="`Search ${label ?? ariaLabel ?? 'options'}`"
                   placeholder="Search…"
-                  class="h-8 w-full rounded-md bg-surface-muted pr-2 pl-8 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-brand-500/20"
+                  class="h-8 w-full rounded-md bg-surface-muted pe-2 ps-8 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-brand-500/20"
                   @keydown="onSearchKey"
                 />
               </div>
@@ -255,7 +255,7 @@ function onSearchKey(e: KeyboardEvent) {
               role="listbox"
               :aria-labelledby="label ? `${selectId}-label` : undefined"
               :aria-label="label ? undefined : ariaLabel"
-              class="flex-1 overflow-y-auto p-1.5"
+              class="flex-1 overflow-y-auto p-2"
               @mousedown.prevent
             >
               <li
@@ -266,8 +266,8 @@ function onSearchKey(e: KeyboardEvent) {
                 :aria-selected="isSelected(item)"
                 :aria-disabled="item.disabled || undefined"
                 :class="[
-                  'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm transition-colors',
-                  size === 'sm' ? 'py-1.5' : 'py-2',
+                  'flex cursor-pointer items-center gap-2 rounded-lg px-3 text-sm transition-colors',
+                  'py-2',
                   i === activeIndex && 'bg-surface-muted',
                   isSelected(item) ? 'font-medium text-fg' : item.isPlaceholder ? 'text-fg-muted' : 'text-fg',
                   item.disabled && 'cursor-not-allowed opacity-45',

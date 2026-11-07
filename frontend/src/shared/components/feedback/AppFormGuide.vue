@@ -75,7 +75,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="card ai-ring bg-ai-wash p-4">
     <p class="text-xs font-medium tracking-wide text-fg-muted uppercase">Progress</p>
-    <p class="mt-1 text-[15px] font-semibold text-fg">
+    <p class="mt-1 text-base font-semibold text-fg">
       <template v-if="!fields.length">Nothing required</template>
       <template v-else-if="done === fields.length">Ready to save</template>
       <template v-else>{{ fields.length - done }} required field{{ fields.length - done === 1 ? '' : 's' }} left</template>
@@ -83,10 +83,10 @@ onBeforeUnmount(() => {
     <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100" aria-label="Required fields completed">
       <div class="h-full bg-brand-500 transition-[width] duration-300" :style="{ width: `${percent}%` }" />
     </div>
-    <p v-if="errors" class="mt-3 flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400"><AlertCircle :size="13" aria-hidden="true" />{{ errors }} field{{ errors === 1 ? ' needs' : 's need' }} attention</p>
+    <p v-if="errors" class="mt-3 flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-400"><AlertCircle :size="13" aria-hidden="true" />{{ errors }} field{{ errors === 1 ? ' needs' : 's need' }} attention</p>
     <ul v-if="fields.length" class="mt-3 space-y-0.5">
       <li v-for="f in fields" :key="f.id">
-        <button type="button" class="flex w-full items-center gap-2 rounded-sm px-1 py-1 text-left text-[13px] transition hover:bg-surface-muted/70" @click="focusField(f.id)">
+        <button type="button" class="flex w-full items-center gap-2 rounded-sm px-1 py-1 text-start text-sm transition hover:bg-surface-muted/70" @click="focusField(f.id)">
           <CheckCircle2 v-if="f.filled" :size="14" class="shrink-0 text-emerald-500" aria-hidden="true" />
           <Circle v-else :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" />
           <span :class="['truncate', f.filled ? 'text-fg-muted' : 'text-fg']">{{ f.label }}</span>
@@ -96,10 +96,10 @@ onBeforeUnmount(() => {
     </ul>
   </section>
   <section class="card p-4 text-xs text-fg-muted">
-    <p class="mb-2 flex items-center gap-1.5 font-medium text-fg"><Keyboard :size="13" aria-hidden="true" />Shortcuts</p>
-    <p class="flex justify-between py-0.5">Save <kbd class="rounded-sm border border-line bg-surface-muted px-1 font-mono text-[10px]">Ctrl + Enter</kbd></p>
-    <p class="flex justify-between py-0.5">Go back <kbd class="rounded-sm border border-line bg-surface-muted px-1 font-mono text-[10px]">Esc</kbd></p>
-    <button type="button" class="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-line py-1.5 text-[13px] font-medium text-fg transition hover:bg-surface-muted" @click="emit('ask')">
+    <p class="mb-2 flex items-center gap-2 font-medium text-fg"><Keyboard :size="13" aria-hidden="true" />Shortcuts</p>
+    <p class="flex justify-between py-0.5">Save <kbd class="rounded-sm border border-line bg-surface-muted px-1 font-mono text-2xs">Ctrl + Enter</kbd></p>
+    <p class="flex justify-between py-0.5">Go back <kbd class="rounded-sm border border-line bg-surface-muted px-1 font-mono text-2xs">Esc</kbd></p>
+    <button type="button" class="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-line py-2 text-sm font-medium text-fg transition hover:bg-surface-muted" @click="emit('ask')">
       <Sparkles :size="14" class="text-brand-500" aria-hidden="true" />Ask AI for help
     </button>
   </section>

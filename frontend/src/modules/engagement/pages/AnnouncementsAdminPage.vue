@@ -68,7 +68,7 @@ const columns: TableColumn<Announcement>[] = [
       <template #actions><AppButton :icon="Plus" @click="openForm(null)">New announcement</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search announcements" aria-label="Search announcements" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
@@ -77,9 +77,9 @@ const columns: TableColumn<Announcement>[] = [
           <p class="font-medium text-fg">{{ row.title }}</p>
           <p class="text-xs text-fg-muted">
             <AppBadge :tone="categoryTone[row.category]" size="sm">{{ CATEGORY_LABELS[row.category] }}</AppBadge>
-            <span class="ml-2">{{ row.category === 'EVENT' ? eventWhen(row) : row.publishedAt ? `Published ${timeAgo(row.publishedAt)}` : `Drafted ${timeAgo(row.createdAt)}` }}</span>
-            <span v-if="row.departmentIds?.length || row.locationIds?.length" class="ml-2">· targeted</span>
-            <span v-if="row.expiresAt" class="ml-2">· until {{ formatDate(row.expiresAt) }}</span>
+            <span class="ms-2">{{ row.category === 'EVENT' ? eventWhen(row) : row.publishedAt ? `Published ${timeAgo(row.publishedAt)}` : `Drafted ${timeAgo(row.createdAt)}` }}</span>
+            <span v-if="row.departmentIds?.length || row.locationIds?.length" class="ms-2">· targeted</span>
+            <span v-if="row.expiresAt" class="ms-2">· until {{ formatDate(row.expiresAt) }}</span>
           </p>
         </template>
         <template #cell-status="{ row }"><AppBadge :tone="announcementTone[row.status]" dot>{{ ANNOUNCEMENT_STATUS_LABELS[row.status] }}</AppBadge></template>

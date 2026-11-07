@@ -121,9 +121,9 @@ const print = () => window.print();
           </AppCard>
           <template #aside>
             <AppCard title="What happens next">
-              <ol class="relative space-y-3 border-l border-line pl-4 text-[13px]">
+              <ol class="relative space-y-3 border-l border-line ps-4 text-sm">
                 <li v-for="(step, i) in RESIGN_STEPS" :key="step.title" class="relative">
-                  <span class="absolute top-0 -left-[25px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-600 text-[10px] font-semibold text-white">{{ i + 1 }}</span>
+                  <span class="absolute top-0 -left-[25px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-600 text-2xs font-semibold text-white">{{ i + 1 }}</span>
                   <p class="font-medium text-fg">{{ step.title }}</p>
                   <p class="text-xs text-fg-muted">{{ step.text }}</p>
                 </li>
@@ -169,7 +169,7 @@ const print = () => window.print();
         <AppCard v-if="current.permissions.feedback" title="Exit survey" description="Your answers go to HR only and help us improve.">
           <div class="grid gap-4 md:grid-cols-2">
             <AppInput v-model="survey.wouldRecommend" label="How likely are you to recommend working here? (0–10)" type="number" :min="0" :max="10" />
-            <div class="flex items-end pb-1.5"><AppCheckbox v-model="survey.wouldRejoin" label="I would consider coming back" /></div>
+            <div class="flex items-end pb-2"><AppCheckbox v-model="survey.wouldRejoin" label="I would consider coming back" /></div>
             <AppTextarea v-model="survey.liked" label="What did you like most?" :rows="3" :maxlength="2000" />
             <AppTextarea v-model="survey.improve" label="What should we improve?" :rows="3" :maxlength="2000" />
           </div>

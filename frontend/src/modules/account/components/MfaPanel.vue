@@ -110,8 +110,8 @@ function downloadCodes() {
         <div>
           <p class="text-sm font-medium text-fg">
             Authenticator app
-            <AppBadge v-if="status.data.value.enabled" tone="success" class="ml-1">Enabled</AppBadge>
-            <AppBadge v-else-if="status.data.value.required" tone="warning" class="ml-1">Required</AppBadge>
+            <AppBadge v-if="status.data.value.enabled" tone="success" class="ms-1">Enabled</AppBadge>
+            <AppBadge v-else-if="status.data.value.required" tone="warning" class="ms-1">Required</AppBadge>
           </p>
           <p class="text-xs text-fg-muted">
             <template v-if="status.data.value.enabled">{{ status.data.value.recoveryCodesRemaining }} recovery codes remaining.</template>
@@ -130,7 +130,7 @@ function downloadCodes() {
 
     <AppModal :open="mode === 'setup'" title="Set up two-factor authentication" @close="close">
       <div v-if="setup" class="space-y-4">
-        <ol class="list-decimal space-y-1 pl-5 text-sm text-fg-muted">
+        <ol class="list-decimal space-y-1 ps-5 text-sm text-fg-muted">
           <li>Scan this QR code with your authenticator app.</li>
           <li>Enter the 6-digit code it shows to confirm.</li>
         </ol>

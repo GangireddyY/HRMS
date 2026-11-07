@@ -6,7 +6,8 @@ import FilingModal from '@/modules/compliance/components/FilingModal.vue';
 import ObligationFormModal from '@/modules/compliance/components/ObligationFormModal.vue';
 import type { CalendarItem, Obligation } from '@/modules/compliance/types';
 import { FILING_STATE_LABELS, OBLIGATION_CATEGORY_LABELS, filingTone, localIso, scheduleLabel } from '@/modules/compliance/utils/compliance-format';
-import { AppBadge, AppButton, AppCard, AppEmptyState, AppErrorState, AppPageHeader, AppSkeleton, AppStatCard, AppTabs } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCalendarEvent, AppCard, AppEmptyState, AppErrorState, AppMonthCalendar, AppPageHeader, AppSegmented, AppSkeleton, AppStatCard, AppTabs } from '@/shared/components';
+import type { FilingState } from '@contracts';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -18,8 +19,17 @@ const tabs = [
   { key: 'dates', label: 'Due dates' },
   { key: 'obligations', label: 'Obligations' },
 ];
-const start = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-const range = computed(() => ({ from: localIso(start.value), to: localIso(new Date(start.value.getFullYear(), start.value.getMonth() + 3, 0)) }));
+/** Month: a calendar grid of one month. List: three months at a time, grouped by month. */
+const view = ref<'month' | 'list'>('month');
+const viewOptions = [
+  { value: 'month' as const, label: 'Month' },
+  { value: 'list' as const, label: 'List' },
+];
+const thisMonth = () => new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const start = ref(thisMonth());
+const span = computed(() => (view.value === 'month' ? 1 : 3));
+const range = computed(() => ({ from: localIso(start.value), to: localIso(new Date(start.value.getFullYear(), start.value.getMonth() + span.value, 0)) }));
+const monthKey = computed(() => range.value.from.slice(0, 7));
 const rangeLabel = computed(() => {
   const f = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' });
   return `${f.format(start.value)} – ${f.format(new Date(start.value.getFullYear(), start.value.getMonth() + 2, 1))}`;
@@ -29,6 +39,13 @@ watch(range, () => void calendar.run());
 function shift(months: number) {
   start.value = new Date(start.value.getFullYear(), start.value.getMonth() + months, 1);
 }
+const byDay = computed(() => {
+  const m = new Map<string, CalendarItem[]>();
+  for (const i of calendar.data.value?.items ?? []) if (i.dueOn >= range.value.from) m.set(i.dueOn, [...(m.get(i.dueOn) ?? []), i]);
+  return m;
+});
+const STATE_DOT: Record<FilingState, string> = { OVERDUE: 'bg-red-500', DUE_SOON: 'bg-amber-500', UPCOMING: 'bg-brand-500', DONE: 'bg-emerald-500' };
+const overdueEarlier = computed(() => (calendar.data.value?.items ?? []).filter((i) => i.dueOn < range.value.from));
 const groups = computed(() => {
   const items = calendar.data.value?.items ?? [];
   const overdue = items.filter((i) => i.dueOn < range.value.from);
@@ -113,9 +130,12 @@ async function recommended() {
     <AppTabs v-model="tab" :tabs="tabs">
       <template v-if="tab === 'dates'">
         <div class="mb-4 flex flex-wrap items-center gap-2">
-          <AppButton size="sm" variant="ghost" :icon="ChevronLeft" aria-label="Earlier months" @click="shift(-3)" />
-          <span class="min-w-48 text-center text-sm font-medium text-fg">{{ rangeLabel }}</span>
-          <AppButton size="sm" variant="ghost" :icon="ChevronRight" aria-label="Later months" @click="shift(3)" />
+          <template v-if="view === 'list'">
+            <AppButton size="sm" variant="ghost" :icon="ChevronLeft" aria-label="Earlier months" @click="shift(-3)" />
+            <span class="min-w-48 text-center text-sm font-medium text-fg">{{ rangeLabel }}</span>
+            <AppButton size="sm" variant="ghost" :icon="ChevronRight" aria-label="Later months" @click="shift(3)" />
+          </template>
+          <AppSegmented v-model="view" class="ms-auto sm:w-44" :options="viewOptions" label="Calendar view" size="sm" />
         </div>
         <div class="mb-4 grid gap-4 sm:grid-cols-3">
           <AppStatCard label="Overdue" :value="calendar.data.value?.counts.overdue" tone="danger" :loading="calendar.loading.value" />
@@ -124,6 +144,49 @@ async function recommended() {
         </div>
         <AppSkeleton v-if="calendar.loading.value && !calendar.data.value" :lines="8" />
         <AppErrorState v-else-if="calendar.error.value" :error="calendar.error.value" @retry="calendar.run" />
+        <AppCard v-else-if="view === 'month'">
+          <AppAlert v-if="overdueEarlier.length" tone="error" class="mb-3" :title="`${overdueEarlier.length} overdue from earlier months`">
+            <ul class="flex flex-wrap gap-2">
+              <li v-for="i in overdueEarlier" :key="`${i.obligation.id}-${i.dueOn}`">
+                <button type="button" class="rounded-md text-start underline-offset-2 hover:underline" @click="filing = i">{{ i.obligation.title }} · {{ formatDate(i.dueOn) }}</button>
+              </li>
+            </ul>
+          </AppAlert>
+          <AppMonthCalendar
+            :month="monthKey"
+            navigable
+            aria-label="Statutory due dates"
+            @prev="shift(-1)"
+            @next="shift(1)"
+            @today="start = thisMonth()"
+          >
+            <template #day="{ date, inMonth }">
+              <template v-if="inMonth">
+                <span v-if="byDay.get(date)?.length" class="flex justify-center gap-0.5 sm:hidden" aria-hidden="true">
+                  <span v-for="i in byDay.get(date)!.slice(0, 3)" :key="i.obligation.id" class="h-1.5 w-1.5 rounded-full" :class="STATE_DOT[i.state]" />
+                </span>
+                <button
+                  v-for="i in byDay.get(date) ?? []"
+                  :key="i.obligation.id"
+                  type="button"
+                  class="min-w-0 rounded-[4px] text-start focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none max-sm:sr-only"
+                  :aria-label="`${i.obligation.title}, due ${formatDate(i.dueOn)}, ${FILING_STATE_LABELS[i.state]}${i.filing ? '' : '. Mark filed'}`"
+                  @click="!i.filing && (filing = i)"
+                >
+                  <AppCalendarEvent :tone="filingTone[i.state] === 'neutral' ? 'brand' : filingTone[i.state]" :variant="i.state === 'UPCOMING' ? 'outline' : 'fill'" :icon="i.filing ? CheckCircle2 : undefined" :label="i.obligation.title" />
+                </button>
+              </template>
+            </template>
+            <template #legend>
+              <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-fg-muted" aria-label="Legend">
+                <li v-for="s in (['OVERDUE', 'DUE_SOON', 'UPCOMING', 'DONE'] as const)" :key="s" class="inline-flex items-center gap-1.5">
+                  <span class="h-2 w-2 rounded-full" :class="STATE_DOT[s]" aria-hidden="true" />{{ FILING_STATE_LABELS[s] }}
+                </li>
+                <li class="text-fg-subtle">Select a due date to record its filing.</li>
+              </ul>
+            </template>
+          </AppMonthCalendar>
+        </AppCard>
         <AppCard v-else-if="!groups.length"><AppEmptyState :icon="ListPlus" title="Nothing due" description="Add the recommended statutory obligations or your own." /></AppCard>
         <div v-else class="space-y-4">
           <AppCard v-for="g in groups" :key="g.key" :title="g.title" :padded="false">

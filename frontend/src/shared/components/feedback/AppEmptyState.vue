@@ -6,12 +6,20 @@ withDefaults(defineProps<{ title: string; description?: string; icon?: Component
 </script>
 
 <template>
-  <div :class="['flex flex-col items-center justify-center px-4 text-center', compact ? 'py-6' : 'py-10']">
-    <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-line bg-surface-muted text-fg-muted">
-      <component :is="icon" :size="18" aria-hidden="true" />
+  <div :class="['flex flex-col items-center justify-center px-4 text-center', compact ? 'py-6' : 'py-12']">
+    <div :class="['relative flex items-center justify-center', compact ? 'mb-3 h-16 w-16' : 'mb-4 h-24 w-24']">
+      <div class="empty-rings absolute inset-0 -m-6" aria-hidden="true" />
+      <div
+        :class="[
+          'relative flex items-center justify-center rounded-full border border-line bg-surface text-brand-600 shadow-card dark:text-brand-300',
+          compact ? 'h-10 w-10' : 'h-12 w-12',
+        ]"
+      >
+        <component :is="icon" :size="compact ? 18 : 22" aria-hidden="true" />
+      </div>
     </div>
-    <p class="text-sm font-semibold text-fg">{{ title }}</p>
-    <p v-if="description" class="mt-0.5 max-w-sm text-[13px] text-fg-muted">{{ description }}</p>
-    <div v-if="$slots.default" class="mt-4"><slot /></div>
+    <p :class="['font-semibold text-fg', compact ? 'text-sm' : 'text-base']">{{ title }}</p>
+    <p v-if="description" class="mt-1 max-w-sm text-sm text-fg-muted">{{ description }}</p>
+    <div v-if="$slots.default" class="mt-5"><slot /></div>
   </div>
 </template>

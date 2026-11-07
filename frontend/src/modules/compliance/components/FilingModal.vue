@@ -69,7 +69,7 @@ async function save() {
       <AppTextarea v-model="note" label="Note" :rows="2" :maxlength="1000" />
       <div>
         <p class="label">Receipt</p>
-        <button type="button" class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-3 text-left transition hover:border-brand-400" @click="input?.click()">
+        <button type="button" class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-3 text-start transition hover:border-brand-400" @click="input?.click()">
           <FileUp :size="18" class="text-fg-subtle" aria-hidden="true" />
           <span class="text-sm" :class="file ? 'font-medium text-fg' : 'text-fg-muted'">{{ file ? file.name : 'PDF, PNG, JPG or WebP, up to 5 MB' }}</span>
         </button>

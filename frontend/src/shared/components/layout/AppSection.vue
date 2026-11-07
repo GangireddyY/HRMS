@@ -10,7 +10,7 @@ defineProps<{ title: string; description?: string }>();
         <h2 class="text-sm font-semibold text-fg">{{ title }}</h2>
         <p v-if="description" class="text-xs text-fg-muted">{{ description }}</p>
       </div>
-      <div v-if="$slots.actions" class="flex items-center gap-1.5"><slot name="actions" /></div>
+      <div v-if="$slots.actions" class="flex items-center gap-2"><slot name="actions" /></div>
     </div>
     <slot />
   </section>

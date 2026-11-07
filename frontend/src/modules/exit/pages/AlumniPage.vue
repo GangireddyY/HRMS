@@ -37,7 +37,7 @@ const rehireBadge = (v: boolean | null | undefined) => (v === true ? { tone: 'su
   <div>
     <AppPageHeader title="Alumni" description="Everyone who has left, with the contact details of those who joined the alumni network." />
     <AppCard :padded="false">
-      <div class="flex flex-wrap items-center gap-3 border-b border-line p-4">
+      <div class="flex flex-wrap items-center gap-3 border-b border-line/70 px-4 py-3">
         <AppSearchInput v-model="table.search.value" class="min-w-56 flex-1" placeholder="Search by name or code" aria-label="Search alumni" />
         <AppSelect v-if="manage" v-model="table.filters.rehire" class="w-56" :options="rehireOptions" placeholder="Any rehire decision" aria-label="Filter by rehire eligibility" />
         <AppCheckbox v-model="inNetwork" label="In the alumni network" />

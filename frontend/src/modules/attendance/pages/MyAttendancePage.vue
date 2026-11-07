@@ -93,7 +93,7 @@ const stats = computed(() => {
         <AppSkeleton v-if="calendar.loading.value && !calendar.data.value" :lines="8" />
         <AppErrorState v-else-if="calendar.error.value" :error="calendar.error.value" @retry="calendar.run" />
         <template v-else-if="calendar.data.value">
-          <AttendanceCalendarView :calendar="calendar.data.value" :selectable="canRequest && !calendar.data.value.closed" @prev="month = shiftMonth(month, -1)" @next="month = shiftMonth(month, 1)" @select="onSelect" />
+          <AttendanceCalendarView :calendar="calendar.data.value" :selectable="canRequest && !calendar.data.value.closed" @prev="month = shiftMonth(month, -1)" @next="month = shiftMonth(month, 1)" @today="month = currentMonth()" @select="onSelect" />
           <p v-if="calendar.data.value.closed" class="mt-3 text-xs text-fg-muted">This month is closed; corrections are no longer possible.</p>
         </template>
       </AppCard>
@@ -116,13 +116,13 @@ const stats = computed(() => {
           <AppErrorState v-else-if="requests.error.value" :error="requests.error.value" @retry="requests.run" />
           <AppEmptyState v-else-if="!requests.data.value?.items.length" compact title="No requests yet" />
           <ul v-else class="divide-y divide-line">
-            <li v-for="r in requests.data.value.items" :key="r.id" class="flex items-start justify-between gap-3 py-2.5">
+            <li v-for="r in requests.data.value.items" :key="r.id" class="flex items-start justify-between gap-3 py-3">
               <div class="min-w-0">
                 <p class="text-sm font-medium text-fg">{{ formatDate(r.workDate) }}</p>
                 <p class="text-xs text-fg-muted">{{ formatTime(r.checkInAt, calendar.data.value?.timeZone) }}–{{ formatTime(r.checkOutAt, calendar.data.value?.timeZone) }} · {{ r.reason }}</p>
                 <p v-if="r.reviewNote" class="mt-0.5 text-xs text-fg-subtle italic">“{{ r.reviewNote }}” — {{ r.reviewedBy }}</p>
               </div>
-              <div class="flex shrink-0 flex-col items-end gap-1.5">
+              <div class="flex shrink-0 flex-col items-end gap-2">
                 <AppBadge :tone="regularizationTone[r.status]" dot>{{ REGULARIZATION_LABELS[r.status] }}</AppBadge>
                 <AppButton v-if="r.status === 'PENDING'" size="xs" variant="ghost" @click="cancel(r.id)">Cancel</AppButton>
               </div>
@@ -135,13 +135,13 @@ const stats = computed(() => {
           <AppSkeleton v-if="wfh.loading.value && !wfh.data.value" :lines="2" />
           <AppEmptyState v-else-if="!wfh.data.value?.items.length" compact title="No requests yet" />
           <ul v-else class="divide-y divide-line">
-            <li v-for="r in wfh.data.value.items" :key="r.id" class="flex items-start justify-between gap-3 py-2.5">
+            <li v-for="r in wfh.data.value.items" :key="r.id" class="flex items-start justify-between gap-3 py-3">
               <div class="min-w-0">
                 <p class="text-sm font-medium text-fg">{{ dateRange(r.startDate, r.endDate) }}</p>
                 <p class="truncate text-xs text-fg-muted">{{ r.reason }}</p>
                 <p v-if="r.reviewNote" class="mt-0.5 text-xs text-fg-subtle italic">“{{ r.reviewNote }}” — {{ r.reviewedBy }}</p>
               </div>
-              <div class="flex shrink-0 flex-col items-end gap-1.5">
+              <div class="flex shrink-0 flex-col items-end gap-2">
                 <AppBadge :tone="regularizationTone[r.status]" dot>{{ REGULARIZATION_LABELS[r.status] }}</AppBadge>
                 <AppButton v-if="r.permissions.cancel && (r.status === 'PENDING' || r.startDate > (calendar.data.value?.today ?? ''))" size="xs" variant="ghost" @click="cancelWfh(r.id)">Withdraw</AppButton>
               </div>
@@ -151,7 +151,7 @@ const stats = computed(() => {
 
         <AppCard v-if="overtime.data.value?.items.length" title="Overtime">
           <ul class="divide-y divide-line">
-            <li v-for="o in overtime.data.value.items" :key="o.id" class="flex items-start justify-between gap-3 py-2.5">
+            <li v-for="o in overtime.data.value.items" :key="o.id" class="flex items-start justify-between gap-3 py-3">
               <div class="min-w-0">
                 <p class="text-sm font-medium text-fg">{{ formatDate(o.workDate) }} · {{ formatMinutes(o.approvedMinutes ?? o.minutes) }}</p>
                 <p class="text-xs text-fg-muted">

@@ -41,7 +41,7 @@ async function signOut() {
       <Menu :size="19" />
     </button>
 
-    <nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-1.5 text-sm">
+    <nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-2 text-sm">
       <RouterLink :to="workspaceHome" class="flex min-w-0 items-center gap-2 rounded-md font-medium text-fg-muted transition hover:text-fg">
         <component :is="workspace.icon" :size="15" class="shrink-0" aria-hidden="true" />
         <span :class="showPage ? 'hidden truncate sm:inline' : 'truncate text-fg'">{{ workspace.label }}</span>
@@ -52,11 +52,11 @@ async function signOut() {
       </template>
     </nav>
 
-    <div class="ml-auto flex items-center gap-1">
+    <div class="ms-auto flex items-center gap-1">
       <GlobalSearch />
       <button
         type="button"
-        class="ai-ring group inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-fg transition hover:shadow-[0_0_0_3px_color-mix(in_oklab,var(--brand-500)_12%,transparent)] sm:px-2.5"
+        class="ai-ring group inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-fg transition hover:shadow-[0_0_0_3px_color-mix(in_oklab,var(--brand-500)_12%,transparent)] sm:px-3"
         :aria-pressed="assistant.open"
         aria-label="Ask the HRMS assistant"
         title="Ask the HRMS assistant (Ctrl J)"
@@ -87,7 +87,7 @@ async function signOut() {
             <AppAvatar :name="displayName || 'User'" :src="auth.user?.avatarUrl" size="sm" />
           </button>
         </template>
-        <div class="flex items-center gap-3 px-2.5 pt-1.5 pb-3">
+        <div class="flex items-center gap-3 px-3 pt-2 pb-3">
           <AppAvatar :name="displayName || 'User'" :src="auth.user?.avatarUrl" size="md" />
           <div class="min-w-0">
             <p class="truncate text-sm font-semibold text-fg">{{ displayName }}</p>
@@ -99,7 +99,7 @@ async function signOut() {
           <AppMenuItem :icon="KeyRound" to="/me/security">Security</AppMenuItem>
           <AppMenuItem :icon="Palette" to="/me/appearance">Appearance</AppMenuItem>
         </div>
-        <div class="border-t border-line px-2.5 py-3" @click.stop>
+        <div class="border-t border-line px-3 py-3" @click.stop>
           <ThemeSwitcher variant="compact" />
         </div>
         <div class="border-t border-line pt-1">

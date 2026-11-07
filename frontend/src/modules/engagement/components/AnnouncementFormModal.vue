@@ -130,7 +130,7 @@ async function save() {
         <div>
           <AppSelect v-model="pickDepartment" label="Departments" placeholder="Everyone" :options="options(departments.data.value, form.departmentIds)" />
           <ul v-if="form.departmentIds.length" class="mt-2 flex flex-wrap gap-2">
-            <li v-for="id in form.departmentIds" :key="id" class="inline-flex items-center gap-1.5 rounded-full bg-surface-muted py-1 pr-1.5 pl-3 text-sm text-fg">
+            <li v-for="id in form.departmentIds" :key="id" class="inline-flex items-center gap-2 rounded-full bg-surface-muted py-1 pe-2 ps-3 text-sm text-fg">
               {{ nameOf(departments.data.value, id) }}
               <button type="button" class="rounded-full p-0.5 text-fg-subtle hover:bg-surface hover:text-fg" :aria-label="`Remove ${nameOf(departments.data.value, id)}`" @click="form.departmentIds = form.departmentIds.filter((x) => x !== id)"><X :size="13" /></button>
             </li>
@@ -139,7 +139,7 @@ async function save() {
         <div>
           <AppSelect v-model="pickLocation" label="Locations" placeholder="Everywhere" :options="options(locations.data.value, form.locationIds)" />
           <ul v-if="form.locationIds.length" class="mt-2 flex flex-wrap gap-2">
-            <li v-for="id in form.locationIds" :key="id" class="inline-flex items-center gap-1.5 rounded-full bg-surface-muted py-1 pr-1.5 pl-3 text-sm text-fg">
+            <li v-for="id in form.locationIds" :key="id" class="inline-flex items-center gap-2 rounded-full bg-surface-muted py-1 pe-2 ps-3 text-sm text-fg">
               {{ nameOf(locations.data.value, id) }}
               <button type="button" class="rounded-full p-0.5 text-fg-subtle hover:bg-surface hover:text-fg" :aria-label="`Remove ${nameOf(locations.data.value, id)}`" @click="form.locationIds = form.locationIds.filter((x) => x !== id)"><X :size="13" /></button>
             </li>

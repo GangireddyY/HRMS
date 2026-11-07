@@ -82,9 +82,9 @@ const crossesMidnight = computed(() => form.endTime <= form.startTime);
     <AppCard :padded="false">
       <AppDataTable :columns="columns" :rows="shifts.data.value ?? []" :loading="shifts.loading.value" :error="shifts.error.value" caption="Shifts" empty-title="No shifts" @retry="shifts.run">
         <template #cell-name="{ row }">
-          <p class="flex items-center gap-1.5 font-medium text-fg">{{ row.name }} <AppBadge v-if="row.isDefault" tone="brand"><Star :size="11" /> Default</AppBadge><AppBadge v-if="!row.isActive">Inactive</AppBadge></p>
+          <p class="flex items-center gap-2 font-medium text-fg">{{ row.name }} <AppBadge v-if="row.isDefault" tone="brand"><Star :size="11" /> Default</AppBadge><AppBadge v-if="!row.isActive">Inactive</AppBadge></p>
         </template>
-        <template #cell-hours="{ row }"><span class="tabular-nums">{{ row.startTime }}–{{ row.endTime }}</span><span v-if="row.endTime <= row.startTime" class="ml-1 text-xs text-fg-muted">(next day)</span></template>
+        <template #cell-hours="{ row }"><span class="tabular-nums">{{ row.startTime }}–{{ row.endTime }}</span><span v-if="row.endTime <= row.startTime" class="ms-1 text-xs text-fg-muted">(next day)</span></template>
         <template #cell-rules="{ row }"><span class="text-xs text-fg-muted">Late after {{ row.graceMinutes }}m · half day {{ formatMinutes(row.halfDayMinutes) }} · full day {{ formatMinutes(row.fullDayMinutes) }}</span></template>
         <template #cell-offs="{ row }"><span class="text-fg-muted">{{ row.weeklyOffs.map((d: number) => WEEKDAY_SHORT[d]).join(', ') || 'None' }}</span></template>
         <template #cell-employeeCount="{ row }"><span class="tabular-nums">{{ row.employeeCount }}</span></template>
@@ -111,13 +111,13 @@ const crossesMidnight = computed(() => form.endTime <= form.startTime);
         </div>
         <fieldset>
           <legend class="mb-2 text-sm font-medium text-fg">Weekly off</legend>
-          <div class="flex flex-wrap gap-1.5">
+          <div class="flex flex-wrap gap-2">
             <button
               v-for="(d, i) in WEEKDAY_SHORT"
               :key="d"
               type="button"
               :aria-pressed="form.weeklyOffs.includes(i)"
-              :class="['rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition', form.weeklyOffs.includes(i) ? 'bg-brand-600 text-white ring-brand-600' : 'bg-surface text-fg-muted ring-line hover:text-fg']"
+              :class="['rounded-lg px-3 py-2 text-sm font-medium ring-1 ring-inset transition', form.weeklyOffs.includes(i) ? 'bg-brand-600 text-white ring-brand-600' : 'bg-surface text-fg-muted ring-line hover:text-fg']"
               @click="toggleOff(i)"
             >
               {{ d }}

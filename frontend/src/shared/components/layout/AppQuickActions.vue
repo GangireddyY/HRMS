@@ -22,14 +22,14 @@ defineProps<{ actions: QuickAction[]; columns?: 2 | 3 | 4 }>();
         :is="a.to ? 'RouterLink' : 'button'"
         :to="a.to"
         :type="a.to ? undefined : 'button'"
-        class="group flex h-full w-full items-center gap-2.5 rounded-md border border-line bg-surface px-3 py-2.5 text-left transition hover:border-brand-500/40 hover:bg-brand-50/40 dark:hover:bg-brand-500/5"
+        class="card card-interactive group flex h-full w-full items-center gap-3 px-3 py-3 text-start hover:border-brand-500/40"
         @click="a.onClick?.()"
       >
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white dark:bg-brand-500/12 dark:text-brand-300">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600 ring-1 ring-brand-600/10 transition group-hover:bg-brand-600 group-hover:text-white dark:bg-brand-500/12 dark:text-brand-300">
           <component :is="a.icon" :size="16" aria-hidden="true" />
         </span>
         <span class="min-w-0">
-          <span class="block truncate text-[13px] font-medium text-fg">{{ a.label }}</span>
+          <span class="block truncate text-sm font-medium text-fg">{{ a.label }}</span>
           <span v-if="a.description" class="block truncate text-xs text-fg-muted">{{ a.description }}</span>
         </span>
       </component>

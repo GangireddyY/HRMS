@@ -103,7 +103,7 @@ const pct = (c: CaseSummary) => (c.progress.total ? Math.round((c.progress.done 
             </div>
           </template>
           <template #cell-attention="{ row }">
-            <div class="flex flex-wrap justify-end gap-1.5">
+            <div class="flex flex-wrap justify-end gap-2">
               <AppBadge v-if="row.progress.overdue && row.status === 'IN_PROGRESS'" tone="danger" size="sm">{{ row.progress.overdue }} overdue</AppBadge>
               <AppBadge v-if="row.progress.awaitingVerification" tone="warning" size="sm">{{ row.progress.awaitingVerification }} to verify</AppBadge>
               <AppBadge v-if="row.status === 'IN_PROGRESS' && !row.progress.requiredOpen" tone="success" size="sm">Ready to complete</AppBadge>

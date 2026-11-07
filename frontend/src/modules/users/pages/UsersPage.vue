@@ -57,7 +57,7 @@ function onInvited(member: Member) {
     </AppPageHeader>
 
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_180px_220px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_180px_220px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search name or email" aria-label="Search users" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         <AppSelect v-model="table.filters.roleId" :options="roleOptions" placeholder="All roles" aria-label="Filter by role" />

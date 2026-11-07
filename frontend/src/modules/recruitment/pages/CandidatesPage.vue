@@ -39,7 +39,7 @@ const columns: TableColumn<Candidate>[] = [
       <template v-if="canManage" #actions><AppButton :icon="Plus" @click="formOpen = true">Add candidate</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_220px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_220px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search name, email, phone, company or title" aria-label="Search candidates" />
         <AppSelect v-model="table.filters.source" :options="sourceOptions" placeholder="All sources" aria-label="Filter by source" />
       </div>
@@ -60,7 +60,7 @@ const columns: TableColumn<Candidate>[] = [
           <div class="flex items-center gap-3">
             <AppAvatar :name="row.name" size="sm" />
             <div class="min-w-0">
-              <p class="flex items-center gap-1.5 truncate font-medium text-fg">{{ row.name }}<FileText v-if="row.resume" :size="13" class="text-fg-subtle" aria-label="Has resume" /></p>
+              <p class="flex items-center gap-2 truncate font-medium text-fg">{{ row.name }}<FileText v-if="row.resume" :size="13" class="text-fg-subtle" aria-label="Has resume" /></p>
               <p class="truncate text-xs text-fg-muted">{{ row.email }} · {{ timeAgo(row.createdAt) }}</p>
             </div>
           </div>

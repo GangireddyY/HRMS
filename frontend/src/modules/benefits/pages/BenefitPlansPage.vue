@@ -40,7 +40,7 @@ const columns: TableColumn<Plan>[] = [
       </template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search plans" aria-label="Search plans" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
@@ -53,7 +53,7 @@ const columns: TableColumn<Plan>[] = [
         <template #cell-status="{ row }"><AppBadge :tone="planTone[row.status]" dot>{{ PLAN_STATUS_LABELS[row.status] }}</AppBadge></template>
         <template #cell-enrolled="{ row }">
           <span class="tabular-nums">{{ row.stats?.enrolled ?? 0 }}</span>
-          <span v-if="row.stats?.pending" class="ml-1 text-xs text-amber-600 dark:text-amber-400">+{{ row.stats.pending }} pending</span>
+          <span v-if="row.stats?.pending" class="ms-1 text-xs text-amber-600 dark:text-amber-400">+{{ row.stats.pending }} pending</span>
         </template>
         <template #cell-cost="{ row }">
           <p class="tabular-nums text-fg">{{ inr((row.stats?.employerMonthly ?? 0) + (row.stats?.employeeMonthly ?? 0)) }}</p>

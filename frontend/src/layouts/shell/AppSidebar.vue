@@ -145,13 +145,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
     </div>
 
     <!-- Workspace / organization switcher -->
-    <div class="flex h-12 shrink-0 items-center gap-2 px-2.5">
+    <div class="flex h-12 shrink-0 items-center gap-2 px-3">
       <AppDropdown width="w-72" align="left" label="Switch workspace" class="min-w-0 flex-1">
         <template #trigger="{ toggle, open }">
           <button
             type="button"
             :class="[
-              'flex w-full min-w-0 items-center gap-2.5 rounded-md p-1 text-left transition hover:bg-sidebar-hover',
+              'flex w-full min-w-0 items-center gap-3 rounded-md p-1 text-start transition hover:bg-sidebar-hover',
               open && 'bg-sidebar-hover',
               !expanded && 'justify-center',
             ]"
@@ -187,13 +187,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             <ChevronsUpDown v-if="expanded" :size="15" class="shrink-0 text-sidebar-section" aria-hidden="true" />
           </button>
         </template>
-        <p class="px-2.5 pt-1 pb-1.5 text-xs font-medium text-fg-subtle">Workspaces</p>
+        <p class="px-3 pt-1 pb-2 text-xs font-medium text-fg-subtle">Workspaces</p>
         <RouterLink
           v-for="ws in workspaces"
           :key="ws.key"
           :to="workspaceHome(ws)"
           role="menuitem"
-          class="flex items-start gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface-muted"
+          class="flex items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-muted"
         >
           <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-fg-muted ring-1 ring-line ring-inset">
             <component :is="ws.icon" :size="15" aria-hidden="true" />
@@ -205,15 +205,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
           <Check v-if="ws.key === workspace.key" :size="15" class="mt-1 text-brand-600 dark:text-brand-400" aria-hidden="true" />
         </RouterLink>
         <template v-if="organizations.length > 1">
-          <div class="my-1.5 border-t border-line" />
-          <p class="px-2.5 pt-1 pb-1.5 text-xs font-medium text-fg-subtle">Organizations</p>
+          <div class="my-2 border-t border-line" />
+          <p class="px-3 pt-1 pb-2 text-xs font-medium text-fg-subtle">Organizations</p>
           <button
             v-for="org in organizations"
             :key="org.id"
             type="button"
             role="menuitem"
             :disabled="switching"
-            class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium text-fg transition-colors hover:bg-surface-muted disabled:opacity-50"
+            class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start text-sm font-medium text-fg transition-colors hover:bg-surface-muted disabled:opacity-50"
             @click="switchOrg(org.id)"
           >
             <Building2 :size="15" class="text-fg-subtle" aria-hidden="true" />
@@ -225,7 +225,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
       <button
         ref="closeButton"
         type="button"
-        class="rounded-lg p-1.5 text-sidebar-fg transition hover:bg-sidebar-hover hover:text-sidebar-fg-strong lg:hidden"
+        class="rounded-lg p-2 text-sidebar-fg transition hover:bg-sidebar-hover hover:text-sidebar-fg-strong lg:hidden"
         aria-label="Close navigation"
         @click="ui.mobileNavOpen = false"
       >
@@ -233,12 +233,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
       </button>
     </div>
 
-    <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 pt-1 pb-3" aria-label="Primary navigation">
+    <nav class="flex-1 space-y-4 overflow-y-auto px-3 pt-1 pb-3" aria-label="Primary navigation">
       <div v-for="(section, si) in sections" :key="si">
         <button
           v-if="section.title && expanded"
           type="button"
-          class="group mb-1 flex w-full items-center justify-between rounded-sm px-2.5 text-xs font-medium text-sidebar-section transition hover:text-sidebar-fg-strong"
+          class="group mb-1 flex w-full items-center justify-between rounded-sm px-3 text-xs font-medium text-sidebar-section transition hover:text-sidebar-fg-strong"
           :aria-expanded="sectionOpen(section)"
           @click="toggleSection(section.title)"
         >
@@ -253,9 +253,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
               :title="!expanded ? item.label : undefined"
               :aria-current="isActive(item) ? 'page' : undefined"
               :class="[
-                'group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors',
+                'group flex h-8 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors',
                 isActive(item)
-                  ? 'bg-sidebar-active text-sidebar-active-fg ring-1 ring-sidebar-line'
+                  ? 'bg-sidebar-active text-sidebar-active-fg shadow-card ring-1 ring-sidebar-line'
                   : 'text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-strong',
                 !expanded ? 'lg:justify-center lg:px-0' : '',
               ]"
@@ -274,11 +274,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
       </div>
     </nav>
 
-    <div class="hidden p-2.5 lg:block">
+    <div class="hidden p-3 lg:block">
       <button
         type="button"
         :class="[
-          'flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-strong',
+          'flex h-8 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-strong',
           ui.sidebarCollapsed && 'justify-center px-0',
         ]"
         :aria-label="ui.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"

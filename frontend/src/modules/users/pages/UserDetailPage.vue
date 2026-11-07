@@ -141,7 +141,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
               <p class="truncate text-sm text-fg-muted">{{ member.data.value.email }}</p>
             </div>
           </div>
-          <dl class="space-y-2.5 text-sm">
+          <dl class="space-y-3 text-sm">
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Phone</dt><dd>{{ member.data.value.phone ?? '—' }}</dd></div>
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Two-factor</dt><dd><AppBadge :tone="member.data.value.mfaEnabled ? 'success' : 'neutral'">{{ member.data.value.mfaEnabled ? 'Enabled' : 'Not enabled' }}</AppBadge></dd></div>
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Invited</dt><dd>{{ formatDateTime(member.data.value.invitedAt) }}</dd></div>

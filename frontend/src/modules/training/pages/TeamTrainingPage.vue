@@ -40,8 +40,8 @@ const columns = computed<TableColumn<Enrollment>[]>(() => [
     <AppPageHeader title="Team training" description="Who is enrolled in what, overdue assignments and certifications that need renewing." />
     <AppTabs v-model="view" :tabs="tabs">
       <AppCard :padded="false">
-        <div v-if="view === 'all'" class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="table.filters.status" class="w-56" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div v-if="view === 'all'" class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="table.filters.status" class="w-56" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Team training" :empty-title="view === 'overdue' ? 'Nothing overdue' : certView ? 'No certifications to renew' : 'No training yet'" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/training/enrollments/${row.id}`)">
           <template #cell-employee="{ row }">
@@ -61,7 +61,7 @@ const columns = computed<TableColumn<Enrollment>[]>(() => [
           <template #cell-status="{ row }"><AppBadge :tone="enrollmentTone[row.status]" dot>{{ ENROLLMENT_STATUS_LABELS[row.status] }}</AppBadge></template>
           <template #cell-expires="{ row }">
             <span class="text-fg-muted">{{ row.expiresOn ? formatDate(row.expiresOn) : '—' }}</span>
-            <AppBadge v-if="row.certification" :tone="certificationTone[row.certification]" size="sm" class="ml-2">{{ CERTIFICATION_LABELS[row.certification] }}</AppBadge>
+            <AppBadge v-if="row.certification" :tone="certificationTone[row.certification]" size="sm" class="ms-2">{{ CERTIFICATION_LABELS[row.certification] }}</AppBadge>
           </template>
         </AppDataTable>
       </AppCard>

@@ -115,7 +115,7 @@ async function save() {
           <div><dt class="text-xs text-fg-muted">User limit</dt><dd class="font-medium">{{ p.maxUsers ?? 'Unlimited' }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Organizations</dt><dd class="font-medium">{{ p.organizationCount }}</dd></div>
         </dl>
-        <div class="mt-4 flex flex-wrap gap-1.5">
+        <div class="mt-4 flex flex-wrap gap-2">
           <AppBadge v-for="k in p.featureKeys" :key="k" tone="brand">{{ moduleName(k) }}</AppBadge>
         </div>
       </AppCard>

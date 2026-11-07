@@ -18,7 +18,7 @@ const requestId = computed(() => (props.error instanceof ApiError ? props.error.
     </div>
     <p class="text-sm font-semibold text-fg">{{ title ?? 'Could not load data' }}</p>
     <p class="mt-1 max-w-md text-sm text-fg-muted">{{ message }}</p>
-    <p v-if="requestId" class="mt-2 rounded-md bg-surface-muted px-2 py-0.5 font-mono text-[11px] text-fg-subtle">Reference: {{ requestId }}</p>
+    <p v-if="requestId" class="mt-2 rounded-md bg-surface-muted px-2 py-0.5 font-mono text-2xs text-fg-subtle">Reference: {{ requestId }}</p>
     <AppButton class="mt-5" variant="secondary" size="sm" :icon="RefreshCw" @click="$emit('retry')">Try again</AppButton>
   </div>
 </template>

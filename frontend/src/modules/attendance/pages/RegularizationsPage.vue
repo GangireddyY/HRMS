@@ -118,8 +118,8 @@ async function submit() {
     <AppPageHeader title="Attendance approvals" description="Corrections, work-from-home days and overtime of the people in your scope." />
     <AppTabs v-model="tab" :tabs="tabs">
       <AppCard v-if="tab === 'regularizations'" :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="table.filters.status" class="w-48" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="table.filters.status" class="w-48" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable
           :columns="columns"
@@ -150,7 +150,7 @@ async function submit() {
             <p v-if="row.reviewedBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.reviewedBy }}</p>
           </template>
           <template #cell-actions="{ row }">
-            <div v-if="row.status === 'PENDING'" class="flex justify-end gap-1.5">
+            <div v-if="row.status === 'PENDING'" class="flex justify-end gap-2">
               <AppButton size="sm" variant="secondary" :icon="X" @click="open({ kind: 'regularization', item: row, action: 'reject' })">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="open({ kind: 'regularization', item: row, action: 'approve' })">Approve</AppButton>
             </div>
@@ -159,8 +159,8 @@ async function submit() {
       </AppCard>
 
       <AppCard v-else-if="tab === 'wfh'" :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="wfhTable.filters.status" class="w-48" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="wfhTable.filters.status" class="w-48" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable
           :columns="wfhColumns"
@@ -189,7 +189,7 @@ async function submit() {
             <p v-if="row.reviewedBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.reviewedBy }}</p>
           </template>
           <template #cell-actions="{ row }">
-            <div v-if="row.permissions.review" class="flex justify-end gap-1.5">
+            <div v-if="row.permissions.review" class="flex justify-end gap-2">
               <AppButton size="sm" variant="secondary" :icon="X" @click="open({ kind: 'wfh', item: row, action: 'reject' })">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="open({ kind: 'wfh', item: row, action: 'approve' })">Approve</AppButton>
             </div>
@@ -198,8 +198,8 @@ async function submit() {
       </AppCard>
 
       <AppCard v-else :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="otTable.filters.status" class="w-56" :options="otStatusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="otTable.filters.status" class="w-56" :options="otStatusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable
           :columns="otColumns"
@@ -237,7 +237,7 @@ async function submit() {
             <p v-else-if="row.reviewedBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.reviewedBy }}</p>
           </template>
           <template #cell-actions="{ row }">
-            <div v-if="row.permissions.review" class="flex justify-end gap-1.5">
+            <div v-if="row.permissions.review" class="flex justify-end gap-2">
               <AppButton size="sm" variant="secondary" :icon="X" @click="open({ kind: 'overtime', item: row, action: 'reject' })">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="open({ kind: 'overtime', item: row, action: 'approve' })">Approve</AppButton>
             </div>

@@ -120,7 +120,7 @@ async function reject() {
         </span>
         <div class="min-w-0 flex-1 text-sm">
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <button type="button" class="truncate text-left font-medium text-fg hover:text-brand-600 hover:underline dark:hover:text-brand-400" :disabled="busy === d.id" @click="view(d)">{{ d.title }}</button>
+            <button type="button" class="truncate text-start font-medium text-fg hover:text-brand-600 hover:underline dark:hover:text-brand-400" :disabled="busy === d.id" @click="view(d)">{{ d.title }}</button>
             <AppBadge :tone="documentStatusTone[d.status]" size="sm" dot>{{ DOCUMENT_STATUS_LABELS[d.status] }}</AppBadge>
             <AppBadge v-if="expiry(d) === 'expired'" tone="danger" size="sm">Expired {{ formatDate(d.expiryDate) }}</AppBadge>
             <AppBadge v-else-if="expiry(d) === 'soon'" tone="warning" size="sm">Expires {{ formatDate(d.expiryDate) }}</AppBadge>

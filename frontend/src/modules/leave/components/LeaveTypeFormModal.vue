@@ -98,7 +98,7 @@ async function save() {
           <AppInput v-model="form.code" label="Code" required placeholder="e.g. CL" :maxlength="10" :error="fieldErrors.code" />
         </div>
         <div>
-          <p class="mb-1.5 text-sm font-medium text-fg">Colour</p>
+          <p class="mb-2 text-sm font-medium text-fg">Colour</p>
           <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Colour">
             <button
               v-for="c in COLORS"

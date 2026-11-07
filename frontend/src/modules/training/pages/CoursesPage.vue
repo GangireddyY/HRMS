@@ -41,14 +41,14 @@ const columns: TableColumn<CourseRow>[] = [
       <template v-if="canManage" #actions><AppButton :icon="Plus" @click="formOpen = true">New course</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px_200px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px_200px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search title, code or provider" aria-label="Search courses" />
         <AppSelect v-model="table.filters.category" :options="categoryOptions" placeholder="All categories" aria-label="Filter by category" />
         <AppSelect v-if="canManage" v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
       <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Courses" empty-title="No courses yet" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/training/courses/${row.id}`)">
         <template #cell-title="{ row }">
-          <p class="font-medium text-fg">{{ row.title }} <AppBadge v-if="row.mandatory" tone="warning" size="sm" class="ml-1">Mandatory</AppBadge></p>
+          <p class="font-medium text-fg">{{ row.title }} <AppBadge v-if="row.mandatory" tone="warning" size="sm" class="ms-1">Mandatory</AppBadge></p>
           <p class="text-xs text-fg-muted">{{ row.code }} · {{ CATEGORY_LABELS[row.category] }}{{ row.durationHours ? ` · ${hours(row.durationHours)}` : '' }}</p>
         </template>
         <template #cell-delivery="{ row }">

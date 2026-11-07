@@ -72,7 +72,7 @@ async function submitReason() {
 
       <ol v-if="c.status !== 'WITHDRAWN'" class="mb-4 grid grid-cols-5 gap-2" aria-label="Progress">
         <li v-for="(s, i) in STEPS" :key="s.status" class="text-center" :aria-current="i === stepIndex ? 'step' : undefined">
-          <span class="mb-1.5 block h-1.5 rounded-full" :class="i <= stepIndex ? 'bg-brand-500' : 'bg-surface-muted'" />
+          <span class="mb-2 block h-1.5 rounded-full" :class="i <= stepIndex ? 'bg-brand-500' : 'bg-surface-muted'" />
           <span class="text-xs" :class="i === stepIndex ? 'font-medium text-fg' : 'text-fg-muted'">{{ s.label }}</span>
         </li>
       </ol>

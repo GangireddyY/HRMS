@@ -35,8 +35,8 @@ const columns: TableColumn<PipRow>[] = [
       <template #actions><AppButton :icon="Plus" @click="formOpen = true">New plan</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="flex justify-end border-b border-line p-4">
-        <AppSelect v-model="table.filters.status" class="w-56" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+      <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+        <AppSelect size="sm" v-model="table.filters.status" class="w-56" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
       <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Improvement plans" empty-title="No improvement plans" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/pips/${row.id}`)">
         <template #cell-employee="{ row }">

@@ -67,7 +67,7 @@ onMounted(() => props.autofocus && void focusBox(0));
 <template>
   <div>
     <p :id="`${id}-label`" class="label">{{ label }}</p>
-    <div role="group" :aria-labelledby="`${id}-label`" :aria-describedby="error ? `${id}-error` : help ? `${id}-help` : undefined" class="flex gap-2 sm:gap-2.5">
+    <div role="group" :aria-labelledby="`${id}-label`" :aria-describedby="error ? `${id}-error` : help ? `${id}-help` : undefined" class="flex gap-2 sm:gap-3">
       <input
         v-for="(d, i) in digits"
         :key="i"

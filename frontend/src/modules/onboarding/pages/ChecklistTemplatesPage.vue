@@ -70,7 +70,7 @@ const counts = (t: ChecklistTemplate) => (['EMPLOYEE', 'MANAGER', 'HR'] as const
       </AppEmptyState>
     </AppCard>
     <ul v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <li v-for="t in templates.data.value" :key="t.id" class="flex flex-col rounded-2xl bg-surface p-4 ring-1 ring-line">
+      <li v-for="t in templates.data.value" :key="t.id" class="flex flex-col card p-4">
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
             <p class="truncate font-semibold text-fg">{{ t.name }}</p>

@@ -84,13 +84,13 @@ function backToCredentials() {
 <template>
   <div :class="step === 'credentials' && 'auth-page-tall'">
     <template v-if="step === 'credentials'">
-      <span class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-[0_8px_24px_-6px_var(--brand-500),inset_0_1px_0_rgb(255_255_255/0.25)]">
+      <span class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br short:hidden from-brand-500 to-brand-700 text-white shadow-[0_8px_24px_-6px_var(--brand-500),inset_0_1px_0_rgb(255_255_255/0.25)]">
         <LogIn :size="22" aria-hidden="true" />
       </span>
-      <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Welcome back</h1>
-      <p class="mt-2 text-[15px] text-fg-muted">Sign in to continue to your workspace.</p>
+      <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px] short:text-2xl">Welcome back</h1>
+      <p class="mt-2 text-base text-fg-muted short:mt-1 short:text-sm">Sign in to continue to your workspace.</p>
 
-      <form class="mt-4 space-y-5" novalidate @submit.prevent="submitCredentials">
+      <form class="mt-4 space-y-5 short:space-y-3" novalidate @submit.prevent="submitCredentials">
         <AppAlert v-if="formError" title="Couldn't sign you in">{{ formError }}</AppAlert>
         <AppInput
           v-model="email"
@@ -105,14 +105,14 @@ function backToCredentials() {
         />
         <AppInput v-model="password" label="Password" type="password" autocomplete="current-password" size="lg" :icon="Lock" placeholder="Enter your password" :error="fieldErrors.password">
           <template #label-action>
-            <RouterLink to="/forgot-password" class="rounded text-[13px] font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">Forgot password?</RouterLink>
+            <RouterLink to="/forgot-password" class="rounded text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">Forgot password?</RouterLink>
           </template>
         </AppInput>
         <AppButton type="submit" block size="lg" :loading="submitting" :icon-right="ArrowRight" class="group">Sign in</AppButton>
       </form>
 
-      <div class="mt-auto pt-7">
-        <div class="mb-7 flex items-center gap-3 text-xs text-fg-subtle" aria-hidden="true">
+      <div class="mt-auto pt-6 short:pt-4">
+        <div class="mb-6 flex items-center gap-3 text-xs text-fg-subtle short:mb-3" aria-hidden="true">
           <span class="h-px flex-1 bg-line" /> New to HRMS? <span class="h-px flex-1 bg-line" />
         </div>
         <AppButton to="/register" variant="secondary" block size="lg" :icon="Building2">Create an organization</AppButton>
@@ -126,8 +126,8 @@ function backToCredentials() {
       <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
         <ShieldCheck :size="22" aria-hidden="true" />
       </span>
-      <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Two-factor verification</h1>
-      <p class="mt-2 text-[15px] text-fg-muted">
+      <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px]">Two-factor verification</h1>
+      <p class="mt-2 text-base text-fg-muted">
         {{ useRecovery ? 'Enter one of your one-time recovery codes.' : 'Enter the 6-digit code from your authenticator app.' }}
       </p>
       <form class="mt-4 space-y-4" novalidate @submit.prevent="submitMfa">

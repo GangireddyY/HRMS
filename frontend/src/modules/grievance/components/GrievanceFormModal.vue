@@ -143,14 +143,14 @@ async function save() {
       </div>
       <div>
         <p class="label">Evidence</p>
-        <button type="button" class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-3 text-left transition hover:border-brand-400" :disabled="files.length >= MAX_FILES" @click="input?.click()">
+        <button type="button" class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-3 text-start transition hover:border-brand-400" :disabled="files.length >= MAX_FILES" @click="input?.click()">
           <FileUp :size="18" class="text-fg-subtle" aria-hidden="true" />
           <span class="text-sm text-fg-muted">Screenshots, emails or documents — PDF, PNG, JPG or WebP, up to 5 MB each</span>
         </button>
         <input ref="input" type="file" multiple class="sr-only" accept=".pdf,.png,.jpg,.jpeg,.webp" aria-label="Evidence files" @change="pick" />
         <p v-if="fieldErrors.file" class="error-text" role="alert">{{ fieldErrors.file }}</p>
         <ul v-if="files.length" class="mt-2 space-y-1">
-          <li v-for="(f, i) in files" :key="`${f.name}-${i}`" class="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-1.5 text-sm">
+          <li v-for="(f, i) in files" :key="`${f.name}-${i}`" class="flex items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2 text-sm">
             <span class="min-w-0 truncate text-fg">{{ f.name }} <span class="text-xs text-fg-muted">{{ fileSize(f.size) }}</span></span>
             <button type="button" class="rounded-full p-0.5 text-fg-subtle hover:bg-surface hover:text-fg" :aria-label="`Remove ${f.name}`" @click="files.splice(i, 1)"><X :size="14" /></button>
           </li>

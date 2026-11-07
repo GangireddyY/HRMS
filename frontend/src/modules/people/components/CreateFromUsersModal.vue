@@ -47,13 +47,13 @@ async function create() {
   <AppModal :open="open" title="Create employee records" description="Each record uses the person's name, email and joining date. Add department, designation, manager and shift afterwards." size="lg" @close="emit('close')">
     <AppAlert tone="info" class="mb-4">Employee codes are generated automatically (EMP-0001…). Each person can then use attendance and leave.</AppAlert>
     <div class="overflow-hidden rounded-xl ring-1 ring-line">
-      <label class="flex cursor-pointer items-center gap-3 border-b border-line bg-surface-muted/60 px-4 py-2.5 text-sm font-medium text-fg">
+      <label class="flex cursor-pointer items-center gap-3 border-b border-line bg-surface-muted/60 px-4 py-3 text-sm font-medium text-fg">
         <input type="checkbox" class="h-4 w-4 accent-brand-600" :checked="allSelected" :indeterminate="selected.size > 0 && !allSelected" @change="toggleAll" />
         Select all ({{ members.length }})
       </label>
       <ul class="max-h-80 divide-y divide-line overflow-y-auto">
         <li v-for="m in members" :key="m.membershipId">
-          <label class="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-surface-muted/50">
+          <label class="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-surface-muted/50">
             <input type="checkbox" class="h-4 w-4 accent-brand-600" :checked="selected.has(m.membershipId)" :aria-label="`${m.firstName} ${m.lastName}`" @change="toggle(m.membershipId)" />
             <AppAvatar :name="`${m.firstName} ${m.lastName}`" :src="m.avatarUrl" size="sm" />
             <span class="min-w-0 flex-1">

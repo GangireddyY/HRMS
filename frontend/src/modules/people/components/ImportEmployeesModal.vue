@@ -86,7 +86,7 @@ const groupedErrors = computed(() => result.value?.errors ?? []);
 
       <button
         type="button"
-        class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-4 text-left transition-colors hover:border-brand-400 hover:bg-surface-muted/50"
+        class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-4 text-start transition-colors hover:border-brand-400 hover:bg-surface-muted/50"
         :disabled="checking || importing"
         @click="input?.click()"
       >
@@ -103,7 +103,7 @@ const groupedErrors = computed(() => result.value?.errors ?? []);
 
       <template v-if="result">
         <AppAlert v-if="ready" tone="success" :title="`${result.total.toLocaleString()} employee${result.total === 1 ? '' : 's'} ready to import`">
-          <span class="inline-flex items-center gap-1.5"><CheckCircle2 class="h-4 w-4" aria-hidden="true" /> Every row is valid.</span>
+          <span class="inline-flex items-center gap-2"><CheckCircle2 class="h-4 w-4" aria-hidden="true" /> Every row is valid.</span>
           <span v-if="result.ignoredColumns.length"> Ignored columns: {{ result.ignoredColumns.join(', ') }}.</span>
         </AppAlert>
         <template v-else-if="result.errorCount">
@@ -112,14 +112,14 @@ const groupedErrors = computed(() => result.value?.errors ?? []);
           </AppAlert>
           <div class="max-h-64 overflow-y-auto rounded-xl ring-1 ring-line">
             <table class="w-full text-sm">
-              <thead class="sticky top-0 bg-surface-muted text-left text-xs text-fg-muted">
+              <thead class="sticky top-0 bg-surface-muted text-start text-xs text-fg-muted">
                 <tr><th class="px-3 py-2 font-medium">Row</th><th class="px-3 py-2 font-medium">Column</th><th class="px-3 py-2 font-medium">Problem</th></tr>
               </thead>
               <tbody class="divide-y divide-line">
                 <tr v-for="(e, i) in groupedErrors" :key="i">
-                  <td class="px-3 py-1.5 tabular-nums text-fg-muted">{{ e.row }}</td>
-                  <td class="px-3 py-1.5 font-mono text-xs text-fg-muted">{{ e.column ?? '—' }}</td>
-                  <td class="px-3 py-1.5 text-fg">{{ e.message }}</td>
+                  <td class="px-3 py-2 tabular-nums text-fg-muted">{{ e.row }}</td>
+                  <td class="px-3 py-2 font-mono text-xs text-fg-muted">{{ e.column ?? '—' }}</td>
+                  <td class="px-3 py-2 text-fg">{{ e.message }}</td>
                 </tr>
               </tbody>
             </table>

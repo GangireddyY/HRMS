@@ -105,7 +105,7 @@ async function exportAs(format: ReportExportFormat) {
         </template>
       </AppPageHeader>
 
-      <div class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
+      <div class="mb-4 flex flex-wrap items-end gap-3 card p-4">
         <AppDatePicker v-if="def.period === 'asOf'" v-model="filters.asOf" class="w-48" label="On" :max="today" />
         <template v-else-if="def.period === 'range'">
           <AppDatePicker v-model="filters.from" class="w-48" label="From" :max="filters.to" />
@@ -116,7 +116,7 @@ async function exportAs(format: ReportExportFormat) {
           <AppInput v-model="filters.toMonth" class="w-40" label="To month" type="month" />
         </template>
         <AppSelect v-if="def.departmentFilter" v-model="filters.departmentId" class="w-56" label="Department" placeholder="All departments" :options="departmentOptions" />
-        <p v-if="r" class="ml-auto text-xs text-fg-muted">{{ periodLabel }}</p>
+        <p v-if="r" class="ms-auto text-xs text-fg-muted">{{ periodLabel }}</p>
       </div>
 
       <AppSkeleton v-if="report.loading.value && !r" :lines="8" />

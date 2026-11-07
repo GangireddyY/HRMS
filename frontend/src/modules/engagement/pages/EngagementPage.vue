@@ -104,17 +104,17 @@ async function removeRecognition(id: string) {
             <AppCard v-if="events.length" title="Upcoming events" :icon="CalendarDays" :padded="false">
               <ul class="divide-y divide-line/70">
                 <li v-for="e in events" :key="e.id">
-                  <RouterLink :to="`/me/engagement/announcements/${e.id}`" class="block px-4 py-2.5 transition hover:bg-surface-muted/60">
-                    <p class="truncate text-[13px] font-medium text-fg">{{ e.title }}</p>
+                  <RouterLink :to="`/me/engagement/announcements/${e.id}`" class="block px-4 py-3 transition hover:bg-surface-muted/60">
+                    <p class="truncate text-sm font-medium text-fg">{{ e.title }}</p>
                     <p class="text-xs text-fg-muted">{{ eventWhen(e) }}<template v-if="e.mine.rsvp"> · {{ RSVP_LABELS[e.mine.rsvp] }}</template></p>
                   </RouterLink>
                 </li>
               </ul>
             </AppCard>
             <AppCard title="Recognition this month" :icon="PartyPopper">
-              <p v-if="!stats.data.value?.topRecipients.length" class="text-[13px] text-fg-muted">Nobody yet — be the first to thank a colleague.</p>
+              <p v-if="!stats.data.value?.topRecipients.length" class="text-sm text-fg-muted">Nobody yet — be the first to thank a colleague.</p>
               <ol v-else class="space-y-2">
-                <li v-for="t in stats.data.value.topRecipients.slice(0, 5)" :key="t.employee.id" class="flex items-center gap-2.5 text-[13px]">
+                <li v-for="t in stats.data.value.topRecipients.slice(0, 5)" :key="t.employee.id" class="flex items-center gap-3 text-sm">
                   <AppAvatar :name="t.employee.name" size="sm" />
                   <span class="min-w-0 flex-1 truncate text-fg">{{ t.employee.name }}</span>
                   <span class="text-fg-muted tabular-nums">{{ t.count }}</span>
@@ -131,7 +131,7 @@ async function removeRecognition(id: string) {
           <AppSkeleton v-if="wall.loading.value && !wall.rows.value.length" :lines="6" />
           <AppErrorState v-else-if="wall.error.value" :error="wall.error.value" @retry="wall.load" />
           <AppCard v-else-if="!wall.rows.value.length"><AppEmptyState :icon="PartyPopper" title="No recognition yet" description="Be the first to thank a colleague." /></AppCard>
-          <article v-for="r in wall.rows.value" :key="r.id" class="flex gap-4 rounded-2xl bg-surface p-4 ring-1 ring-line">
+          <article v-for="r in wall.rows.value" :key="r.id" class="flex gap-4 card p-4">
             <BadgeIcon :badge="r.badge" />
             <div class="min-w-0 flex-1">
               <p class="text-sm text-fg">

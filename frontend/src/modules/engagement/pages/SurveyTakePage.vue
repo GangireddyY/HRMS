@@ -52,8 +52,8 @@ async function submit() {
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppCard v-for="(q, i) in s.questions" :key="q.id">
           <fieldset>
-            <legend class="mb-3 text-sm font-medium text-fg">{{ i + 1 }}. {{ q.prompt }}<span v-if="q.required" class="ml-0.5 text-red-500" aria-hidden="true">*</span></legend>
-            <div v-if="q.type === 'RATING' || q.type === 'NPS'" class="flex flex-wrap gap-1.5" role="radiogroup" :aria-label="q.prompt">
+            <legend class="mb-3 text-sm font-medium text-fg">{{ i + 1 }}. {{ q.prompt }}<span v-if="q.required" class="ms-0.5 text-red-500" aria-hidden="true">*</span></legend>
+            <div v-if="q.type === 'RATING' || q.type === 'NPS'" class="flex flex-wrap gap-2" role="radiogroup" :aria-label="q.prompt">
               <button
                 v-for="n in q.type === 'RATING' ? [1, 2, 3, 4, 5] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
                 :key="n"
@@ -68,7 +68,7 @@ async function submit() {
               </button>
               <p class="mt-1 w-full text-xs text-fg-subtle">{{ q.type === 'RATING' ? '1 = very poor, 5 = excellent' : '0 = not at all likely, 10 = extremely likely' }}</p>
             </div>
-            <div v-else-if="q.type === 'CHOICE'" class="space-y-1.5">
+            <div v-else-if="q.type === 'CHOICE'" class="space-y-2">
               <label v-for="(o, oi) in q.options" :key="oi" class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-line has-[:checked]:ring-2 has-[:checked]:ring-brand-500">
                 <input v-model="answers[q.id]" type="radio" :name="q.id" :value="oi" class="accent-brand-600" />
                 {{ o }}
@@ -94,7 +94,7 @@ async function submit() {
           </div>
         </section>
         <AppCard v-if="s.anonymous" title="Anonymous" :icon="ShieldCheck">
-          <p class="text-[13px] text-fg-muted">Your answers are stored without your name, and results are only shown once at least three people have answered.</p>
+          <p class="text-sm text-fg-muted">Your answers are stored without your name, and results are only shown once at least three people have answered.</p>
         </AppCard>
       </template>
       </AppSplit>

@@ -107,7 +107,7 @@ const managingRotations = ref(false);
       </template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="flex flex-wrap items-center gap-3 border-b border-line p-4">
+      <div class="flex flex-wrap items-center gap-3 border-b border-line/70 px-4 py-3">
         <div class="flex items-center gap-1">
           <AppButton size="sm" variant="ghost" :icon="ChevronLeft" aria-label="Earlier" @click="start = addDays(start, -7)" />
           <AppButton size="sm" variant="secondary" @click="start = monday(today)">This week</AppButton>
@@ -125,18 +125,19 @@ const managingRotations = ref(false);
           <table class="w-full border-separate border-spacing-1 text-xs">
             <thead>
               <tr>
-                <th class="sticky left-0 z-10 bg-surface text-left font-medium text-fg-muted">
+                <th class="sticky left-0 z-10 bg-surface text-start font-medium text-fg-muted">
                   <AppCheckbox v-if="canPlan" v-model="allOnPage" label="Employee" />
                   <span v-else>Employee</span>
                 </th>
-                <th v-for="d in roster.data.value!.days" :key="d" :class="['min-w-16 font-medium', d === today ? 'text-brand-600 dark:text-brand-300' : 'text-fg-muted']">
-                  <span class="block">{{ dayHeader(d).wd }}</span><span class="block tabular-nums">{{ dayHeader(d).n }}</span>
+                <th v-for="d in roster.data.value!.days" :key="d" :class="['min-w-16 pb-1 font-medium', d === today ? 'text-brand-600 dark:text-brand-300' : 'text-fg-muted']" :aria-current="d === today ? 'date' : undefined">
+                  <span class="block text-2xs uppercase">{{ dayHeader(d).wd }}</span>
+                  <span :class="['mx-auto mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold tabular-nums', d === today ? 'bg-brand-600 text-white shadow-xs dark:bg-brand-500' : 'text-fg']">{{ dayHeader(d).n }}</span>
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in rows" :key="r.employee.id">
-                <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pr-2 text-left font-normal sm:max-w-none sm:min-w-48">
+                <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pe-2 text-start font-normal sm:max-w-none sm:min-w-48">
                   <label class="flex items-center gap-2">
                     <input v-if="canPlan" type="checkbox" class="h-4 w-4 rounded border-line accent-brand-600" :checked="selected.includes(r.employee.id)" :aria-label="`Select ${r.employee.name}`" @change="toggle(r.employee.id)" />
                     <span class="min-w-0">
@@ -145,9 +146,9 @@ const managingRotations = ref(false);
                     </span>
                   </label>
                 </th>
-                <td v-for="d in r.days" :key="d.date" :class="['rounded-md px-1.5 py-1.5 text-center ring-1 ring-inset', cell(d), d.date < today && 'opacity-60']" :title="d.off ? 'Day off' : `${d.shiftName} ${d.time}${d.rostered ? ' (rostered)' : ''}`">
+                <td v-for="d in r.days" :key="d.date" :class="['rounded-md px-2 py-2 text-center ring-1 ring-inset', cell(d), d.date < today && 'opacity-60']" :title="d.off ? 'Day off' : `${d.shiftName} ${d.time}${d.rostered ? ' (rostered)' : ''}`">
                   <span class="block font-medium">{{ d.off ? 'Off' : short(d.shiftName) }}</span>
-                  <span v-if="!d.off" class="block text-[10px] opacity-75 tabular-nums">{{ d.time }}</span>
+                  <span v-if="!d.off" class="block text-2xs opacity-75 tabular-nums">{{ d.time }}</span>
                 </td>
               </tr>
             </tbody>

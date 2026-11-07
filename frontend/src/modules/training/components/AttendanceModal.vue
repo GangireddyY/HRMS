@@ -53,7 +53,7 @@ async function save() {
       <AppAlert v-if="!ended" tone="info" class="mb-4">The session hasn't ended: people you don't tick stay enrolled for now.</AppAlert>
       <p v-if="!rows.length" class="text-sm text-fg-muted">Nobody is enrolled in this session.</p>
       <ul v-else class="divide-y divide-line">
-        <li v-for="r in rows" :key="r.id" class="flex items-center justify-between gap-3 py-2.5">
+        <li v-for="r in rows" :key="r.id" class="flex items-center justify-between gap-3 py-3">
           <AppCheckbox v-model="attended[r.id]" :label="r.employee.name" :description="r.employee.department ?? r.employee.employeeCode" :disabled="r.status === 'COMPLETED' || r.status === 'FAILED'" />
           <AppBadge :tone="enrollmentTone[r.status]" size="sm">{{ ENROLLMENT_STATUS_LABELS[r.status] }}</AppBadge>
         </li>

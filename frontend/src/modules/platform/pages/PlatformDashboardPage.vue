@@ -57,7 +57,7 @@ function planShare(count: number): number {
                   <span class="font-medium text-fg">{{ p.name }}</span>
                   <span class="tabular-nums text-fg-muted">{{ p.organizations }}</span>
                 </div>
-                <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
+                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
                   <div class="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-[width] duration-500" :style="{ width: `${planShare(p.organizations)}%` }" />
                 </div>
               </li>

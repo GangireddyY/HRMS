@@ -118,7 +118,7 @@ const rules = (t: LeaveType) =>
       <AppAlert v-if="types.data.value?.some((t) => !t.isPaid && !t.unlimited)" tone="info" class="m-4 mb-0">Unpaid leave types are reported to payroll as loss of pay.</AppAlert>
       <AppDataTable :columns="columns" :rows="types.data.value ?? []" :loading="types.loading.value" :error="types.error.value" caption="Leave types" empty-title="No leave types" @retry="types.run">
         <template #cell-name="{ row }">
-          <span class="flex items-center gap-2.5">
+          <span class="flex items-center gap-3">
             <span class="h-3 w-3 shrink-0 rounded-full" :style="{ backgroundColor: row.color }" aria-hidden="true" />
             <span class="min-w-0">
               <span class="block font-medium text-fg">{{ row.name }} <span class="font-mono text-xs text-fg-subtle">{{ row.code }}</span></span>

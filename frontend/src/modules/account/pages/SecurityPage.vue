@@ -116,7 +116,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
       <div v-if="sessions.loading.value && !sessions.data.value" class="p-4"><AppSkeleton :lines="3" /></div>
       <AppErrorState v-else-if="sessions.error.value" :error="sessions.error.value" @retry="sessions.run" />
       <ul v-else class="divide-y divide-line/70">
-        <li v-for="s in sessions.data.value" :key="s.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+        <li v-for="s in sessions.data.value" :key="s.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div class="flex items-center gap-3">
             <span
               :class="[
@@ -129,8 +129,8 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
             <div>
               <p class="text-sm font-medium text-fg">
                 {{ describeUserAgent(s.userAgent) }}
-                <AppBadge v-if="s.current" tone="success" class="ml-1">This device</AppBadge>
-                <AppBadge v-if="s.mfaVerified" tone="brand" class="ml-1">2FA</AppBadge>
+                <AppBadge v-if="s.current" tone="success" class="ms-1">This device</AppBadge>
+                <AppBadge v-if="s.mfaVerified" tone="brand" class="ms-1">2FA</AppBadge>
               </p>
               <p class="text-xs text-fg-muted">{{ s.ipAddress ?? 'Unknown IP' }} · {{ s.organization?.name ?? 'Platform' }} · active {{ timeAgo(s.lastActiveAt) }}</p>
             </div>
@@ -155,7 +155,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
         <template #cell-createdAt="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         <template #cell-outcome="{ row }">
           <AppBadge :tone="loginTone[row.outcome]">{{ statusLabel(row.outcome) }}</AppBadge>
-          <span v-if="row.failureReason" class="ml-1 text-xs text-fg-subtle">{{ row.failureReason.replace(/_/g, ' ') }}</span>
+          <span v-if="row.failureReason" class="ms-1 text-xs text-fg-subtle">{{ row.failureReason.replace(/_/g, ' ') }}</span>
         </template>
         <template #cell-device="{ row }">{{ describeUserAgent(row.userAgent) }}</template>
         <template #cell-organization="{ row }">{{ row.organization?.name ?? '—' }}</template>

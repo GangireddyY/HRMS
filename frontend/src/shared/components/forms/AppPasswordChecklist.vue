@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { Check } from '@lucide/vue';
 import { PASSWORD_MIN_LENGTH_FLOOR, type PasswordPolicy } from '@contracts';
 
-const props = defineProps<{ password: string; policy: PasswordPolicy }>();
+/** `compact`: on short laptop screens the rules sit three to a row with tighter spacing. */
+const props = defineProps<{ password: string; policy: PasswordPolicy; compact?: boolean }>();
 
 const rules = computed(() => {
   const p = props.password;
@@ -21,7 +22,7 @@ const barColor = computed(() => (strength.value === 1 ? 'bg-emerald-500' : stren
 </script>
 
 <template>
-  <div class="space-y-2.5">
+  <div :class="['space-y-3', compact && 'lg:short:space-y-2']">
     <div class="flex gap-1" aria-hidden="true">
       <span
         v-for="(r, i) in rules"
@@ -29,7 +30,7 @@ const barColor = computed(() => (strength.value === 1 ? 'bg-emerald-500' : stren
         :class="['h-1 flex-1 rounded-full transition-colors duration-300', password && i < met ? barColor : 'bg-surface-muted']"
       />
     </div>
-    <ul class="grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2" aria-label="Password requirements">
+    <ul :class="['grid grid-cols-1 gap-x-4 gap-y-2 text-xs sm:grid-cols-2', compact && 'lg:short:grid-cols-3 lg:short:gap-x-3 lg:short:gap-y-1']" aria-label="Password requirements">
       <li v-for="r in rules" :key="r.label" :class="['flex items-center gap-2 transition-colors', r.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-fg-muted']">
         <span
           :class="[
@@ -42,7 +43,7 @@ const barColor = computed(() => (strength.value === 1 ? 'bg-emerald-500' : stren
         </span>
         <span>{{ r.label }}<span class="sr-only">{{ r.ok ? ' (met)' : ' (not met)' }}</span></span>
       </li>
-      <li v-if="policy.historyCount > 0" class="text-fg-subtle sm:col-span-2">Cannot reuse your last {{ policy.historyCount }} passwords or contain your name/email.</li>
+      <li v-if="policy.historyCount > 0" :class="['text-fg-subtle sm:col-span-2', compact && 'lg:short:col-span-3']">Cannot reuse your last {{ policy.historyCount }} passwords or contain your name/email.</li>
     </ul>
   </div>
 </template>

@@ -9,7 +9,7 @@ defineProps<{ events: CaseEvent[] }>();
 
 <template>
   <AppCard title="Timeline">
-    <ol class="relative space-y-4 border-l border-line pl-5">
+    <ol class="relative space-y-4 border-l border-line ps-5">
       <li v-for="e in events" :key="e.id" class="relative">
         <span class="absolute top-1.5 -left-[1.6rem] h-2.5 w-2.5 rounded-full bg-brand-500 ring-4 ring-surface" aria-hidden="true" />
         <p class="flex flex-wrap items-center gap-2 text-sm font-medium text-fg">

@@ -25,7 +25,7 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
   <!-- Compact: account menu quick switcher -->
   <div v-if="variant === 'compact'" class="space-y-3">
     <section>
-      <p class="mb-1.5 text-xs font-medium text-fg-subtle">Mode</p>
+      <p class="mb-2 text-xs font-medium text-fg-subtle">Mode</p>
       <div class="grid grid-cols-3 gap-1 rounded-lg bg-surface-muted p-1" role="radiogroup" aria-label="Color mode">
         <button
           v-for="m in modes"
@@ -34,7 +34,7 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
           role="radio"
           :aria-checked="theme.mode === m.value"
           :class="[
-            'flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition',
+            'flex items-center justify-center gap-2 rounded-md py-1 text-xs font-medium transition',
             theme.mode === m.value ? 'bg-surface text-fg shadow-[0_1px_2px_rgb(0_0_0/0.08)]' : 'text-fg-muted hover:text-fg',
           ]"
           @click="theme.setMode(m.value)"
@@ -44,8 +44,8 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
       </div>
     </section>
     <section>
-      <p class="mb-1.5 text-xs font-medium text-fg-subtle">Color theme</p>
-      <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Color theme">
+      <p class="mb-2 text-xs font-medium text-fg-subtle">Color theme</p>
+      <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Color theme">
         <button
           v-for="t in theme.themes"
           :key="t.key"
@@ -78,7 +78,7 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
           :aria-checked="theme.mode === m.value"
           :aria-label="m.label"
           :class="[
-            'group rounded-xl border p-2 text-left transition',
+            'group rounded-xl border p-2 text-start transition',
             theme.mode === m.value ? 'border-brand-500 ring-4 ring-brand-500/15' : 'border-line hover:border-line-strong',
           ]"
           @click="theme.setMode(m.value)"
@@ -95,7 +95,7 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
               </span>
             </span>
           </span>
-          <span class="mt-2 flex items-center gap-1.5 px-1 text-sm font-medium text-fg">
+          <span class="mt-2 flex items-center gap-2 px-1 text-sm font-medium text-fg">
             <component :is="m.icon" :size="14" class="text-fg-muted" aria-hidden="true" /> {{ m.label }}
           </span>
         </button>
@@ -112,7 +112,7 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
           role="radio"
           :aria-checked="theme.color === t.key"
           :class="[
-            'flex items-center gap-3 rounded-xl border p-3 text-left transition',
+            'flex items-center gap-3 rounded-xl border p-3 text-start transition',
             theme.color === t.key ? 'border-brand-500 bg-brand-50/60 ring-4 ring-brand-500/15 dark:bg-brand-500/10' : 'border-line hover:border-line-strong',
           ]"
           @click="theme.setColor(t.key)"
@@ -139,18 +139,18 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
           :aria-checked="theme.sidebar === s.key"
           :aria-label="`${s.label} sidebar`"
           :class="[
-            'rounded-xl border p-2 text-left transition',
+            'rounded-xl border p-2 text-start transition',
             theme.sidebar === s.key ? 'border-brand-500 ring-4 ring-brand-500/15' : 'border-line hover:border-line-strong',
           ]"
           @click="theme.setSidebar(s.key)"
         >
           <span class="flex h-16 overflow-hidden rounded-lg ring-1 ring-line" aria-hidden="true">
-            <span :class="['flex w-2/5 flex-col gap-1 p-1.5', sidebarPreview[s.key].bg]">
+            <span :class="['flex w-2/5 flex-col gap-1 p-2', sidebarPreview[s.key].bg]">
               <span :class="['h-1.5 w-6 rounded-full', sidebarPreview[s.key].line]" />
               <span :class="['h-2.5 rounded', sidebarPreview[s.key].active]" />
               <span :class="['h-1.5 w-5 rounded-full', sidebarPreview[s.key].line]" />
             </span>
-            <span class="flex flex-1 flex-col gap-1 bg-white p-1.5">
+            <span class="flex flex-1 flex-col gap-1 bg-white p-2">
               <span class="h-1.5 w-8 rounded-full bg-zinc-200" />
               <span class="h-5 rounded border border-zinc-200" />
             </span>

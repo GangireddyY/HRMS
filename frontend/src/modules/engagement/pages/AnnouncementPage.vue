@@ -53,8 +53,8 @@ async function respond(fn: () => Promise<Announcement>, success: string) {
           <AppEmptyState v-if="!recent.loading.value && !others.length" :icon="Megaphone" title="Nothing else right now" compact />
           <ul v-else class="divide-y divide-line/70">
             <li v-for="a in others" :key="a.id">
-              <RouterLink :to="`/me/engagement/announcements/${a.id}`" class="block px-4 py-2.5 transition hover:bg-surface-muted/60">
-                <p class="line-clamp-2 text-[13px] font-medium text-fg">{{ a.title }}</p>
+              <RouterLink :to="`/me/engagement/announcements/${a.id}`" class="block px-4 py-3 transition hover:bg-surface-muted/60">
+                <p class="line-clamp-2 text-sm font-medium text-fg">{{ a.title }}</p>
                 <p class="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
                   <AppBadge :tone="categoryTone[a.category]" size="sm">{{ CATEGORY_LABELS[a.category] }}</AppBadge>
                   {{ a.publishedAt ? timeAgo(a.publishedAt) : '' }}

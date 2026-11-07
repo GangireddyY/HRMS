@@ -147,7 +147,7 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
           <AppCard title="About this course">
             <p v-if="c.description" class="text-sm whitespace-pre-line text-fg">{{ c.description }}</p>
             <p v-else class="text-sm text-fg-muted">No description.</p>
-            <a v-if="c.contentUrl" :href="c.contentUrl" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />{{ c.delivery === 'SELF_PACED' ? 'Course content' : 'Pre-reading' }}</a>
+            <a v-if="c.contentUrl" :href="c.contentUrl" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />{{ c.delivery === 'SELF_PACED' ? 'Course content' : 'Pre-reading' }}</a>
           </AppCard>
 
           <AppCard v-if="sessionBased" title="Sessions">

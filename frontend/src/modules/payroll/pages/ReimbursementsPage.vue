@@ -65,8 +65,8 @@ const columns = computed<TableColumn<Claim>[]>(() => [
     <AppPageHeader title="Reimbursements" description="Approve expense claims; approved claims are paid (tax-free) with the next payroll run." />
     <AppTabs v-model="view" :tabs="tabs">
       <AppCard :padded="false">
-        <div v-if="view === 'all'" class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="table.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        <div v-if="view === 'all'" class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
+          <AppSelect size="sm" v-model="table.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
         <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Reimbursement claims" :empty-title="view === 'approve' ? 'Nothing to approve' : 'No claims'" @page="table.setPage" @retry="table.load">
           <template #cell-employee="{ row }">

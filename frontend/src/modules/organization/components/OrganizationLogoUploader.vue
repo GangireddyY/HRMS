@@ -119,10 +119,10 @@ function onDrop(e: DragEvent) {
       <p class="mt-2 max-w-md text-xs text-fg-muted">
         PNG, JPG or WebP, up to 5 MB. Empty borders are trimmed and the image is optimized automatically; square and wide logos both work{{ disabled ? '' : '. You can also drop a file on the preview' }}.
       </p>
-      <p v-if="src && appearance?.opaque && !disabled" class="mt-1.5 max-w-md text-xs text-amber-700 dark:text-amber-300">
+      <p v-if="src && appearance?.opaque && !disabled" class="mt-2 max-w-md text-xs text-amber-700 dark:text-amber-300">
         This logo has a solid background, so it appears as a badge on dark themes. For the most seamless look, upload a PNG with a transparent background.
       </p>
-      <p v-if="error" class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
+      <p v-if="error" class="mt-2 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
     </div>
 
     <input ref="input" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" tabindex="-1" aria-label="Logo file" @change="upload(($event.target as HTMLInputElement).files?.[0])" />

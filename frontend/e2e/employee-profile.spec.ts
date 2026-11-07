@@ -60,7 +60,7 @@ test.describe('employee profile, documents, import and org chart', () => {
     // Org chart opens at this employee.
     await page.locator('#main').getByRole('link', { name: 'Org chart' }).click();
     await expect(page.getByRole('heading', { name: 'Org chart' })).toBeVisible();
-    await expect(page.getByRole('treeitem').filter({ hasText: `Divya ${last}` })).toBeVisible();
+    await expect(page.getByRole('treeitem', { name: `Divya ${last}` })).toBeVisible();
   });
 
   test('imports employees from CSV after checking the file', async ({ page }) => {

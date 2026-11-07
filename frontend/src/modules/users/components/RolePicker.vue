@@ -22,7 +22,7 @@ function toggle(id: string) {
         v-for="r in roles"
         :key="r.id"
         :class="[
-          'flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 transition-colors',
+          'flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition-colors',
           model.includes(r.id) ? 'border-brand-500/50 bg-brand-50/70 dark:bg-brand-500/10' : 'border-line hover:bg-surface-muted',
         ]"
       >
@@ -36,7 +36,7 @@ function toggle(id: string) {
           <Check :size="12" :stroke-width="3" class="pointer-events-none absolute inset-0 m-auto hidden text-white peer-checked:block" aria-hidden="true" />
         </span>
         <span class="min-w-0">
-          <span class="flex items-center gap-1.5 text-sm font-medium text-fg">
+          <span class="flex items-center gap-2 text-sm font-medium text-fg">
             {{ r.name }} <AppBadge v-if="!r.isSystem" tone="info" size="sm">Custom</AppBadge>
           </span>
           <span v-if="r.description" class="block text-xs text-fg-muted">{{ r.description }}</span>

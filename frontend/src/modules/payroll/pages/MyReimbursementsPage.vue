@@ -51,7 +51,7 @@ const columns: TableColumn<Claim>[] = [
     <AppCard :padded="false">
       <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="My claims" empty-title="No claims yet" @page="table.setPage" @retry="table.load">
         <template #cell-title="{ row }">
-          <p class="flex items-center gap-1.5 font-medium text-fg"><Receipt :size="14" class="text-fg-subtle" aria-hidden="true" />{{ row.title }}</p>
+          <p class="flex items-center gap-2 font-medium text-fg"><Receipt :size="14" class="text-fg-subtle" aria-hidden="true" />{{ row.title }}</p>
           <p class="text-xs text-fg-muted">{{ CLAIM_CATEGORY_LABELS[row.category] }} · {{ formatDate(row.expenseDate) }}</p>
         </template>
         <template #cell-amount="{ row }"><span class="font-medium tabular-nums">{{ rupees(row.amount, true) }}</span></template>

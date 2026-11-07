@@ -118,7 +118,7 @@ const columns: TableColumn<SalaryRow>[] = [
         <li v-for="(s, i) in history.salaries" :key="s.id" class="rounded-xl p-4 ring-1 ring-line">
           <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p class="font-semibold text-fg">{{ rupees(s.annualCtc) }} a year <AppBadge v-if="i === 0" tone="brand" size="sm" class="ml-1">Latest</AppBadge></p>
+              <p class="font-semibold text-fg">{{ rupees(s.annualCtc) }} a year <AppBadge v-if="i === 0" tone="brand" size="sm" class="ms-1">Latest</AppBadge></p>
               <p class="text-xs text-fg-muted">From {{ formatDate(s.effectiveFrom) }} · {{ s.structure.name }}{{ s.pfApplicable ? '' : ' · no PF' }}{{ s.reason ? ` · ${s.reason}` : '' }}{{ s.createdBy ? ` · by ${s.createdBy}` : '' }}</p>
             </div>
             <AppButton v-if="canRevise && !s.locked" size="sm" variant="ghost" :icon="Trash2" :aria-label="`Delete salary from ${s.effectiveFrom}`" @click="removeSalary(s.id, s.effectiveFrom)" />

@@ -83,7 +83,7 @@ defineExpose({ reload: () => today.run() });
           <AppBadge v-else-if="data.isWeeklyOff"><Sun :size="11" /> {{ data.rostered ? 'Day off' : 'Weekly off' }}</AppBadge>
           <AppBadge v-if="data.workFromHome" tone="info"><House :size="11" /> Working from home</AppBadge>
         </p>
-        <p v-if="data.geofence && canPunch && !done" class="mt-1 inline-flex items-center gap-1.5 text-xs text-fg-subtle">
+        <p v-if="data.geofence && canPunch && !done" class="mt-1 inline-flex items-center gap-2 text-xs text-fg-subtle">
           <MapPin :size="12" aria-hidden="true" />Punch in within {{ data.geofence.radiusMetres }} m of {{ data.geofence.location }} (your browser will ask for your location).
         </p>
       </div>
@@ -97,13 +97,13 @@ defineExpose({ reload: () => today.run() });
           <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-label="Worked today" :aria-valuenow="workedSoFar" :aria-valuemax="data.shift?.fullDayMinutes">
             <div class="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-[width] duration-700" :style="{ width: `${progress}%` }" />
           </div>
-          <p class="mt-1.5 text-xs text-fg-muted">Worked {{ formatMinutes(workedSoFar) }} of {{ formatMinutes(data.shift?.fullDayMinutes) }}</p>
+          <p class="mt-2 text-xs text-fg-muted">Worked {{ formatMinutes(workedSoFar) }} of {{ formatMinutes(data.shift?.fullDayMinutes) }}</p>
         </template>
         <dl v-else-if="done" class="grid grid-cols-3 gap-3 text-sm">
           <div><dt class="text-xs text-fg-muted">In</dt><dd class="font-semibold text-fg">{{ formatTime(done.checkInAt, tz) }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Out</dt><dd class="font-semibold text-fg">{{ formatTime(done.checkOutAt, tz) }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Worked</dt><dd class="font-semibold text-fg">{{ formatMinutes(done.workedMinutes) }}</dd></div>
-          <div class="col-span-3 flex flex-wrap gap-1.5">
+          <div class="col-span-3 flex flex-wrap gap-2">
             <AppBadge v-if="done.status" :tone="dayStatusTone[done.status]" dot>{{ DAY_STATUS_LABELS[done.status] }}</AppBadge>
             <AppBadge v-if="done.overtimeMinutes" tone="violet">Overtime {{ formatMinutes(done.overtimeMinutes) }}</AppBadge>
           </div>

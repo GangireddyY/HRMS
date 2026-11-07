@@ -172,7 +172,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
             <AppCard title="Reporting">
               <div class="text-sm">
                 <p class="text-xs text-fg-muted">Reports to</p>
-                <RouterLink v-if="employee.data.value.manager" :to="`/hr/employees/${employee.data.value.manager.id}`" class="mt-1.5 -m-1.5 flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-muted">
+                <RouterLink v-if="employee.data.value.manager" :to="`/hr/employees/${employee.data.value.manager.id}`" class="mt-2 -m-2 flex items-center gap-3 rounded-lg p-2 hover:bg-surface-muted">
                   <AppAvatar :name="employee.data.value.manager.name" size="sm" />
                   <span class="font-medium text-fg">{{ employee.data.value.manager.name }}</span>
                 </RouterLink>
@@ -181,9 +181,9 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
               <div class="mt-4 text-sm">
                 <p class="text-xs text-fg-muted">Direct reports ({{ employee.data.value.directReports.length }})</p>
                 <AppEmptyState v-if="!employee.data.value.directReports.length" compact :icon="UserRound" title="No direct reports" />
-                <ul v-else class="mt-1.5 space-y-1">
+                <ul v-else class="mt-2 space-y-1">
                   <li v-for="r in employee.data.value.directReports" :key="r.id">
-                    <RouterLink :to="`/hr/employees/${r.id}`" class="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-surface-muted">
+                    <RouterLink :to="`/hr/employees/${r.id}`" class="flex items-center gap-3 rounded-lg p-2 hover:bg-surface-muted">
                       <AppAvatar :name="r.name" size="sm" />
                       <span class="min-w-0">
                         <span class="block truncate font-medium text-fg">{{ r.name }}</span>
@@ -223,7 +223,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
         <AppCard v-else title="History" description="Joining and every lifecycle change, newest first.">
           <AppSkeleton v-if="history.loading.value && !history.data.value" :lines="4" />
           <AppErrorState v-else-if="history.error.value" :error="history.error.value" @retry="history.run" />
-          <ol v-else class="relative space-y-5 border-l border-line pl-6">
+          <ol v-else class="relative space-y-5 border-l border-line ps-6">
             <li v-for="e in history.data.value ?? []" :key="e.id" class="relative">
               <span class="absolute top-1 -left-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500 ring-1 ring-brand-500/30" aria-hidden="true" />
               <div class="flex flex-wrap items-baseline justify-between gap-2">

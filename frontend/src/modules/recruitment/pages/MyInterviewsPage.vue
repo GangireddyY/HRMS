@@ -74,7 +74,7 @@ async function submit() {
               <p class="text-xs text-fg-subtle">{{ [i.candidate.currentTitle, i.candidate.currentCompany].filter(Boolean).join(' at ') }}{{ i.candidate.experienceYears !== null ? ` · ${i.candidate.experienceYears} yrs` : '' }}</p>
               <p v-if="i.myFeedback" class="mt-1 text-sm text-fg-muted">
                 <AppBadge :tone="recommendationTone[i.myFeedback.recommendation]" size="sm">{{ RECOMMENDATION_LABELS[i.myFeedback.recommendation] }}</AppBadge>
-                <span class="ml-2 text-amber-600 dark:text-amber-400">{{ '★'.repeat(i.myFeedback.rating) }}</span>
+                <span class="ms-2 text-amber-600 dark:text-amber-400">{{ '★'.repeat(i.myFeedback.rating) }}</span>
               </p>
             </div>
             <AppButton v-if="i.candidate.hasResume" size="sm" variant="secondary" :icon="Eye" @click="resume(i)">Resume</AppButton>
@@ -88,7 +88,7 @@ async function submit() {
       <form id="feedback-form" class="space-y-4" novalidate @submit.prevent="submit">
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <div>
-          <p class="mb-1.5 text-sm font-medium text-fg">Overall rating</p>
+          <p class="mb-2 text-sm font-medium text-fg">Overall rating</p>
           <div class="flex gap-1" role="radiogroup" aria-label="Overall rating">
             <button v-for="n in 5" :key="n" type="button" role="radio" :aria-checked="form.rating === n" :aria-label="`${n} of 5`" class="text-2xl transition" :class="n <= form.rating ? 'text-amber-500' : 'text-fg-subtle/40 hover:text-amber-300'" @click="form.rating = n">★</button>
           </div>

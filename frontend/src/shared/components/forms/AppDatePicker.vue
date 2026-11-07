@@ -148,8 +148,8 @@ function onTriggerKey(e: KeyboardEvent) {
           :aria-describedby="describedby"
           :disabled="disabled"
           :class="[
-            'input-base flex cursor-pointer items-center gap-2 pl-9 text-left disabled:cursor-not-allowed',
-            model && 'pr-9',
+            'input-base flex cursor-pointer items-center gap-2 ps-9 text-start disabled:cursor-not-allowed',
+            model && 'pe-9',
             invalid && 'input-invalid',
             open && !invalid && 'border-brand-500 ring-2 ring-brand-500/20',
           ]"
@@ -178,21 +178,21 @@ function onTriggerKey(e: KeyboardEvent) {
             role="dialog"
             :aria-label="`Choose ${label ?? ariaLabel ?? 'date'}`"
             :style="floating.style.value"
-            class="z-[70] overflow-hidden rounded-2xl border border-line bg-surface-raised p-3 shadow-pop"
+            class="z-[70] overflow-hidden rounded-lg border border-line bg-surface-raised p-3 shadow-pop"
           >
-            <div class="mb-2 flex items-center justify-between">
-              <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-fg-muted transition hover:bg-surface-muted hover:text-fg" aria-label="Previous month" @click="shiftMonth(-1)">
+            <div class="mb-2 flex items-center gap-1 ps-1">
+              <p class="me-auto text-sm font-semibold text-fg" aria-live="polite">{{ monthLabel }}</p>
+              <button type="button" class="flex h-8 w-8 items-center justify-center rounded-full text-fg-muted transition hover:bg-surface-muted hover:text-fg" aria-label="Previous month" @click="shiftMonth(-1)">
                 <ChevronLeft :size="16" />
               </button>
-              <p class="text-sm font-semibold text-fg" aria-live="polite">{{ monthLabel }}</p>
-              <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-fg-muted transition hover:bg-surface-muted hover:text-fg" aria-label="Next month" @click="shiftMonth(1)">
+              <button type="button" class="flex h-8 w-8 items-center justify-center rounded-full text-fg-muted transition hover:bg-surface-muted hover:text-fg" aria-label="Next month" @click="shiftMonth(1)">
                 <ChevronRight :size="16" />
               </button>
             </div>
             <table :id="gridId" role="grid" :aria-label="monthLabel" class="w-full border-collapse" @keydown="onGridKey">
               <thead>
                 <tr>
-                  <th v-for="(w, i) in weekdays" :key="i" scope="col" class="pb-1 text-center text-[11px] font-medium text-fg-subtle">{{ w }}</th>
+                  <th v-for="(w, i) in weekdays" :key="i" scope="col" class="pb-1 text-center text-2xs font-medium text-fg-subtle">{{ w }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,19 +207,18 @@ function onTriggerKey(e: KeyboardEvent) {
                       :aria-label="cell.date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"
                       :disabled="cell.disabled"
                       :class="[
-                        'relative mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
+                        'relative mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
                         cell.iso === model
-                          ? 'bg-brand-600 font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.2)]'
+                          ? 'bg-brand-600 font-semibold text-white shadow-xs'
                           : cell.inMonth
                             ? 'text-fg hover:bg-surface-muted'
                             : 'text-fg-subtle/70 hover:bg-surface-muted',
-                        cell.iso === today && cell.iso !== model && 'font-semibold text-brand-600 dark:text-brand-400',
+                        cell.iso === today && cell.iso !== model && 'font-semibold text-brand-600 ring-1 ring-brand-500/70 ring-inset dark:text-brand-300',
                         cell.disabled && 'pointer-events-none opacity-30',
                       ]"
                       @click="pick(cell.iso, cell.disabled)"
                     >
                       {{ cell.date.getDate() }}
-                      <span v-if="cell.iso === today && cell.iso !== model" class="absolute bottom-1 h-1 w-1 rounded-full bg-brand-500" aria-hidden="true" />
                     </button>
                   </td>
                 </tr>
@@ -228,13 +227,13 @@ function onTriggerKey(e: KeyboardEvent) {
             <div class="mt-2 flex items-center justify-between border-t border-line pt-2">
               <button
                 type="button"
-                class="rounded-lg px-2 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50 disabled:opacity-40 dark:text-brand-400 dark:hover:bg-brand-500/10"
+                class="rounded-md px-2 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50 disabled:opacity-40 dark:text-brand-400 dark:hover:bg-brand-500/10"
                 :disabled="(!!min && today < min) || (!!max && today > max)"
                 @click="pick(today)"
               >
                 Today
               </button>
-              <button type="button" class="rounded-lg px-2 py-1 text-xs font-medium text-fg-muted transition hover:bg-surface-muted hover:text-fg" @click="clear(), close()">Clear</button>
+              <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-fg-muted transition hover:bg-surface-muted hover:text-fg" @click="clear(), close()">Clear</button>
             </div>
           </div>
         </Transition>

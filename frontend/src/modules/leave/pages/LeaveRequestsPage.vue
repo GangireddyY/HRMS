@@ -63,12 +63,12 @@ async function submit() {
 
 <template>
   <div>
-    <AppPageHeader title="Leave requests" description="Approve or reject leave for people in your scope. Approved leave is deducted from their balance and shown in attendance." />
+    <AppPageHeader title="Leave requests" description="Approve or reject leave in your scope; approved leave comes off the balance and shows in attendance." />
     <AppTabs v-model="view" :tabs="tabs">
+      <template #actions>
+        <AppSelect v-model="table.filters.status" size="sm" class="w-44" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
+      </template>
       <AppCard :padded="false">
-        <div class="flex justify-end border-b border-line p-4">
-          <AppSelect v-model="table.filters.status" class="w-48" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
-        </div>
         <AppDataTable
           :columns="columns"
           :rows="table.rows.value"
@@ -105,7 +105,7 @@ async function submit() {
             <p v-else-if="row.cancelledBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.cancelledBy }}</p>
           </template>
           <template #cell-actions="{ row }">
-            <div v-if="row.status === 'PENDING' && view === 'team'" class="flex justify-end gap-1.5">
+            <div v-if="row.status === 'PENDING' && view === 'team'" class="flex justify-end gap-2">
               <AppButton size="sm" variant="secondary" :icon="X" @click="open(row, 'reject')">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="open(row, 'approve')">Approve</AppButton>
             </div>

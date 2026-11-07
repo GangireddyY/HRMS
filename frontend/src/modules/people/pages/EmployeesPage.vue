@@ -8,7 +8,8 @@ import type { Employee } from '@/modules/people/types';
 import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, employeeStatusOptions, employeeStatusTone } from '@/modules/people/utils/labels';
 import CreateFromUsersModal from '@/modules/people/components/CreateFromUsersModal.vue';
 import ImportEmployeesModal from '@/modules/people/components/ImportEmployeesModal.vue';
-import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
+import LeaveMiniCalendar from '@/modules/leave/components/LeaveMiniCalendar.vue';
+import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppSearchInput, AppSelect, AppSplit, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -22,9 +23,13 @@ const feedback = useFeedbackStore();
 const departments = useAsync(() => structureApi.departments());
 const table = useTable((q) => employeesApi.list(q), {
   sort: 'name:asc',
-  filters: { status: 'ACTIVE' as EmployeeStatus | undefined, departmentId: undefined as string | undefined },
+  filters: {
+    status: 'ACTIVE' as EmployeeStatus | undefined,
+    departmentId: undefined as string | undefined,
+  },
 });
 const scope = computed(() => auth.context?.permissions['employee.view']);
+const showCalendar = computed(() => auth.can('leave.view', 'TEAM') && auth.hasFeature('leave'));
 const exporting = ref(false);
 const linkable = useAsync(() => (auth.can('employee.create') ? employeesApi.linkableMembers() : Promise.resolve([])));
 const fromUsersOpen = ref(false);
@@ -42,14 +47,16 @@ async function onImported(count: number) {
   await table.load();
 }
 
-const columns: TableColumn<Employee>[] = [
+const columns = computed<TableColumn<Employee>[]>(() => [
   { key: 'name', label: 'Employee', sortField: 'name' },
-  { key: 'employeeCode', label: 'Code', sortField: 'employeeCode' },
+  // Beside the leave calendar on laptop widths the code moves under the name and the joining date is left to the
+  // employee page, so the table needs no sideways scroll.
+  { key: 'employeeCode', label: 'Code', sortField: 'employeeCode', class: showCalendar.value ? 'xl:max-2xl:hidden' : undefined },
   { key: 'role', label: 'Designation & department' },
   { key: 'manager', label: 'Manager' },
-  { key: 'dateOfJoining', label: 'Joined', sortField: 'dateOfJoining' },
+  { key: 'dateOfJoining', label: 'Joined', sortField: 'dateOfJoining', class: showCalendar.value ? 'xl:max-2xl:hidden' : undefined },
   { key: 'status', label: 'Status', sortField: 'status' },
-];
+]);
 const departmentOptions = computed(() => (departments.data.value ?? []).map((d) => ({ value: d.id, label: d.name })));
 
 async function exportCsv() {
@@ -66,7 +73,10 @@ async function exportCsv() {
 
 <template>
   <div>
-    <AppPageHeader title="Employees" :description="scope && scope !== 'ORGANIZATION' ? `Showing employees in your scope: ${SCOPE_LABELS[scope]?.toLowerCase()}.` : 'Everyone in your organization, their roles and reporting lines.'">
+    <AppPageHeader
+      title="Employees"
+      :description="scope && scope !== 'ORGANIZATION' ? `Showing employees in your scope: ${SCOPE_LABELS[scope]?.toLowerCase()}.` : 'Everyone in your organization, their roles and reporting lines.'"
+    >
       <template #actions>
         <AppButton variant="ghost" :icon="Network" to="/hr/org-chart">Org chart</AppButton>
         <AppButton v-if="auth.can('employee.export')" variant="secondary" :icon="Download" :loading="exporting" @click="exportCsv">Export CSV</AppButton>
@@ -75,53 +85,65 @@ async function exportCsv() {
       </template>
     </AppPageHeader>
 
-    <AppAlert v-if="linkable.data.value?.length" tone="info" class="mb-4" :title="`${linkable.data.value.length} ${linkable.data.value.length === 1 ? 'user has' : 'users have'} no employee record yet`">
+    <AppAlert
+      v-if="linkable.data.value?.length"
+      tone="info"
+      class="mb-4"
+      :title="`${linkable.data.value.length} ${linkable.data.value.length === 1 ? 'user has' : 'users have'} no employee record yet`"
+    >
       <div class="flex flex-wrap items-center justify-between gap-3">
         <span>Users can sign in, but they appear here and can use attendance and leave only once they have an employee record.</span>
         <AppButton size="sm" :icon="UserPlus" @click="fromUsersOpen = true">Create employee records</AppButton>
       </div>
     </AppAlert>
 
-    <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px_180px]">
-        <AppSearchInput v-model="table.search.value" placeholder="Search name, code or email" aria-label="Search employees" />
-        <AppSelect v-model="table.filters.departmentId" :options="departmentOptions" placeholder="All departments" aria-label="Filter by department" />
-        <AppSelect v-model="table.filters.status" :options="employeeStatusOptions" placeholder="All statuses" aria-label="Filter by status" />
-      </div>
-      <AppDataTable
-        v-model:sort="table.sort.value"
-        :columns="columns"
-        :rows="table.rows.value"
-        :loading="table.loading.value"
-        :error="table.error.value"
-        :meta="table.meta.value"
-        clickable
-        caption="Employees"
-        empty-title="No employees found"
-        :empty-description="auth.can('employee.create') ? 'Add your first employee or change the filters.' : 'Try a different search or filter.'"
-        @page="table.setPage"
-        @retry="table.load"
-        @row-click="(row) => router.push(`/hr/employees/${row.id}`)"
-      >
-        <template #cell-name="{ row }">
-          <div class="flex items-center gap-3">
-            <AppAvatar :name="row.fullName" :src="row.avatarUrl" size="sm" />
-            <div class="min-w-0">
-              <p class="truncate font-medium text-fg">{{ row.fullName }}</p>
-              <p class="truncate text-xs text-fg-muted">{{ row.workEmail ?? EMPLOYMENT_TYPE_LABELS[row.employmentType] }}</p>
+    <AppSplit aside="sm">
+      <AppCard :padded="false">
+        <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px_180px]">
+          <AppSearchInput v-model="table.search.value" placeholder="Search name, code or email" aria-label="Search employees" />
+          <AppSelect v-model="table.filters.departmentId" :options="departmentOptions" placeholder="All departments" aria-label="Filter by department" />
+          <AppSelect v-model="table.filters.status" :options="employeeStatusOptions" placeholder="All statuses" aria-label="Filter by status" />
+        </div>
+        <AppDataTable
+          v-model:sort="table.sort.value"
+          :columns="columns"
+          :rows="table.rows.value"
+          :loading="table.loading.value"
+          :error="table.error.value"
+          :meta="table.meta.value"
+          clickable
+          caption="Employees"
+          empty-title="No employees found"
+          :empty-description="auth.can('employee.create') ? 'Add your first employee or change the filters.' : 'Try a different search or filter.'"
+          @page="table.setPage"
+          @retry="table.load"
+          @row-click="(row) => router.push(`/hr/employees/${row.id}`)"
+        >
+          <template #cell-name="{ row }">
+            <div class="flex items-center gap-3">
+              <AppAvatar :name="row.fullName" :src="row.avatarUrl" size="sm" />
+              <div :class="['min-w-0', showCalendar && 'xl:max-2xl:max-w-56']">
+                <p class="truncate font-medium text-fg">{{ row.fullName }}</p>
+                <p class="truncate text-xs text-fg-muted">
+                  <span :class="showCalendar && 'hidden font-mono xl:max-2xl:inline'">{{ row.employeeCode }} · </span>{{ row.workEmail ?? EMPLOYMENT_TYPE_LABELS[row.employmentType] }}
+                </p>
+              </div>
             </div>
-          </div>
-        </template>
-        <template #cell-employeeCode="{ row }"><span class="font-mono text-xs text-fg-muted">{{ row.employeeCode }}</span></template>
-        <template #cell-role="{ row }">
-          <p class="text-fg">{{ row.designation?.name ?? '—' }}</p>
-          <p class="text-xs text-fg-muted">{{ row.department?.name ?? 'No department' }}</p>
-        </template>
-        <template #cell-manager="{ row }"><span class="text-fg-muted">{{ row.manager?.name ?? '—' }}</span></template>
-        <template #cell-dateOfJoining="{ row }"><span class="text-fg-muted">{{ formatDate(row.dateOfJoining) }}</span></template>
-        <template #cell-status="{ row }"><AppBadge :tone="employeeStatusTone[row.status]" dot>{{ EMPLOYEE_STATUS_LABELS[row.status] }}</AppBadge></template>
-      </AppDataTable>
-    </AppCard>
+          </template>
+          <template #cell-employeeCode="{ row }"><span class="font-mono text-xs whitespace-nowrap text-fg-muted">{{ row.employeeCode }}</span></template>
+          <template #cell-role="{ row }">
+            <p class="text-fg">{{ row.designation?.name ?? '—' }}</p>
+            <p class="text-xs text-fg-muted">{{ row.department?.name ?? 'No department' }}</p>
+          </template>
+          <template #cell-manager="{ row }"><span class="whitespace-nowrap text-fg-muted">{{ row.manager?.name ?? '—' }}</span></template>
+          <template #cell-dateOfJoining="{ row }"><span class="whitespace-nowrap text-fg-muted">{{ formatDate(row.dateOfJoining) }}</span></template>
+          <template #cell-status="{ row }"><AppBadge :tone="employeeStatusTone[row.status]" dot>{{ EMPLOYEE_STATUS_LABELS[row.status] }}</AppBadge></template>
+        </AppDataTable>
+      </AppCard>
+      <template v-if="showCalendar" #aside>
+        <LeaveMiniCalendar :department-id="table.filters.departmentId" />
+      </template>
+    </AppSplit>
 
     <CreateFromUsersModal :open="fromUsersOpen" :members="linkable.data.value ?? []" @close="fromUsersOpen = false" @created="onCreated" />
     <ImportEmployeesModal :open="importOpen" @close="importOpen = false" @imported="onImported" />

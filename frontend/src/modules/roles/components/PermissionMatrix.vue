@@ -102,7 +102,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
             <span class="font-medium text-fg-muted">Granted</span>
             <span class="font-semibold text-fg tabular-nums">{{ totalGranted }} / {{ totalPermissions }}</span>
           </div>
-          <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
             <div class="h-full rounded-full bg-brand-500 transition-[width] duration-300" :style="{ width: `${(totalGranted / Math.max(totalPermissions, 1)) * 100}%` }" />
           </div>
         </div>
@@ -117,7 +117,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
           type="button"
           :aria-current="!query && m.key === selected ? 'true' : undefined"
           :class="[
-            'group flex shrink-0 items-center gap-3 rounded-lg px-2.5 py-2 text-left ring-1 ring-line transition @3xl/matrix:w-full @3xl/matrix:ring-0',
+            'group flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-start ring-1 ring-line transition @3xl/matrix:w-full @3xl/matrix:ring-0',
             !query && m.key === selected ? 'bg-brand-50 ring-1 ring-brand-600/15 dark:bg-brand-500/12' : 'hover:bg-surface-muted',
             query && !matchCount(m) && 'opacity-40',
           ]"
@@ -132,7 +132,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
             <component :is="MODULE_ICONS[m.key]" :size="15" aria-hidden="true" />
           </span>
           <span class="min-w-0 flex-1">
-            <span class="flex items-center gap-1.5">
+            <span class="flex items-center gap-2">
               <span :class="['truncate text-sm font-medium', !query && m.key === selected ? 'text-brand-700 dark:text-brand-300' : 'text-fg']">{{ m.name }}</span>
             </span>
             <span class="mt-1 hidden items-center gap-2 @3xl/matrix:flex">
@@ -141,7 +141,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
               </span>
             </span>
           </span>
-          <span class="shrink-0 text-[11px] font-medium text-fg-subtle tabular-nums">
+          <span class="shrink-0 text-2xs font-medium text-fg-subtle tabular-nums">
             <template v-if="query">{{ matchCount(m) }}</template>
             <template v-else-if="!m.entitled">Off</template>
             <template v-else>{{ grantedCount(m) }}/{{ m.permissions.length }}</template>
@@ -169,16 +169,16 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
               <AppBadge v-if="!m.entitled" tone="neutral">Not in plan</AppBadge>
               <span class="text-xs font-medium text-fg-subtle tabular-nums">{{ grantedCount(m) }} of {{ m.permissions.length }} granted</span>
             </div>
-            <p class="mt-0.5 text-[13px] text-fg-muted">{{ m.description }}</p>
+            <p class="mt-0.5 text-sm text-fg-muted">{{ m.description }}</p>
           </div>
-          <div v-if="editable(m) && !query" class="flex w-full gap-2 pl-14 @lg/pane:w-auto @lg/pane:pl-0">
+          <div v-if="editable(m) && !query" class="flex w-full gap-2 ps-14 @lg/pane:w-auto @lg/pane:ps-0">
             <AppButton size="sm" variant="secondary" @click="setAll(m, true)">Grant all</AppButton>
             <AppButton size="sm" variant="ghost" :disabled="!grantedCount(m)" @click="setAll(m, false)">Clear</AppButton>
           </div>
         </header>
 
         <div v-for="g in groups(m.permissions)" :key="g.page" class="px-3 pb-3 sm:px-4">
-          <p class="px-2 pt-1 pb-2 text-[11px] font-semibold tracking-wide text-fg-subtle uppercase">{{ g.label }}</p>
+          <p class="px-2 pt-1 pb-2 text-2xs font-semibold tracking-wide text-fg-subtle uppercase">{{ g.label }}</p>
           <ul class="divide-y divide-line overflow-hidden rounded-xl ring-1 ring-line">
             <li
               v-for="p in g.items"
@@ -201,11 +201,11 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
                 </span>
                 <span class="min-w-0">
                   <span class="block text-sm font-medium text-fg">{{ p.description }}</span>
-                  <span class="block font-mono text-[11px] break-all text-fg-subtle">{{ p.key }}</span>
+                  <span class="block font-mono text-2xs break-all text-fg-subtle">{{ p.key }}</span>
                 </span>
               </label>
 
-              <div class="w-full shrink-0 pl-12 @xl/pane:w-auto @xl/pane:pl-0">
+              <div class="w-full shrink-0 ps-12 @xl/pane:w-auto @xl/pane:ps-0">
                 <AppBadge v-if="p.restricted" tone="warning"><ShieldAlert :size="11" /> Restricted</AppBadge>
                 <div
                   v-else-if="p.scopable"
@@ -224,7 +224,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
                     :tabindex="model[p.key] ? (model[p.key] === s ? 0 : -1) : i === 0 ? 0 : -1"
                     :disabled="!editable(m)"
                     :class="[
-                      'rounded-md px-2.5 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none disabled:cursor-not-allowed',
+                      'rounded-md px-3 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none disabled:cursor-not-allowed',
                       model[p.key] === s ? 'bg-surface text-brand-700 shadow-card ring-1 ring-line dark:text-brand-300' : 'text-fg-muted enabled:hover:text-fg',
                     ]"
                     @click="setScope(p, s)"

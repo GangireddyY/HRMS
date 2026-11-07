@@ -111,7 +111,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
     <AppHero :eyebrow="auth.organization?.name" :title="greeting" :summary="heroSummary">
       <template #leading><AppAvatar :name="fullName || 'User'" :src="auth.user?.avatarUrl" size="xl" /></template>
       <template #meta>
-        <div class="mt-1.5 flex flex-wrap gap-1">
+        <div class="mt-2 flex flex-wrap gap-1">
           <AppBadge v-for="r in auth.context?.roles" :key="r.id" tone="brand" size="sm">{{ r.name }}</AppBadge>
         </div>
       </template>
@@ -131,7 +131,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
       <AppCard v-if="can.payslips" title="Latest payslip">
         <template #actions><AppButton size="sm" variant="ghost" to="/me/payslips">All</AppButton></template>
         <AppSkeleton v-if="payslips.loading.value" :lines="3" />
-        <p v-else-if="!latestSlip" class="text-[13px] text-fg-muted">No payslips published yet.</p>
+        <p v-else-if="!latestSlip" class="text-sm text-fg-muted">No payslips published yet.</p>
         <RouterLink v-else :to="`/me/payslips/${latestSlip.id}`" class="group block">
           <p class="text-xs text-fg-muted">{{ latestSlip.period }}{{ latestSlip.paidAt ? ` · paid ${formatDate(latestSlip.paidAt)}` : '' }}</p>
           <p class="mt-0.5 text-2xl font-semibold tracking-tight text-fg tabular-nums">{{ formatMoney(latestSlip.netPay) }}</p>
@@ -141,12 +141,12 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
       </AppCard>
 
       <AppCard v-if="can.holidays" title="Upcoming holidays">
-        <p v-if="!holidays.loading.value && !holidays.data.value?.length" class="text-[13px] text-fg-muted">No upcoming holidays on the calendar.</p>
-        <ul v-else class="-my-1.5 divide-y divide-line/60">
-          <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-2.5 py-2">
+        <p v-if="!holidays.loading.value && !holidays.data.value?.length" class="text-sm text-fg-muted">No upcoming holidays on the calendar.</p>
+        <ul v-else class="-my-2 divide-y divide-line/60">
+          <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-3 py-2">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-300"><PartyPopper :size="15" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-[13px] font-medium text-fg">{{ h.name }}</span>
+              <span class="block truncate text-sm font-medium text-fg">{{ h.name }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ formatDate(h.date) }} · in {{ daysUntil(h.date) }} days</span>
             </span>
             <AppBadge v-if="h.isOptional" size="sm">Optional</AppBadge>
@@ -158,11 +158,11 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
         <template #actions><AppButton variant="ghost" size="sm" to="/me/notifications">View all</AppButton></template>
         <AppSkeleton v-if="notifications.loading.value" :lines="4" />
         <AppEmptyState v-else-if="!notifications.data.value?.items.length" compact title="No notifications yet" />
-        <ul v-else class="-my-1.5 divide-y divide-line/60">
+        <ul v-else class="-my-2 divide-y divide-line/60">
           <li v-for="n in notifications.data.value.items" :key="n.id" class="flex items-start gap-2 py-2">
-            <span :class="['mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', n.readAt ? 'bg-transparent' : 'bg-brand-500']" aria-hidden="true" />
+            <span :class="['mt-2 h-1.5 w-1.5 shrink-0 rounded-full', n.readAt ? 'bg-transparent' : 'bg-brand-500']" aria-hidden="true" />
             <div class="min-w-0 flex-1">
-              <p :class="['truncate text-[13px]', n.readAt ? 'text-fg-muted' : 'font-medium text-fg']">{{ n.title }}</p>
+              <p :class="['truncate text-sm', n.readAt ? 'text-fg-muted' : 'font-medium text-fg']">{{ n.title }}</p>
               <p class="text-xs text-fg-subtle">{{ timeAgo(n.createdAt) }}</p>
             </div>
           </li>
@@ -176,7 +176,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
           <RouterLink :to="visibleSections(ws, subject)[0]!.items[0]!.to" class="group flex items-center gap-3 rounded-md border border-line p-3 transition hover:border-brand-500/40 hover:bg-brand-50/40 dark:hover:bg-brand-500/5">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600 dark:bg-brand-500/12 dark:text-brand-300"><component :is="ws.icon" :size="16" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
-              <span class="block text-[13px] font-medium text-fg">{{ ws.label }}</span>
+              <span class="block text-sm font-medium text-fg">{{ ws.label }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ ws.description }}</span>
             </span>
             <ArrowRight :size="15" class="shrink-0 text-fg-subtle transition group-hover:translate-x-0.5 group-hover:text-brand-600" aria-hidden="true" />

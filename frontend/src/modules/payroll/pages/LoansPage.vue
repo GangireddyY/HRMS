@@ -43,7 +43,7 @@ const columns: TableColumn<Loan>[] = [
     </AppPageHeader>
     <AppTabs v-model="view" :tabs="tabs">
       <AppCard :padded="false">
-        <div v-if="view === 'all'" class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px_200px]">
+        <div v-if="view === 'all'" class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px_200px]">
           <AppSearchInput v-model="table.search.value" placeholder="Search by name or code" aria-label="Search loans" />
           <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="Any status" aria-label="Filter by status" />
           <AppSelect v-model="table.filters.type" :options="typeOptions" placeholder="Loans and advances" aria-label="Filter by type" />

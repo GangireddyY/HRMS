@@ -149,7 +149,7 @@ async function submit() {
         <p v-if="quote && (skipped.weeklyOffs || skipped.holidays)" class="mt-1 text-xs text-fg-muted">
           Not counted: {{ [skipped.weeklyOffs && `${skipped.weeklyOffs} weekly off${skipped.weeklyOffs === 1 ? '' : 's'}`, skipped.holidays && `${skipped.holidays} holiday${skipped.holidays === 1 ? '' : 's'}`].filter(Boolean).join(' and ') }}.
         </p>
-        <ul v-if="quote?.issues.length" class="mt-3 space-y-1.5">
+        <ul v-if="quote?.issues.length" class="mt-3 space-y-2">
           <li v-for="(i, n) in quote.issues" :key="n" class="flex items-start gap-2 text-amber-700 dark:text-amber-300">
             <AlertTriangle :size="14" class="mt-0.5 shrink-0" aria-hidden="true" />{{ i.message }}
           </li>
@@ -160,12 +160,12 @@ async function submit() {
     </form>
     <template #aside>
       <section v-if="pickable.length" class="card">
-        <h3 class="border-b border-line/70 px-4 py-2.5 text-sm font-semibold text-fg">Your balances</h3>
-        <ul class="p-1.5">
+        <h3 class="border-b border-line/70 px-4 py-3 text-sm font-semibold text-fg">Your balances</h3>
+        <ul class="p-2">
           <li v-for="b in pickable" :key="b.leaveType.id">
             <button
               type="button"
-              :class="['flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition', form.leaveTypeId === b.leaveType.id ? 'bg-brand-50 ring-1 ring-brand-300 dark:bg-brand-500/10 dark:ring-brand-500/40' : 'hover:bg-surface-muted']"
+              :class="['flex w-full items-center gap-3 rounded-md px-3 py-2 text-start text-sm transition', form.leaveTypeId === b.leaveType.id ? 'bg-brand-50 ring-1 ring-brand-300 dark:bg-brand-500/10 dark:ring-brand-500/40' : 'hover:bg-surface-muted']"
               :aria-pressed="form.leaveTypeId === b.leaveType.id"
               @click="form.leaveTypeId = b.leaveType.id"
             >

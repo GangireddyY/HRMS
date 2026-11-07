@@ -17,12 +17,12 @@ const cell = (v: string | number | null, format?: string) => (format === 'date' 
         <caption class="sr-only">{{ table.title }}</caption>
         <thead>
           <tr class="border-b border-line text-xs text-fg-muted">
-            <th v-for="c in table.columns" :key="c.key" scope="col" class="px-4 py-2 font-medium whitespace-nowrap" :class="c.format && c.format !== 'date' ? 'text-right' : 'text-left'">{{ c.label }}</th>
+            <th v-for="c in table.columns" :key="c.key" scope="col" class="px-4 py-2 font-medium whitespace-nowrap" :class="c.format && c.format !== 'date' ? 'text-end' : 'text-start'">{{ c.label }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
           <tr v-for="(r, i) in table.rows" :key="i">
-            <td v-for="c in table.columns" :key="c.key" class="px-4 py-2 whitespace-nowrap" :class="c.format && c.format !== 'date' ? 'text-right tabular-nums' : 'text-fg'">
+            <td v-for="c in table.columns" :key="c.key" class="px-4 py-2 whitespace-nowrap" :class="c.format && c.format !== 'date' ? 'text-end tabular-nums' : 'text-fg'">
               <span v-if="c.format === 'percent' && typeof r[c.key] === 'number'" class="inline-flex items-center justify-end gap-2">
                 <span class="hidden h-1.5 w-16 rounded-full bg-surface-muted sm:block" aria-hidden="true"><span class="block h-1.5 rounded-full bg-brand-500" :style="{ width: `${Math.min(100, Number(r[c.key]))}%` }" /></span>
                 {{ cell(r[c.key] ?? null, c.format) }}

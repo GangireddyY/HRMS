@@ -94,11 +94,11 @@ async function saveCode() {
       </AppPageHeader>
       <div class="grid items-start gap-4 xl:grid-cols-3">
         <AppCard class="xl:col-span-2" :description="canCorrect ? 'Select a day to correct its punch times.' : calendar.data.value.closed ? 'This month is closed.' : undefined">
-          <AttendanceCalendarView :calendar="calendar.data.value" :selectable="canCorrect" @prev="month = shiftMonth(month, -1)" @next="month = shiftMonth(month, 1)" @select="onSelect" />
+          <AttendanceCalendarView :calendar="calendar.data.value" :selectable="canCorrect" @prev="month = shiftMonth(month, -1)" @next="month = shiftMonth(month, 1)" @today="month = currentMonth()" @select="onSelect" />
         </AppCard>
         <div class="space-y-4">
           <AppCard title="Month summary">
-            <dl class="space-y-2.5 text-sm">
+            <dl class="space-y-3 text-sm">
               <div v-for="[label, value] in stats" :key="label" class="flex justify-between gap-3">
                 <dt class="text-fg-muted">{{ label }}</dt>
                 <dd class="font-medium text-fg tabular-nums">{{ value }}</dd>

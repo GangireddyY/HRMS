@@ -36,7 +36,7 @@ defineExpose({ focus: () => input.value?.focus() });
       :aria-label="ariaLabel"
       autocomplete="off"
       spellcheck="false"
-      :class="['input-base pl-9 [&::-webkit-search-cancel-button]:hidden', size === 'sm' && 'min-h-8 py-1 text-[13px]', model ? 'pr-9' : shortcut ? 'pr-14' : '']"
+      :class="['input-base ps-9 [&::-webkit-search-cancel-button]:hidden', size === 'sm' && 'min-h-8 py-1 text-sm', model ? 'pe-9' : shortcut ? 'pe-14' : '']"
       @input="model = ($event.target as HTMLInputElement).value"
       @keydown="onKeydown"
     />
@@ -51,7 +51,7 @@ defineExpose({ focus: () => input.value?.focus() });
     </button>
     <kbd
       v-else-if="shortcut"
-      class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-md border border-line bg-surface-muted px-1.5 py-px text-[10px] font-medium text-fg-subtle"
+      class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-md border border-line bg-surface-muted px-2 py-px text-2xs font-medium text-fg-subtle"
     >
       {{ shortcut }}
     </kbd>

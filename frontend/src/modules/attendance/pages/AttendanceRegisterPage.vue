@@ -5,7 +5,7 @@ import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import type { DailyRow, DailySummary } from '@/modules/attendance/types';
 import { DAY_STATUS_LABELS, dayStatusTone, formatMinutes, formatTime } from '@/modules/attendance/utils/attendance-format';
 import { structureApi } from '@/modules/people/api/people.api';
-import { AppAvatar, AppBadge, AppCard, AppDataTable, AppDatePicker, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
+import { AppAvatar, AppBadge, AppCard, AppDataTable, AppDatePicker, AppPageHeader, AppSearchInput, AppSelect, AppStatStrip, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
 import { formatDate } from '@/shared/utils/format';
@@ -50,14 +50,14 @@ const tiles = computed(() => {
   const s = summary.value;
   if (!s) return [];
   return [
-    { key: 'PRESENT', label: 'Present', value: s.present, cls: 'text-emerald-600 dark:text-emerald-400' },
-    { key: 'IN_PROGRESS', label: 'In now', value: s.inProgress, cls: 'text-sky-600 dark:text-sky-400' },
-    { key: 'ABSENT', label: 'Absent / not in', value: s.absent, cls: 'text-red-600 dark:text-red-400' },
-    { key: 'LATE', label: 'Late', value: s.late, cls: 'text-orange-600 dark:text-orange-400' },
-    { key: 'HALF_DAY', label: 'Half day', value: s.halfDay, cls: 'text-amber-600 dark:text-amber-400' },
-    { key: 'MISSED_PUNCH', label: 'Missed punch-out', value: s.missedPunch, cls: 'text-orange-600 dark:text-orange-400' },
-    { key: 'ON_LEAVE', label: 'On leave', value: s.onLeave, cls: 'text-cyan-600 dark:text-cyan-400' },
-    ...(s.remote ? [{ key: 'REMOTE', label: 'From home', value: s.remote, cls: 'text-sky-600 dark:text-sky-400' }] : []),
+    { key: 'PRESENT', label: 'Present', value: s.present, tone: 'success' },
+    { key: 'IN_PROGRESS', label: 'In now', value: s.inProgress, tone: 'info' },
+    { key: 'ABSENT', label: 'Absent / not in', value: s.absent, tone: 'danger' },
+    { key: 'LATE', label: 'Late', value: s.late, tone: 'orange' },
+    { key: 'HALF_DAY', label: 'Half day', value: s.halfDay, tone: 'warning' },
+    { key: 'MISSED_PUNCH', label: 'Missed punch-out', value: s.missedPunch, tone: 'orange' },
+    { key: 'ON_LEAVE', label: 'On leave', value: s.onLeave, tone: 'cyan' },
+    ...(s.remote ? [{ key: 'REMOTE', label: 'From home', value: s.remote, tone: 'info' }] : []),
   ];
 });
 const today = new Date().toISOString().slice(0, 10);
@@ -72,22 +72,17 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
       </template>
     </AppPageHeader>
 
-    <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
-      <button
-        v-for="t in tiles"
-        :key="t.key"
-        type="button"
-        :class="['card px-4 py-3 text-left transition hover:ring-brand-400', table.filters.status === t.key && 'ring-2 ring-brand-500']"
-        :aria-pressed="table.filters.status === t.key"
-        @click="table.filters.status = table.filters.status === t.key ? undefined : t.key"
-      >
-        <p class="text-xs text-fg-muted">{{ t.label }}</p>
-        <p :class="['mt-1 text-2xl font-semibold tabular-nums', t.cls]">{{ t.value }}</p>
-      </button>
-    </div>
+    <AppStatStrip
+      class="mb-4"
+      label="Today by status"
+      :items="tiles"
+      selectable
+      :selected="table.filters.status ?? null"
+      @select="(k) => (table.filters.status = k ?? undefined)"
+    />
 
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px_200px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px_200px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search name or code" aria-label="Search employees" />
         <AppSelect v-model="table.filters.departmentId" :options="departmentOptions" placeholder="All departments" aria-label="Filter by department" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />

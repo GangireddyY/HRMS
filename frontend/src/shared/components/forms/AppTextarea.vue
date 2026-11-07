@@ -56,7 +56,7 @@ onMounted(resize);
         />
         <span
           v-if="maxlength"
-          :class="['pointer-events-none absolute right-3 bottom-2 text-[11px] tabular-nums', count >= maxlength ? 'text-red-600 dark:text-red-400' : 'text-fg-subtle']"
+          :class="['pointer-events-none absolute right-3 bottom-2 text-2xs tabular-nums', count >= maxlength ? 'text-red-600 dark:text-red-400' : 'text-fg-subtle']"
           aria-hidden="true"
         >
           {{ count }} / {{ maxlength }}

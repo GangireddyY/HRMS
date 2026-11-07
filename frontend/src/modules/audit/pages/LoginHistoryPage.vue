@@ -30,7 +30,7 @@ const outcomeOptions = [
   <div>
     <AppPageHeader title="Login history" description="Sign-in attempts for this organization, including failures and lockouts." />
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 md:grid-cols-[1fr_180px_160px_160px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 md:grid-cols-[1fr_180px_160px_160px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search by email" aria-label="Search by email" />
         <AppSelect v-model="table.filters.outcome" :options="outcomeOptions" placeholder="All results" aria-label="Filter by result" />
         <AppDatePicker v-model="table.filters.from" placeholder="From date" aria-label="From date" :max="table.filters.to" />
@@ -54,7 +54,7 @@ const outcomeOptions = [
         </template>
         <template #cell-outcome="{ row }">
           <AppBadge :tone="loginTone[row.outcome]">{{ statusLabel(row.outcome) }}</AppBadge>
-          <span v-if="row.failureReason" class="ml-1 text-xs text-fg-subtle">{{ row.failureReason.replace(/_/g, ' ') }}</span>
+          <span v-if="row.failureReason" class="ms-1 text-xs text-fg-subtle">{{ row.failureReason.replace(/_/g, ' ') }}</span>
         </template>
         <template #cell-device="{ row }">{{ describeUserAgent(row.userAgent) }}</template>
       </AppDataTable>

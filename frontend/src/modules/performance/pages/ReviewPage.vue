@@ -208,7 +208,7 @@ async function acknowledge() {
               <li v-for="g in r.goals" :key="g.id" class="rounded-xl p-4 ring-1 ring-line">
                 <div class="flex flex-wrap items-start justify-between gap-2">
                   <div class="min-w-0 flex-1">
-                    <p class="font-medium text-fg">{{ g.title }} <span class="ml-1 text-xs font-normal text-fg-muted">{{ g.weight }}%</span></p>
+                    <p class="font-medium text-fg">{{ g.title }} <span class="ms-1 text-xs font-normal text-fg-muted">{{ g.weight }}%</span></p>
                     <p v-if="g.measure" class="text-sm text-fg-muted">Measure: {{ g.measure }}</p>
                     <p v-if="g.description" class="mt-1 text-sm whitespace-pre-line text-fg-muted">{{ g.description }}</p>
                     <p v-if="g.dueDate" class="text-xs text-fg-subtle">Due {{ formatDate(g.dueDate) }}</p>
@@ -232,7 +232,7 @@ async function acknowledge() {
               </li>
             </ul>
             <div v-if="r.permissions.submitGoals || r.permissions.approveGoals" class="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-line/70 pt-4">
-              <span v-if="totalWeight !== 100 && r.goals.length" class="mr-auto text-xs text-amber-700 dark:text-amber-300">Weights add up to {{ totalWeight }}% (must be 100%).</span>
+              <span v-if="totalWeight !== 100 && r.goals.length" class="me-auto text-xs text-amber-700 dark:text-amber-300">Weights add up to {{ totalWeight }}% (must be 100%).</span>
               <AppButton v-if="r.permissions.returnGoals" variant="secondary" :icon="Undo2" @click="returnNote = ''; returnOpen = true">Send back</AppButton>
               <AppButton v-if="r.permissions.approveGoals" :icon="Check" :loading="busy === 'approve'" :disabled="totalWeight !== 100" @click="act('approve', () => performanceApi.approveGoals(id), 'Goals approved')">Approve goals</AppButton>
               <AppButton v-if="r.permissions.submitGoals" :icon="Send" :loading="busy === 'submit-goals'" :disabled="totalWeight !== 100" @click="act('submit-goals', () => performanceApi.submitGoals(id), 'Goals submitted', 'Your reviewer has been notified.')">Submit goals</AppButton>

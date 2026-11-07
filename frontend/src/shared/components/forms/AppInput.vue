@@ -84,13 +84,13 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
           :aria-label="label ? undefined : ariaLabel"
           :class="[
             'input-base',
-            size === 'lg' && 'min-h-10 text-[15px]',
+            size === 'lg' && 'min-h-10 text-base',
             invalid && 'input-invalid',
-            type === 'password' && 'pr-10',
-            icon && 'pl-8',
-            isNumber && 'pr-16 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
-            isNumber && suffix && 'pr-28',
-            !isNumber && suffix && 'pr-16',
+            type === 'password' && 'pe-10',
+            icon && 'ps-8',
+            isNumber && 'pe-16 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+            isNumber && suffix && 'pe-28',
+            !isNumber && suffix && 'pe-16',
           ]"
           @input="onInput"
           @keydown="trackCapsLock"
@@ -123,7 +123,7 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
           <Eye v-else :size="16" />
         </button>
       </div>
-      <p v-if="capsLock" class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400" role="status">
+      <p v-if="capsLock" class="mt-2 flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400" role="status">
         <ArrowBigUp :size="14" aria-hidden="true" /> Caps Lock is on
       </p>
     </template>

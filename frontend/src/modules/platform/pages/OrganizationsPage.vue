@@ -49,7 +49,7 @@ async function onCreated(org: PlatformOrgDetail) {
       <template #actions><AppButton v-if="canManage" :icon="Plus" :disabled="!plans.data.value" @click="createOpen = true">New organization</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_180px_180px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_180px_180px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search name, slug or email" aria-label="Search organizations" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         <AppSelect v-model="table.filters.planId" :options="planOptions" placeholder="All plans" aria-label="Filter by plan" />

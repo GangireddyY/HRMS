@@ -28,41 +28,41 @@ const theme = useThemeStore();
         <!-- Rendered with the real tokens, so it follows every setting. -->
         <div class="overflow-hidden rounded-2xl border border-line bg-sidebar shadow-card" data-testid="theme-preview" aria-hidden="true">
           <div class="flex h-64">
-            <div class="flex w-24 flex-col gap-1.5 p-2.5">
-              <div class="mb-1 flex items-center gap-1.5">
+            <div class="flex w-24 flex-col gap-2 p-3">
+              <div class="mb-1 flex items-center gap-2">
                 <span class="h-5 w-5 rounded-md bg-gradient-to-br from-brand-500 to-brand-700" />
                 <span class="h-1.5 w-10 rounded-full bg-sidebar-section/50" />
               </div>
-              <span class="flex h-6 items-center gap-1.5 rounded-md bg-sidebar-active px-1.5 ring-1 ring-sidebar-line">
+              <span class="flex h-6 items-center gap-2 rounded-md bg-sidebar-active px-2 ring-1 ring-sidebar-line">
                 <LayoutDashboard :size="11" class="text-sidebar-icon-active" />
                 <span class="h-1.5 w-9 rounded-full bg-sidebar-fg-strong/40" />
               </span>
-              <span class="flex h-6 items-center gap-1.5 px-1.5"><Users :size="11" class="text-sidebar-section" /><span class="h-1.5 w-8 rounded-full bg-sidebar-fg/30" /></span>
-              <span class="flex h-6 items-center gap-1.5 px-1.5"><Bell :size="11" class="text-sidebar-section" /><span class="h-1.5 w-7 rounded-full bg-sidebar-fg/30" /></span>
+              <span class="flex h-6 items-center gap-2 px-2"><Users :size="11" class="text-sidebar-section" /><span class="h-1.5 w-8 rounded-full bg-sidebar-fg/30" /></span>
+              <span class="flex h-6 items-center gap-2 px-2"><Bell :size="11" class="text-sidebar-section" /><span class="h-1.5 w-7 rounded-full bg-sidebar-fg/30" /></span>
             </div>
-            <div class="my-1.5 mr-1.5 flex flex-1 flex-col overflow-hidden rounded-xl border border-line bg-canvas">
-              <div class="flex h-8 items-center gap-2 border-b border-line px-2.5">
+            <div class="my-2 me-2 flex flex-1 flex-col overflow-hidden rounded-xl border border-line bg-canvas">
+              <div class="flex h-8 items-center gap-2 border-b border-line px-3">
                 <span class="h-1.5 w-14 rounded-full bg-fg/15" />
-                <span class="ml-auto flex h-4 w-16 items-center gap-1 rounded border border-line bg-surface px-1"><Search :size="8" class="text-fg-subtle" /></span>
+                <span class="ms-auto flex h-4 w-16 items-center gap-1 rounded border border-line bg-surface px-1"><Search :size="8" class="text-fg-subtle" /></span>
               </div>
-              <div class="space-y-2 p-2.5">
+              <div class="space-y-2 p-3">
                 <span class="block h-2 w-20 rounded-full bg-fg/25" />
-                <div class="grid grid-cols-2 gap-1.5">
-                  <div class="rounded-lg border border-line bg-surface p-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="card p-2">
                     <span class="block h-1.5 w-8 rounded-full bg-fg/15" />
-                    <span class="mt-1.5 block h-2.5 w-6 rounded bg-fg/40" />
+                    <span class="mt-2 block h-2.5 w-6 rounded bg-fg/40" />
                   </div>
-                  <div class="rounded-lg border border-line bg-surface p-2">
+                  <div class="card p-2">
                     <span class="block h-1.5 w-8 rounded-full bg-fg/15" />
-                    <span class="mt-1.5 block h-2.5 w-6 rounded bg-fg/40" />
+                    <span class="mt-2 block h-2.5 w-6 rounded bg-fg/40" />
                   </div>
                 </div>
-                <div class="flex h-16 items-end gap-1 rounded-lg border border-line bg-surface p-2">
+                <div class="flex h-16 items-end gap-1 card p-2">
                   <span v-for="h in [40, 65, 30, 80, 55, 90, 45]" :key="h" class="flex-1 rounded-sm bg-brand-500" :style="{ height: `${h}%` }" />
                 </div>
-                <div class="flex gap-1.5">
+                <div class="flex gap-2">
                   <span class="h-5 w-14 rounded-md bg-gradient-to-b from-brand-500 to-brand-600" />
-                  <span class="h-5 w-12 rounded-md border border-line bg-surface" />
+                  <span class="h-5 w-12 card" />
                 </div>
               </div>
             </div>

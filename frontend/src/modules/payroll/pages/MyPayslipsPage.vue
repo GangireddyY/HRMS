@@ -39,7 +39,7 @@ const year = computed(() => {
                 <p class="text-xs text-fg-muted">Gross {{ rupees(p.gross) }} · deductions {{ rupees(p.totalDeductions) }}</p>
               </div>
               <AppBadge :tone="p.status === 'PAID' ? 'success' : 'info'" size="sm">{{ p.status === 'PAID' ? 'Paid' : 'Approved' }}</AppBadge>
-              <span class="text-right font-semibold text-fg tabular-nums">{{ rupees(p.netPay) }}</span>
+              <span class="text-end font-semibold text-fg tabular-nums">{{ rupees(p.netPay) }}</span>
               <ChevronRight :size="16" class="text-fg-subtle" aria-hidden="true" />
             </RouterLink>
           </li>

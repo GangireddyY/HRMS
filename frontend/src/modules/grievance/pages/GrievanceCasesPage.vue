@@ -61,7 +61,7 @@ const columns: TableColumn<CaseRow>[] = [
         <AppStatCard v-if="table.filters.view !== 'assigned'" label="Unassigned" :value="current?.unassigned" tone="warning" :loading="stats.loading.value" />
       </div>
       <AppCard :padded="false">
-        <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_180px_220px_auto] sm:items-center">
+        <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_180px_220px_auto] sm:items-center">
           <AppSearchInput v-model="table.search.value" placeholder="Search by reference or subject" aria-label="Search cases" />
           <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
           <AppSelect v-if="table.filters.view !== 'posh'" v-model="table.filters.category" :options="categoryOptions" placeholder="All categories" aria-label="Filter by category" />
@@ -90,7 +90,7 @@ const columns: TableColumn<CaseRow>[] = [
             <p class="text-xs text-fg-muted">{{ row.complainant?.department ?? '—' }}</p>
           </template>
           <template #cell-status="{ row }">
-            <div class="flex flex-wrap gap-1.5">
+            <div class="flex flex-wrap gap-2">
               <AppBadge :tone="statusTone[row.status]" dot>{{ STATUS_LABELS[row.status] }}</AppBadge>
               <AppBadge v-if="row.priority && row.priority !== 'MEDIUM'" :tone="priorityTone[row.priority]" size="sm">{{ PRIORITY_LABELS[row.priority] }}</AppBadge>
             </div>

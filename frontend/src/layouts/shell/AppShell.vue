@@ -37,7 +37,7 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
         <MobileTopbar v-else :workspace="ws" />
         <div
           v-if="auth.isRestricted"
-          class="flex items-center gap-2.5 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          class="flex items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
           role="status"
         >
           <AlertTriangle :size="16" class="shrink-0" aria-hidden="true" />
@@ -49,8 +49,8 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
           <main id="main" :class="['min-h-0 flex-1 overflow-y-auto overscroll-contain', fill && 'lg:overflow-hidden']" tabindex="-1">
             <div
               :class="[
-                'bg-ai-wash min-h-full w-full animate-fade-in bg-no-repeat px-3 py-4 sm:px-4 lg:px-4 lg:py-4 2xl:px-8',
-                fill && 'lg:h-full lg:py-4',
+                'bg-ai-wash min-h-full w-full animate-fade-in bg-no-repeat px-4 py-4 md:px-6 2xl:px-8',
+                fill && 'lg:h-full',
                 showTabBar && 'pb-[calc(6.5rem+env(safe-area-inset-bottom))]',
               ]"
             >

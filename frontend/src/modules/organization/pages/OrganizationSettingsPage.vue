@@ -108,7 +108,7 @@ watch(tab, (t) => {
           <div class="grid gap-x-10 gap-y-4 border-b border-line/70 pb-8 mb-4 lg:grid-cols-[220px_minmax(0,1fr)]">
             <div>
               <p class="text-sm font-semibold text-fg">Logo</p>
-              <p class="mt-1 text-[13px] text-fg-muted">Shown at the top of the sidebar for everyone in your organization. Changes apply immediately.</p>
+              <p class="mt-1 text-sm text-fg-muted">Shown at the top of the sidebar for everyone in your organization. Changes apply immediately.</p>
             </div>
             <OrganizationLogoUploader
               :logo-url="org.data.value?.logoUrl ?? null"

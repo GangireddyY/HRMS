@@ -34,20 +34,20 @@ function goBack() {
 
 <template>
   <header class="glass pt-safe relative z-20 shrink-0 border-b border-line/70">
-    <div class="flex h-14 items-center gap-1.5 px-2">
+    <div class="flex h-14 items-center gap-2 px-2">
       <button v-if="showBack" type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-md text-fg transition active:bg-surface-muted" aria-label="Back" @click="goBack">
         <ChevronLeft :size="22" />
       </button>
-      <RouterLink v-else :to="home" class="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white" :aria-label="`${workspace.label} home`">
+      <RouterLink v-else :to="home" class="ms-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white" :aria-label="`${workspace.label} home`">
         <component :is="workspace.icon" :size="16" aria-hidden="true" />
       </RouterLink>
-      <div class="ml-1 min-w-0 flex-1 leading-tight">
-        <p class="truncate text-[15px] font-semibold text-fg">{{ title }}</p>
+      <div class="ms-1 min-w-0 flex-1 leading-tight">
+        <p class="truncate text-base font-semibold text-fg">{{ title }}</p>
         <p v-if="subtitle" class="truncate text-xs text-fg-muted">{{ subtitle }}</p>
       </div>
       <GlobalSearch />
       <NotificationBell />
-      <RouterLink to="/me/profile" class="ml-0.5 rounded-full p-0.5" aria-label="Your profile">
+      <RouterLink to="/me/profile" class="ms-0.5 rounded-full p-0.5" aria-label="Your profile">
         <AppAvatar :name="displayName" :src="auth.user?.avatarUrl" size="sm" />
       </RouterLink>
     </div>

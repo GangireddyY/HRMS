@@ -33,7 +33,7 @@ const columns: TableColumn<ReviewRow>[] = [
     <AppPageHeader title="Reviews" description="Approve goals, write reviews for your team and follow progress." />
     <AppTabs v-model="view" :tabs="tabs">
       <AppCard :padded="false">
-        <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_240px]">
+        <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_240px]">
           <AppSearchInput v-model="table.search.value" placeholder="Search employees" aria-label="Search reviews" />
           <AppSelect v-model="table.filters.stage" :options="stageOptions" placeholder="All stages" aria-label="Filter by stage" />
         </div>

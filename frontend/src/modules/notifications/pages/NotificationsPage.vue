@@ -49,7 +49,7 @@ async function markAll() {
         <li v-for="n in table.rows.value" :key="n.id">
           <button
             type="button"
-            :class="['flex w-full items-start gap-3.5 px-4 py-4 text-left transition-colors hover:bg-surface-muted/60', !n.readAt && 'bg-brand-50/40 dark:bg-brand-500/5']"
+            :class="['flex w-full items-start gap-4 px-4 py-4 text-start transition-colors hover:bg-surface-muted/60', !n.readAt && 'bg-brand-50/40 dark:bg-brand-500/5']"
             @click="open(n)"
           >
             <span class="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-fg-muted ring-1 ring-line ring-inset">

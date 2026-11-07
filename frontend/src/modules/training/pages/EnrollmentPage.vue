@@ -105,7 +105,7 @@ const print = () => window.print();
         <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div class="space-y-4">
             <AppCard v-if="e.course.contentUrl || e.permissions.markDone" title="Course content">
-              <a v-if="e.course.contentUrl" :href="e.course.contentUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />Open the course</a>
+              <a v-if="e.course.contentUrl" :href="e.course.contentUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />Open the course</a>
               <div v-if="e.permissions.markDone" class="mt-4 border-t border-line/70 pt-4">
                 <AppButton :icon="CheckCircle2" :loading="busy === 'done'" @click="act('done', () => trainingApi.markDone(id), 'Course completed')">I've finished this course</AppButton>
               </div>
@@ -130,7 +130,7 @@ const print = () => window.print();
                   <li v-for="(q, qi) in quiz.questions" :key="q.id">
                     <fieldset>
                       <legend class="mb-2 text-sm font-medium text-fg">{{ qi + 1 }}. {{ q.prompt }}</legend>
-                      <div class="space-y-1.5">
+                      <div class="space-y-2">
                         <label v-for="(o, oi) in q.options" :key="oi" class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-line has-[:checked]:ring-2 has-[:checked]:ring-brand-500">
                           <input v-model="answers[q.id]" type="radio" :name="q.id" :value="oi" class="accent-brand-600" />
                           {{ o }}

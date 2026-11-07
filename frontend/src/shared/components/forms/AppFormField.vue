@@ -10,9 +10,9 @@ defineProps<{
 
 <template>
   <div>
-    <div v-if="label" class="mb-1.5 flex items-center justify-between gap-3">
+    <div v-if="label" class="mb-2 flex items-center justify-between gap-3">
       <label :id="`${id}-label`" :for="id" class="text-sm font-medium text-fg">
-        {{ label }}<span v-if="required" class="ml-0.5 text-red-500" aria-hidden="true"> *</span>
+        {{ label }}<span v-if="required" class="ms-0.5 text-red-500" aria-hidden="true"> *</span>
       </label>
       <!-- Kept outside <label> so links here never become part of the field's accessible name. -->
       <slot name="label-action" />

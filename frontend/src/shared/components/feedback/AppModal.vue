@@ -122,15 +122,15 @@ onBeforeUnmount(release);
       >
         <header class="flex items-start justify-between gap-3 border-b border-line/70 px-4 py-3">
           <div>
-            <h2 :id="titleId" class="text-[15px] font-semibold text-fg">{{ title }}</h2>
-            <p v-if="description" class="mt-0.5 text-[13px] text-fg-muted">{{ description }}</p>
+            <h2 :id="titleId" class="text-base font-semibold text-fg">{{ title }}</h2>
+            <p v-if="description" class="mt-0.5 text-sm text-fg-muted">{{ description }}</p>
           </div>
-          <button v-if="dismissible" type="button" class="-mt-0.5 -mr-1.5 rounded-md p-1 text-fg-subtle transition hover:bg-surface-muted hover:text-fg" aria-label="Close dialog" @click="close">
+          <button v-if="dismissible" type="button" class="-mt-0.5 -me-2 rounded-md p-1 text-fg-subtle transition hover:bg-surface-muted hover:text-fg" aria-label="Close dialog" @click="close">
             <X :size="17" />
           </button>
         </header>
         <div class="overflow-y-auto px-4 py-4"><slot /></div>
-        <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-muted/40 px-4 py-2.5 sm:rounded-b-lg"><slot name="footer" /></footer>
+        <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-muted/40 px-4 py-3 sm:rounded-b-lg"><slot name="footer" /></footer>
       </div>
     </div>
 
@@ -146,17 +146,17 @@ onBeforeUnmount(release);
       @keydown="onKeydown"
     >
       <div class="min-h-0 flex-1 overflow-y-auto">
-        <div class="w-full px-3 py-4 sm:px-4 lg:py-4 2xl:px-8">
+        <div class="w-full px-4 py-4 md:px-6 2xl:px-8">
           <button
             v-if="dismissible"
             type="button"
-            class="group mb-1.5 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-fg-muted transition hover:text-fg"
+            class="group mb-2 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-fg-muted transition hover:text-fg"
             @click="close"
           >
             <ArrowLeft :size="13" class="transition group-hover:-translate-x-0.5" aria-hidden="true" /> Back
           </button>
-          <h2 :id="titleId" class="text-xl font-semibold tracking-tight text-fg">{{ title }}</h2>
-          <p v-if="description" class="mt-0.5 text-[13px] text-fg-muted">{{ description }}</p>
+          <h2 :id="titleId" class="text-xl font-semibold tracking-tight text-fg lg:text-2xl">{{ title }}</h2>
+          <p v-if="description" class="mt-0.5 text-sm text-fg-muted">{{ description }}</p>
           <div :class="['mt-4 grid items-start gap-4', showGuide && 'xl:grid-cols-[minmax(0,1fr)_300px]']">
             <div ref="body" class="card min-w-0 p-4"><slot /></div>
             <aside v-if="showGuide" class="hidden space-y-4 xl:sticky xl:top-0 xl:block">
@@ -166,7 +166,7 @@ onBeforeUnmount(release);
           </div>
         </div>
       </div>
-      <footer v-if="$slots.footer" class="glass shrink-0 border-t border-line px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4 2xl:px-8">
+      <footer v-if="$slots.footer" class="glass shrink-0 border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 2xl:px-8">
         <div class="flex flex-wrap justify-end gap-2 max-sm:[&>*]:h-10 max-sm:[&>*]:flex-1"><slot name="footer" /></div>
       </footer>
     </div>

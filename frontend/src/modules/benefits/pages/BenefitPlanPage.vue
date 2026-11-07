@@ -173,7 +173,7 @@ async function census() {
                   · {{ o.maxDependents ? `up to ${o.maxDependents} dependant${o.maxDependents === 1 ? '' : 's'}: ${o.allowedRelations.map((r) => RELATION_LABELS[r].toLowerCase()).join(', ')}` : 'employee only' }}
                 </p>
               </div>
-              <div class="text-right text-xs text-fg-muted">
+              <div class="text-end text-xs text-fg-muted">
                 <p><span class="font-medium text-fg tabular-nums">{{ inr(o.employeeMonthly) }}</span> employee / month</p>
                 <p><span class="font-medium text-fg tabular-nums">{{ inr(o.employerMonthly) }}</span> employer / month</p>
               </div>

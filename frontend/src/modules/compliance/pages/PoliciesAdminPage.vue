@@ -41,7 +41,7 @@ const pct = (p: PolicySummary) => (p.stats?.audience ? Math.round((p.stats.ackno
       </template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_200px_220px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_200px_220px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search policies" aria-label="Search policies" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         <AppSelect v-model="table.filters.category" :options="categoryOptions" placeholder="All categories" aria-label="Filter by category" />

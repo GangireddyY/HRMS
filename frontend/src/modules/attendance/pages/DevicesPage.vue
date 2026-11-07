@@ -94,7 +94,7 @@ async function copy(text: string) {
     <AppCard :padded="false">
       <AppDataTable :columns="columns" :rows="devices.data.value ?? []" :loading="devices.loading.value" :error="devices.error.value" caption="Attendance devices" empty-title="No devices yet" empty-description="Add a device to receive its punches." @retry="devices.run">
         <template #cell-name="{ row }">
-          <p class="flex items-center gap-1.5 font-medium text-fg"><Fingerprint :size="14" class="text-fg-subtle" aria-hidden="true" />{{ row.name }} <AppBadge v-if="!row.isActive" size="sm">Inactive</AppBadge></p>
+          <p class="flex items-center gap-2 font-medium text-fg"><Fingerprint :size="14" class="text-fg-subtle" aria-hidden="true" />{{ row.name }} <AppBadge v-if="!row.isActive" size="sm">Inactive</AppBadge></p>
           <p class="text-xs text-fg-muted">{{ [row.location?.name, row.serialNumber].filter(Boolean).join(' · ') || '—' }}</p>
         </template>
         <template #cell-key="{ row }"><code class="text-xs text-fg-muted">{{ row.keyHint }}</code></template>
@@ -111,7 +111,7 @@ async function copy(text: string) {
     </AppCard>
 
     <AppCard class="mt-4" title="Connecting a device" description="Most devices (or a small bridge program next to them) can send punches over HTTPS.">
-      <ol class="list-decimal space-y-2 pl-5 text-sm text-fg">
+      <ol class="list-decimal space-y-2 ps-5 text-sm text-fg">
         <li>Send <code class="text-xs">POST</code> requests to <code class="text-xs break-all">{{ endpoint }}</code></li>
         <li>Put the device key in the <code class="text-xs">X-Device-Key</code> header.</li>
         <li>Send up to 500 punches at a time; repeats are ignored, so it is safe to resend.</li>

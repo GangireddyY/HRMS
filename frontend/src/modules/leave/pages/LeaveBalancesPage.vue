@@ -76,7 +76,7 @@ async function runAccruals() {
       </template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_220px_140px]">
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_220px_140px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search name or code" aria-label="Search employees" />
         <AppSelect v-model="table.filters.departmentId" :options="departmentOptions" placeholder="All departments" aria-label="Filter by department" />
         <AppSelect v-model="year" :options="yearOptions" :clearable="false" aria-label="Leave year" />
@@ -108,7 +108,7 @@ async function runAccruals() {
             <span v-if="!b" class="text-fg-subtle">—</span>
             <span v-else-if="b.available === null" class="text-fg-muted tabular-nums" :title="`${b.taken} taken`">{{ b.taken }} taken</span>
             <span v-else class="tabular-nums" :class="b.available < 0 ? 'text-red-600 dark:text-red-400' : 'text-fg'" :title="b.pending ? `${b.pending} pending` : undefined">
-              {{ b.available }}<span v-if="b.pending" class="ml-1 text-xs text-amber-600 dark:text-amber-400">({{ b.pending }})</span>
+              {{ b.available }}<span v-if="b.pending" class="ms-1 text-xs text-amber-600 dark:text-amber-400">({{ b.pending }})</span>
             </span>
           </template>
         </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { BarChart3, Briefcase, CalendarDays, ChevronDown, LogOut, Megaphone, PartyPopper, UserPlus, Users, Wallet } from '@lucide/vue';
+import { BarChart3, Briefcase, CalendarDays, CalendarRange, ChevronDown, LogOut, Megaphone, PartyPopper, Plane, ShieldCheck, UserPlus, Users, Wallet } from '@lucide/vue';
 import { MODULES, PERMISSIONS, SCOPE_RANK, type PermissionScope } from '@contracts';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import { engagementApi } from '@/modules/engagement/api/engagement.api';
@@ -9,7 +9,7 @@ import { onboardingApi } from '@/modules/onboarding/api/onboarding.api';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import { reportsApi } from '@/modules/reports/api/reports.api';
 import TrendChart from '@/modules/reports/components/TrendChart.vue';
-import { AppActionQueue, AppBadge, AppButton, AppCard, AppHero, AppInsights, AppPersonList, AppStatCard, type Insight, type PersonRow, type QueueItem } from '@/shared/components';
+import { AppActionQueue, AppBadge, AppButton, AppCard, AppEmptyState, AppHero, AppInsights, AppPersonList, AppStatCard, type Insight, type PersonRow, type QueueItem } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { formatDate } from '@/shared/utils/format';
@@ -138,45 +138,53 @@ const moduleAccess = computed(() =>
       <AppStatCard v-if="can.jobs" label="Open roles" :value="jobs.data.value?.meta.total" :loading="jobs.loading.value" tone="info" :icon="Briefcase" to="/hr/recruitment/jobs" />
     </div>
 
-    <div class="grid items-start gap-4 lg:grid-cols-3">
+    <!-- Cards in a row share one height (fill), so headers, bodies and empty states line up. -->
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <AppActionQueue :items="queue" :loading="approvals.loading.value" />
       <AppInsights :items="insights" :loading="approvals.loading.value || headcount.loading.value" />
-      <AppCard v-if="can.leave" title="Out this week" :description="outToday.length ? `${outToday.length} on leave today` : 'Approved leave in the next 7 days'">
+      <AppCard v-if="can.leave" :icon="Plane" fill title="Out this week" :description="outToday.length ? `${outToday.length} on leave today` : 'Approved leave in the next 7 days'">
         <template #actions><AppButton size="sm" variant="ghost" to="/hr/leave/calendar">Calendar</AppButton></template>
-        <AppPersonList :people="absentPeople" :loading="absences.loading.value" empty="Nobody is on leave this week." />
+        <AppPersonList :people="absentPeople" :loading="absences.loading.value" empty="Nobody is on leave this week" empty-description="Approved leave for the next 7 days shows up here." :empty-icon="Plane" />
       </AppCard>
     </div>
 
-    <div class="grid items-start gap-4 lg:grid-cols-3">
-      <TrendChart v-if="can.headcount && chart.length" class="lg:col-span-2" title="Headcount at month end" :points="chart" format="number" />
-      <AppCard title="Coming up" :class="!(can.headcount && chart.length) && 'lg:col-span-3'">
-        <ul class="-my-1.5 divide-y divide-line/60">
-          <li v-for="e in upcomingEvents" :key="e.id" class="flex items-center gap-2.5 py-2">
+    <div class="grid gap-4 lg:grid-cols-3">
+      <TrendChart v-if="can.headcount && chart.length" class="lg:col-span-2" title="Headcount at month end" description="Last 12 months" :points="chart" format="number" />
+      <AppCard title="Coming up" description="Events and holidays ahead" :icon="CalendarRange" fill :class="!(can.headcount && chart.length) && 'lg:col-span-3'">
+        <AppEmptyState
+          v-if="!upcomingEvents.length && !holidays.data.value?.length"
+          class="flex-1"
+          compact
+          :icon="CalendarRange"
+          title="Nothing scheduled yet"
+          description="Company events and holidays appear here once they are added."
+        />
+        <ul v-else class="-my-2 divide-y divide-line/60">
+          <li v-for="e in upcomingEvents" :key="e.id" class="flex items-center gap-3 py-2">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-50 text-violet-600 dark:bg-violet-500/12 dark:text-violet-300"><Megaphone :size="15" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-[13px] font-medium text-fg">{{ e.title }}</span>
+              <span class="block truncate text-sm font-medium text-fg">{{ e.title }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ formatDate(e.eventStartsAt) }}{{ e.eventLocation ? ` · ${e.eventLocation}` : '' }}</span>
             </span>
           </li>
-          <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-2.5 py-2">
+          <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-3 py-2">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-300"><PartyPopper :size="15" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-[13px] font-medium text-fg">{{ h.name }}</span>
+              <span class="block truncate text-sm font-medium text-fg">{{ h.name }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ formatDate(h.date) }} · in {{ daysUntil(h.date) }} days</span>
             </span>
             <AppBadge v-if="h.isOptional" size="sm">Optional</AppBadge>
           </li>
-          <li v-if="!upcomingEvents.length && !holidays.data.value?.length" class="py-2 text-[13px] text-fg-muted">Nothing scheduled yet.</li>
         </ul>
       </AppCard>
     </div>
 
-    <AppCard v-if="can.jobs && jobs.data.value?.items.length" title="Hiring pipeline" description="Open roles and where their candidates are">
+    <AppCard v-if="can.jobs && jobs.data.value?.items.length" :icon="Briefcase" title="Hiring pipeline" description="Open roles and where their candidates are">
       <template #actions><AppButton size="sm" variant="ghost" to="/hr/recruitment/jobs">All jobs</AppButton></template>
       <ul class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         <li v-for="j in jobs.data.value.items" :key="j.id">
           <RouterLink :to="`/hr/recruitment/jobs/${j.id}`" class="block rounded-md border border-line p-3 transition hover:border-brand-500/40 hover:bg-brand-50/30 dark:hover:bg-brand-500/5">
-            <p class="truncate text-[13px] font-medium text-fg">{{ j.title }}</p>
+            <p class="truncate text-sm font-medium text-fg">{{ j.title }}</p>
             <p class="truncate text-xs text-fg-muted">{{ [j.requisition.department?.name, j.requisition.location?.name].filter(Boolean).join(' · ') || j.requisition.code }}</p>
             <div class="mt-2 flex flex-wrap gap-1">
               <AppBadge v-for="(n, stage) in j.pipeline" v-show="n" :key="stage" size="sm" :tone="stage === 'HIRED' ? 'success' : stage === 'OFFER' ? 'violet' : 'neutral'">{{ String(stage).charAt(0) + String(stage).slice(1).toLowerCase() }} {{ n }}</AppBadge>
@@ -188,17 +196,22 @@ const moduleAccess = computed(() =>
     </AppCard>
 
     <details class="card group">
-      <summary class="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5">
-        <span>
-          <span class="block text-sm font-semibold text-fg">Your access</span>
-          <span class="block text-xs text-fg-muted">Modules in your plan and the record scope your roles grant</span>
+      <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2">
+        <span class="flex min-w-0 items-center gap-3">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-gradient-to-b from-surface to-surface-muted text-brand-600 shadow-xs dark:text-brand-300">
+            <ShieldCheck :size="16" aria-hidden="true" />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-semibold text-fg">Your access</span>
+            <span class="block text-xs text-fg-muted">Modules in your plan and the record scope your roles grant</span>
+          </span>
         </span>
         <ChevronDown :size="16" class="text-fg-subtle transition group-open:rotate-180" aria-hidden="true" />
       </summary>
       <ul class="grid gap-2 border-t border-line/70 p-4 sm:grid-cols-2 xl:grid-cols-4">
         <li v-for="m in moduleAccess" :key="m.key" class="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2">
           <span class="min-w-0">
-            <span class="block truncate text-[13px] font-medium text-fg">{{ m.name }}</span>
+            <span class="block truncate text-sm font-medium text-fg">{{ m.name }}</span>
             <span class="block text-xs text-fg-muted">{{ m.granted.length }} permission{{ m.granted.length === 1 ? '' : 's' }}</span>
           </span>
           <AppBadge v-if="m.broadest" :tone="scopeTone[m.broadest]" size="sm">{{ SCOPE_LABELS[m.broadest] }}</AppBadge>

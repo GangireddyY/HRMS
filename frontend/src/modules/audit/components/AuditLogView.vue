@@ -30,7 +30,7 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
 
 <template>
   <AppCard :padded="false">
-    <div class="grid gap-3 border-b border-line p-4 md:grid-cols-[1fr_180px_160px_160px]">
+    <div class="grid gap-3 border-b border-line/70 px-4 py-3 md:grid-cols-[1fr_180px_160px_160px]">
       <AppSearchInput v-model="table.search.value" placeholder="Search action or summary" aria-label="Search audit log" />
       <AppInput v-model="table.filters.entityType" placeholder="Entity (e.g. Role)" aria-label="Entity type" :icon="Boxes" />
       <AppDatePicker v-model="table.filters.from" placeholder="From date" aria-label="From date" :max="table.filters.to" />
@@ -52,14 +52,14 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
       @row-click="(row) => (selected = row)"
     >
       <template #cell-createdAt="{ row }"><span class="text-fg-muted">{{ formatDateTime(row.createdAt) }}</span></template>
-      <template #cell-action="{ row }"><code class="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{{ row.action }}</code></template>
+      <template #cell-action="{ row }"><code class="rounded bg-surface-muted px-2 py-0.5 font-mono text-xs">{{ row.action }}</code></template>
       <template #cell-summary="{ row }"><span class="line-clamp-1 max-w-md">{{ row.summary ?? humanize(row.entityType) }}</span></template>
       <template #cell-actor="{ row }">{{ row.actor ? fullName(row.actor) : 'System' }}</template>
       <template #cell-organization="{ row }">{{ row.organization?.name ?? 'Platform' }}</template>
     </AppDataTable>
 
     <AppModal :open="!!selected" :title="selected?.action ?? ''" :description="selected ? formatDateTime(selected.createdAt) : ''" size="lg" @close="selected = null">
-      <dl v-if="selected" class="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2.5 text-sm">
+      <dl v-if="selected" class="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
         <dt class="text-fg-muted">Summary</dt><dd>{{ selected.summary ?? '—' }}</dd>
         <dt class="text-fg-muted">Actor</dt><dd>{{ selected.actor ? `${fullName(selected.actor)} (${selected.actor.email})` : 'System' }}</dd>
         <dt class="text-fg-muted">Entity</dt><dd>{{ selected.entityType }} <span class="font-mono text-xs text-fg-subtle">{{ selected.entityId }}</span></dd>
@@ -69,7 +69,7 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
       <div v-if="selected?.changes && Object.keys(selected.changes).length" class="mt-4">
         <p class="mb-2 text-sm font-medium">Changes</p>
         <table class="w-full overflow-hidden rounded-xl border border-line text-sm">
-          <thead class="bg-surface-muted text-xs font-medium text-fg-muted"><tr><th class="px-3 py-2 text-left">Field</th><th class="px-3 py-2 text-left">Before</th><th class="px-3 py-2 text-left">After</th></tr></thead>
+          <thead class="bg-surface-muted text-xs font-medium text-fg-muted"><tr><th class="px-3 py-2 text-start">Field</th><th class="px-3 py-2 text-start">Before</th><th class="px-3 py-2 text-start">After</th></tr></thead>
           <tbody class="divide-y divide-line">
             <tr v-for="(c, field) in selected.changes" :key="field">
               <td class="px-3 py-2 font-medium">{{ field }}</td>

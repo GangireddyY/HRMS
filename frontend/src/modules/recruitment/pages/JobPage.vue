@@ -108,15 +108,15 @@ async function addExisting(candidateId: string) {
       <AppErrorState v-if="apps.error.value" :error="apps.error.value" @retry="apps.run" />
       <AppEmptyState v-else-if="apps.data.value && !apps.data.value.items.length" class="card" title="No candidates yet" :description="job.data.value.status === 'OPEN' ? 'Add candidates, or share the careers page.' : 'Open the job to start adding candidates.'" />
       <div v-else class="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
-        <section v-for="s in [...ACTIVE, ...(showClosed ? CLOSED : [])]" :key="s" class="flex min-h-[60vh] min-w-64 flex-1 basis-0 flex-col rounded-md border border-line bg-surface-muted/40 p-2.5">
+        <section v-for="s in [...ACTIVE, ...(showClosed ? CLOSED : [])]" :key="s" class="flex min-h-[60vh] min-w-64 flex-1 basis-0 flex-col rounded-md border border-line bg-surface-muted/40 p-3">
           <h2 class="mb-3 flex items-center justify-between px-1 text-sm font-semibold text-fg">
             <span class="flex items-center gap-2"><span class="h-2 w-2 rounded-full" :class="stageAccent[s]" aria-hidden="true" />{{ STAGE_LABELS[s] }}</span>
             <span class="text-xs font-normal text-fg-muted tabular-nums">{{ byStage.get(s)?.length ?? 0 }}</span>
           </h2>
           <ul class="space-y-2">
             <li v-for="a in byStage.get(s) ?? []" :key="a.id">
-              <button type="button" class="w-full rounded-md border border-line bg-surface p-3 text-left transition hover:border-brand-400" @click="router.push(`/hr/recruitment/applications/${a.id}`)">
-                <span class="flex items-center gap-2.5">
+              <button type="button" class="w-full card p-3 text-start transition hover:border-brand-400" @click="router.push(`/hr/recruitment/applications/${a.id}`)">
+                <span class="flex items-center gap-3">
                   <AppAvatar :name="a.candidate.name" size="sm" />
                   <span class="min-w-0">
                     <span class="block truncate text-sm font-medium text-fg">{{ a.candidate.name }}</span>

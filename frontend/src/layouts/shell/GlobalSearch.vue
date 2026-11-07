@@ -188,7 +188,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
         type="search"
         placeholder="Search pages, people…"
         autocomplete="off"
-        class="h-8 w-full rounded-md border border-line bg-surface pr-14 pl-8 text-[13px] text-fg transition outline-none placeholder:text-fg-subtle hover:border-line-strong focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 [&::-webkit-search-cancel-button]:hidden"
+        class="h-8 w-full card pe-14 ps-8 text-sm text-fg transition outline-none placeholder:text-fg-subtle hover:border-line-strong focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 [&::-webkit-search-cancel-button]:hidden"
         role="combobox"
         aria-label="Search"
         aria-autocomplete="list"
@@ -204,7 +204,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
         <button v-if="query" type="button" class="rounded-sm p-0.5 text-fg-subtle hover:text-fg" aria-label="Clear search" @mousedown.prevent @click="query = ''; input?.focus()">
           <X :size="13" />
         </button>
-        <kbd v-else-if="!focused" class="hidden rounded-sm border border-line bg-surface-muted px-1 py-px font-sans text-[10px] font-medium text-fg-subtle md:block">Ctrl K</kbd>
+        <kbd v-else-if="!focused" class="hidden rounded-sm border border-line bg-surface-muted px-1 py-px font-sans text-2xs font-medium text-fg-subtle md:block">Ctrl K</kbd>
         <button v-else type="button" class="rounded-sm p-0.5 text-fg-subtle hover:text-fg md:hidden" aria-label="Close search" @mousedown.prevent @click="closeSearch">
           <X :size="13" />
         </button>
@@ -213,15 +213,15 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
 
     <div v-if="open" class="absolute top-full right-0 z-40 mt-1 w-full min-w-[20rem] overflow-hidden rounded-md border border-line bg-surface shadow-pop max-md:left-0 max-md:min-w-0 md:w-[26rem]">
       <ul id="global-search-results" role="listbox" aria-label="Search results" class="max-h-[60vh] overflow-y-auto p-1">
-        <li v-if="!results.length" class="px-3 py-6 text-center text-[13px] text-fg-muted" role="presentation">{{ searching ? 'Searching…' : 'No results' }}</li>
+        <li v-if="!results.length" class="px-3 py-6 text-center text-sm text-fg-muted" role="presentation">{{ searching ? 'Searching…' : 'No results' }}</li>
         <template v-for="(r, i) in results" :key="r.id">
-          <li v-if="groupStart(i)" class="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-fg-subtle uppercase" role="presentation">{{ r.group }}</li>
+          <li v-if="groupStart(i)" class="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-fg-subtle uppercase" role="presentation">{{ r.group }}</li>
           <li
             :id="`gs-${r.id}`"
             role="option"
             :data-index="i"
             :aria-selected="i === active"
-            :class="['flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors', i === active ? 'bg-surface-muted' : '']"
+            :class="['flex cursor-pointer items-center gap-3 rounded-sm px-2 py-2 transition-colors', i === active ? 'bg-surface-muted' : '']"
             @mouseenter="active = i"
             @mousedown.prevent
             @click="go(r)"
@@ -230,14 +230,14 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
               <component :is="r.icon" :size="14" aria-hidden="true" />
             </span>
             <div class="min-w-0 flex-1">
-              <p class="truncate text-[13px] font-medium text-fg">{{ r.label }}</p>
+              <p class="truncate text-sm font-medium text-fg">{{ r.label }}</p>
               <p class="truncate text-xs text-fg-subtle">{{ r.hint }}</p>
             </div>
             <CornerDownLeft v-if="i === active" :size="13" class="shrink-0 text-fg-subtle" aria-hidden="true" />
           </li>
         </template>
       </ul>
-      <div class="flex items-center gap-3 border-t border-line bg-surface-muted/40 px-3 py-1.5 text-[11px] text-fg-subtle max-md:hidden">
+      <div class="flex items-center gap-3 border-t border-line bg-surface-muted/40 px-3 py-2 text-2xs text-fg-subtle max-md:hidden">
         <span>↑ ↓ to move</span><span>↵ to open</span><span>Esc to close</span>
       </div>
     </div>

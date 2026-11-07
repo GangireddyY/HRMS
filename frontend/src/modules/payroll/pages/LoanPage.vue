@@ -146,16 +146,16 @@ const period = (y: number, m: number) => `${MONTH_NAMES[m - 1]} ${y}`;
             <p v-if="!l.schedule.length" class="text-sm text-fg-muted">{{ l.status === 'CLOSED' ? 'Fully repaid.' : 'The schedule appears once the request is approved.' }}</p>
             <div v-else class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="text-left text-xs text-fg-muted">
-                  <tr><th class="py-2 font-medium">Month</th><th class="py-2 text-right font-medium">Principal</th><th class="py-2 text-right font-medium">Interest</th><th class="py-2 text-right font-medium">Deduction</th><th class="py-2 text-right font-medium">Balance after</th></tr>
+                <thead class="text-start text-xs text-fg-muted">
+                  <tr><th class="py-2 font-medium">Month</th><th class="py-2 text-end font-medium">Principal</th><th class="py-2 text-end font-medium">Interest</th><th class="py-2 text-end font-medium">Deduction</th><th class="py-2 text-end font-medium">Balance after</th></tr>
                 </thead>
                 <tbody class="divide-y divide-line">
                   <tr v-for="r in l.schedule" :key="`${r.year}-${r.month}`">
                     <td class="py-2 text-fg">{{ period(r.year, r.month) }}</td>
-                    <td class="py-2 text-right tabular-nums">{{ rupees(r.principal, true) }}</td>
-                    <td class="py-2 text-right tabular-nums">{{ rupees(r.interest, true) }}</td>
-                    <td class="py-2 text-right font-medium tabular-nums">{{ rupees(r.amount, true) }}</td>
-                    <td class="py-2 text-right text-fg-muted tabular-nums">{{ rupees(r.balance, true) }}</td>
+                    <td class="py-2 text-end tabular-nums">{{ rupees(r.principal, true) }}</td>
+                    <td class="py-2 text-end tabular-nums">{{ rupees(r.interest, true) }}</td>
+                    <td class="py-2 text-end font-medium tabular-nums">{{ rupees(r.amount, true) }}</td>
+                    <td class="py-2 text-end text-fg-muted tabular-nums">{{ rupees(r.balance, true) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -169,7 +169,7 @@ const period = (y: number, m: number) => `${MONTH_NAMES[m - 1]} ${y}`;
                   <p class="text-fg">{{ REPAYMENT_SOURCE_LABELS[r.source] }}{{ r.period ? ` · ${r.period} payroll` : '' }}</p>
                   <p class="text-xs text-fg-muted">{{ formatDate(r.paidOn) }}{{ r.note ? ` · ${r.note}` : '' }}</p>
                 </div>
-                <p class="text-right tabular-nums">
+                <p class="text-end tabular-nums">
                   <span class="font-medium text-fg">{{ rupees(r.principal + r.interest, true) }}</span>
                   <span v-if="r.interest" class="block text-xs text-fg-muted">incl. {{ rupees(r.interest, true) }} interest</span>
                 </p>

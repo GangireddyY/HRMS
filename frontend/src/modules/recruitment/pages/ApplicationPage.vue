@@ -158,7 +158,7 @@ async function hire() {
                     <p class="font-medium text-fg">{{ i.roundName }}</p>
                     <p class="text-xs text-fg-muted">{{ formatDateTime(i.scheduledAt) }} · {{ i.durationMinutes }} min · {{ MODE_LABELS[i.mode] }}{{ i.location ? ` · ${i.location}` : '' }}</p>
                   </div>
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-2">
                     <AppBadge :tone="i.status === 'COMPLETED' ? 'success' : i.status === 'CANCELLED' ? 'neutral' : 'info'" size="sm">{{ i.status === 'SCHEDULED' ? 'Scheduled' : i.status === 'COMPLETED' ? 'Completed' : 'Cancelled' }}</AppBadge>
                     <AppButton v-if="canManage && i.status === 'SCHEDULED'" size="xs" variant="ghost" @click="act(`int-${i.id}`, () => recruitmentApi.cancelInterview(i.id), 'Interview cancelled')">Cancel</AppButton>
                   </div>
@@ -182,7 +182,7 @@ async function hire() {
           </AppCard>
 
           <AppCard title="Timeline">
-            <ol class="relative space-y-4 border-l border-line pl-6">
+            <ol class="relative space-y-4 border-l border-line ps-6">
               <li v-for="e in [...a.events].reverse()" :key="e.id" class="relative">
                 <span class="absolute top-1 -left-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500" aria-hidden="true" />
                 <p class="text-sm text-fg">{{ e.fromStage ? `${STAGE_LABELS[e.fromStage]} → ` : '' }}<span class="font-medium">{{ STAGE_LABELS[e.toStage] }}</span></p>

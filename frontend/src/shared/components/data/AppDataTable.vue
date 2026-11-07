@@ -44,18 +44,19 @@ function ariaSort(col: TableColumn<Row>) {
   return s === 'asc' ? 'ascending' : s === 'desc' ? 'descending' : col.sortField ? 'none' : undefined;
 }
 
-const align = (col: TableColumn<Row>) => (col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left');
+/** Logical alignment, so right-to-left languages mirror correctly; figures are right-aligned (`align: 'right'`). */
+const align = (col: TableColumn<Row>) => (col.align === 'right' ? 'text-end' : col.align === 'center' ? 'text-center' : 'text-start');
 
 /** Below `md` each row renders as a card: the first column is the card title, the others are label/value pairs. */
 function cellClass(col: TableColumn<Row>, index: number) {
   return [
-    'px-4 py-2 align-middle text-fg md:table-cell',
+    'px-4 py-2 align-middle text-fg md:table-cell md:h-11',
     align(col),
     col.class,
     index === 0
-      ? 'max-md:block max-md:px-0 max-md:pt-0 max-md:pb-1 max-md:text-left'
-      : 'max-md:flex max-md:min-h-7 max-md:items-center max-md:justify-between max-md:gap-4 max-md:px-0 max-md:py-1 max-md:text-right ' +
-        'max-md:before:shrink-0 max-md:before:text-left max-md:before:text-xs max-md:before:font-medium max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]',
+      ? 'max-md:block max-md:px-0 max-md:pt-0 max-md:pb-1 max-md:text-start'
+      : 'max-md:flex max-md:min-h-8 max-md:items-center max-md:justify-between max-md:gap-4 max-md:px-0 max-md:py-1 max-md:text-end ' +
+        'max-md:before:shrink-0 max-md:before:text-start max-md:before:text-xs max-md:before:font-medium max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]',
   ];
 }
 
@@ -92,7 +93,7 @@ const sortOptions = computed(() =>
         <!-- Explicit roles keep table semantics when the small-screen card layout changes CSS display. -->
         <table role="table" class="min-w-full text-sm max-md:block">
           <caption v-if="caption" class="sr-only">{{ caption }}</caption>
-          <thead role="rowgroup" class="border-b border-line bg-surface-muted/40 max-md:sr-only">
+          <thead role="rowgroup" class="border-b border-line bg-surface-muted/70 max-md:sr-only">
             <tr role="row">
               <th
                 v-for="col in columns"
@@ -100,12 +101,12 @@ const sortOptions = computed(() =>
                 role="columnheader"
                 scope="col"
                 :aria-sort="ariaSort(col)"
-                :class="['px-4 py-2 text-xs font-medium whitespace-nowrap text-fg-muted', align(col), col.class]"
+                :class="['h-10 px-4 py-2 text-xs font-semibold whitespace-nowrap text-fg-muted', align(col), col.class]"
               >
                 <button
                   v-if="col.sortField"
                   type="button"
-                  :class="['group/sort -mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-surface-muted hover:text-fg', sortState(col) && 'text-fg']"
+                  :class="['group/sort -mx-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 hover:bg-surface-muted hover:text-fg', sortState(col) && 'text-fg']"
                   @click="toggleSort(col)"
                 >
                   {{ col.label }}
@@ -119,9 +120,9 @@ const sortOptions = computed(() =>
           </thead>
           <tbody role="rowgroup" class="divide-y divide-line/70 max-md:block">
             <template v-if="loading && rows.length === 0">
-              <tr v-for="i in 5" :key="`s${i}`" role="row" class="max-md:block max-md:space-y-2 max-md:px-3 max-md:py-3">
-                <td v-for="col in columns" :key="col.key" role="cell" class="px-4 py-3 max-md:block max-md:p-0">
-                  <div class="h-3.5 animate-pulse rounded-full bg-surface-muted" :style="{ width: `${50 + ((i * 17 + col.key.length * 7) % 45)}%` }" />
+              <tr v-for="i in 5" :key="`s${i}`" role="row" class="max-md:block max-md:space-y-2 max-md:px-4 max-md:py-3">
+                <td v-for="col in columns" :key="col.key" role="cell" class="h-11 px-4 py-2 max-md:block max-md:h-auto max-md:p-0">
+                  <div class="skeleton h-3.5 rounded-full" :style="{ width: `${50 + ((i * 17 + col.key.length * 7) % 45)}%` }" />
                 </td>
               </tr>
             </template>
@@ -131,8 +132,8 @@ const sortOptions = computed(() =>
               :key="rowKey(row)"
               role="row"
               :class="[
-                'transition-colors max-md:block max-md:px-3 max-md:py-2.5',
-                clickable && 'cursor-pointer hover:bg-brand-50/50 focus-visible:bg-brand-50/50 dark:hover:bg-white/[0.03]',
+                'transition-colors max-md:block max-md:px-4 max-md:py-3',
+                clickable ? 'cursor-pointer hover:bg-brand-50/50 focus-visible:bg-brand-50/50 dark:hover:bg-white/[0.03]' : 'hover:bg-surface-muted/40',
                 loading && 'opacity-60',
               ]"
               :tabindex="clickable ? 0 : undefined"

@@ -39,7 +39,7 @@ const progress = (repaid: number, principal: number) => Math.min(100, Math.round
           v-for="l in mine.data.value.loans"
           :key="l.id"
           type="button"
-          class="rounded-2xl bg-surface p-4 text-left ring-1 ring-line transition hover:ring-brand-400"
+          class="rounded-2xl bg-surface p-4 text-start ring-1 ring-line transition hover:ring-brand-400"
           @click="router.push(`/me/loans/${l.id}`)"
         >
           <div class="flex items-start justify-between gap-3">

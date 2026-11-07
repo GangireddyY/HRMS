@@ -96,18 +96,18 @@ async function submit() {
 
 <template>
   <div class="auth-page-tall">
-    <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Create your organization</h1>
-    <p class="mt-2 text-sm text-fg-muted">Set up your workspace and become its admin.</p>
+    <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px] short:text-2xl">Create your organization</h1>
+    <p class="mt-2 text-sm text-fg-muted short:mt-1 lg:tiny:hidden">Set up your workspace and become its admin.</p>
 
     <!-- Steps -->
-    <nav class="mt-4" aria-label="Sign-up steps">
+    <nav class="mt-4 short:mt-3" aria-label="Sign-up steps">
       <ol class="grid grid-cols-2 gap-1 rounded-2xl bg-surface-muted p-1 ring-1 ring-line ring-inset">
         <li v-for="(s, i) in STEPS" :key="s.key">
           <button
             type="button"
             :aria-current="step === s.key ? 'step' : undefined"
             :class="[
-              'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition',
+              'flex w-full items-center gap-2 rounded-xl px-2 py-2 text-start transition sm:gap-3 sm:px-3 short:py-1',
               step === s.key ? 'bg-surface shadow-card ring-1 ring-line' : 'hover:bg-surface/60',
             ]"
             @click="goTo(s.key)"
@@ -129,54 +129,64 @@ async function submit() {
             </span>
             <span class="min-w-0">
               <span :class="['block truncate text-sm font-semibold', step === s.key ? 'text-fg' : 'text-fg-muted']">{{ s.title }}</span>
-              <span class="block truncate text-xs text-fg-subtle">{{ s.hint }}</span>
+              <span class="hidden truncate text-xs text-fg-subtle min-[400px]:block short:hidden">{{ s.hint }}</span>
             </span>
           </button>
         </li>
       </ol>
-      <div class="mt-3 h-1 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
+      <div class="mt-3 h-1 overflow-hidden rounded-full bg-surface-muted short:mt-2" aria-hidden="true">
         <div class="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-[width] duration-500 ease-out" :style="{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }" />
       </div>
     </nav>
 
-    <form ref="formEl" class="mt-4" novalidate @submit.prevent="submit">
+    <form ref="formEl" class="mt-4 short:mt-3" novalidate @submit.prevent="submit">
       <AppAlert v-if="formError" class="mb-4">{{ formError }}</AppAlert>
 
       <Transition mode="out-in" enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 translate-x-3" leave-active-class="transition duration-150" leave-to-class="opacity-0 -translate-x-3">
-        <fieldset v-if="step === 'organization'" key="organization" class="space-y-4">
+        <fieldset v-if="step === 'organization'" key="organization" class="space-y-4 short:space-y-3">
           <legend class="sr-only">Organization</legend>
           <AppInput v-model="org.name" label="Organization name" required autocomplete="organization" :error="errorFor('organization.name')" />
-          <div class="grid grid-cols-2 gap-3">
+          <!-- Short laptop screens: country, currency and time zone share a row so the card fits without scrolling. -->
+          <div class="grid gap-3 min-[400px]:grid-cols-2 lg:short:grid-cols-[1fr_0.8fr_1.4fr]">
             <AppSelect v-model="org.country" label="Country" :options="COUNTRY_OPTIONS" :error="errorFor('organization.country')" />
             <AppSelect v-model="org.currency" label="Currency" :options="CURRENCY_OPTIONS" :error="errorFor('organization.currency')" />
+            <AppSelect
+              v-model="org.timezone"
+              class="min-[400px]:col-span-2 lg:short:col-span-1"
+              label="Time zone"
+              :options="timezones"
+              :error="errorFor('organization.timezone')"
+            />
           </div>
-          <AppSelect v-model="org.timezone" label="Time zone" :options="timezones" :error="errorFor('organization.timezone')" />
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid gap-3 min-[400px]:grid-cols-2">
             <AppInput v-model="org.industry" label="Industry" placeholder="e.g. IT services" :error="errorFor('organization.industry')" />
             <AppSelect v-model="org.companySize" label="Company size" :options="COMPANY_SIZE_OPTIONS" :error="errorFor('organization.companySize')" />
           </div>
         </fieldset>
 
-        <fieldset v-else key="account" class="space-y-4">
+        <fieldset v-else key="account" class="space-y-4 short:space-y-3">
           <legend class="sr-only">Your account</legend>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid gap-3 min-[400px]:grid-cols-2">
             <AppInput v-model="admin.firstName" label="First name" required autocomplete="given-name" :error="errorFor('admin.firstName')" />
             <AppInput v-model="admin.lastName" label="Last name" required autocomplete="family-name" :error="errorFor('admin.lastName')" />
           </div>
-          <AppInput v-model="admin.email" label="Work email" type="email" required autocomplete="email" :error="errorFor('admin.email')" />
-          <AppInput
-            v-model="admin.password"
-            label="Password"
-            type="password"
-            required
-            autocomplete="new-password"
-            :error="fieldErrors['admin.password'] ?? fieldErrors.password ?? localErrors['admin.password']"
-          />
-          <AppPasswordChecklist :password="admin.password" :policy="DEFAULT_PASSWORD_POLICY" />
+          <!-- Short laptop screens: email and password side by side so the card fits without scrolling. -->
+          <div class="grid gap-3 lg:short:grid-cols-2">
+            <AppInput v-model="admin.email" label="Work email" type="email" required autocomplete="email" :error="errorFor('admin.email')" />
+            <AppInput
+              v-model="admin.password"
+              label="Password"
+              type="password"
+              required
+              autocomplete="new-password"
+              :error="fieldErrors['admin.password'] ?? fieldErrors.password ?? localErrors['admin.password']"
+            />
+          </div>
+          <AppPasswordChecklist :password="admin.password" :policy="DEFAULT_PASSWORD_POLICY" compact />
         </fieldset>
       </Transition>
 
-      <div class="mt-4 flex gap-3">
+      <div class="mt-4 flex gap-3 short:mt-3">
         <AppButton v-if="step === 'account'" type="button" variant="secondary" size="lg" :icon="ArrowLeft" :disabled="submitting" @click="goTo('organization')">Back</AppButton>
         <AppButton type="submit" block size="lg" :loading="submitting" :icon-right="step === 'organization' ? ArrowRight : undefined" class="flex-1">
           {{ step === 'organization' ? 'Continue' : 'Create organization' }}
@@ -184,7 +194,7 @@ async function submit() {
       </div>
     </form>
 
-    <p class="mt-auto pt-4 text-center text-sm text-fg-muted">
+    <p class="mt-auto pt-4 text-center text-sm text-fg-muted short:pt-3">
       Already have an account? <RouterLink to="/login" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Sign in</RouterLink>
     </p>
   </div>

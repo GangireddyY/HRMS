@@ -219,7 +219,7 @@ const stats = computed(() => counts.value ?? p.value?.stats ?? null);
 
         <template v-else-if="tab === 'acks'">
           <AppCard :padded="false">
-            <div class="flex flex-wrap items-center gap-3 border-b border-line p-4">
+            <div class="flex flex-wrap items-center gap-3 border-b border-line/70 px-4 py-3">
               <AppSearchInput v-model="tracking.search.value" class="min-w-56 flex-1" placeholder="Search by name or code" aria-label="Search people" />
               <AppSelect v-model="tracking.filters.state" class="w-48" :options="stateOptions" placeholder="Everyone" aria-label="Filter by status" />
               <AppButton variant="secondary" :icon="Download" @click="csv">Export</AppButton>

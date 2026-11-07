@@ -29,10 +29,10 @@ const page = useAsync(() => careersApi.page(slug.value));
             <h1 class="text-3xl font-semibold tracking-tight text-fg">Join {{ page.data.value.organization.name }}</h1>
           </div>
         </header>
-        <AppEmptyState v-if="!page.data.value.jobs.length" class="rounded-2xl bg-surface ring-1 ring-line" :icon="Briefcase" title="No open positions right now" description="Please check back soon." />
+        <AppEmptyState v-if="!page.data.value.jobs.length" class="card" :icon="Briefcase" title="No open positions right now" description="Please check back soon." />
         <ul v-else class="space-y-3">
           <li v-for="j in page.data.value.jobs" :key="j.id">
-            <RouterLink :to="`/careers/${slug}/jobs/${j.id}`" class="group flex items-center gap-4 rounded-2xl bg-surface p-4 ring-1 ring-line transition hover:ring-brand-400">
+            <RouterLink :to="`/careers/${slug}/jobs/${j.id}`" class="group flex items-center gap-4 card p-4 transition hover:ring-brand-400">
               <div class="min-w-0 flex-1">
                 <p class="text-lg font-semibold text-fg group-hover:text-brand-600 dark:group-hover:text-brand-400">{{ j.title }}</p>
                 <p class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">

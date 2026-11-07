@@ -69,7 +69,7 @@ async function act(fn: () => Promise<unknown>, success: string) {
 
 <template>
   <AppCard :padded="false">
-    <div class="grid gap-3 border-b border-line p-4 sm:grid-cols-[1fr_220px]">
+    <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_220px]">
       <AppSearchInput v-model="table.search.value" placeholder="Search by name or code" aria-label="Search enrolments" />
       <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
     </div>

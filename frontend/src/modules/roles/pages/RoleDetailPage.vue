@@ -181,7 +181,7 @@ async function remove() {
           </div>
 
           <!-- Details (scrolls inside the panel on large screens) -->
-          <div v-else class="space-y-4 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-1">
+          <div v-else class="space-y-4 lg:h-full lg:overflow-y-auto lg:pe-1 lg:pb-1">
             <AppCard title="Role details" description="How this role appears when you assign it to people.">
               <form novalidate @submit.prevent="saveDetails">
                 <AppAlert v-if="detailErrors.formError.value" class="mb-4">{{ detailErrors.formError.value }}</AppAlert>
@@ -189,7 +189,7 @@ async function remove() {
                   <div class="grid gap-3 pb-4 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-5">
                     <div>
                       <label for="role-name" class="text-sm font-medium text-fg">Name</label>
-                      <p class="mt-0.5 text-[13px] text-fg-muted">Shown in user lists and invitations.</p>
+                      <p class="mt-0.5 text-sm text-fg-muted">Shown in user lists and invitations.</p>
                     </div>
                     <AppInput
                       id="role-name"
@@ -204,26 +204,26 @@ async function remove() {
                   <div class="grid gap-3 py-4 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-5">
                     <div>
                       <label for="role-description" class="text-sm font-medium text-fg">Description</label>
-                      <p class="mt-0.5 text-[13px] text-fg-muted">Explain who should get this role.</p>
+                      <p class="mt-0.5 text-sm text-fg-muted">Explain who should get this role.</p>
                     </div>
                     <AppTextarea id="role-description" v-model="details.description" :rows="3" :max-rows="6" :maxlength="500" :disabled="!canManage" :error="detailErrors.fieldErrors.value.description" />
                   </div>
                   <div class="grid gap-3 pt-4 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-5">
                     <div>
                       <p class="text-sm font-medium text-fg">Role information</p>
-                      <p class="mt-0.5 text-[13px] text-fg-muted">Managed by HRMS.</p>
+                      <p class="mt-0.5 text-sm text-fg-muted">Managed by HRMS.</p>
                     </div>
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl bg-surface-muted/60 p-4 ring-1 ring-line/70 sm:grid-cols-3">
                       <div>
                         <dt class="text-xs text-fg-muted">Type</dt>
-                        <dd class="mt-1 flex items-center gap-1.5 text-sm font-medium text-fg">
+                        <dd class="mt-1 flex items-center gap-2 text-sm font-medium text-fg">
                           <component :is="role.data.value.isSystem ? ShieldCheck : UserCog" :size="14" class="text-fg-subtle" aria-hidden="true" />
                           {{ role.data.value.isSystem ? 'System' : 'Custom' }}{{ role.data.value.isLocked ? ' · Locked' : '' }}
                         </dd>
                       </div>
                       <div>
                         <dt class="text-xs text-fg-muted">Key</dt>
-                        <dd class="mt-1 truncate font-mono text-[13px] text-fg">{{ role.data.value.key }}</dd>
+                        <dd class="mt-1 truncate font-mono text-sm text-fg">{{ role.data.value.key }}</dd>
                       </div>
                       <div>
                         <dt class="text-xs text-fg-muted">Assigned users</dt>

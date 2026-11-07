@@ -83,11 +83,11 @@ function onDrop(e: DragEvent) {
       </span>
     </button>
     <div class="min-w-0">
-      <div class="flex flex-wrap gap-1.5">
+      <div class="flex flex-wrap gap-2">
         <AppButton size="sm" variant="secondary" :icon="Upload" :loading="busy === 'upload'" :disabled="!!busy" @click="pick">{{ photo ? 'Change photo' : 'Upload photo' }}</AppButton>
         <AppButton v-if="photo" size="sm" variant="ghost" :icon="Trash2" :loading="busy === 'remove'" :disabled="!!busy" @click="remove">Remove</AppButton>
       </div>
-      <p class="mt-1.5 text-xs text-fg-muted">PNG, JPG or WebP, up to 5 MB. Cropped to a square around your face.</p>
+      <p class="mt-2 text-xs text-fg-muted">PNG, JPG or WebP, up to 5 MB. Cropped to a square around your face.</p>
       <p v-if="error" class="mt-1 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
     </div>
     <input ref="input" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" tabindex="-1" aria-label="Photo file" @change="upload(($event.target as HTMLInputElement).files?.[0])" />

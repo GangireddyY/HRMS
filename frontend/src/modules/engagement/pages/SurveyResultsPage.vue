@@ -48,11 +48,11 @@ const bars = (q: QuestionResult) => {
             </div>
           </template>
           <p v-else-if="q.type === 'RATING'" class="mb-4 text-sm text-fg-muted">Average <span class="text-2xl font-semibold text-fg tabular-nums">{{ q.average ?? '—' }}</span> / 5</p>
-          <ul v-if="q.type !== 'TEXT'" class="space-y-1.5">
+          <ul v-if="q.type !== 'TEXT'" class="space-y-2">
             <li v-for="b in bars(q)" :key="b.key" class="grid grid-cols-[minmax(0,10rem)_1fr_4rem] items-center gap-3 text-sm">
               <span class="truncate text-fg-muted">{{ b.label }}</span>
               <span class="h-2 rounded-full bg-surface-muted"><span class="block h-2 rounded-full bg-brand-500" :style="{ width: `${b.pct}%` }" /></span>
-              <span class="text-right tabular-nums text-fg-muted">{{ b.count }} · {{ b.share }}%</span>
+              <span class="text-end tabular-nums text-fg-muted">{{ b.count }} · {{ b.share }}%</span>
             </li>
           </ul>
           <ul v-else class="space-y-2">

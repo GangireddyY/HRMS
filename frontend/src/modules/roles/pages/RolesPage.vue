@@ -86,7 +86,7 @@ async function create() {
         @row-click="(row) => router.push(`/admin/roles/${row.id}`)"
       >
         <template #cell-name="{ row }">
-          <p class="flex items-center gap-1.5 font-medium text-fg">{{ row.name }} <Lock v-if="row.isLocked" :size="13" class="text-fg-subtle" aria-label="Locked" /></p>
+          <p class="flex items-center gap-2 font-medium text-fg">{{ row.name }} <Lock v-if="row.isLocked" :size="13" class="text-fg-subtle" aria-label="Locked" /></p>
           <p v-if="row.description" class="max-w-md truncate text-xs text-fg-muted">{{ row.description }}</p>
         </template>
         <template #cell-type="{ row }"><AppBadge :tone="row.isSystem ? 'neutral' : 'info'">{{ row.isSystem ? 'System' : 'Custom' }}</AppBadge></template>

@@ -36,7 +36,8 @@ export async function primaryNav(page: Page): Promise<Locator> {
 
 /** Picks a date in an AppDatePicker (day buttons are labelled with the full date in the browser's locale). */
 export async function pickDate(page: Page, scope: Locator, label: string, iso: string): Promise<void> {
-  await scope.getByRole('button', { name: new RegExp(`^${label}`) }).click();
+  // The form guide beside page forms lists required fields as buttons too, so match the picker trigger only.
+  await scope.getByRole('button', { name: new RegExp(`^${label}`) }).and(scope.locator('[aria-haspopup="dialog"]')).click();
   const picker = page.getByRole('dialog', { name: `Choose ${label}` });
   const name = await page.evaluate((d) => {
     const [y, m, day] = d.split('-').map(Number) as [number, number, number];

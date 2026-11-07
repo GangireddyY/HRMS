@@ -7,7 +7,7 @@ import { AppButton } from '@/shared/components';
   <div class="bg-dots relative flex min-h-full flex-col items-center justify-center bg-canvas px-4 text-center">
     <div class="relative mb-4">
       <div class="absolute inset-0 -m-6 rounded-full bg-amber-500/10 blur-2xl" aria-hidden="true" />
-      <div class="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-surface text-amber-600 shadow-card dark:text-amber-400">
+      <div class="relative flex h-16 w-16 items-center justify-center card text-amber-600 shadow-card dark:text-amber-400">
         <ShieldAlert :size="28" aria-hidden="true" />
       </div>
     </div>

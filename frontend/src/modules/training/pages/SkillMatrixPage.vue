@@ -83,16 +83,16 @@ async function verify() {
     <AppPageHeader title="Skill matrix" description="Who knows what across your people, against the levels their roles need. Click a cell to verify a level." />
     <AppTabs v-model="tab" :tabs="tabs">
       <AppCard v-if="tab === 'matrix'" :padded="false">
-        <div class="flex flex-wrap items-center gap-3 border-b border-line p-4">
+        <div class="flex flex-wrap items-center gap-3 border-b border-line/70 px-4 py-3">
           <AppSelect v-model="filters.departmentId" class="w-48" :options="departmentOptions" placeholder="All departments" aria-label="Filter by department" />
           <AppSelect v-model="filters.designationId" class="w-48" :options="designationOptions" placeholder="All roles" aria-label="Filter by role" />
           <AppSelect v-model="pick" class="w-52" :options="skillOptions" placeholder="Add a skill column…" searchable aria-label="Add a skill" />
           <AppSearchInput v-model="filters.search" class="min-w-48 flex-1" placeholder="Search people" aria-label="Search people" />
         </div>
-        <div v-if="filters.skillIds.length" class="flex flex-wrap gap-1.5 border-b border-line px-4 py-2">
+        <div v-if="filters.skillIds.length" class="flex flex-wrap gap-2 border-b border-line px-4 py-2">
           <AppBadge v-for="id in filters.skillIds" :key="id" tone="brand">
             {{ skillName(id) }}
-            <button type="button" class="ml-1 cursor-pointer" :aria-label="`Remove ${skillName(id)}`" @click="filters.skillIds = filters.skillIds.filter((x) => x !== id)">×</button>
+            <button type="button" class="ms-1 cursor-pointer" :aria-label="`Remove ${skillName(id)}`" @click="filters.skillIds = filters.skillIds.filter((x) => x !== id)">×</button>
           </AppBadge>
           <AppButton size="xs" variant="link" @click="filters.skillIds = []">Clear</AppButton>
         </div>
@@ -104,7 +104,7 @@ async function verify() {
             <table class="w-full border-separate border-spacing-1 text-xs">
               <thead>
                 <tr>
-                  <th class="sticky left-0 z-10 bg-surface text-left font-medium text-fg-muted">Person</th>
+                  <th class="sticky left-0 z-10 bg-surface text-start font-medium text-fg-muted">Person</th>
                   <th v-for="s in matrix.data.value.skills" :key="s.id" class="min-w-24 align-bottom font-medium text-fg-muted">
                     <span class="block">{{ s.name }}</span>
                     <span class="block font-normal text-fg-subtle">{{ matrix.data.value.summary.find((x) => x.skillId === s.id)?.people ?? 0 }} people</span>
@@ -113,14 +113,14 @@ async function verify() {
               </thead>
               <tbody>
                 <tr v-for="r in matrix.data.value.page.items" :key="r.employee.id">
-                  <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pr-2 text-left font-normal sm:max-w-none sm:min-w-48">
+                  <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pe-2 text-start font-normal sm:max-w-none sm:min-w-48">
                     <span class="block truncate text-sm font-medium text-fg">{{ r.employee.name }}</span>
                     <span class="block truncate text-fg-muted">{{ [r.employee.designation, r.employee.department].filter(Boolean).join(' · ') || r.employee.employeeCode }}</span>
                   </th>
                   <td v-for="c in r.cells" :key="c.skillId" class="p-0">
                     <button
                       type="button"
-                      :class="['flex h-full w-full cursor-pointer flex-col items-center rounded-md px-1.5 py-1.5 ring-1 ring-inset transition hover:ring-brand-400', cellClass(c)]"
+                      :class="['flex h-full w-full cursor-pointer flex-col items-center rounded-md px-2 py-2 ring-1 ring-inset transition hover:ring-brand-400', cellClass(c)]"
                       :aria-label="`${r.employee.name}, ${skillName(c.skillId)}: ${c.level ? SKILL_LEVEL_LABELS[c.level] : 'none'}${c.required ? `, needs ${SKILL_LEVEL_LABELS[c.required]}` : ''}${c.verifiedLevel ? ', verified' : ''}`"
                       @click="openCell(r, c)"
                     >
@@ -131,10 +131,10 @@ async function verify() {
               </tbody>
             </table>
             <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
-              <li class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-emerald-500/40" aria-hidden="true" />Meets the role</li>
-              <li class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-amber-500/40" aria-hidden="true" />One level short</li>
-              <li class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-red-500/30" aria-hidden="true" />Further short</li>
-              <li class="inline-flex items-center gap-1.5"><BadgeCheck :size="12" aria-hidden="true" />Verified</li>
+              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-emerald-500/40" aria-hidden="true" />Meets the role</li>
+              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-amber-500/40" aria-hidden="true" />One level short</li>
+              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-red-500/30" aria-hidden="true" />Further short</li>
+              <li class="inline-flex items-center gap-2"><BadgeCheck :size="12" aria-hidden="true" />Verified</li>
               <li>“3/4” = level 3, the role needs 4</li>
             </ul>
           </div>

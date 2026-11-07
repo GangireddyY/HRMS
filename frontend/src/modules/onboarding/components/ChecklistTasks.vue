@@ -110,10 +110,10 @@ async function remove(task: OnboardingTask) {
           </span>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium" :class="finished(t) ? 'text-fg-muted line-through decoration-fg-subtle/50' : 'text-fg'">
-              {{ t.title }}<span v-if="!t.isRequired" class="ml-1.5 text-xs font-normal text-fg-subtle no-underline">(optional)</span>
+              {{ t.title }}<span v-if="!t.isRequired" class="ms-2 text-xs font-normal text-fg-subtle no-underline">(optional)</span>
             </p>
             <p v-if="t.description" class="mt-0.5 text-xs text-fg-muted">{{ t.description }}</p>
-            <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <AppBadge :tone="assigneeTone[t.assignee]" size="sm">{{ ASSIGNEE_LABELS[t.assignee] }}</AppBadge>
               <AppBadge v-if="t.state !== 'PENDING'" :tone="taskStateTone[t.state]" size="sm" dot>{{ TASK_STATE_LABELS[t.state] }}</AppBadge>
               <span :class="t.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-subtle'">{{ t.overdue ? 'Overdue · ' : 'Due ' }}{{ formatDate(t.dueDate) }}</span>
@@ -124,7 +124,7 @@ async function remove(task: OnboardingTask) {
             </p>
             <p v-if="t.note && finished(t)" class="mt-1 text-xs text-fg-muted italic">“{{ t.note }}”</p>
           </div>
-          <div class="flex shrink-0 items-center gap-1.5">
+          <div class="flex shrink-0 items-center gap-2">
             <AppButton v-if="canUpload(t)" size="sm" variant="secondary" :icon="FileUp" :loading="busy === t.id" @click="chooseFile(t)">{{ t.state === 'REJECTED' ? 'Upload again' : 'Upload' }}</AppButton>
             <template v-if="canVerify(t)">
               <AppButton size="sm" variant="secondary" :icon="Eye" @click="view(t)">View</AppButton>

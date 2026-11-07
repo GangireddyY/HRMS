@@ -4,7 +4,7 @@ import type { RouteLocationRaw } from 'vue-router';
 
 defineProps<{ icon?: Component; to?: RouteLocationRaw; danger?: boolean; disabled?: boolean }>();
 defineEmits<{ select: [] }>();
-const cls = 'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium transition-colors disabled:opacity-50';
+const cls = 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start text-sm font-medium transition-colors disabled:opacity-50';
 </script>
 
 <template>

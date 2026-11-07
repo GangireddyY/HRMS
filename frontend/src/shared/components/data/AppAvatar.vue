@@ -32,9 +32,9 @@ watch(url, () => (failed.value = false));
 <template>
   <span
     :class="[
-      'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white ring-2 ring-surface select-none',
+      'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white shadow-xs ring-2 ring-surface select-none',
       url && !failed ? 'bg-surface-muted' : ['bg-gradient-to-br', color],
-      { xs: 'h-6 w-6 text-[10px]', sm: 'h-7 w-7 text-[11px]', md: 'h-9 w-9 text-xs', lg: 'h-12 w-12 text-sm', xl: 'h-16 w-16 text-lg' }[size],
+      { xs: 'h-6 w-6 text-2xs', sm: 'h-7 w-7 text-2xs', md: 'h-9 w-9 text-xs', lg: 'h-12 w-12 text-sm', xl: 'h-16 w-16 text-lg' }[size],
     ]"
     aria-hidden="true"
   >

@@ -9,7 +9,7 @@ const current = computed(() => (model.value ? props.labels[model.value - 1] : nu
 
 <template>
   <div>
-    <div class="flex flex-wrap items-center gap-1.5" role="radiogroup" :aria-label="label">
+    <div class="flex flex-wrap items-center gap-2" role="radiogroup" :aria-label="label">
       <button
         v-for="n in 5"
         :key="n"
@@ -25,7 +25,7 @@ const current = computed(() => (model.value ? props.labels[model.value - 1] : nu
       >
         {{ n }}
       </button>
-      <span class="ml-1 text-xs text-fg-muted">{{ current ?? 'Not rated' }}</span>
+      <span class="ms-1 text-xs text-fg-muted">{{ current ?? 'Not rated' }}</span>
     </div>
   </div>
 </template>

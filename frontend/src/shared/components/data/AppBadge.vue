@@ -8,8 +8,8 @@ withDefaults(
 <template>
   <span
     :class="[
-      'inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap ring-1 ring-inset',
-      size === 'sm' ? 'px-1.5 py-px text-[11px]' : 'px-2 py-0.5 text-xs',
+      'inline-flex items-center gap-2 rounded-full font-medium whitespace-nowrap ring-1 ring-inset',
+      size === 'sm' ? 'px-2 py-px text-2xs' : 'px-2 py-0.5 text-xs',
       {
         neutral: 'bg-surface-muted text-fg-muted ring-line',
         brand: 'bg-brand-50 text-brand-700 ring-brand-600/15 dark:bg-brand-500/12 dark:text-brand-300 dark:ring-brand-400/25',

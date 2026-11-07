@@ -35,7 +35,7 @@ test.describe('attendance', () => {
     // Today's record is complete (in, out and worked time).
     await expect(page.getByText('Worked', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Punch in' })).toHaveCount(0);
-    await expect(page.getByRole('list', { name: /Attendance for/ })).toBeVisible();
+    await expect(page.getByRole('grid', { name: /Attendance for/ })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('my-attendance.png'), fullPage: true });
   });
 
@@ -44,7 +44,7 @@ test.describe('attendance', () => {
     await page.goto('/admin/holidays');
     await page.getByRole('button', { name: 'Add holiday' }).click();
     const dialog = page.getByRole('dialog', { name: 'Add holiday' });
-    await dialog.getByRole('button', { name: /^Date/ }).click();
+    await dialog.locator('button[aria-haspopup="dialog"]').filter({ hasText: /Select date/ }).click();
     const picker = page.getByRole('dialog', { name: 'Choose Date' });
     // A future month that differs between runs keeps holidays from clashing and away from attendance data.
     for (let i = 0; i < 12 + (Date.now() % 24); i++) await picker.getByRole('button', { name: 'Next month' }).click();

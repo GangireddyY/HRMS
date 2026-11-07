@@ -8,7 +8,7 @@ withDefaults(defineProps<{ tone?: 'error' | 'success' | 'info' | 'warning'; titl
   <div
     :role="tone === 'error' ? 'alert' : 'status'"
     :class="[
-      'flex items-start gap-2.5 rounded-md px-3 py-2 text-[13px] ring-1 ring-inset',
+      'flex items-start gap-3 rounded-md px-3 py-2 text-sm ring-1 ring-inset',
       {
         error: 'bg-red-50 text-red-800 ring-red-600/15 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20',
         success: 'bg-emerald-50 text-emerald-800 ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-400/20',

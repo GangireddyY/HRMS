@@ -24,7 +24,7 @@ function isActive(item: NavItem): boolean {
 }
 /** "More" is current on any page that isn't one of the tabs. */
 const moreActive = computed(() => ui.moreOpen || (!tabs.value.some(isActive) && allItems.value.some((i) => route.path.startsWith(i.to))));
-const tabClass = (active: boolean) => ['relative mx-auto flex w-16 flex-col items-center gap-1 py-1.5 text-[11px] font-medium transition-colors', active ? 'text-brand-600 dark:text-brand-300' : 'text-fg-muted'];
+const tabClass = (active: boolean) => ['relative mx-auto flex w-16 flex-col items-center gap-1 py-2 text-2xs font-medium transition-colors', active ? 'text-brand-600 dark:text-brand-300' : 'text-fg-muted'];
 const pillClass = (active: boolean) => ['flex h-7 w-12 items-center justify-center rounded-full transition-colors', active && 'bg-brand-500/12'];
 </script>
 

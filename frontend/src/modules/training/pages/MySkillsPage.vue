@@ -97,7 +97,7 @@ function openAdd(skillId: string | null = null) {
               </div>
               <span class="text-sm font-semibold text-fg tabular-nums">{{ p.readiness }}%</span>
             </div>
-            <ul class="space-y-2.5 text-sm">
+            <ul class="space-y-3 text-sm">
               <li v-for="r in p.requirements" :key="r.skillId" class="flex items-center justify-between gap-3">
                 <span :class="r.current >= r.requiredLevel ? 'text-fg' : 'font-medium text-amber-700 dark:text-amber-300'">{{ r.name }}</span>
                 <SkillLevel :model-value="r.current" :required="r.requiredLevel" size="sm" :label="r.name" />

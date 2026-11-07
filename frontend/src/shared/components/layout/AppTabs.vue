@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useId } from 'vue';
 
-/** `fill`: on large screens the panel takes the remaining height of a flex column parent. */
+/**
+ * `fill`: on large screens the panel takes the remaining height of a flex column parent. The `actions` slot sits at the
+ * end of the tab row (view filters that apply to every tab).
+ */
 defineProps<{ tabs: { key: string; label: string }[]; fill?: boolean }>();
 const model = defineModel<string>({ required: true });
 const id = useId();
@@ -16,7 +19,8 @@ function onKey(e: KeyboardEvent, tabs: { key: string }[], index: number) {
 
 <template>
   <div :class="fill && 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col'">
-    <div role="tablist" :class="['flex max-w-full gap-5 overflow-x-auto border-b border-line', fill ? 'mb-4 shrink-0' : 'mb-4']">
+    <div :class="['flex items-end gap-3 border-b border-line', fill ? 'mb-4 shrink-0' : 'mb-4']">
+    <div role="tablist" class="-mb-px flex min-w-0 flex-1 gap-5 overflow-x-auto">
       <button
         v-for="(t, i) in tabs"
         :id="`${id}-${t.key}`"
@@ -26,14 +30,18 @@ function onKey(e: KeyboardEvent, tabs: { key: string }[], index: number) {
         :aria-selected="model === t.key"
         :tabindex="model === t.key ? 0 : -1"
         :class="[
-          '-mb-px border-b-2 px-0.5 pt-1 pb-2 text-[13px] font-medium whitespace-nowrap transition-colors',
-          model === t.key ? 'border-brand-600 text-fg dark:border-brand-400' : 'border-transparent text-fg-muted hover:border-line-strong hover:text-fg',
+          '-mb-px border-b-2 px-0.5 pt-1 pb-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-sm focus-visible:outline-offset-0',
+          model === t.key
+            ? 'border-brand-600 font-semibold text-brand-700 dark:border-brand-400 dark:text-brand-200'
+            : 'border-transparent font-medium text-fg-muted hover:border-line-strong hover:text-fg',
         ]"
         @click="model = t.key"
         @keydown="onKey($event, tabs, i)"
       >
         {{ t.label }}
       </button>
+    </div>
+    <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2 pb-1.5"><slot name="actions" /></div>
     </div>
     <div role="tabpanel" :class="fill && 'lg:min-h-0 lg:flex-1'"><slot /></div>
   </div>

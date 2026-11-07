@@ -29,7 +29,7 @@ const tones = {
         v-for="t in feedback.toasts"
         :key="t.id"
         :role="t.kind === 'error' ? 'alert' : 'status'"
-        class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-line bg-surface-raised/95 p-3.5 shadow-pop backdrop-blur"
+        class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-line bg-surface-raised/95 p-4 shadow-pop backdrop-blur"
       >
         <span :class="['flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', tones[t.kind]]">
           <component :is="icons[t.kind]" :size="16" aria-hidden="true" />
