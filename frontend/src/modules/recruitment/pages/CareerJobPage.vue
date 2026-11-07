@@ -54,10 +54,10 @@ async function apply() {
   <div class="min-h-dvh bg-canvas">
     <div class="mx-auto max-w-3xl px-4 py-10 sm:py-16">
       <RouterLink :to="`/careers/${slug}`" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">← All open positions</RouterLink>
-      <AppSkeleton v-if="data.loading.value && !data.data.value" class="mt-6" :lines="8" />
-      <AppErrorState v-else-if="data.error.value" class="mt-6" :error="data.error.value" title="This position isn't open" />
+      <AppSkeleton v-if="data.loading.value && !data.data.value" class="mt-4" :lines="8" />
+      <AppErrorState v-else-if="data.error.value" class="mt-4" :error="data.error.value" title="This position isn't open" />
       <template v-else-if="data.data.value">
-        <header class="mt-6 mb-8">
+        <header class="mt-4 mb-4">
           <p class="text-sm text-fg-muted">{{ data.data.value.organization.name }}</p>
           <h1 class="mt-1 text-3xl font-semibold tracking-tight text-fg">{{ data.data.value.job.title }}</h1>
           <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
@@ -67,17 +67,17 @@ async function apply() {
             <span v-if="experience(data.data.value.job.experienceMin, data.data.value.job.experienceMax)">{{ experience(data.data.value.job.experienceMin, data.data.value.job.experienceMax) }}</span>
           </p>
         </header>
-        <section class="rounded-2xl bg-surface p-6 ring-1 ring-line">
+        <section class="rounded-2xl bg-surface p-4 ring-1 ring-line">
           <h2 class="text-lg font-semibold text-fg">About the role</h2>
           <p class="mt-2 whitespace-pre-line text-fg-muted">{{ data.data.value.job.description }}</p>
           <template v-if="data.data.value.job.requirements">
-            <h2 class="mt-6 text-lg font-semibold text-fg">What we're looking for</h2>
+            <h2 class="mt-4 text-lg font-semibold text-fg">What we're looking for</h2>
             <p class="mt-2 whitespace-pre-line text-fg-muted">{{ data.data.value.job.requirements }}</p>
           </template>
         </section>
 
-        <section class="mt-6 rounded-2xl bg-surface p-6 ring-1 ring-line">
-          <div v-if="done" class="flex flex-col items-center py-6 text-center">
+        <section class="mt-4 rounded-2xl bg-surface p-4 ring-1 ring-line">
+          <div v-if="done" class="flex flex-col items-center py-4 text-center">
             <CheckCircle2 :size="40" class="text-emerald-500" aria-hidden="true" />
             <p class="mt-3 text-lg font-semibold text-fg">Application sent</p>
             <p class="mt-1 max-w-md text-sm text-fg-muted">{{ done }}</p>

@@ -92,11 +92,11 @@ async function saveCode() {
           <AppButton v-if="auth.can('employee.view', 'TEAM')" variant="secondary" :icon="UserRound" :to="`/hr/employees/${id}`">Employee profile</AppButton>
         </template>
       </AppPageHeader>
-      <div class="grid items-start gap-6 xl:grid-cols-3">
+      <div class="grid items-start gap-4 xl:grid-cols-3">
         <AppCard class="xl:col-span-2" :description="canCorrect ? 'Select a day to correct its punch times.' : calendar.data.value.closed ? 'This month is closed.' : undefined">
           <AttendanceCalendarView :calendar="calendar.data.value" :selectable="canCorrect" @prev="month = shiftMonth(month, -1)" @next="month = shiftMonth(month, 1)" @select="onSelect" />
         </AppCard>
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="Month summary">
             <dl class="space-y-2.5 text-sm">
               <div v-for="[label, value] in stats" :key="label" class="flex justify-between gap-3">

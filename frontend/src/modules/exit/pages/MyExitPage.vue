@@ -110,7 +110,7 @@ const print = () => window.print();
         </AppCard>
       </template>
 
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <AppCard :title="`${TYPE_LABELS[current.type]} · ${REASON_LABELS[current.reason]}`">
           <template #actions>
             <AppBadge :tone="statusTone[current.status]" dot>{{ STATUS_LABELS[current.status] }}</AppBadge>
@@ -175,7 +175,7 @@ const print = () => window.print();
         <AlumniCard v-if="current.status === 'COMPLETED'" class="print:hidden" />
       </div>
 
-      <AppCard v-if="mine.data.value.history.length" class="mt-6" title="Earlier">
+      <AppCard v-if="mine.data.value.history.length" class="mt-4" title="Earlier">
         <ul class="divide-y divide-line text-sm">
           <li v-for="h in mine.data.value.history" :key="h.id" class="flex flex-wrap justify-between gap-2 py-2">
             <span class="text-fg">{{ TYPE_LABELS[h.type] }} · {{ formatDate(h.submittedOn) }}</span>

@@ -99,11 +99,11 @@ async function resolve() {
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="c.status === 'WITHDRAWN'" tone="info" class="mb-6">The complainant withdrew this case on {{ formatDate(c.withdrawnAt!) }}.</AppAlert>
-      <AppAlert v-else-if="c.permissions.closeBlocker" tone="info" class="mb-6">{{ c.permissions.closeBlocker }}; you can close it after that, or as soon as they accept the resolution.</AppAlert>
-      <AppAlert v-if="!c.permissions.manage" tone="info" class="mb-6">You were assigned to this case: you can read it and add notes. Someone with grievance management access assigns, investigates and resolves it.</AppAlert>
+      <AppAlert v-if="c.status === 'WITHDRAWN'" tone="info" class="mb-4">The complainant withdrew this case on {{ formatDate(c.withdrawnAt!) }}.</AppAlert>
+      <AppAlert v-else-if="c.permissions.closeBlocker" tone="info" class="mb-4">{{ c.permissions.closeBlocker }}; you can close it after that, or as soon as they accept the resolution.</AppAlert>
+      <AppAlert v-if="!c.permissions.manage" tone="info" class="mb-4">You were assigned to this case: you can read it and add notes. Someone with grievance management access assigns, investigates and resolves it.</AppAlert>
 
-      <AppCard v-if="c.resolution" class="mb-6" :title="c.status === 'RESOLVED' || c.status === 'CLOSED' ? 'Resolution' : 'Previous resolution'" :description="c.resolution.resolvedBy ? `By ${c.resolution.resolvedBy} · ${formatDate(c.resolution.resolvedAt)}` : undefined">
+      <AppCard v-if="c.resolution" class="mb-4" :title="c.status === 'RESOLVED' || c.status === 'CLOSED' ? 'Resolution' : 'Previous resolution'" :description="c.resolution.resolvedBy ? `By ${c.resolution.resolvedBy} · ${formatDate(c.resolution.resolvedAt)}` : undefined">
         <p v-if="c.outcome" class="mb-2"><AppBadge tone="success">{{ OUTCOME_LABELS[c.outcome] }}</AppBadge></p>
         <p class="text-sm whitespace-pre-line text-fg">{{ c.resolution.summary }}</p>
         <template v-if="c.resolution.actions">
@@ -113,12 +113,12 @@ async function resolve() {
         <p v-if="c.acceptedAt" class="mt-3 text-xs text-fg-muted">Accepted by the complainant on {{ formatDate(c.acceptedAt) }}.</p>
       </AppCard>
 
-      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div class="space-y-6">
+      <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div class="space-y-4">
           <CaseDetails :grievance="c" />
           <CaseThread :grievance="c" :can-note="c.permissions.note" :can-attach="c.permissions.attach" @updated="set" />
         </div>
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="Handling">
             <div class="space-y-4">
               <AppSelect

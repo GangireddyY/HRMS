@@ -170,13 +170,13 @@ const stats = computed(() => counts.value ?? p.value?.stats ?? null);
         </template>
       </AppPageHeader>
 
-      <div v-if="stats" class="mb-6 grid gap-4 sm:grid-cols-4">
+      <div v-if="stats" class="mb-4 grid gap-4 sm:grid-cols-4">
         <AppStatCard label="Applies to" :value="stats.audience" />
         <AppStatCard label="Acknowledged" :value="stats.acknowledged" tone="success" />
         <AppStatCard label="To acknowledge" :value="stats.pending" tone="warning" />
         <AppStatCard label="Overdue" :value="stats.overdue" tone="danger" />
       </div>
-      <AppAlert v-if="p.reviewDue" tone="warning" class="mb-6">The review was due on {{ formatDate(p.nextReviewOn!) }}. Publish an updated version, or mark it reviewed if nothing needs to change.</AppAlert>
+      <AppAlert v-if="p.reviewDue" tone="warning" class="mb-4">The review was due on {{ formatDate(p.nextReviewOn!) }}. Publish an updated version, or mark it reviewed if nothing needs to change.</AppAlert>
 
       <AppTabs v-model="tab" :tabs="tabs">
         <template v-if="tab === 'content'">
@@ -207,7 +207,7 @@ const stats = computed(() => counts.value ?? p.value?.stats ?? null);
               </div>
             </template>
           </AppCard>
-          <AppCard v-if="current" :class="draft ? 'mt-6' : ''" :title="`Version ${current.version} (in force)`" :description="[current.effectiveFrom ? `from ${formatDate(current.effectiveFrom)}` : null, current.publishedBy ? `published by ${current.publishedBy}` : null].filter(Boolean).join(' · ')">
+          <AppCard v-if="current" :class="draft ? 'mt-4' : ''" :title="`Version ${current.version} (in force)`" :description="[current.effectiveFrom ? `from ${formatDate(current.effectiveFrom)}` : null, current.publishedBy ? `published by ${current.publishedBy}` : null].filter(Boolean).join(' · ')">
             <template v-if="!draft && p.status === 'PUBLISHED'" #actions>
               <AppButton size="sm" variant="secondary" :icon="FilePlus2" :loading="busy === 'start'" @click="startVersion">New version</AppButton>
             </template>
@@ -242,7 +242,7 @@ const stats = computed(() => counts.value ?? p.value?.stats ?? null);
 
         <AppCard v-else title="Versions" :padded="false">
           <ul class="divide-y divide-line">
-            <li v-for="v in p.versions" :key="v.id" class="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+            <li v-for="v in p.versions" :key="v.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">Version {{ v.version }} <AppBadge size="sm" :tone="v.status === 'PUBLISHED' ? 'success' : 'neutral'">{{ v.status === 'PUBLISHED' ? 'In force' : v.status === 'DRAFT' ? 'Draft' : 'Superseded' }}</AppBadge></p>
                 <p class="text-xs text-fg-muted">

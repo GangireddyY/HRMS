@@ -25,7 +25,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <div class="flex flex-wrap items-center gap-4">
       <AppAvatar :name="`${auth.user?.firstName ?? ''} ${auth.user?.lastName ?? ''}`" size="xl" />
       <div class="min-w-0">
@@ -46,7 +46,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
       <AppStatCard label="Unread notifications" :value="notifications.data.value?.items.filter((n) => !n.readAt).length" :loading="notifications.loading.value" :icon="Bell" />
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid gap-4 lg:grid-cols-3">
       <AppCard class="lg:col-span-2" title="Recent notifications">
         <template #actions><AppButton variant="ghost" size="sm" to="/me/notifications">View all</AppButton></template>
         <AppSkeleton v-if="notifications.loading.value" :lines="4" />

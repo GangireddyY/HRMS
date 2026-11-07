@@ -77,11 +77,11 @@ async function revoke() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppSkeleton v-if="letters.loading.value && !letters.data.value" :lines="4" />
     <AppErrorState v-else-if="letters.error.value" :error="letters.error.value" @retry="letters.run" />
     <template v-else>
-      <div class="grid gap-6 md:grid-cols-2">
+      <div class="grid gap-4 md:grid-cols-2">
         <AppCard v-for="type in EXIT_LETTER_TYPES" :key="type" :title="LETTER_LABELS[type]" :icon="FileText">
           <template v-if="active(type)">
             <p class="text-sm text-fg">

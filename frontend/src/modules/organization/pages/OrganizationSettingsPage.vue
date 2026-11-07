@@ -105,7 +105,7 @@ watch(tab, (t) => {
         <AppErrorState v-else-if="org.error.value" :error="org.error.value" @retry="org.run" />
         <form v-else-if="profile" novalidate @submit.prevent="saveProfile">
           <AppAlert v-if="profileErrors.formError.value" class="mb-4">{{ profileErrors.formError.value }}</AppAlert>
-          <div class="grid gap-x-10 gap-y-4 border-b border-line/70 pb-8 mb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <div class="grid gap-x-10 gap-y-4 border-b border-line/70 pb-8 mb-4 lg:grid-cols-[220px_minmax(0,1fr)]">
             <div>
               <p class="text-sm font-semibold text-fg">Logo</p>
               <p class="mt-1 text-[13px] text-fg-muted">Shown at the top of the sidebar for everyone in your organization. Changes apply immediately.</p>
@@ -117,7 +117,7 @@ watch(tab, (t) => {
             />
           </div>
           <OrganizationProfileForm v-model="profile" :errors="profileErrors.fieldErrors.value" :disabled="!canEditProfile" />
-          <div v-if="canEditProfile" class="mt-6 flex items-center justify-end gap-3 border-t border-line pt-4">
+          <div v-if="canEditProfile" class="mt-4 flex items-center justify-end gap-3 border-t border-line pt-4">
             <span class="text-xs text-fg-subtle">Last updated {{ formatDateTime(org.data.value?.updatedAt) }}</span>
             <AppButton type="submit" :icon="Save" :loading="savingProfile" :disabled="!Object.keys(profileChanges).length">Save changes</AppButton>
           </div>
@@ -128,9 +128,9 @@ watch(tab, (t) => {
       <div v-else-if="tab === 'security'">
         <AppSkeleton v-if="policy.loading.value && !policy.data.value" :lines="8" />
         <AppErrorState v-else-if="policy.error.value" :error="policy.error.value" @retry="policy.run" />
-        <form v-else-if="policy.data.value" class="space-y-6" novalidate @submit.prevent="savePolicy">
+        <form v-else-if="policy.data.value" class="space-y-4" novalidate @submit.prevent="savePolicy">
           <AppAlert v-if="policyErrors.formError.value">{{ policyErrors.formError.value }}</AppAlert>
-          <fieldset :disabled="!canEditPolicy" class="grid gap-6 lg:grid-cols-2">
+          <fieldset :disabled="!canEditPolicy" class="grid gap-4 lg:grid-cols-2">
             <AppCard title="Password requirements">
               <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
@@ -144,7 +144,7 @@ watch(tab, (t) => {
                 <AppSwitch v-model="policyForm.passwordRequireSymbol" label="Require symbol" />
               </div>
             </AppCard>
-            <div class="space-y-6">
+            <div class="space-y-4">
               <AppCard title="Account lockout">
                 <div class="grid grid-cols-2 gap-4">
                   <AppInput v-model="policyForm.lockoutThreshold" type="number" label="Failed attempts" :min="3" :max="20" :error="policyErrors.fieldErrors.value.lockoutThreshold" />
@@ -170,10 +170,10 @@ watch(tab, (t) => {
       <div v-else>
         <AppSkeleton v-if="subscription.loading.value" :lines="6" />
         <AppErrorState v-else-if="subscription.error.value" :error="subscription.error.value" @retry="subscription.run" />
-        <div v-else-if="subscription.data.value" class="space-y-6">
-          <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-6 text-white shadow-card">
+        <div v-else-if="subscription.data.value" class="space-y-4">
+          <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-4 text-white shadow-card">
             <div class="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-            <div class="relative flex flex-wrap items-end justify-between gap-6">
+            <div class="relative flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p class="text-sm font-medium text-white/70">Current plan</p>
                 <p class="mt-1 text-3xl font-semibold tracking-tight">{{ subscription.data.value.plan.name }}</p>

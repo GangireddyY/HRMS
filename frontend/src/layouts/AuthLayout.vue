@@ -21,7 +21,7 @@ const year = new Date().getFullYear();
       />
     </div>
 
-    <div class="flex min-h-full w-full flex-col px-5 py-5 sm:px-8 lg:px-12 lg:py-8 2xl:px-16">
+    <div class="flex min-h-full w-full flex-col px-4 py-4 sm:px-8 lg:px-12 lg:py-8 2xl:px-16">
       <!-- Top bar -->
       <header class="flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -50,7 +50,7 @@ const year = new Date().getFullYear();
             <span class="bg-gradient-to-r from-brand-600 via-brand-500 to-fuchsia-500 bg-clip-text text-transparent dark:from-white dark:via-brand-200 dark:to-brand-300">in one workspace.</span>
           </h2>
           <p class="mt-4 max-w-xl text-base text-hero-ink/70 xl:text-lg 2xl:max-w-2xl 2xl:text-xl">Hire, onboard, pay, grow and offboard your people — with security built into every step.</p>
-          <ProductMindMap class="mt-8" />
+          <ProductMindMap class="mt-4" />
         </section>
 
         <!-- Form card on top of the canvas -->
@@ -64,7 +64,7 @@ const year = new Date().getFullYear();
         </main>
       </div>
 
-      <footer class="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-hero-ink/60 lg:justify-between">
+      <footer class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-hero-ink/60 lg:justify-between">
         <span>© {{ year }} {{ appName }}</span>
         <span class="inline-flex items-center gap-1.5"><ShieldCheck :size="13" aria-hidden="true" /> Your data is isolated per organization</span>
       </footer>

@@ -12,7 +12,7 @@ const overview = useAsync(() => organizationApi.overview());
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader :title="auth.organization?.name ?? 'Administration'" description="Access, security posture and recent administrative activity.">
       <template #actions>
         <AppButton v-if="auth.can('user.invite')" :icon="MailPlus" to="/admin/users?invite=1">Invite user</AppButton>
@@ -35,7 +35,7 @@ const overview = useAsync(() => organizationApi.overview());
         <AppStatCard label="Active sessions" :value="overview.data.value?.activeSessions" :loading="overview.loading.value" :icon="Laptop" tone="success" />
       </div>
 
-      <div class="grid gap-6 lg:grid-cols-5">
+      <div class="grid gap-4 lg:grid-cols-5">
         <AppCard class="lg:col-span-3" title="Sign-in activity" description="Last 14 days">
           <AppSkeleton v-if="overview.loading.value" line-class="h-64" />
           <SignInActivityChart v-else-if="overview.data.value" :stats="overview.data.value.loginActivity" />
@@ -45,7 +45,7 @@ const overview = useAsync(() => organizationApi.overview());
           <AppSkeleton v-if="overview.loading.value" :lines="6" />
           <AppEmptyState v-else-if="!overview.data.value?.recentActivity.length" title="No activity yet" />
           <ol v-else class="relative">
-            <li v-for="(a, i) in overview.data.value.recentActivity" :key="a.id" class="relative flex gap-3 pb-5 last:pb-0">
+            <li v-for="(a, i) in overview.data.value.recentActivity" :key="a.id" class="relative flex gap-3 pb-4 last:pb-0">
               <span
                 v-if="i < overview.data.value.recentActivity.length - 1"
                 class="absolute top-8 bottom-0 left-[13px] w-px bg-line"

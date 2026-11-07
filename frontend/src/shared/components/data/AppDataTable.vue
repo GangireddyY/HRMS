@@ -49,7 +49,7 @@ const align = (col: TableColumn<Row>) => (col.align === 'right' ? 'text-right' :
 /** Below `md` each row renders as a card: the first column is the card title, the others are label/value pairs. */
 function cellClass(col: TableColumn<Row>, index: number) {
   return [
-    'px-5 py-3.5 align-middle text-fg md:table-cell',
+    'px-4 py-2 align-middle text-fg md:table-cell',
     align(col),
     col.class,
     index === 0
@@ -72,7 +72,7 @@ const sortOptions = computed(() =>
   <div class="overflow-hidden">
     <AppErrorState v-if="error && !loading" :error="error" @retry="emit('retry')" />
     <template v-else>
-      <div v-if="sortOptions.length && rows.length > 1" class="border-b border-line px-4 py-3 md:hidden">
+      <div v-if="sortOptions.length && rows.length > 1" class="border-b border-line px-3 py-2 md:hidden">
         <div class="flex items-center gap-2 text-xs text-fg-muted">
           <span class="shrink-0 font-medium" aria-hidden="true">Sort by</span>
           <AppSelect
@@ -100,7 +100,7 @@ const sortOptions = computed(() =>
                 role="columnheader"
                 scope="col"
                 :aria-sort="ariaSort(col)"
-                :class="['px-5 py-2.5 text-xs font-medium whitespace-nowrap text-fg-muted', align(col), col.class]"
+                :class="['px-4 py-2 text-xs font-medium whitespace-nowrap text-fg-muted', align(col), col.class]"
               >
                 <button
                   v-if="col.sortField"
@@ -119,8 +119,8 @@ const sortOptions = computed(() =>
           </thead>
           <tbody role="rowgroup" class="divide-y divide-line/70 max-md:block">
             <template v-if="loading && rows.length === 0">
-              <tr v-for="i in 5" :key="`s${i}`" role="row" class="max-md:block max-md:space-y-2 max-md:px-4 max-md:py-4">
-                <td v-for="col in columns" :key="col.key" role="cell" class="px-5 py-4 max-md:block max-md:p-0">
+              <tr v-for="i in 5" :key="`s${i}`" role="row" class="max-md:block max-md:space-y-2 max-md:px-3 max-md:py-3">
+                <td v-for="col in columns" :key="col.key" role="cell" class="px-4 py-3 max-md:block max-md:p-0">
                   <div class="h-3.5 animate-pulse rounded-full bg-surface-muted" :style="{ width: `${50 + ((i * 17 + col.key.length * 7) % 45)}%` }" />
                 </td>
               </tr>
@@ -131,7 +131,7 @@ const sortOptions = computed(() =>
               :key="rowKey(row)"
               role="row"
               :class="[
-                'transition-colors max-md:block max-md:px-4 max-md:py-3.5',
+                'transition-colors max-md:block max-md:px-3 max-md:py-2.5',
                 clickable && 'cursor-pointer hover:bg-brand-50/50 focus-visible:bg-brand-50/50 dark:hover:bg-white/[0.03]',
                 loading && 'opacity-60',
               ]"

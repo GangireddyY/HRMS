@@ -36,7 +36,7 @@ function inWords(amount: number): string {
 </script>
 
 <template>
-  <article class="payslip rounded-2xl bg-surface p-6 ring-1 ring-line print:rounded-none print:p-0 print:ring-0">
+  <article class="payslip rounded-2xl bg-surface p-4 ring-1 ring-line print:rounded-none print:p-0 print:ring-0">
     <header class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
       <div class="flex items-center gap-3">
         <img v-if="p.organization?.logoUrl" :src="apiAssetUrl(p.organization.logoUrl)!" alt="" class="h-10 w-10 rounded-lg object-contain" />
@@ -51,7 +51,7 @@ function inWords(amount: number): string {
       </div>
     </header>
 
-    <dl class="grid gap-x-6 gap-y-2 border-b border-line py-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+    <dl class="grid gap-x-4 gap-y-2 border-b border-line py-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
       <div><dt class="text-xs text-fg-muted">Employee</dt><dd class="font-medium text-fg">{{ p.employee.name }} ({{ p.employee.employeeCode }})</dd></div>
       <div><dt class="text-xs text-fg-muted">Designation</dt><dd class="text-fg">{{ p.employee.designation ?? '—' }}</dd></div>
       <div><dt class="text-xs text-fg-muted">Department</dt><dd class="text-fg">{{ p.employee.department ?? '—' }}</dd></div>
@@ -108,7 +108,7 @@ function inWords(amount: number): string {
 
     <details v-if="showTax !== false && p.tax" class="mt-4 rounded-xl p-4 text-sm ring-1 ring-line print:hidden">
       <summary class="cursor-pointer font-medium text-fg">How income tax was worked out ({{ REGIME_LABELS[p.tax.regime] }})</summary>
-      <dl class="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+      <dl class="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
         <div class="flex justify-between gap-3"><dt class="text-fg-muted">Projected salary for the year</dt><dd class="tabular-nums">{{ rupees(p.tax.projectedGross) }}</dd></div>
         <div class="flex justify-between gap-3"><dt class="text-fg-muted">Standard deduction</dt><dd class="tabular-nums">− {{ rupees(p.tax.standardDeduction) }}</dd></div>
         <div v-if="p.tax.hraExemption" class="flex justify-between gap-3"><dt class="text-fg-muted">HRA exemption</dt><dd class="tabular-nums">− {{ rupees(p.tax.hraExemption) }}</dd></div>

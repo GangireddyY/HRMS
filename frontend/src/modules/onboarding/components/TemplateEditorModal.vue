@@ -71,7 +71,7 @@ async function save() {
         <AppInput v-model="form.name" label="Name" required placeholder="e.g. Engineering joiners" :error="fieldErrors.name" />
         <AppInput v-model="form.description" label="Description" :maxlength="500" />
       </div>
-      <div class="flex flex-wrap gap-x-8 gap-y-3">
+      <div class="flex flex-wrap gap-x-5 gap-y-3">
         <AppSwitch v-model="form.isDefault" label="Default checklist" description="Used when onboarding starts without choosing one." />
         <AppSwitch v-if="template" v-model="form.isActive" label="Active" />
       </div>

@@ -84,13 +84,13 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="Security" description="Manage your password, two-factor authentication and signed-in devices." />
 
     <AppAlert v-if="auth.context?.passwordExpired">Your password has expired. Choose a new one to continue.</AppAlert>
     <AppAlert v-else-if="auth.context?.mfaSetupRequired">Your organization requires two-factor authentication. Set it up below to continue.</AppAlert>
 
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid gap-4 lg:grid-cols-2">
       <AppCard title="Change password" description="Changing your password signs out your other sessions.">
         <AppSkeleton v-if="policy.loading.value" :lines="4" />
         <AppErrorState v-else-if="policy.error.value" :error="policy.error.value" @retry="policy.run" />
@@ -113,10 +113,10 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
       <template #actions>
         <AppButton variant="secondary" size="sm" :icon="LogOut" :disabled="(sessions.data.value?.length ?? 0) < 2" @click="revokeOthers">Sign out other sessions</AppButton>
       </template>
-      <div v-if="sessions.loading.value && !sessions.data.value" class="p-5"><AppSkeleton :lines="3" /></div>
+      <div v-if="sessions.loading.value && !sessions.data.value" class="p-4"><AppSkeleton :lines="3" /></div>
       <AppErrorState v-else-if="sessions.error.value" :error="sessions.error.value" @retry="sessions.run" />
       <ul v-else class="divide-y divide-line/70">
-        <li v-for="s in sessions.data.value" :key="s.id" class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+        <li v-for="s in sessions.data.value" :key="s.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
           <div class="flex items-center gap-3">
             <span
               :class="[

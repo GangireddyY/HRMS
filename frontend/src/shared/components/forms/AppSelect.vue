@@ -207,9 +207,9 @@ function onSearchKey(e: KeyboardEvent) {
         :disabled="disabled"
         :class="[
           'input-base flex cursor-pointer items-center gap-2 text-left disabled:cursor-not-allowed',
-          size === 'sm' && 'min-h-8 py-1 text-[13px]',
+          size === 'sm' && 'min-h-7 py-0.5 text-[13px]',
           invalid && 'input-invalid',
-          open && !invalid && 'border-brand-500 ring-4 ring-brand-500/15',
+          open && !invalid && 'border-brand-500 ring-2 ring-brand-500/20',
         ]"
         @click="open ? close() : openMenu()"
         @keydown="onTriggerKey"
@@ -245,7 +245,7 @@ function onSearchKey(e: KeyboardEvent) {
                   :aria-activedescendant="activeIndex >= 0 ? optionId(activeIndex) : undefined"
                   :aria-label="`Search ${label ?? ariaLabel ?? 'options'}`"
                   placeholder="Search…"
-                  class="h-9 w-full rounded-lg bg-surface-muted pr-2 pl-8 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-brand-500/20"
+                  class="h-8 w-full rounded-md bg-surface-muted pr-2 pl-8 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-brand-500/20"
                   @keydown="onSearchKey"
                 />
               </div>

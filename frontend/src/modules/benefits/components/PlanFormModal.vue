@@ -197,7 +197,7 @@ async function save() {
         <div v-for="(o, i) in form.options" :key="o.id ?? i" class="space-y-3 rounded-xl p-4 ring-1 ring-line">
           <div class="grid items-start gap-3 sm:grid-cols-[1fr_auto]">
             <AppInput v-model="o.name" :label="`Option ${i + 1}`" :maxlength="120" :error="fieldErrors[`options.${i}.name`]" />
-            <AppButton class="sm:mt-6" size="sm" variant="ghost" :icon="Trash2" :disabled="form.options.length === 1" :aria-label="`Remove option ${i + 1}`" @click="form.options.splice(i, 1)" />
+            <AppButton class="sm:mt-4" size="sm" variant="ghost" :icon="Trash2" :disabled="form.options.length === 1" :aria-label="`Remove option ${i + 1}`" @click="form.options.splice(i, 1)" />
           </div>
           <div class="grid gap-3 sm:grid-cols-4">
             <AppInput v-model="o.coverageAmount" :label="`Option ${i + 1} sum insured (₹)`" type="number" :min="1" placeholder="Not applicable" />

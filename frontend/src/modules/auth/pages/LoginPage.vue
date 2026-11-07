@@ -84,13 +84,13 @@ function backToCredentials() {
 <template>
   <div :class="step === 'credentials' && 'auth-page-tall'">
     <template v-if="step === 'credentials'">
-      <span class="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-[0_8px_24px_-6px_var(--brand-500),inset_0_1px_0_rgb(255_255_255/0.25)]">
+      <span class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-[0_8px_24px_-6px_var(--brand-500),inset_0_1px_0_rgb(255_255_255/0.25)]">
         <LogIn :size="22" aria-hidden="true" />
       </span>
       <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Welcome back</h1>
       <p class="mt-2 text-[15px] text-fg-muted">Sign in to continue to your workspace.</p>
 
-      <form class="mt-8 space-y-5" novalidate @submit.prevent="submitCredentials">
+      <form class="mt-4 space-y-5" novalidate @submit.prevent="submitCredentials">
         <AppAlert v-if="formError" title="Couldn't sign you in">{{ formError }}</AppAlert>
         <AppInput
           v-model="email"
@@ -120,17 +120,17 @@ function backToCredentials() {
     </template>
 
     <template v-else>
-      <button type="button" class="mb-6 inline-flex items-center gap-1 rounded-md text-sm font-medium text-fg-muted transition hover:text-fg" @click="backToCredentials">
+      <button type="button" class="mb-4 inline-flex items-center gap-1 rounded-md text-sm font-medium text-fg-muted transition hover:text-fg" @click="backToCredentials">
         <ArrowLeft :size="14" /> Back
       </button>
-      <span class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
+      <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
         <ShieldCheck :size="22" aria-hidden="true" />
       </span>
       <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Two-factor verification</h1>
       <p class="mt-2 text-[15px] text-fg-muted">
         {{ useRecovery ? 'Enter one of your one-time recovery codes.' : 'Enter the 6-digit code from your authenticator app.' }}
       </p>
-      <form class="mt-8 space-y-4" novalidate @submit.prevent="submitMfa">
+      <form class="mt-4 space-y-4" novalidate @submit.prevent="submitMfa">
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppOtpInput v-if="!useRecovery" v-model="code" label="Authentication code" :error="fieldErrors.code" autofocus />
         <AppInput v-else v-model="recoveryCode" label="Recovery code" autocomplete="off" placeholder="XXXX-XXXX-XXXX" size="lg" :icon="KeyRound" required :error="fieldErrors.recoveryCode" />

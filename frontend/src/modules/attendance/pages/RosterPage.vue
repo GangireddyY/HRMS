@@ -136,7 +136,7 @@ const managingRotations = ref(false);
             </thead>
             <tbody>
               <tr v-for="r in rows" :key="r.employee.id">
-                <th scope="row" class="sticky left-0 z-10 min-w-48 bg-surface pr-2 text-left font-normal">
+                <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pr-2 text-left font-normal sm:max-w-none sm:min-w-48">
                   <label class="flex items-center gap-2">
                     <input v-if="canPlan" type="checkbox" class="h-4 w-4 rounded border-line accent-brand-600" :checked="selected.includes(r.employee.id)" :aria-label="`Select ${r.employee.name}`" @change="toggle(r.employee.id)" />
                     <span class="min-w-0">

@@ -60,9 +60,9 @@ const recoveries = computed(() => props.exit.clearanceItems.reduce((s, i) => s +
     <template v-if="exit.permissions.clear" #actions>
       <AppButton size="sm" variant="secondary" :icon="Plus" @click="adding = true">Add step</AppButton>
     </template>
-    <p v-if="!exit.clearanceItems.length" class="px-5 py-4 text-sm text-fg-muted">Clearance starts when the exit is confirmed.</p>
+    <p v-if="!exit.clearanceItems.length" class="px-4 py-4 text-sm text-fg-muted">Clearance starts when the exit is confirmed.</p>
     <ul v-else class="divide-y divide-line">
-      <li v-for="i in exit.clearanceItems" :key="i.id" class="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+      <li v-for="i in exit.clearanceItems" :key="i.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
         <span class="w-16 shrink-0 text-xs font-medium text-fg-muted">{{ DEPARTMENT_LABELS[i.department] }}</span>
         <div class="min-w-0 flex-1">
           <p class="text-fg">{{ i.title }}</p>

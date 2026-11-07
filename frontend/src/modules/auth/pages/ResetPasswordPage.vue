@@ -38,7 +38,7 @@ async function submit() {
 <template>
   <div>
     <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Choose a new password</h1>
-    <div class="mt-8">
+    <div class="mt-4">
       <AppSkeleton v-if="inspection.loading.value" :lines="4" />
       <AppAlert v-else-if="inspection.error.value || !token">
         This reset link is invalid or has expired.

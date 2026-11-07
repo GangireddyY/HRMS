@@ -55,16 +55,16 @@ async function decline(r: FeedbackRequest) {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="Performance" description="Your goals and reviews, feedback colleagues asked you for, and any improvement plan." />
 
     <AppCard title="My reviews" :padded="false">
-      <AppSkeleton v-if="reviews.loading.value && !reviews.data.value" class="p-5" :lines="3" />
+      <AppSkeleton v-if="reviews.loading.value && !reviews.data.value" class="p-4" :lines="3" />
       <AppErrorState v-else-if="reviews.error.value" :error="reviews.error.value" @retry="reviews.run" />
       <AppEmptyState v-else-if="!reviews.data.value?.items.length" :icon="Target" title="No reviews yet" description="When HR starts a review cycle you'll set your goals here." compact />
       <ul v-else class="divide-y divide-line">
         <li v-for="r in reviews.data.value.items" :key="r.id">
-          <RouterLink :to="`/me/performance/reviews/${r.id}`" class="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-muted/50">
+          <RouterLink :to="`/me/performance/reviews/${r.id}`" class="flex flex-wrap items-center gap-3 px-4 py-4 hover:bg-surface-muted/50">
             <div class="min-w-0 flex-1">
               <p class="font-medium text-fg">{{ r.cycle.name }}</p>
               <p class="text-xs text-fg-muted">{{ r.goals }} goal{{ r.goals === 1 ? '' : 's' }} · reviewer {{ r.reviewer?.name ?? 'not assigned yet' }}<template v-if="r.due"> · <span :class="r.due < today && 'text-red-600 dark:text-red-400'">due {{ formatDate(r.due) }}</span></template></p>
@@ -78,11 +78,11 @@ async function decline(r: FeedbackRequest) {
     </AppCard>
 
     <AppCard v-if="canGive" title="Feedback requests" :description="open.length ? `${open.length} waiting for you` : undefined" :padded="false">
-      <AppSkeleton v-if="requests.loading.value && !requests.data.value" class="p-5" :lines="2" />
+      <AppSkeleton v-if="requests.loading.value && !requests.data.value" class="p-4" :lines="2" />
       <AppErrorState v-else-if="requests.error.value" :error="requests.error.value" @retry="requests.run" />
       <AppEmptyState v-else-if="!requests.data.value?.length" :icon="MessageSquareText" title="No feedback requests" description="Colleagues can ask you for feedback during a review cycle." compact />
       <ul v-else class="divide-y divide-line">
-        <li v-for="f in [...open, ...past]" :key="f.id" class="flex flex-wrap items-center gap-3 px-5 py-4">
+        <li v-for="f in [...open, ...past]" :key="f.id" class="flex flex-wrap items-center gap-3 px-4 py-4">
           <div class="min-w-0 flex-1">
             <p class="font-medium text-fg">{{ f.subject.name }}</p>
             <p class="text-xs text-fg-muted">{{ f.cycle.name }} · asked {{ formatDate(f.createdAt) }}</p>
@@ -99,7 +99,7 @@ async function decline(r: FeedbackRequest) {
     <AppCard v-if="pips.data.value?.items.length" title="Improvement plans" :padded="false">
       <ul class="divide-y divide-line">
         <li v-for="p in pips.data.value.items" :key="p.id">
-          <RouterLink :to="`/me/performance/pips/${p.id}`" class="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-muted/50">
+          <RouterLink :to="`/me/performance/pips/${p.id}`" class="flex flex-wrap items-center gap-3 px-4 py-4 hover:bg-surface-muted/50">
             <div class="min-w-0 flex-1">
               <p class="font-medium text-fg">{{ formatDate(p.startDate) }} – {{ formatDate(p.endDate) }}</p>
               <p class="text-xs text-fg-muted">{{ p.objectivesCount }} objective{{ p.objectivesCount === 1 ? '' : 's' }} · with {{ p.owner?.name ?? 'your manager' }}{{ p.acknowledged ? '' : ' · not acknowledged yet' }}</p>

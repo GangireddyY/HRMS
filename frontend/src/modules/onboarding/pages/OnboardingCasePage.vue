@@ -89,14 +89,14 @@ async function cancel() {
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="d.status === 'CANCELLED'" tone="warning" class="mb-6" title="Onboarding cancelled">{{ d.cancelReason }}</AppAlert>
+      <AppAlert v-if="d.status === 'CANCELLED'" tone="warning" class="mb-4" title="Onboarding cancelled">{{ d.cancelReason }}</AppAlert>
 
-      <div class="grid items-start gap-6 lg:grid-cols-3">
+      <div class="grid items-start gap-4 lg:grid-cols-3">
         <AppCard class="lg:col-span-2" title="Checklist" :description="manage && d.progress.requiredOpen ? `${d.progress.requiredOpen} required task${d.progress.requiredOpen === 1 ? '' : 's'} left before onboarding can be completed.` : undefined">
           <ChecklistTasks :detail="d" @updated="onUpdated" />
         </AppCard>
 
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="Progress">
             <p class="text-3xl font-semibold text-fg tabular-nums">{{ pct }}%</p>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${pct}%` }" /></div>
@@ -134,7 +134,7 @@ async function cancel() {
       <AppModal :open="cancelOpen" title="Cancel onboarding?" :description="d.employee.name" size="sm" @close="cancelOpen = false">
         <AppTextarea v-model="cancelReason" label="Reason" required :rows="3" :maxlength="500" placeholder="e.g. The offer was withdrawn" />
         <template #footer>
-          <AppButton variant="secondary" @click="cancelOpen = false">Back</AppButton>
+          <AppButton variant="secondary" @click="cancelOpen = false">Cancel</AppButton>
           <AppButton variant="danger" :disabled="cancelReason.trim().length < 3" @click="cancel">Cancel onboarding</AppButton>
         </template>
       </AppModal>

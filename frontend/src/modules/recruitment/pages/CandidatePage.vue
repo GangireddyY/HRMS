@@ -91,12 +91,12 @@ async function remove() {
           <AppButton :icon="BriefcaseBusiness" @click="openAdd">Add to a job</AppButton>
         </template>
       </AppPageHeader>
-      <div class="grid items-start gap-6 lg:grid-cols-3">
+      <div class="grid items-start gap-4 lg:grid-cols-3">
         <AppCard class="lg:col-span-2" title="Applications" :padded="false">
-          <p v-if="!c.applications.length" class="p-5 text-sm text-fg-muted">Not in any job's pipeline.</p>
+          <p v-if="!c.applications.length" class="p-4 text-sm text-fg-muted">Not in any job's pipeline.</p>
           <ul v-else class="divide-y divide-line">
             <li v-for="a in c.applications" :key="a.id">
-              <RouterLink :to="`/hr/recruitment/applications/${a.id}`" class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-surface-muted/50">
+              <RouterLink :to="`/hr/recruitment/applications/${a.id}`" class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-muted/50">
                 <span class="font-medium text-fg">{{ a.job.title }}</span>
                 <span class="flex items-center gap-2 text-xs text-fg-muted">{{ a.stageChangedAt ? timeAgo(a.stageChangedAt) : '' }}<AppBadge :tone="stageTone[a.stage]" dot>{{ STAGE_LABELS[a.stage] }}</AppBadge></span>
               </RouterLink>

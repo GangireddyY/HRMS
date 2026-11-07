@@ -104,7 +104,7 @@ const columns = computed<TableColumn<Claim>[]>(() => [
     <AppModal :open="!!reviewing" :title="reviewing ? `${decision === 'approve' ? 'Approve' : 'Reject'} ${rupees(reviewing.amount, true)} for ${reviewing.employee?.name}?` : ''" :description="reviewing?.title" size="sm" @close="reviewing = null">
       <AppTextarea v-model="note" :label="decision === 'approve' ? 'Note (optional)' : 'Reason'" :required="decision === 'reject'" :rows="3" :maxlength="500" />
       <template #footer>
-        <AppButton variant="secondary" @click="reviewing = null">Back</AppButton>
+        <AppButton variant="secondary" @click="reviewing = null">Cancel</AppButton>
         <AppButton :variant="decision === 'approve' ? 'primary' : 'danger'" :loading="busy" :disabled="decision === 'reject' && note.trim().length < 3" @click="decide">{{ decision === 'approve' ? 'Approve' : 'Reject' }}</AppButton>
       </template>
     </AppModal>

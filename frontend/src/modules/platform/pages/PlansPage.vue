@@ -111,7 +111,7 @@ async function save() {
         </div>
         <p class="mt-2 min-h-10 text-sm text-fg-muted">{{ p.description }}</p>
         <p class="mt-3 text-2xl font-semibold">{{ formatMoney(p.monthlyPrice, p.currency) }}<span v-if="p.monthlyPrice !== null" class="text-sm font-normal text-fg-muted"> / month</span></p>
-        <dl class="mt-3 flex gap-6 text-sm">
+        <dl class="mt-3 flex gap-4 text-sm">
           <div><dt class="text-xs text-fg-muted">User limit</dt><dd class="font-medium">{{ p.maxUsers ?? 'Unlimited' }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Organizations</dt><dd class="font-medium">{{ p.organizationCount }}</dd></div>
         </dl>

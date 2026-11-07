@@ -54,7 +54,7 @@ async function download() {
           <AppButton variant="secondary" :icon="Download" @click="download">{{ p.version.file.name }}</AppButton>
         </template>
       </AppPageHeader>
-      <AppAlert v-if="p.version.changeSummary && p.version.version > 1" tone="info" class="mb-6" title="What changed in this version">{{ p.version.changeSummary }}</AppAlert>
+      <AppAlert v-if="p.version.changeSummary && p.version.version > 1" tone="info" class="mb-4" title="What changed in this version">{{ p.version.changeSummary }}</AppAlert>
 
       <AppCard :description="[p.version.effectiveFrom ? `In force from ${formatDate(p.version.effectiveFrom)}` : null, p.version.publishedBy ? `published by ${p.version.publishedBy}` : null].filter(Boolean).join(' · ') || undefined" title="Policy">
         <div v-if="p.version.content" class="max-w-3xl text-sm leading-relaxed whitespace-pre-line text-fg">{{ p.version.content }}</div>

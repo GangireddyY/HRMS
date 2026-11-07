@@ -177,7 +177,7 @@ const columns: TableColumn<PayslipSummary>[] = [
         </template>
       </AppPageHeader>
 
-      <div class="mb-6 space-y-3">
+      <div class="mb-4 space-y-3">
         <AppAlert v-if="r.status === 'DRAFT' && r.reviewNote" tone="warning" title="Sent back">{{ r.reviewNote }} — {{ r.reviewedBy }}</AppAlert>
         <AppAlert v-if="r.status === 'DRAFT' && !r.calculatedAt" tone="warning" title="Not calculated yet">Use Recalculate to work out the payslips; any problem (for example attendance not closed) is shown then.</AppAlert>
         <AppAlert v-if="r.attendance.lopFromAttendance && !r.attendance.monthClosed" tone="warning" title="Attendance isn't closed for this month">Loss of pay is taken from attendance, so close the month under Attendance → Monthly closing first.</AppAlert>
@@ -189,7 +189,7 @@ const columns: TableColumn<PayslipSummary>[] = [
         <AppAlert v-if="r.status === 'PAID'" tone="success" title="Paid">Payment reference {{ r.paymentReference }} · {{ r.paidBy }} · {{ formatDateTime(r.paidAt!) }}</AppAlert>
       </div>
 
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div class="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AppStatCard label="Employees paid" :value="r.employeeCount" :hint="r.summary.held ? `${r.summary.held} held` : undefined" />
         <AppStatCard label="Gross pay" :value="rupees(r.totalGross)" tone="info" />
         <AppStatCard label="Deductions" :value="rupees(r.totalDeductions)" tone="warning" />
@@ -197,7 +197,7 @@ const columns: TableColumn<PayslipSummary>[] = [
         <AppStatCard label="Employer contributions" :value="rupees(r.totalEmployerContributions)" />
       </div>
 
-      <div class="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div class="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <AppTabs v-model="filter" :tabs="filterTabs">
           <AppCard :padded="false">
             <div class="border-b border-line p-4">
@@ -231,7 +231,7 @@ const columns: TableColumn<PayslipSummary>[] = [
           </AppCard>
         </AppTabs>
 
-        <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-1">
+        <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-1">
           <AppCard title="Totals by component">
             <p v-if="!r.summary.earnings.length" class="text-sm text-fg-muted">Nothing calculated yet.</p>
             <template v-else>
@@ -265,7 +265,7 @@ const columns: TableColumn<PayslipSummary>[] = [
       <AppModal :open="!!decision" :title="decision === 'approve' ? `Approve payroll for ${r.period}?` : 'Send back for changes'" :description="decision === 'approve' ? `${r.employeeCount} employees, net pay ${rupees(r.totalNet)}. Payslips are published to employees.` : undefined" size="sm" @close="decision = null">
         <AppTextarea v-model="note" :label="decision === 'approve' ? 'Note (optional)' : 'What needs to change?'" :required="decision === 'reject'" :rows="3" :maxlength="500" />
         <template #footer>
-          <AppButton variant="secondary" @click="decision = null">Back</AppButton>
+          <AppButton variant="secondary" @click="decision = null">Cancel</AppButton>
           <AppButton :variant="decision === 'approve' ? 'primary' : 'danger'" :disabled="decision === 'reject' && note.trim().length < 3" @click="decide">{{ decision === 'approve' ? 'Approve' : 'Send back' }}</AppButton>
         </template>
       </AppModal>
@@ -280,7 +280,7 @@ const columns: TableColumn<PayslipSummary>[] = [
 
       <AppModal :open="slipLoading || !!slip" :title="slip ? `${slip.employee.name} · ${slip.period}` : 'Payslip'" size="xl" @close="slip = null; slipLoading = false">
         <AppSkeleton v-if="slipLoading" :lines="10" />
-        <div v-else-if="slip" class="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <div v-else-if="slip" class="grid gap-4 lg:grid-cols-[1fr_280px]">
           <div class="min-w-0">
             <ul v-if="slip.warnings.length" class="mb-4 space-y-1">
               <li v-for="w in slip.warnings" :key="w" class="flex items-start gap-2 text-sm" :class="isBlocking(w) ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'">

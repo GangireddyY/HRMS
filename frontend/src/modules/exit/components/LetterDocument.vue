@@ -28,7 +28,7 @@ const contact = computed(() => [props.letter.letterhead.phone, props.letter.lett
     >
       REVOKED
     </p>
-    <header class="flex flex-wrap items-start justify-between gap-6 border-b-2 border-zinc-800 pb-5">
+    <header class="flex flex-wrap items-start justify-between gap-4 border-b-2 border-zinc-800 pb-4">
       <div class="flex min-w-0 items-center gap-4">
         <img v-if="logo" :src="logo" alt="" class="max-h-16 max-w-44 object-contain" />
         <p class="text-xl font-semibold tracking-tight">{{ letter.letterhead.name }}</p>
@@ -39,12 +39,12 @@ const contact = computed(() => [props.letter.letterhead.phone, props.letter.lett
       </div>
     </header>
 
-    <div class="mt-8 flex flex-wrap justify-between gap-2 text-sm">
+    <div class="mt-4 flex flex-wrap justify-between gap-2 text-sm">
       <p><span class="text-zinc-500">Ref:</span> {{ letter.reference }}</p>
       <p><span class="text-zinc-500">Date:</span> {{ longDate(letter.letterDate) }}</p>
     </div>
-    <p class="mt-8 font-semibold underline underline-offset-4">{{ letter.subject }}</p>
-    <div class="mt-6 space-y-4">
+    <p class="mt-4 font-semibold underline underline-offset-4">{{ letter.subject }}</p>
+    <div class="mt-4 space-y-4">
       <p v-for="(p, i) in paragraphs" :key="i" class="whitespace-pre-line">{{ p }}</p>
     </div>
 

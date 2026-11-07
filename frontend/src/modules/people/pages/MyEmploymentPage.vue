@@ -33,7 +33,7 @@ watch(tab, (t) => void router.replace({ query: { tab: t === 'details' ? undefine
       <AppSkeleton v-else-if="me.loading.value && !me.data.value" :lines="6" />
       <AppErrorState v-else-if="me.error.value" :error="me.error.value" @retry="me.run" />
       <AppEmptyState v-else-if="!me.data.value" title="No employee record yet" description="HR hasn't linked your account to an employee record. Contact your HR team." />
-      <div v-else-if="tab === 'background'" class="grid items-start gap-6 xl:grid-cols-2">
+      <div v-else-if="tab === 'background'" class="grid items-start gap-4 xl:grid-cols-2">
         <ProfileSectionCard :employee-id="me.data.value.id" section="family" :can-edit="canEdit" />
         <ProfileSectionCard :employee-id="me.data.value.id" section="education" :can-edit="canEdit" />
         <ProfileSectionCard class="xl:col-span-2" :employee-id="me.data.value.id" section="experience" :can-edit="canEdit" :joining-date="me.data.value.dateOfJoining" />

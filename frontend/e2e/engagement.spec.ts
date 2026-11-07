@@ -32,7 +32,7 @@ test.describe('engagement', () => {
 
     await row.getByRole('button', { name: `Responses to ${title}` }).click();
     await expect(page.getByRole('dialog', { name: `Responses · ${title}` })).toContainText('acknowledged');
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
 
     await page.goto('/me/engagement');
     await page.getByRole('link', { name: title }).click();

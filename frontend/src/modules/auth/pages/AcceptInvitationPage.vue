@@ -60,7 +60,7 @@ async function submit() {
 <template>
   <div>
     <h1 class="text-[32px] leading-tight font-semibold tracking-tight">Accept your invitation</h1>
-    <div class="mt-8">
+    <div class="mt-4">
       <AppSkeleton v-if="inspection.loading.value" :lines="5" />
       <AppAlert v-else-if="inspection.error.value || !token">This invitation link is invalid, already used, or has expired. Ask your administrator to resend it.</AppAlert>
       <form v-else-if="inspection.data.value" class="space-y-4" novalidate @submit.prevent="submit">

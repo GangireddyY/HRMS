@@ -85,7 +85,7 @@ const statusOptions = (['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const
     </AppCard>
     <LeaveBalanceCards v-else :balances="balances.data.value.balances" :can-apply="canApply" @apply="openApply" />
 
-    <AppCard class="mt-6" title="My requests" :padded="false">
+    <AppCard class="mt-4" title="My requests" :padded="false">
       <template #actions>
         <AppSelect v-model="table.filters.status" class="w-44" size="sm" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </template>

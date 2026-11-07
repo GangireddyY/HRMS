@@ -62,7 +62,7 @@ async function download(f: CaseFile) {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppCard title="Messages" :description="handler ? 'Shared messages are seen by the complainant; internal notes are not.' : 'Your conversation with the people handling your case.'">
       <p v-if="!grievance.notes.length" class="text-sm text-fg-muted">No messages yet.</p>
       <ol v-else class="space-y-3">

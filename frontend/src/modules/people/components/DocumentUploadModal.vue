@@ -70,7 +70,7 @@ async function save() {
       <div v-if="!document">
         <button
           type="button"
-          class="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors"
+          class="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors"
           :class="dragging ? 'border-brand-500 bg-brand-500/5' : fieldErrors.file ? 'border-red-500/60' : 'border-line hover:border-brand-400 hover:bg-surface-muted/50'"
           @click="input?.click()"
           @dragover.prevent="dragging = true"

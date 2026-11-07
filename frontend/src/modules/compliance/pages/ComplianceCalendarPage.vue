@@ -117,7 +117,7 @@ async function recommended() {
           <span class="min-w-48 text-center text-sm font-medium text-fg">{{ rangeLabel }}</span>
           <AppButton size="sm" variant="ghost" :icon="ChevronRight" aria-label="Later months" @click="shift(3)" />
         </div>
-        <div class="mb-6 grid gap-4 sm:grid-cols-3">
+        <div class="mb-4 grid gap-4 sm:grid-cols-3">
           <AppStatCard label="Overdue" :value="calendar.data.value?.counts.overdue" tone="danger" :loading="calendar.loading.value" />
           <AppStatCard label="Due in the next 7 days" :value="calendar.data.value?.counts.dueSoon" tone="warning" :loading="calendar.loading.value" />
           <AppStatCard label="Filed" :value="calendar.data.value?.counts.done" tone="success" :loading="calendar.loading.value" />
@@ -125,10 +125,10 @@ async function recommended() {
         <AppSkeleton v-if="calendar.loading.value && !calendar.data.value" :lines="8" />
         <AppErrorState v-else-if="calendar.error.value" :error="calendar.error.value" @retry="calendar.run" />
         <AppCard v-else-if="!groups.length"><AppEmptyState :icon="ListPlus" title="Nothing due" description="Add the recommended statutory obligations or your own." /></AppCard>
-        <div v-else class="space-y-6">
+        <div v-else class="space-y-4">
           <AppCard v-for="g in groups" :key="g.key" :title="g.title" :padded="false">
             <ul class="divide-y divide-line">
-              <li v-for="i in g.items" :key="`${i.obligation.id}-${i.dueOn}`" class="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+              <li v-for="i in g.items" :key="`${i.obligation.id}-${i.dueOn}`" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
                 <div class="w-20 shrink-0 text-xs font-medium text-fg-muted tabular-nums">{{ formatDate(i.dueOn) }}</div>
                 <div class="min-w-0 flex-1">
                   <p class="font-medium text-fg">{{ i.obligation.title }}</p>
@@ -157,7 +157,7 @@ async function recommended() {
         <AppCard v-else-if="!obligations.data.value?.length"><AppEmptyState :icon="ListPlus" title="No obligations yet" description="Add the recommended statutory obligations or your own." /></AppCard>
         <AppCard v-else :padded="false">
           <ul class="divide-y divide-line">
-            <li v-for="o in obligations.data.value" :key="o.id" class="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+            <li v-for="o in obligations.data.value" :key="o.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ o.title }} <AppBadge v-if="!o.active" size="sm">Inactive</AppBadge></p>
                 <p class="text-xs text-fg-muted">{{ OBLIGATION_CATEGORY_LABELS[o.category] }}{{ o.authority ? ` · ${o.authority}` : '' }} · due {{ scheduleLabel(o.dueDates) }} · from {{ formatDate(o.startsOn) }}{{ o.endsOn ? ` to ${formatDate(o.endsOn)}` : '' }}</p>

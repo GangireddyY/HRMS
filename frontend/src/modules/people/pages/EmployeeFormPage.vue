@@ -175,7 +175,7 @@ const today = new Date().toISOString().slice(0, 10);
     />
     <AppSkeleton v-if="isEdit && existing.loading.value && !existing.data.value" :lines="10" />
     <AppErrorState v-else-if="existing.error.value" :error="existing.error.value" title="Could not load employee" @retry="existing.run" />
-    <form v-else class="space-y-6" novalidate @submit.prevent="save">
+    <form v-else class="space-y-4" novalidate @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
 
       <AppCard title="Personal details">

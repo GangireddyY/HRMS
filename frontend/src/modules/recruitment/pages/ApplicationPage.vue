@@ -144,10 +144,10 @@ async function hire() {
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="a.stage === 'REJECTED' && a.rejectionReason" tone="warning" class="mb-6" title="Rejected">{{ a.rejectionReason }}</AppAlert>
+      <AppAlert v-if="a.stage === 'REJECTED' && a.rejectionReason" tone="warning" class="mb-4" title="Rejected">{{ a.rejectionReason }}</AppAlert>
 
-      <div class="grid items-start gap-6 lg:grid-cols-3">
-        <div class="space-y-6 lg:col-span-2">
+      <div class="grid items-start gap-4 lg:grid-cols-3">
+        <div class="space-y-4 lg:col-span-2">
           <AppCard title="Interviews">
             <template v-if="canManage && active" #actions><AppButton size="sm" variant="secondary" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule</AppButton></template>
             <p v-if="!a.interviews.length" class="text-sm text-fg-muted">No interviews yet.</p>
@@ -193,7 +193,7 @@ async function hire() {
           </AppCard>
         </div>
 
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="Candidate">
             <dl class="space-y-3 text-sm">
               <div class="flex items-center gap-2 text-fg"><Mail :size="14" class="text-fg-subtle" aria-hidden="true" /><a :href="`mailto:${a.candidate.email}`" class="break-all hover:underline">{{ a.candidate.email }}</a></div>
@@ -261,7 +261,7 @@ async function hire() {
       <AppModal :open="declineOpen" title="Offer declined" size="sm" @close="declineOpen = false">
         <AppTextarea v-model="declineReason" label="Reason (if shared)" :rows="2" :maxlength="500" />
         <template #footer>
-          <AppButton variant="secondary" @click="declineOpen = false">Back</AppButton>
+          <AppButton variant="secondary" @click="declineOpen = false">Cancel</AppButton>
           <AppButton variant="danger" @click="declineOpen = false; act('decline', () => recruitmentApi.respondOffer(a!.offer!.id, 'DECLINED', declineReason || null), 'Offer marked as declined')">Record decline</AppButton>
         </template>
       </AppModal>

@@ -101,7 +101,7 @@ const display = (key: keyof SensitiveDetails, v: string | null) => (v && key ===
         <AppButton type="submit" :icon="Save" :loading="saving">Save</AppButton>
       </div>
     </form>
-    <dl v-else class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+    <dl v-else class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
       <div v-for="r in rows" :key="r.key">
         <dt class="text-xs text-fg-muted">{{ r.label }}</dt>
         <dd class="mt-0.5 font-mono text-fg">{{ display(r.key, details[r.key]) }}</dd>

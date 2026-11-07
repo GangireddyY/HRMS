@@ -92,12 +92,12 @@ async function removeRecognition(id: string) {
         </div>
       </template>
 
-      <div v-else-if="tab === 'wall'" class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div v-else-if="tab === 'wall'" class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div class="space-y-4">
           <AppSkeleton v-if="wall.loading.value && !wall.rows.value.length" :lines="6" />
           <AppErrorState v-else-if="wall.error.value" :error="wall.error.value" @retry="wall.load" />
           <AppCard v-else-if="!wall.rows.value.length"><AppEmptyState :icon="PartyPopper" title="No recognition yet" description="Be the first to thank a colleague." /></AppCard>
-          <article v-for="r in wall.rows.value" :key="r.id" class="flex gap-4 rounded-2xl bg-surface p-5 ring-1 ring-line">
+          <article v-for="r in wall.rows.value" :key="r.id" class="flex gap-4 rounded-2xl bg-surface p-4 ring-1 ring-line">
             <BadgeIcon :badge="r.badge" />
             <div class="min-w-0 flex-1">
               <p class="text-sm text-fg">
@@ -112,7 +112,7 @@ async function removeRecognition(id: string) {
           </article>
           <AppPagination v-if="wall.meta.value && wall.meta.value.totalPages > 1" :meta="wall.meta.value" @page="wall.setPage" />
         </div>
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="This month" :description="stats.data.value ? `${stats.data.value.thisMonth} recognition${stats.data.value.thisMonth === 1 ? '' : 's'}` : undefined">
             <p v-if="!stats.data.value?.topRecipients.length" class="text-sm text-fg-muted">Nobody yet.</p>
             <ol v-else class="space-y-2">
@@ -135,7 +135,7 @@ async function removeRecognition(id: string) {
         <AppCard v-else-if="!surveys.data.value?.items.length"><AppEmptyState :icon="ClipboardList" title="No open surveys" description="When HR asks for your views, the survey appears here." /></AppCard>
         <AppCard v-else :padded="false">
           <ul class="divide-y divide-line">
-            <li v-for="s in surveys.data.value.items" :key="s.id" class="flex flex-wrap items-center gap-3 px-5 py-4">
+            <li v-for="s in surveys.data.value.items" :key="s.id" class="flex flex-wrap items-center gap-3 px-4 py-4">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ s.title }}</p>
                 <p class="text-xs text-fg-muted">{{ s.questions }} question{{ s.questions === 1 ? '' : 's' }} · {{ s.anonymous ? 'anonymous' : 'your name is recorded' }}{{ s.closesAt ? ` · closes ${formatDateTime(s.closesAt)}` : '' }}</p>

@@ -46,7 +46,7 @@ async function save() {
 <template>
   <div>
     <AppPageHeader title="My profile" description="Your account details. Employment details are managed by HR." />
-    <div class="grid items-start gap-6 lg:grid-cols-3">
+    <div class="grid items-start gap-4 lg:grid-cols-3">
       <AppCard class="lg:col-span-2" title="Personal details">
         <form class="space-y-4" novalidate @submit.prevent="save">
           <AppAlert v-if="formError">{{ formError }}</AppAlert>
@@ -69,7 +69,7 @@ async function save() {
             <p class="truncate text-sm text-fg-muted">{{ auth.user?.email }}</p>
           </div>
         </div>
-        <dl class="mt-5 space-y-3 text-sm">
+        <dl class="mt-4 space-y-3 text-sm">
           <div class="flex justify-between gap-3"><dt class="text-fg-muted">Organization</dt><dd class="text-right text-fg">{{ auth.organization?.name ?? '—' }}</dd></div>
           <div class="flex justify-between gap-3">
             <dt class="text-fg-muted">Roles</dt>
@@ -82,6 +82,6 @@ async function save() {
         </dl>
       </AppCard>
     </div>
-    <MyEmploymentCard v-if="auth.organization" class="mt-6" compact />
+    <MyEmploymentCard v-if="auth.organization" class="mt-4" compact />
   </div>
 </template>

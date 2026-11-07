@@ -32,7 +32,7 @@ const nothing = computed(() => !mine.loading.value && !mine.data.value && !team.
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="Onboarding" description="Your joining checklist, and onboarding tasks for people joining your team." />
 
     <AppSkeleton v-if="mine.loading.value && !mine.data.value" :lines="5" />
@@ -41,7 +41,7 @@ const nothing = computed(() => !mine.loading.value && !mine.data.value && !team.
       <template #actions>
         <span class="text-sm text-fg-muted tabular-nums">{{ mine.data.value.progress.done }} of {{ mine.data.value.progress.total }} done</span>
       </template>
-      <div class="mb-5 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${pct}%` }" /></div>
+      <div class="mb-4 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${pct}%` }" /></div>
       <p v-if="mine.data.value.buddy" class="mb-4 text-sm text-fg-muted">Your buddy is <span class="font-medium text-fg">{{ mine.data.value.buddy.name }}</span> — reach out with any questions.</p>
       <ChecklistTasks :detail="mine.data.value" @updated="onUpdated" />
     </AppCard>
@@ -76,7 +76,7 @@ const nothing = computed(() => !mine.loading.value && !mine.data.value && !team.
 
     <AppCard v-if="myReviews.data.value?.items.length" title="Your recommendations" :padded="false">
       <ul class="divide-y divide-line">
-        <li v-for="r in myReviews.data.value.items" :key="r.id" class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
+        <li v-for="r in myReviews.data.value.items" :key="r.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
           <span class="text-fg">{{ r.employee?.name }} · {{ RECOMMENDATION_LABELS[r.recommendation] }}{{ r.extendTo ? ` until ${formatDate(r.extendTo)}` : '' }}</span>
           <span class="flex items-center gap-2">
             <span v-if="r.reviewNote" class="max-w-xs truncate text-xs text-fg-muted" :title="r.reviewNote">“{{ r.reviewNote }}”</span>

@@ -109,7 +109,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
     :class="[
       'fixed inset-y-0 left-0 z-40 flex max-w-[85vw] flex-col bg-sidebar text-sidebar-fg transition-[width,transform] duration-200',
       'max-lg:border-r max-lg:border-sidebar-line max-lg:shadow-pop lg:static lg:visible lg:max-w-none lg:translate-x-0',
-      ui.sidebarCollapsed ? 'lg:w-[76px]' : 'lg:w-64',
+      ui.sidebarCollapsed ? 'lg:w-16' : 'lg:w-60',
       // A closed drawer is also invisible so its links are not reachable by keyboard or screen readers.
       ui.mobileNavOpen ? 'visible w-72 translate-x-0' : 'invisible w-72 -translate-x-full',
     ]"
@@ -128,13 +128,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
     </div>
 
     <!-- Workspace / organization switcher -->
-    <div class="flex h-16 shrink-0 items-center gap-2 px-3">
+    <div class="flex h-12 shrink-0 items-center gap-2 px-2.5">
       <AppDropdown width="w-72" align="left" label="Switch workspace" class="min-w-0 flex-1">
         <template #trigger="{ toggle, open }">
           <button
             type="button"
             :class="[
-              'flex w-full min-w-0 items-center gap-2.5 rounded-xl p-1.5 text-left transition hover:bg-sidebar-hover',
+              'flex w-full min-w-0 items-center gap-2.5 rounded-md p-1 text-left transition hover:bg-sidebar-hover',
               open && 'bg-sidebar-hover',
               !expanded && 'justify-center',
             ]"
@@ -216,7 +216,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
       </button>
     </div>
 
-    <nav class="flex-1 space-y-6 overflow-y-auto px-3 pt-2 pb-4" aria-label="Primary navigation">
+    <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 pt-1 pb-3" aria-label="Primary navigation">
       <div v-for="(section, si) in sections" :key="si">
         <p v-if="section.title && expanded" class="mb-1 px-2.5 text-xs font-medium text-sidebar-section">
           {{ section.title }}
@@ -229,9 +229,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
               :title="!expanded ? item.label : undefined"
               :aria-current="isActive(item) ? 'page' : undefined"
               :class="[
-                'group flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium transition-colors',
+                'group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors',
                 isActive(item)
-                  ? 'bg-sidebar-active text-sidebar-active-fg shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-sidebar-line'
+                  ? 'bg-sidebar-active text-sidebar-active-fg ring-1 ring-sidebar-line'
                   : 'text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-strong',
                 !expanded ? 'lg:justify-center lg:px-0' : '',
               ]"
@@ -239,7 +239,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             >
               <component
                 :is="item.icon"
-                :size="17"
+                :size="16"
                 :class="['shrink-0 transition-colors', isActive(item) ? 'text-sidebar-icon-active' : 'text-sidebar-section group-hover:text-sidebar-fg-strong']"
                 aria-hidden="true"
               />
@@ -250,11 +250,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
       </div>
     </nav>
 
-    <div class="hidden p-3 lg:block">
+    <div class="hidden p-2.5 lg:block">
       <button
         type="button"
         :class="[
-          'flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-strong',
+          'flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-strong',
           ui.sidebarCollapsed && 'justify-center px-0',
         ]"
         :aria-label="ui.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"

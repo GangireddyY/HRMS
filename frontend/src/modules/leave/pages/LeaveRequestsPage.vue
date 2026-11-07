@@ -132,7 +132,7 @@ async function submit() {
         :placeholder="acting?.action === 'approve' ? 'Optional' : acting?.action === 'reject' ? 'Why is it rejected?' : 'Why is the approved leave cancelled? The days are returned.'"
       />
       <template #footer>
-        <AppButton variant="secondary" @click="acting = null">Back</AppButton>
+        <AppButton variant="secondary" @click="acting = null">Cancel</AppButton>
         <AppButton :variant="acting?.action === 'approve' ? 'primary' : 'danger'" :loading="busy" :disabled="noteRequired && note.trim().length < 3" @click="submit">
           {{ acting?.action === 'approve' ? 'Approve' : acting?.action === 'reject' ? 'Reject' : 'Cancel leave' }}
         </AppButton>

@@ -70,15 +70,15 @@ async function submitReason() {
         </template>
       </AppPageHeader>
 
-      <ol v-if="c.status !== 'WITHDRAWN'" class="mb-6 grid grid-cols-5 gap-2" aria-label="Progress">
+      <ol v-if="c.status !== 'WITHDRAWN'" class="mb-4 grid grid-cols-5 gap-2" aria-label="Progress">
         <li v-for="(s, i) in STEPS" :key="s.status" class="text-center" :aria-current="i === stepIndex ? 'step' : undefined">
           <span class="mb-1.5 block h-1.5 rounded-full" :class="i <= stepIndex ? 'bg-brand-500' : 'bg-surface-muted'" />
           <span class="text-xs" :class="i === stepIndex ? 'font-medium text-fg' : 'text-fg-muted'">{{ s.label }}</span>
         </li>
       </ol>
-      <AppAlert v-else tone="info" class="mb-6">You withdrew this case.</AppAlert>
+      <AppAlert v-else tone="info" class="mb-4">You withdrew this case.</AppAlert>
 
-      <AppCard v-if="c.resolution" class="mb-6" :title="c.status === 'RESOLVED' || c.status === 'CLOSED' ? 'Resolution' : 'Previous resolution'" :description="c.resolution.resolvedBy ? `By ${c.resolution.resolvedBy} · ${formatDate(c.resolution.resolvedAt)}` : undefined">
+      <AppCard v-if="c.resolution" class="mb-4" :title="c.status === 'RESOLVED' || c.status === 'CLOSED' ? 'Resolution' : 'Previous resolution'" :description="c.resolution.resolvedBy ? `By ${c.resolution.resolvedBy} · ${formatDate(c.resolution.resolvedAt)}` : undefined">
         <p v-if="c.outcome" class="mb-2"><AppBadge tone="success">{{ OUTCOME_LABELS[c.outcome] }}</AppBadge></p>
         <p class="text-sm whitespace-pre-line text-fg">{{ c.resolution.summary }}</p>
         <p v-if="c.posh && c.status === 'RESOLVED'" class="mt-3 text-xs text-fg-muted">If you disagree with the committee's findings, you can appeal to the appellate authority within 90 days (section 18 of the POSH Act).</p>
@@ -92,9 +92,9 @@ async function submitReason() {
         </template>
       </AppCard>
 
-      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <CaseThread :grievance="c" :can-note="c.permissions.note" :can-attach="c.permissions.attach" @updated="set" />
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard v-if="c.assignee" title="Handled by">
             <p class="text-sm text-fg">{{ c.assignee.name }}</p>
           </AppCard>

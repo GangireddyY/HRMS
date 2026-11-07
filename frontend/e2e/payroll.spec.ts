@@ -82,7 +82,7 @@ test.describe('payroll', () => {
     await slip.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(page.getByText('Adjustment added')).toBeVisible();
     await expect(slip.getByRole('cell', { name: 'Joining bonus' })).toBeVisible();
-    await slip.getByRole('button', { name: 'Close dialog' }).click();
+    await slip.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(slip).toBeHidden();
 
     // Submitting recalculates and locks the run; whoever submits can't approve it.

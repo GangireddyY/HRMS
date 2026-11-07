@@ -55,7 +55,7 @@ const columns: TableColumn<CaseRow>[] = [
       </template>
     </AppPageHeader>
     <AppTabs v-model="view" :tabs="tabs">
-      <div class="mb-6 grid gap-4 sm:grid-cols-3">
+      <div class="mb-4 grid gap-4 sm:grid-cols-3">
         <AppStatCard label="Open" :value="current?.open" :loading="stats.loading.value" />
         <AppStatCard label="Overdue" :value="current?.overdue" tone="danger" :loading="stats.loading.value" />
         <AppStatCard v-if="table.filters.view !== 'assigned'" label="Unassigned" :value="current?.unassigned" tone="warning" :loading="stats.loading.value" />

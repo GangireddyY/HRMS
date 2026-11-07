@@ -157,7 +157,7 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
       <p class="mb-3 rounded-lg bg-surface-muted/60 px-3 py-2 text-sm text-fg-muted">“{{ deciding?.review.comments }}”</p>
       <AppTextarea v-model="note" :label="deciding?.action === 'approve' ? 'Note' : 'Reason'" :required="deciding?.action === 'reject'" :rows="2" :maxlength="500" :placeholder="deciding?.action === 'approve' ? 'Optional' : 'Shared with the person who recommended it'" />
       <template #footer>
-        <AppButton variant="secondary" @click="deciding = null">Back</AppButton>
+        <AppButton variant="secondary" @click="deciding = null">Cancel</AppButton>
         <AppButton :variant="deciding?.action === 'approve' ? 'primary' : 'danger'" :loading="busy" :disabled="deciding?.action === 'reject' && note.trim().length < 3" @click="decide">{{ deciding?.action === 'approve' ? 'Approve' : 'Reject' }}</AppButton>
       </template>
     </AppModal>

@@ -70,7 +70,7 @@ async function save() {
     <AppErrorState v-else-if="me.error.value" :error="me.error.value" @retry="me.run" />
     <AppEmptyState v-else-if="!me.data.value" compact title="No employee record yet" description="HR hasn't linked your account to an employee record. Contact your HR team." />
     <template v-else>
-      <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
+      <dl class="grid gap-x-4 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
         <div><dt class="text-xs text-fg-muted">Employee code</dt><dd class="mt-0.5 font-mono text-fg">{{ me.data.value.employeeCode }}</dd></div>
         <div><dt class="text-xs text-fg-muted">Designation</dt><dd class="mt-0.5 text-fg">{{ me.data.value.designation?.name ?? '—' }}</dd></div>
         <div><dt class="text-xs text-fg-muted">Department</dt><dd class="mt-0.5 text-fg">{{ me.data.value.department?.name ?? '—' }}</dd></div>
@@ -84,7 +84,7 @@ async function save() {
         <div><dt class="text-xs text-fg-muted">Status</dt><dd class="mt-0.5"><AppBadge :tone="employeeStatusTone[me.data.value.status]" dot>{{ EMPLOYEE_STATUS_LABELS[me.data.value.status] }}</AppBadge></dd></div>
       </dl>
 
-      <form v-if="canEdit" class="mt-6 space-y-4 border-t border-line/70 pt-5" novalidate @submit.prevent="save">
+      <form v-if="canEdit" class="mt-4 space-y-4 border-t border-line/70 pt-4" novalidate @submit.prevent="save">
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <AppInput v-model="form.personalEmail" label="Personal email" type="email" :error="fieldErrors.personalEmail" />

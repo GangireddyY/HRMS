@@ -174,7 +174,7 @@ test.describe('organization administration', () => {
 
   test('global search navigates to pages', async ({ page }) => {
     await page.keyboard.press('Control+k');
-    await page.getByRole('combobox').fill('audit');
+    await page.getByRole('combobox', { name: 'Search', exact: true }).fill('audit');
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/admin\/audit-logs/);
     await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();

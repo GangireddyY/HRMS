@@ -12,8 +12,8 @@ const deductions = computed(() => props.settlement.lines.filter((l) => l.kind ==
 </script>
 
 <template>
-  <section class="rounded-2xl bg-surface p-6 ring-1 ring-line print:p-0 print:ring-0" aria-label="Full and final settlement statement">
-    <header class="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+  <section class="rounded-2xl bg-surface p-4 ring-1 ring-line print:p-0 print:ring-0" aria-label="Full and final settlement statement">
+    <header class="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
       <div>
         <p v-if="organization" class="text-xs font-medium tracking-wide text-fg-muted uppercase">{{ organization }}</p>
         <h2 class="text-lg font-semibold text-fg">Full &amp; final settlement</h2>
@@ -32,7 +32,7 @@ const deductions = computed(() => props.settlement.lines.filter((l) => l.kind ==
         </p>
       </div>
     </header>
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-4 md:grid-cols-2">
       <div v-for="group in [{ title: 'Earnings', lines: earnings, total: settlement.totalEarnings }, { title: 'Deductions', lines: deductions, total: settlement.totalDeductions }]" :key="group.title">
         <h3 class="mb-2 text-sm font-medium text-fg">{{ group.title }}</h3>
         <p v-if="!group.lines.length" class="text-sm text-fg-muted">None</p>
@@ -48,7 +48,7 @@ const deductions = computed(() => props.settlement.lines.filter((l) => l.kind ==
         <p class="mt-3 flex justify-between border-t border-line pt-2 text-sm font-medium text-fg"><span>Total {{ group.title.toLowerCase() }}</span><span class="tabular-nums">{{ inr(group.total) }}</span></p>
       </div>
     </div>
-    <p class="mt-6 flex items-baseline justify-between rounded-xl bg-surface-muted/60 px-4 py-3">
+    <p class="mt-4 flex items-baseline justify-between rounded-xl bg-surface-muted/60 px-4 py-3">
       <span class="text-sm font-medium text-fg">{{ settlement.netPayable < 0 ? 'Payable by the employee' : 'Net payable' }}</span>
       <span class="text-2xl font-semibold text-fg tabular-nums">{{ inr(Math.abs(settlement.netPayable)) }}</span>
     </p>

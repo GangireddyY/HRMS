@@ -155,18 +155,18 @@ async function saveEntitlements() {
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="org.data.value.suspensionReason && org.data.value.status !== 'ACTIVE'" class="mb-6">
+      <AppAlert v-if="org.data.value.suspensionReason && org.data.value.status !== 'ACTIVE'" class="mb-4">
         {{ org.data.value.status === 'SUSPENDED' ? 'Suspended' : 'Deactivated' }} {{ formatDateTime(org.data.value.suspendedAt) }}: {{ org.data.value.suspensionReason }}
       </AppAlert>
 
       <AppTabs v-model="tab" :tabs="tabs">
-        <div v-if="tab === 'overview'" class="grid items-start gap-6 lg:grid-cols-3">
+        <div v-if="tab === 'overview'" class="grid items-start gap-4 lg:grid-cols-3">
           <AppCard title="Subscription">
             <AppSelect v-model="planId" label="Plan" :options="planOptions" :disabled="!canManage" />
             <div v-if="canManage" class="mt-4 flex justify-end">
               <AppButton size="sm" :loading="busy === 'plan'" :disabled="planId === org.data.value.plan.id" @click="savePlan">Change plan</AppButton>
             </div>
-            <dl class="mt-5 space-y-2 text-sm">
+            <dl class="mt-4 space-y-2 text-sm">
               <div class="flex justify-between"><dt class="text-fg-muted">Active users</dt><dd class="tabular-nums">{{ org.data.value.members.ACTIVE ?? 0 }}</dd></div>
               <div class="flex justify-between"><dt class="text-fg-muted">Invited</dt><dd class="tabular-nums">{{ org.data.value.members.INVITED ?? 0 }}</dd></div>
               <div class="flex justify-between"><dt class="text-fg-muted">Suspended</dt><dd class="tabular-nums">{{ org.data.value.members.SUSPENDED ?? 0 }}</dd></div>
@@ -174,7 +174,7 @@ async function saveEntitlements() {
           </AppCard>
           <AppCard class="lg:col-span-2" title="Organization administrators" :padded="false">
             <ul class="divide-y divide-line">
-              <li v-for="a in org.data.value.admins" :key="a.membershipId" class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <li v-for="a in org.data.value.admins" :key="a.membershipId" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div>
                   <p class="text-sm font-medium">{{ a.firstName }} {{ a.lastName }}</p>
                   <p class="text-xs text-fg-muted">{{ a.email }} · last sign-in {{ formatDateTime(a.lastLoginAt) }}</p>
@@ -184,7 +184,7 @@ async function saveEntitlements() {
                   <AppButton v-if="a.status === 'INVITED' && canManage" size="sm" variant="secondary" :icon="Mail" :loading="busy === `resend:${a.membershipId}`" @click="resend(a.membershipId)">Resend</AppButton>
                 </div>
               </li>
-              <li v-if="!org.data.value.admins.length" class="px-5 py-6 text-center text-sm text-fg-muted">No administrators.</li>
+              <li v-if="!org.data.value.admins.length" class="px-4 py-4 text-center text-sm text-fg-muted">No administrators.</li>
             </ul>
           </AppCard>
         </div>
@@ -193,7 +193,7 @@ async function saveEntitlements() {
           <form v-if="profile" novalidate @submit.prevent="saveProfile">
             <AppAlert v-if="profileErrors.formError.value" class="mb-4">{{ profileErrors.formError.value }}</AppAlert>
             <OrganizationProfileForm v-model="profile" :errors="profileErrors.fieldErrors.value" :disabled="!canManage" />
-            <div v-if="canManage" class="mt-6 flex justify-end border-t border-line pt-4">
+            <div v-if="canManage" class="mt-4 flex justify-end border-t border-line pt-4">
               <AppButton type="submit" :icon="Save" :loading="busy === 'profile'" :disabled="!Object.keys(profileChanges).length">Save changes</AppButton>
             </div>
           </form>

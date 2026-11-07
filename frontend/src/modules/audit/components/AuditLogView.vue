@@ -66,7 +66,7 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
         <dt class="text-fg-muted">IP address</dt><dd>{{ selected.ipAddress ?? '—' }}</dd>
         <dt class="text-fg-muted">Request ID</dt><dd class="font-mono text-xs">{{ selected.requestId ?? '—' }}</dd>
       </dl>
-      <div v-if="selected?.changes && Object.keys(selected.changes).length" class="mt-5">
+      <div v-if="selected?.changes && Object.keys(selected.changes).length" class="mt-4">
         <p class="mb-2 text-sm font-medium">Changes</p>
         <table class="w-full overflow-hidden rounded-xl border border-line text-sm">
           <thead class="bg-surface-muted text-xs font-medium text-fg-muted"><tr><th class="px-3 py-2 text-left">Field</th><th class="px-3 py-2 text-left">Before</th><th class="px-3 py-2 text-left">After</th></tr></thead>
@@ -79,7 +79,7 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
           </tbody>
         </table>
       </div>
-      <div v-if="selected?.metadata" class="mt-5">
+      <div v-if="selected?.metadata" class="mt-4">
         <p class="mb-2 text-sm font-medium">Metadata</p>
         <pre class="max-h-64 overflow-auto rounded-lg bg-surface-muted p-3 text-xs">{{ JSON.stringify(selected.metadata, null, 2) }}</pre>
       </div>

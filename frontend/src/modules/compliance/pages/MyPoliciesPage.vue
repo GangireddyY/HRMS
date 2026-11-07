@@ -18,17 +18,17 @@ const others = computed(() => (mine.data.value ?? []).filter((p) => !toDo.value.
     <AppSkeleton v-if="mine.loading.value && !mine.data.value" :lines="6" />
     <AppErrorState v-else-if="mine.error.value" :error="mine.error.value" @retry="mine.run" />
     <template v-else-if="mine.data.value">
-      <div class="mb-6 grid gap-4 sm:grid-cols-3">
+      <div class="mb-4 grid gap-4 sm:grid-cols-3">
         <AppStatCard label="To acknowledge" :value="toDo.length" tone="warning" />
         <AppStatCard label="Overdue" :value="toDo.filter((p) => p.state === 'OVERDUE').length" tone="danger" />
         <AppStatCard label="Policies" :value="mine.data.value.length" />
       </div>
       <AppCard v-if="!mine.data.value.length"><AppEmptyState :icon="ScrollText" title="No policies yet" description="Policies published by your organization appear here." /></AppCard>
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <AppCard v-for="group in [{ title: 'To acknowledge', items: toDo }, { title: 'All policies', items: others }].filter((g) => g.items.length)" :key="group.title" :title="group.title" :padded="false">
           <ul class="divide-y divide-line">
             <li v-for="p in group.items" :key="p.id">
-              <RouterLink :to="`/me/policies/${p.id}`" class="flex items-center gap-4 px-5 py-4 transition hover:bg-surface-muted/50">
+              <RouterLink :to="`/me/policies/${p.id}`" class="flex items-center gap-4 px-4 py-4 transition hover:bg-surface-muted/50">
                 <div class="min-w-0 flex-1">
                   <p class="truncate font-medium text-fg">{{ p.title }}</p>
                   <p class="text-xs text-fg-muted">

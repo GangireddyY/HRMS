@@ -6,15 +6,12 @@ withDefaults(defineProps<{ title: string; description?: string; icon?: Component
 </script>
 
 <template>
-  <div :class="['flex flex-col items-center justify-center px-6 text-center', compact ? 'py-8' : 'py-14']">
-    <div class="relative mb-4">
-      <div class="absolute inset-0 -m-3 rounded-full bg-brand-500/8 blur-md" aria-hidden="true" />
-      <div class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-line bg-surface text-fg-muted shadow-card">
-        <component :is="icon" :size="20" aria-hidden="true" />
-      </div>
+  <div :class="['flex flex-col items-center justify-center px-4 text-center', compact ? 'py-6' : 'py-10']">
+    <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-line bg-surface-muted text-fg-muted">
+      <component :is="icon" :size="18" aria-hidden="true" />
     </div>
     <p class="text-sm font-semibold text-fg">{{ title }}</p>
-    <p v-if="description" class="mt-1 max-w-sm text-sm text-fg-muted">{{ description }}</p>
-    <div v-if="$slots.default" class="mt-5"><slot /></div>
+    <p v-if="description" class="mt-0.5 max-w-sm text-[13px] text-fg-muted">{{ description }}</p>
+    <div v-if="$slots.default" class="mt-4"><slot /></div>
   </div>
 </template>

@@ -17,7 +17,7 @@ const line = (e: Enrollment) => [DELIVERY_LABELS[e.course.delivery], e.session ?
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="My learning" description="Courses you're taking, what's due, and your certificates.">
       <template #actions><AppButton variant="secondary" :icon="BookOpen" to="/me/training/catalog">Browse catalog</AppButton></template>
     </AppPageHeader>
@@ -28,7 +28,7 @@ const line = (e: Enrollment) => [DELIVERY_LABELS[e.course.delivery], e.session ?
         <AppEmptyState v-if="!todo.length" :icon="BookOpen" title="Nothing to do" description="Courses you enrol in or are assigned appear here." compact />
         <ul v-else class="divide-y divide-line">
           <li v-for="e in todo" :key="e.id">
-            <RouterLink :to="`/me/training/enrollments/${e.id}`" class="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-muted/50">
+            <RouterLink :to="`/me/training/enrollments/${e.id}`" class="flex flex-wrap items-center gap-3 px-4 py-4 hover:bg-surface-muted/50">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ e.course.title }}</p>
                 <p class="text-xs text-fg-muted">{{ line(e) }}</p>
@@ -44,7 +44,7 @@ const line = (e: Enrollment) => [DELIVERY_LABELS[e.course.delivery], e.session ?
         <AppEmptyState v-if="!done.length" :icon="Award" title="No certificates yet" description="Finish a course to earn one." compact />
         <ul v-else class="divide-y divide-line">
           <li v-for="e in done" :key="e.id">
-            <RouterLink :to="`/me/training/enrollments/${e.id}`" class="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-muted/50">
+            <RouterLink :to="`/me/training/enrollments/${e.id}`" class="flex flex-wrap items-center gap-3 px-4 py-4 hover:bg-surface-muted/50">
               <Award :size="18" class="text-brand-500" aria-hidden="true" />
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ e.course.title }}</p>
@@ -58,7 +58,7 @@ const line = (e: Enrollment) => [DELIVERY_LABELS[e.course.delivery], e.session ?
       </AppCard>
       <AppCard v-if="other.length" title="Not completed" :padded="false">
         <ul class="divide-y divide-line">
-          <li v-for="e in other" :key="e.id" class="flex flex-wrap items-center gap-3 px-5 py-3">
+          <li v-for="e in other" :key="e.id" class="flex flex-wrap items-center gap-3 px-4 py-3">
             <p class="min-w-0 flex-1 text-fg">{{ e.course.title }}</p>
             <AppBadge :tone="enrollmentTone[e.status]" size="sm">{{ ENROLLMENT_STATUS_LABELS[e.status] }}</AppBadge>
             <AppButton size="sm" variant="ghost" :to="`/me/training/courses/${e.course.id}`">Try again</AppButton>

@@ -56,7 +56,7 @@ const types = computed(() => {
     </AppPageHeader>
 
     <AppCard :padded="false">
-      <AppSkeleton v-if="calendar.loading.value && !calendar.data.value" class="p-5" :lines="6" />
+      <AppSkeleton v-if="calendar.loading.value && !calendar.data.value" class="p-4" :lines="6" />
       <AppErrorState v-else-if="calendar.error.value" :error="calendar.error.value" title="Could not load the calendar" @retry="calendar.run" />
       <AppEmptyState v-else-if="!rows.length" title="No leave this month" description="Approved and pending leave of people in your scope shows here." />
       <div v-else class="overflow-x-auto">

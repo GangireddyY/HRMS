@@ -66,7 +66,7 @@ const sidebarPreview: Record<SidebarStyle, { bg: string; line: string; active: s
   </div>
 
   <!-- Full: Appearance page -->
-  <div v-else class="space-y-8">
+  <div v-else class="space-y-5">
     <section>
       <p class="label">Mode</p>
       <div class="grid max-w-xl grid-cols-3 gap-3" role="radiogroup" aria-label="Color mode">

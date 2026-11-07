@@ -34,7 +34,7 @@ const moduleAccess = computed(() =>
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="HR operations" :description="`People operations for ${auth.organization?.name}.`" />
 
     <section v-if="canSeeHeadcount" aria-labelledby="at-a-glance">
@@ -56,7 +56,7 @@ const moduleAccess = computed(() =>
       <AppStatCard label="Pending invitations" :value="invited.data.value?.meta.total" :loading="invited.loading.value" :icon="MailPlus" tone="warning" />
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid gap-4 lg:grid-cols-3">
       <AppCard class="lg:col-span-2" title="Your HR access" description="Modules in your subscription and the record scope your roles grant.">
         <AppEmptyState v-if="!moduleAccess.length" title="No module access" description="Your roles do not grant HR module permissions yet." />
         <ul v-else class="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">

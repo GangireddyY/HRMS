@@ -131,17 +131,17 @@ const period = (y: number, m: number) => `${MONTH_NAMES[m - 1]} ${y}`;
           <AppButton v-if="l.permissions.repay" variant="secondary" :icon="Wallet" @click="open('repay')">Record repayment</AppButton>
         </template>
       </AppPageHeader>
-      <AppAlert v-if="l.status === 'REJECTED' && l.decisionNote" tone="warning" class="mb-6">Not approved by {{ l.decidedBy }}: {{ l.decisionNote }}</AppAlert>
+      <AppAlert v-if="l.status === 'REJECTED' && l.decisionNote" tone="warning" class="mb-4">Not approved by {{ l.decidedBy }}: {{ l.decisionNote }}</AppAlert>
 
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AppStatCard label="Amount" :value="rupees(l.principal)" :icon="HandCoins" />
         <AppStatCard label="Monthly instalment" :value="l.emi ? rupees(l.emi) : '—'" :hint="`${l.tenureMonths} months${l.interestRate ? ` at ${l.interestRate}% a year` : l.emi ? ', interest-free' : ''}`" />
         <AppStatCard label="Repaid" :value="rupees(l.repaid)" :hint="l.interestPaid ? `plus ${rupees(l.interestPaid)} interest` : `${l.instalmentsPaid} instalment${l.instalmentsPaid === 1 ? '' : 's'}`" />
         <AppStatCard label="Still owed" :value="l.status === 'ACTIVE' || l.status === 'CLOSED' ? rupees(l.outstanding) : '—'" :hint="l.nextInstalment ? `next deduction ${rupees(l.nextInstalment.amount)}` : undefined" />
       </div>
 
-      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div class="space-y-6">
+      <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div class="space-y-4">
           <AppCard title="Repayment schedule" :description="l.schedule.length ? 'What payroll will deduct, month by month.' : undefined">
             <p v-if="!l.schedule.length" class="text-sm text-fg-muted">{{ l.status === 'CLOSED' ? 'Fully repaid.' : 'The schedule appears once the request is approved.' }}</p>
             <div v-else class="overflow-x-auto">

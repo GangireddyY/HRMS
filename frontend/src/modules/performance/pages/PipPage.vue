@@ -78,10 +78,10 @@ const ackComment = ref('');
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="p.permissions.acknowledge" tone="info" class="mb-6" title="Please read and acknowledge this plan">Acknowledging confirms you've seen it; add a comment if you'd like to respond.</AppAlert>
+      <AppAlert v-if="p.permissions.acknowledge" tone="info" class="mb-4" title="Please read and acknowledge this plan">Acknowledging confirms you've seen it; add a comment if you'd like to respond.</AppAlert>
 
-      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div class="space-y-6">
+      <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div class="space-y-4">
           <AppCard title="Why this plan">
             <p class="text-sm whitespace-pre-line text-fg">{{ p.reason }}</p>
           </AppCard>
@@ -109,7 +109,7 @@ const ackComment = ref('');
             </ol>
           </AppCard>
         </div>
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard v-if="p.status !== 'ACTIVE'" title="Outcome">
             <p class="font-medium text-fg">{{ PIP_STATUS_LABELS[p.status] }}</p>
             <p class="mt-1 text-sm whitespace-pre-line text-fg-muted">{{ p.outcomeNote }}</p>
@@ -154,7 +154,7 @@ const ackComment = ref('');
           <AppTextarea v-model="outcome.note" label="Summary" required :rows="4" :maxlength="2000" />
         </div>
         <template #footer>
-          <AppButton variant="secondary" @click="closeOpen = false">Back</AppButton>
+          <AppButton variant="secondary" @click="closeOpen = false">Cancel</AppButton>
           <AppButton :variant="outcome.value === 'SUCCESSFUL' ? 'primary' : 'danger'" :loading="busy === 'close'" :disabled="outcome.note.trim().length < 10" @click="close">Close plan</AppButton>
         </template>
       </AppModal>

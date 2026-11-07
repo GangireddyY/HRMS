@@ -113,7 +113,7 @@ async function verify() {
               </thead>
               <tbody>
                 <tr v-for="r in matrix.data.value.page.items" :key="r.employee.id">
-                  <th scope="row" class="sticky left-0 z-10 min-w-48 bg-surface pr-2 text-left font-normal">
+                  <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pr-2 text-left font-normal sm:max-w-none sm:min-w-48">
                     <span class="block truncate text-sm font-medium text-fg">{{ r.employee.name }}</span>
                     <span class="block truncate text-fg-muted">{{ [r.employee.designation, r.employee.department].filter(Boolean).join(' · ') || r.employee.employeeCode }}</span>
                   </th>

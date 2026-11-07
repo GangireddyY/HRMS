@@ -150,7 +150,7 @@ function onTriggerKey(e: KeyboardEvent) {
             'input-base flex cursor-pointer items-center gap-2 pl-9 text-left disabled:cursor-not-allowed',
             model && 'pr-9',
             invalid && 'input-invalid',
-            open && !invalid && 'border-brand-500 ring-4 ring-brand-500/15',
+            open && !invalid && 'border-brand-500 ring-2 ring-brand-500/20',
           ]"
           @click="open ? close() : openPicker()"
           @keydown="onTriggerKey"

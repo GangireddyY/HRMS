@@ -117,10 +117,10 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
       </AppPageHeader>
 
       <AppTabs v-model="tab" :tabs="tabs">
-        <div v-if="tab === 'overview'" class="grid items-start gap-6 lg:grid-cols-3">
-          <div class="space-y-6 lg:col-span-2">
+        <div v-if="tab === 'overview'" class="grid items-start gap-4 lg:grid-cols-3">
+          <div class="space-y-4 lg:col-span-2">
             <AppCard title="Employment">
-              <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
+              <dl class="grid gap-x-4 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
                 <div><dt class="text-xs text-fg-muted">Designation</dt><dd class="mt-0.5 text-fg">{{ show(employee.data.value.designation?.name) }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Department</dt><dd class="mt-0.5 text-fg">{{ show(employee.data.value.department?.name) }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Location</dt><dd class="mt-0.5 text-fg">{{ show(employee.data.value.location?.name) }}</dd></div>
@@ -149,7 +149,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
             </AppCard>
 
             <AppCard title="Personal & contact">
-              <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
+              <dl class="grid gap-x-4 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
                 <div><dt class="text-xs text-fg-muted">Work email</dt><dd class="mt-0.5 break-all text-fg">{{ show(employee.data.value.workEmail) }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Personal email</dt><dd class="mt-0.5 break-all text-fg">{{ show(employee.data.value.personalEmail) }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Phone</dt><dd class="mt-0.5 text-fg">{{ show(employee.data.value.phone) }}</dd></div>
@@ -168,7 +168,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
             </AppCard>
           </div>
 
-          <div class="space-y-6">
+          <div class="space-y-4">
             <AppCard title="Reporting">
               <div class="text-sm">
                 <p class="text-xs text-fg-muted">Reports to</p>
@@ -178,7 +178,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
                 </RouterLink>
                 <p v-else class="mt-1 text-fg-muted">No manager</p>
               </div>
-              <div class="mt-5 text-sm">
+              <div class="mt-4 text-sm">
                 <p class="text-xs text-fg-muted">Direct reports ({{ employee.data.value.directReports.length }})</p>
                 <AppEmptyState v-if="!employee.data.value.directReports.length" compact :icon="UserRound" title="No direct reports" />
                 <ul v-else class="mt-1.5 space-y-1">
@@ -212,7 +212,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
           </div>
         </div>
 
-        <div v-else-if="tab === 'profile'" class="grid items-start gap-6 xl:grid-cols-2">
+        <div v-else-if="tab === 'profile'" class="grid items-start gap-4 xl:grid-cols-2">
           <ProfileSectionCard :employee-id="employee.data.value.id" section="family" :can-edit="canEditProfile" />
           <ProfileSectionCard :employee-id="employee.data.value.id" section="education" :can-edit="canEditProfile" />
           <ProfileSectionCard class="xl:col-span-2" :employee-id="employee.data.value.id" section="experience" :can-edit="canEditProfile" :joining-date="employee.data.value.dateOfJoining" />

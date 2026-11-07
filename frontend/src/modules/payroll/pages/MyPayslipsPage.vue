@@ -19,7 +19,7 @@ const year = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="Payslips" description="Your monthly payslips once payroll is approved. Open one to print or save it as a PDF." />
     <AppSkeleton v-if="list.loading.value && !list.data.value" :lines="5" />
     <AppErrorState v-else-if="list.error.value" :error="list.error.value" @retry="list.run" />
@@ -33,7 +33,7 @@ const year = computed(() => {
       <AppCard v-else :padded="false">
         <ul class="divide-y divide-line">
           <li v-for="p in list.data.value" :key="p.id">
-            <RouterLink :to="`/me/payslips/${p.id}`" class="flex items-center gap-4 px-5 py-4 hover:bg-surface-muted/50">
+            <RouterLink :to="`/me/payslips/${p.id}`" class="flex items-center gap-4 px-4 py-4 hover:bg-surface-muted/50">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ p.period }}</p>
                 <p class="text-xs text-fg-muted">Gross {{ rupees(p.gross) }} · deductions {{ rupees(p.totalDeductions) }}</p>

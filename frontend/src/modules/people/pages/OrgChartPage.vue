@@ -140,11 +140,11 @@ onMounted(async () => {
     </AppPageHeader>
 
     <AppCard :padded="false">
-      <AppSkeleton v-if="loadingIds.has('') && !children.has('')" class="p-5" :lines="6" />
+      <AppSkeleton v-if="loadingIds.has('') && !children.has('')" class="p-4" :lines="6" />
       <AppErrorState v-else-if="rootError" :error="rootError" title="Could not load the org chart" @retry="loadRoots" />
       <AppEmptyState v-else-if="!rows.length" :icon="Network" title="No reporting lines yet" description="Add employees and set who they report to." />
       <template v-else>
-        <div class="flex items-center gap-2 border-b border-line px-5 py-3 text-xs text-fg-muted">
+        <div class="flex items-center gap-2 border-b border-line px-4 py-3 text-xs text-fg-muted">
           <Users class="h-3.5 w-3.5" aria-hidden="true" />
           {{ (children.get('') ?? []).length.toLocaleString() }} {{ (children.get('') ?? []).length === 1 ? 'person' : 'people' }} at the top · {{ topReports.toLocaleString() }} direct report{{ topReports === 1 ? '' : 's' }} below them
         </div>

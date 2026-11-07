@@ -95,7 +95,7 @@ const print = () => window.print();
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppSkeleton v-if="settlement.loading.value && !s" :lines="6" />
     <AppErrorState v-else-if="settlement.error.value" :error="settlement.error.value" @retry="settlement.run" />
     <template v-else>

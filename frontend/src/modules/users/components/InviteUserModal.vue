@@ -42,8 +42,8 @@ async function submit() {
   <AppModal :open="open" title="Invite user" description="They'll receive an email to set their password and join." size="lg" @close="emit('close')">
     <form id="invite-form" class="space-y-4" novalidate @submit.prevent="submit">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
-      <AppInput v-model="form.email" label="Work email" type="email" required autofocus :error="fieldErrors.email" />
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <AppInput v-model="form.email" class="sm:col-span-2 lg:col-span-1" label="Work email" type="email" required autofocus :error="fieldErrors.email" />
         <AppInput v-model="form.firstName" label="First name" required :error="fieldErrors.firstName" />
         <AppInput v-model="form.lastName" label="Last name" required :error="fieldErrors.lastName" />
       </div>

@@ -99,7 +99,7 @@ const rules = (t: LeaveType) =>
       </template>
     </AppPageHeader>
 
-    <AppCard class="mb-6" title="Leave year" description="Balances are credited and carried forward per leave year. It can't change once balances exist.">
+    <AppCard class="mb-4" title="Leave year" description="Balances are credited and carried forward per leave year. It can't change once balances exist.">
       <div class="flex flex-wrap items-end gap-3">
         <AppSelect v-model="startMonth" class="w-72" label="Leave year runs" :options="monthOptions" :clearable="false" />
         <AppButton variant="secondary" :loading="savingYear" :disabled="!settings.data.value || startMonth === settings.data.value.leaveYearStartMonth" @click="saveYear">Save</AppButton>

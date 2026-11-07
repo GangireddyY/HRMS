@@ -132,7 +132,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
         </template>
       </AppPageHeader>
 
-      <div class="grid items-start gap-6 lg:grid-cols-3">
+      <div class="grid items-start gap-4 lg:grid-cols-3">
         <AppCard title="Profile">
           <div class="mb-4 flex items-center gap-3">
             <AppAvatar :name="`${member.data.value.firstName} ${member.data.value.lastName}`" size="lg" />
@@ -178,7 +178,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
         </AppCard>
       </div>
 
-      <AppCard v-if="history" class="mt-6" title="Sign-in history" :padded="false">
+      <AppCard v-if="history" class="mt-4" title="Sign-in history" :padded="false">
         <AppDataTable
           :columns="historyColumns"
           :rows="history.rows.value"

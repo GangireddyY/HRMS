@@ -65,7 +65,7 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
     <template v-if="$slots['label-action']" #label-action><slot name="label-action" /></template>
     <template #default="{ describedby, invalid }">
       <div class="relative">
-        <component :is="icon" v-if="icon" :size="16" class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+        <component :is="icon" v-if="icon" :size="15" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
         <input
           :id="inputId"
           :type="effectiveType"
@@ -84,10 +84,10 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
           :aria-label="label ? undefined : ariaLabel"
           :class="[
             'input-base',
-            size === 'lg' && 'min-h-11 rounded-xl text-[15px]',
+            size === 'lg' && 'min-h-10 text-[15px]',
             invalid && 'input-invalid',
             type === 'password' && 'pr-10',
-            icon && 'pl-10',
+            icon && 'pl-8',
             isNumber && 'pr-16 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
             isNumber && suffix && 'pr-28',
             !isNumber && suffix && 'pr-16',
@@ -104,7 +104,7 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
         >
           {{ suffix }}
         </span>
-        <div v-if="isNumber && !disabled" class="absolute inset-y-px right-px flex overflow-hidden rounded-r-[7px] border-l border-line">
+        <div v-if="isNumber && !disabled" class="absolute inset-y-px right-px flex overflow-hidden rounded-r-[3px] border-l border-line">
           <button type="button" :class="stepper" tabindex="-1" :disabled="atMin" :aria-label="`Decrease ${label ?? ariaLabel ?? 'value'}`" @click="stepBy(-1)">
             <Minus :size="14" />
           </button>

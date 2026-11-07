@@ -59,7 +59,7 @@ async function submit() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="My interviews" description="Candidates you are interviewing. Your feedback is final once submitted, and you see colleagues' feedback only in the hiring team's view." />
     <AppSkeleton v-if="list.loading.value && !list.data.value" :lines="5" />
     <AppErrorState v-else-if="list.error.value" :error="list.error.value" @retry="list.run" />
@@ -67,7 +67,7 @@ async function submit() {
       <AppCard v-if="!list.data.value?.length"><AppEmptyState :icon="CalendarClock" title="No interviews" description="When a recruiter adds you to an interview panel, it appears here." /></AppCard>
       <AppCard v-for="section in [{ title: 'Waiting for your feedback', rows: toReview }, { title: 'Upcoming', rows: upcoming }, { title: 'Feedback given', rows: done }].filter((s) => s.rows.length)" :key="section.title" :title="section.title" :padded="false">
         <ul class="divide-y divide-line">
-          <li v-for="i in section.rows" :key="i.id" class="flex flex-wrap items-center gap-3 px-5 py-4">
+          <li v-for="i in section.rows" :key="i.id" class="flex flex-wrap items-center gap-3 px-4 py-4">
             <div class="min-w-0 flex-1">
               <p class="font-medium text-fg">{{ i.candidate.name }} <span class="font-normal text-fg-muted">· {{ i.job.title }}</span></p>
               <p class="text-xs text-fg-muted">{{ i.roundName }} · {{ formatDateTime(i.scheduledAt) }} · {{ i.durationMinutes }} min · {{ MODE_LABELS[i.mode] }}{{ i.location ? ` · ${i.location}` : '' }}</p>

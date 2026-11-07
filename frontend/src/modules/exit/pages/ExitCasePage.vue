@@ -98,11 +98,11 @@ const rehire = computed({
           <AppButton v-if="e.permissions.manage && e.status === 'APPROVED'" :icon="CheckCircle2" :disabled="!e.permissions.complete" :loading="busy === 'complete'" @click="complete">Complete exit</AppButton>
         </template>
       </AppPageHeader>
-      <AppAlert v-if="e.permissions.completeBlocker" tone="info" class="mb-6">{{ e.permissions.completeBlocker }}.</AppAlert>
-      <AppAlert v-if="e.status === 'CANCELLED' || e.status === 'WITHDRAWN'" tone="info" class="mb-6">{{ STATUS_LABELS[e.status] }}{{ e.closedAt ? ` on ${formatDate(e.closedAt)}` : '' }}{{ e.closedReason ? `: ${e.closedReason}` : '' }}</AppAlert>
+      <AppAlert v-if="e.permissions.completeBlocker" tone="info" class="mb-4">{{ e.permissions.completeBlocker }}.</AppAlert>
+      <AppAlert v-if="e.status === 'CANCELLED' || e.status === 'WITHDRAWN'" tone="info" class="mb-4">{{ STATUS_LABELS[e.status] }}{{ e.closedAt ? ` on ${formatDate(e.closedAt)}` : '' }}{{ e.closedReason ? `: ${e.closedReason}` : '' }}</AppAlert>
 
       <AppTabs v-model="tab" :tabs="tabs">
-        <div v-if="tab === 'overview'" class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div v-if="tab === 'overview'" class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <AppCard title="Separation">
             <dl class="grid gap-4 text-sm sm:grid-cols-3">
               <div>
@@ -134,7 +134,7 @@ const rehire = computed({
             <p v-if="e.decidedBy" class="mt-4 text-xs text-fg-muted">Accepted by {{ e.decidedBy }}{{ e.decidedAt ? `, ${formatDate(e.decidedAt)}` : '' }}{{ e.decisionNote ? ` — “${e.decisionNote}”` : '' }}</p>
             <p v-if="e.completedBy" class="text-xs text-fg-muted">Completed by {{ e.completedBy }}{{ e.completedAt ? `, ${formatDate(e.completedAt)}` : '' }}</p>
           </AppCard>
-          <div class="space-y-6">
+          <div class="space-y-4">
             <AppCard v-if="e.permissions.manage" title="Exit survey">
               <template v-if="e.feedback">
                 <p class="text-sm text-fg">Would recommend: <span class="font-medium tabular-nums">{{ e.feedback.wouldRecommend }}/10</span> · {{ e.feedback.wouldRejoin ? 'would come back' : 'would not come back' }}</p>

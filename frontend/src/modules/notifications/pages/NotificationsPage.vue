@@ -41,15 +41,15 @@ async function markAll() {
       <template #actions><AppButton variant="secondary" :icon="CheckCheck" @click="markAll">Mark all as read</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <div class="border-b border-line px-5 py-3"><AppSwitch v-model="table.filters.unreadOnly" label="Unread only" /></div>
+      <div class="border-b border-line px-4 py-3"><AppSwitch v-model="table.filters.unreadOnly" label="Unread only" /></div>
       <AppErrorState v-if="table.error.value" :error="table.error.value" @retry="table.load" />
-      <div v-else-if="table.loading.value && !table.rows.value.length" class="space-y-3 p-5"><div v-for="i in 4" :key="i" class="h-14 animate-pulse rounded-xl bg-surface-muted" /></div>
+      <div v-else-if="table.loading.value && !table.rows.value.length" class="space-y-3 p-4"><div v-for="i in 4" :key="i" class="h-14 animate-pulse rounded-xl bg-surface-muted" /></div>
       <AppEmptyState v-else-if="!table.rows.value.length" :icon="Bell" title="Nothing here" description="You have no notifications matching this filter." />
       <ul v-else class="divide-y divide-line/70">
         <li v-for="n in table.rows.value" :key="n.id">
           <button
             type="button"
-            :class="['flex w-full items-start gap-3.5 px-5 py-4 text-left transition-colors hover:bg-surface-muted/60', !n.readAt && 'bg-brand-50/40 dark:bg-brand-500/5']"
+            :class="['flex w-full items-start gap-3.5 px-4 py-4 text-left transition-colors hover:bg-surface-muted/60', !n.readAt && 'bg-brand-50/40 dark:bg-brand-500/5']"
             @click="open(n)"
           >
             <span class="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-fg-muted ring-1 ring-line ring-inset">

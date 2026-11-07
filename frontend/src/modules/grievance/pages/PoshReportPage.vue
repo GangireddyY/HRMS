@@ -30,7 +30,7 @@ const print = () => window.print();
     <AppErrorState v-else-if="report.error.value" :error="report.error.value" @retry="report.run" />
     <template v-else-if="r">
       <p class="mb-4 text-sm text-fg-muted">Calendar year {{ r.year }}, as of {{ formatDate(r.asOf) }}.</p>
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AppStatCard label="Complaints received" :value="r.received" />
         <AppStatCard label="Disposed of" :value="r.disposed" tone="success" />
         <AppStatCard label="Pending" :value="r.pending" tone="info" />

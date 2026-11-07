@@ -84,11 +84,11 @@ const stats = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="My attendance" description="Punch in and out, check your month and request corrections." />
     <PunchCard @changed="calendar.run()" />
 
-    <div class="grid items-start gap-6 xl:grid-cols-3">
+    <div class="grid items-start gap-4 xl:grid-cols-3">
       <AppCard class="xl:col-span-2" :description="canRequest ? 'Select a past day to request a correction.' : undefined">
         <AppSkeleton v-if="calendar.loading.value && !calendar.data.value" :lines="8" />
         <AppErrorState v-else-if="calendar.error.value" :error="calendar.error.value" @retry="calendar.run" />
@@ -98,7 +98,7 @@ const stats = computed(() => {
         </template>
       </AppCard>
 
-      <div class="space-y-6">
+      <div class="space-y-4">
         <AppCard title="This month">
           <dl class="grid grid-cols-2 gap-4">
             <div v-for="s in stats" :key="s.label">

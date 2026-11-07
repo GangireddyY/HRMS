@@ -183,21 +183,21 @@ async function acknowledge() {
         </template>
       </AppPageHeader>
 
-      <ol class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Review stages">
+      <ol class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Review stages">
         <li v-for="(s, i) in STAGE_ORDER" :key="s" class="rounded-xl px-3 py-2 text-xs ring-1" :class="i < stageIndex ? 'bg-emerald-500/8 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300' : i === stageIndex ? 'bg-brand-500/10 font-semibold text-fg ring-brand-500/40' : 'text-fg-subtle ring-line'" :aria-current="i === stageIndex ? 'step' : undefined">
           {{ i + 1 }}. {{ STAGE_LABELS[s] }}
         </li>
       </ol>
 
-      <div class="mb-6 space-y-3">
+      <div class="mb-4 space-y-3">
         <AppAlert v-if="r.stage === 'GOAL_SETTING' && r.goalsReturnNote" tone="warning" title="Goals sent back">{{ r.goalsReturnNote }}</AppAlert>
         <AppAlert v-if="r.viewer.isSubject && !r.reviewer" tone="warning" title="No reviewer yet">Your HR team needs to assign a reviewer before you can submit goals.</AppAlert>
         <AppAlert v-if="r.viewer.isSubject && r.stage === 'COMPLETED' && !r.cycle.resultsReleased" tone="info" title="Review completed">Your manager has submitted the review. You'll see the results once HR releases them.</AppAlert>
         <AppAlert v-if="r.viewer.isReviewer && r.stage === 'GOAL_APPROVAL'" tone="info" title="Goals waiting for your approval">Approve them, edit them, or send them back with a note.</AppAlert>
       </div>
 
-      <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div class="space-y-6">
+      <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div class="space-y-4">
           <!-- Goals -->
           <AppCard title="Goals" :description="`${r.goals.length} goal${r.goals.length === 1 ? '' : 's'} · weights add up to ${totalWeight}%${r.cycle.goalsDue ? ` · due ${formatDate(r.cycle.goalsDue)}` : ''}`">
             <template #actions>
@@ -299,7 +299,7 @@ async function acknowledge() {
             </div>
           </AppCard>
           <AppCard v-else-if="r.manager && r.manager.submittedAt" title="Manager review" :description="`${r.reviewer?.name ?? 'Reviewer'} · ${formatDate(r.manager.submittedAt)}`">
-            <div class="mb-4 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <div class="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <p class="text-2xl font-semibold text-fg">{{ ratingText(r.manager.rating, labels) }}</p>
               <p class="text-sm text-fg-muted">Score {{ r.manager.overallScore ?? '—' }}<template v-if="r.manager.calibratedRating"> · calibrated from {{ r.manager.finalRating }}</template></p>
             </div>
@@ -319,7 +319,7 @@ async function acknowledge() {
           </AppCard>
         </div>
 
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="People">
             <dl class="space-y-3 text-sm">
               <div><dt class="text-xs text-fg-muted">Employee</dt><dd class="text-fg">{{ r.employee.name }} ({{ r.employee.employeeCode }})</dd></div>

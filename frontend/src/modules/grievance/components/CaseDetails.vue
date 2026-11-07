@@ -13,7 +13,7 @@ const filing = { ON_TIME: null, LATE: 'Made more than 3 months after the inciden
 
 <template>
   <AppCard title="Complaint">
-    <dl class="mb-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+    <dl class="mb-4 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
       <div>
         <dt class="text-fg-muted">Category</dt>
         <dd class="text-fg">{{ CATEGORY_LABELS[grievance.category] }}</dd>

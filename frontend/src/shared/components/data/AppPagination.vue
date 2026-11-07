@@ -9,11 +9,11 @@ const emit = defineEmits<{ change: [page: number] }>();
 const from = computed(() => (props.meta.total === 0 ? 0 : (props.meta.page - 1) * props.meta.pageSize + 1));
 const to = computed(() => Math.min(props.meta.page * props.meta.pageSize, props.meta.total));
 const btn =
-  'inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2.5 text-[13px] font-medium text-fg shadow-xs transition hover:bg-surface-muted disabled:pointer-events-none disabled:opacity-40';
+  'inline-flex h-7 items-center gap-1 rounded-md border border-line bg-surface px-2 text-xs font-medium text-fg transition hover:bg-surface-muted disabled:pointer-events-none disabled:opacity-40';
 </script>
 
 <template>
-  <nav class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm text-fg-muted" aria-label="Pagination">
+  <nav class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-[13px] text-fg-muted" aria-label="Pagination">
     <p>
       Showing <span class="font-medium text-fg tabular-nums">{{ from }}–{{ to }}</span> of
       <span class="font-medium text-fg tabular-nums">{{ meta.total }}</span>

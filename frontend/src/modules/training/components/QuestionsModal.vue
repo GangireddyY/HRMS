@@ -54,7 +54,7 @@ async function save() {
         <legend class="sr-only">Question {{ qi + 1 }}</legend>
         <div class="mb-3 flex items-start gap-2">
           <AppTextarea v-model="q.prompt" class="flex-1" :label="`Question ${qi + 1}`" :rows="2" :maxlength="1000" />
-          <AppButton class="mt-6" variant="ghost" :icon="Trash2" :aria-label="`Remove question ${qi + 1}`" @click="questions.splice(qi, 1)" />
+          <AppButton class="mt-4" variant="ghost" :icon="Trash2" :aria-label="`Remove question ${qi + 1}`" @click="questions.splice(qi, 1)" />
         </div>
         <ul class="space-y-2">
           <li v-for="(_, oi) in q.options" :key="oi" class="flex items-center gap-2">

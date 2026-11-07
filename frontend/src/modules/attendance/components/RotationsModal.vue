@@ -100,7 +100,7 @@ const setStep = (s: { shiftId: string | null }, v: string | null) => (s.shiftId 
     </form>
     <template #footer>
       <template v-if="editing">
-        <AppButton variant="secondary" @click="editing = null">Back</AppButton>
+        <AppButton variant="secondary" @click="editing = null">All rotations</AppButton>
         <AppButton type="submit" form="rotation-form" :loading="busy" :disabled="form.name.trim().length < 2 || !cycle">Save rotation</AppButton>
       </template>
       <template v-else>

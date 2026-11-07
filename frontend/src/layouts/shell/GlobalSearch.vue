@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
-import { useRouter } from 'vue-router';
-import { Building2, CornerDownLeft, Search, User } from '@lucide/vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Building2, CornerDownLeft, Loader2, Search, User, X } from '@lucide/vue';
 import { platformApi } from '@/modules/platform/api/platform.api';
 import { usersApi } from '@/modules/users/api/users.api';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
@@ -9,6 +9,10 @@ import { accessibleWorkspaces, visibleSections } from '@/core/navigation/workspa
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useUiStore } from '@/shared/stores/ui.store';
 
+/**
+ * Search box in the top bar with its results in a dropdown underneath (pages, people, organizations). Ctrl/⌘+K
+ * focuses it; on small screens the search button expands it across the top bar.
+ */
 interface Result {
   id: string;
   label: string;
@@ -21,11 +25,14 @@ interface Result {
 const ui = useUiStore();
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const subject = useAccessSubject();
 const query = ref('');
 const active = ref(0);
 const remote = ref<Result[]>([]);
 const searching = ref(false);
+const focused = ref(false);
+const root = ref<HTMLElement | null>(null);
 const input = ref<HTMLInputElement | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
 let sequence = 0;
@@ -43,11 +50,14 @@ const results = computed(() => {
   const nav = q ? pages.value.filter((p) => p.label.toLowerCase().includes(q) || p.hint.toLowerCase().includes(q)) : pages.value.slice(0, 8);
   return [...nav.slice(0, 8), ...remote.value];
 });
+/** `ui.searchOpen`: the dropdown is showing (and on small screens, the box is expanded). */
+const open = computed(() => ui.searchOpen);
 
 async function searchRemote(q: string) {
   const current = ++sequence;
   if (q.length < 2) {
     remote.value = [];
+    searching.value = false;
     return;
   }
   searching.value = true;
@@ -77,31 +87,35 @@ async function searchRemote(q: string) {
 
 watch(query, (q) => {
   active.value = 0;
+  if (document.activeElement === input.value) ui.searchOpen = true;
   clearTimeout(timer);
   timer = setTimeout(() => void searchRemote(q.trim()), 250);
 });
 
-watch(
-  () => ui.searchOpen,
-  async (open) => {
-    if (open) {
-      query.value = '';
-      remote.value = [];
-      await nextTick();
-      input.value?.focus();
-    }
-  },
-);
+async function openSearch() {
+  ui.searchOpen = true;
+  await nextTick();
+  input.value?.focus();
+  input.value?.select();
+}
+
+function closeSearch() {
+  ui.searchOpen = false;
+  input.value?.blur();
+}
 
 function go(r: Result | undefined) {
   if (!r) return;
-  ui.searchOpen = false;
+  closeSearch();
+  query.value = '';
+  remote.value = [];
   void router.push(r.to);
 }
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault();
+    ui.searchOpen = true;
     active.value = Math.min(active.value + 1, results.value.length - 1);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
@@ -110,74 +124,117 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault();
     go(results.value[active.value]);
   } else if (e.key === 'Escape') {
-    ui.searchOpen = false;
+    e.preventDefault();
+    closeSearch();
   }
 }
 
+// Keep the highlighted result in view while moving with the arrow keys.
+watch(active, async (i) => {
+  await nextTick();
+  root.value?.querySelector(`[data-index="${i}"]`)?.scrollIntoView({ block: 'nearest' });
+});
+
+function onOutside(e: MouseEvent) {
+  if (open.value && root.value && !root.value.contains(e.target as Node)) ui.searchOpen = false;
+}
 function globalShortcut(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    ui.searchOpen = !ui.searchOpen;
+    if (open.value && document.activeElement === input.value) closeSearch();
+    else void openSearch();
   }
 }
-onMounted(() => window.addEventListener('keydown', globalShortcut));
-onBeforeUnmount(() => window.removeEventListener('keydown', globalShortcut));
+watch(() => route.fullPath, () => (ui.searchOpen = false));
+onMounted(() => {
+  window.addEventListener('keydown', globalShortcut);
+  document.addEventListener('mousedown', onOutside);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', globalShortcut);
+  document.removeEventListener('mousedown', onOutside);
+});
+
+const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== results.value[i]!.group;
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="ui.searchOpen" class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]" role="dialog" aria-modal="true" aria-label="Search">
-      <div class="absolute inset-0 animate-fade-in bg-zinc-950/40 backdrop-blur-sm dark:bg-black/60" aria-hidden="true" @click="ui.searchOpen = false" />
-      <div class="relative w-full max-w-xl animate-scale-in overflow-hidden rounded-2xl border border-line bg-surface shadow-pop">
-        <div class="flex items-center gap-3 border-b border-line px-4">
-          <Search :size="18" class="text-fg-subtle" aria-hidden="true" />
-          <input
-            ref="input"
-            v-model="query"
-            type="search"
-            placeholder="Search pages, people, organizations…"
-            class="h-14 flex-1 bg-transparent text-[15px] text-fg outline-none placeholder:text-fg-subtle"
-            role="combobox"
-            aria-expanded="true"
-            aria-controls="global-search-results"
-            :aria-activedescendant="results[active] ? `gs-${results[active].id}` : undefined"
-            @keydown="onKey"
-          />
-          <kbd class="rounded-md border border-line bg-surface-muted px-1.5 py-px text-[10px] font-medium text-fg-subtle">Esc</kbd>
-        </div>
-        <ul id="global-search-results" role="listbox" class="max-h-[22rem] overflow-y-auto p-2">
-          <li v-if="!results.length" class="px-3 py-10 text-center text-sm text-fg-muted">{{ searching ? 'Searching…' : 'No results' }}</li>
+  <!-- Small screens: an icon until opened, then the box spans the top bar. -->
+  <button
+    type="button"
+    class="inline-flex h-8 w-8 items-center justify-center rounded-md text-fg-muted transition hover:bg-surface-muted hover:text-fg md:hidden"
+    aria-label="Search"
+    @click="openSearch"
+  >
+    <Search :size="17" />
+  </button>
+  <div
+    ref="root"
+    :class="[
+      'md:relative md:block md:w-64 lg:w-80',
+      open ? 'absolute inset-x-2 top-1/2 z-30 block -translate-y-1/2 md:inset-auto md:top-auto md:translate-y-0' : 'hidden',
+    ]"
+  >
+    <div class="relative">
+      <Search :size="15" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+      <input
+        ref="input"
+        v-model="query"
+        type="search"
+        placeholder="Search pages, people…"
+        autocomplete="off"
+        class="h-8 w-full rounded-md border border-line bg-surface pr-14 pl-8 text-[13px] text-fg transition outline-none placeholder:text-fg-subtle hover:border-line-strong focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 [&::-webkit-search-cancel-button]:hidden"
+        role="combobox"
+        aria-label="Search"
+        aria-autocomplete="list"
+        :aria-expanded="open"
+        aria-controls="global-search-results"
+        :aria-activedescendant="open && results[active] ? `gs-${results[active].id}` : undefined"
+        @focus="focused = true; ui.searchOpen = true"
+        @blur="focused = false"
+        @keydown="onKey"
+      />
+      <span class="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
+        <Loader2 v-if="searching" :size="13" class="animate-spin text-fg-subtle" aria-hidden="true" />
+        <button v-if="query" type="button" class="rounded-sm p-0.5 text-fg-subtle hover:text-fg" aria-label="Clear search" @mousedown.prevent @click="query = ''; input?.focus()">
+          <X :size="13" />
+        </button>
+        <kbd v-else-if="!focused" class="hidden rounded-sm border border-line bg-surface-muted px-1 py-px font-sans text-[10px] font-medium text-fg-subtle md:block">Ctrl K</kbd>
+        <button v-else type="button" class="rounded-sm p-0.5 text-fg-subtle hover:text-fg md:hidden" aria-label="Close search" @mousedown.prevent @click="closeSearch">
+          <X :size="13" />
+        </button>
+      </span>
+    </div>
+
+    <div v-if="open" class="absolute top-full right-0 z-40 mt-1 w-full min-w-[20rem] overflow-hidden rounded-md border border-line bg-surface shadow-pop max-md:left-0 max-md:min-w-0 md:w-[26rem]">
+      <ul id="global-search-results" role="listbox" aria-label="Search results" class="max-h-[60vh] overflow-y-auto p-1">
+        <li v-if="!results.length" class="px-3 py-6 text-center text-[13px] text-fg-muted" role="presentation">{{ searching ? 'Searching…' : 'No results' }}</li>
+        <template v-for="(r, i) in results" :key="r.id">
+          <li v-if="groupStart(i)" class="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-fg-subtle uppercase" role="presentation">{{ r.group }}</li>
           <li
-            v-for="(r, i) in results"
             :id="`gs-${r.id}`"
-            :key="r.id"
             role="option"
+            :data-index="i"
             :aria-selected="i === active"
-            :class="['flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 transition-colors', i === active ? 'bg-surface-muted' : '']"
+            :class="['flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors', i === active ? 'bg-surface-muted' : '']"
             @mouseenter="active = i"
+            @mousedown.prevent
             @click="go(r)"
           >
-            <span
-              :class="[
-                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset',
-                i === active ? 'bg-brand-50 text-brand-600 ring-brand-600/15 dark:bg-brand-500/15 dark:text-brand-300' : 'bg-surface text-fg-muted ring-line',
-              ]"
-            >
-              <component :is="r.icon" :size="15" aria-hidden="true" />
+            <span :class="['flex h-7 w-7 shrink-0 items-center justify-center rounded-md', i === active ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300' : 'bg-surface-muted text-fg-muted']">
+              <component :is="r.icon" :size="14" aria-hidden="true" />
             </span>
             <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-fg">{{ r.label }}</p>
-              <p class="truncate text-xs text-fg-subtle">{{ r.group }} · {{ r.hint }}</p>
+              <p class="truncate text-[13px] font-medium text-fg">{{ r.label }}</p>
+              <p class="truncate text-xs text-fg-subtle">{{ r.hint }}</p>
             </div>
-            <CornerDownLeft v-if="i === active" :size="14" class="text-fg-subtle" aria-hidden="true" />
+            <CornerDownLeft v-if="i === active" :size="13" class="shrink-0 text-fg-subtle" aria-hidden="true" />
           </li>
-        </ul>
-        <div class="flex items-center gap-4 border-t border-line bg-surface-muted/40 px-4 py-2.5 text-[11px] text-fg-subtle">
-          <span class="flex items-center gap-1.5"><kbd class="rounded border border-line bg-surface px-1">↑</kbd><kbd class="rounded border border-line bg-surface px-1">↓</kbd> to navigate</span>
-          <span class="flex items-center gap-1.5"><kbd class="rounded border border-line bg-surface px-1">↵</kbd> to open</span>
-          <span v-if="searching" class="ml-auto">Searching…</span>
-        </div>
+        </template>
+      </ul>
+      <div class="flex items-center gap-3 border-t border-line bg-surface-muted/40 px-3 py-1.5 text-[11px] text-fg-subtle max-md:hidden">
+        <span>↑ ↓ to move</span><span>↵ to open</span><span>Esc to close</span>
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>

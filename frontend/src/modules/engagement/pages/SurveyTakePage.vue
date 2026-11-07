@@ -37,7 +37,7 @@ async function submit() {
     <AppErrorState v-else-if="survey.error.value" :error="survey.error.value" title="This survey isn't available" @retry="survey.run" />
     <template v-else-if="s">
       <AppPageHeader :title="s.title" :description="s.description ?? undefined" back="/me/engagement" back-label="Company" />
-      <AppAlert v-if="s.anonymous" tone="info" class="mb-6" title="Anonymous">
+      <AppAlert v-if="s.anonymous" tone="info" class="mb-4" title="Anonymous">
         <span class="inline-flex items-start gap-2"><ShieldCheck :size="16" class="mt-0.5 shrink-0" aria-hidden="true" />Your answers are stored without your name, and results are only shown once at least three people have answered.</span>
       </AppAlert>
       <AppCard v-if="s.responded">
@@ -48,7 +48,7 @@ async function submit() {
         </div>
       </AppCard>
       <AppCard v-else-if="!s.permissions.respond"><p class="text-sm text-fg-muted">This survey is closed.</p></AppCard>
-      <form v-else class="space-y-6" novalidate @submit.prevent="submit">
+      <form v-else class="space-y-4" novalidate @submit.prevent="submit">
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppCard v-for="(q, i) in s.questions" :key="q.id">
           <fieldset>

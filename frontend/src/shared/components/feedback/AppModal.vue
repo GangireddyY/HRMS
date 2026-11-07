@@ -1,19 +1,29 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
-import { X } from '@lucide/vue';
+import { ArrowLeft, X } from '@lucide/vue';
+import { openFormPage } from '@/shared/composables/use-form-page';
 
-const props = withDefaults(defineProps<{ open: boolean; title: string; description?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; dismissible?: boolean }>(), {
-  size: 'md',
-  dismissible: true,
-});
+/**
+ * Forms open as a page over the content area (the sidebar and top bar stay), using its full width, with Back, the
+ * title, the form and an action bar; the browser's Back button and Esc close it. `dialog` keeps a small centred
+ * pop-up for confirmations (`size` sets its width).
+ */
+const props = withDefaults(
+  defineProps<{ open: boolean; title: string; description?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; dismissible?: boolean; dialog?: boolean }>(),
+  { size: 'md', dismissible: true, dialog: false },
+);
 const emit = defineEmits<{ close: [] }>();
 
 const panel = ref<HTMLElement | null>(null);
+const body = ref<HTMLElement | null>(null);
 const titleId = useId();
+const host = ref('body');
+const inShell = ref(false);
 let previouslyFocused: HTMLElement | null = null;
+let unregister: (() => void) | null = null;
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
+const FIELDS = 'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [role="combobox"]:not([disabled])';
 function close() {
   if (props.dismissible) emit('close');
 }
@@ -37,65 +47,97 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+function release() {
+  unregister?.();
+  unregister = null;
+  if (props.dialog) document.body.style.overflow = '';
+}
+
 watch(
   () => props.open,
   async (open) => {
     if (open) {
       previouslyFocused = document.activeElement as HTMLElement | null;
-      document.body.style.overflow = 'hidden';
+      inShell.value = !props.dialog && !!document.getElementById('form-pages');
+      host.value = inShell.value ? '#form-pages' : 'body';
+      if (props.dialog) document.body.style.overflow = 'hidden';
+      else if (props.dismissible) unregister = openFormPage(close);
       await nextTick();
-      const target = panel.value?.querySelector<HTMLElement>('[autofocus]') ?? panel.value?.querySelector<HTMLElement>(FOCUSABLE);
-      target?.focus();
+      // `autofocus` on a field component lands on its wrapper, so focus the first control inside it.
+      const auto = panel.value?.querySelector<HTMLElement>('[autofocus]');
+      const target =
+        (auto && (auto.matches(FOCUSABLE) ? auto : auto.querySelector<HTMLElement>(FIELDS))) ??
+        (props.dialog ? null : body.value?.querySelector<HTMLElement>(FIELDS)) ??
+        panel.value?.querySelector<HTMLElement>(FOCUSABLE) ??
+        panel.value;
+      target?.focus({ preventScroll: true });
     } else {
-      document.body.style.overflow = '';
-      previouslyFocused?.focus?.();
+      release();
+      previouslyFocused?.focus?.({ preventScroll: true });
     }
   },
   { immediate: true },
 );
 
-onBeforeUnmount(() => {
-  document.body.style.overflow = '';
-});
+onBeforeUnmount(release);
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" @keydown="onKeydown">
+  <Teleport v-if="open" :to="host">
+    <!-- Confirmation pop-up -->
+    <div v-if="dialog" class="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" @keydown="onKeydown">
       <div class="absolute inset-0 animate-fade-in bg-zinc-950/40 backdrop-blur-sm dark:bg-black/60" aria-hidden="true" @click="close" />
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        :class="[
-          'relative flex max-h-[92vh] w-full animate-slide-up flex-col rounded-t-3xl border border-line bg-surface shadow-pop sm:animate-scale-in sm:rounded-2xl',
-          { sm: 'sm:max-w-md', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-4xl' }[size],
-        ]"
+        tabindex="-1"
+        :class="['relative flex max-h-[92vh] w-full animate-slide-up flex-col rounded-t-lg border border-line bg-surface shadow-pop sm:animate-scale-in sm:rounded-lg', { sm: 'sm:max-w-md', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-4xl' }[size]]"
       >
-        <div class="mx-auto mt-2.5 h-1 w-10 rounded-full bg-line-strong sm:hidden" aria-hidden="true" />
-        <header class="flex items-start justify-between gap-4 px-6 pt-5 pb-1">
+        <header class="flex items-start justify-between gap-3 border-b border-line/70 px-4 py-3">
           <div>
-            <h2 :id="titleId" class="text-lg font-semibold text-fg">{{ title }}</h2>
-            <p v-if="description" class="mt-1 text-sm text-fg-muted">{{ description }}</p>
+            <h2 :id="titleId" class="text-[15px] font-semibold text-fg">{{ title }}</h2>
+            <p v-if="description" class="mt-0.5 text-[13px] text-fg-muted">{{ description }}</p>
           </div>
+          <button v-if="dismissible" type="button" class="-mt-0.5 -mr-1.5 rounded-md p-1 text-fg-subtle transition hover:bg-surface-muted hover:text-fg" aria-label="Close dialog" @click="close">
+            <X :size="17" />
+          </button>
+        </header>
+        <div class="overflow-y-auto px-4 py-4"><slot /></div>
+        <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-muted/40 px-4 py-2.5 sm:rounded-b-lg"><slot name="footer" /></footer>
+      </div>
+    </div>
+
+    <!-- Form page -->
+    <div
+      v-else
+      ref="panel"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
+      :class="['z-30 flex animate-fade-in flex-col bg-canvas outline-none', inShell ? 'absolute inset-0' : 'fixed inset-0']"
+      @keydown="onKeydown"
+    >
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <div class="w-full px-3 py-4 sm:px-4 lg:py-4 2xl:px-8">
           <button
             v-if="dismissible"
             type="button"
-            class="-mt-1 -mr-2 rounded-lg p-1.5 text-fg-subtle transition hover:bg-surface-muted hover:text-fg"
-            aria-label="Close dialog"
+            class="group mb-1.5 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-fg-muted transition hover:text-fg"
             @click="close"
           >
-            <X :size="18" />
+            <ArrowLeft :size="13" class="transition group-hover:-translate-x-0.5" aria-hidden="true" /> Back
           </button>
-        </header>
-        <div class="overflow-y-auto px-6 py-5">
-          <slot />
+          <h2 :id="titleId" class="text-xl font-semibold tracking-tight text-fg">{{ title }}</h2>
+          <p v-if="description" class="mt-0.5 text-[13px] text-fg-muted">{{ description }}</p>
+          <div ref="body" class="card mt-4 p-4"><slot /></div>
         </div>
-        <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-muted/40 px-6 py-4 sm:rounded-b-2xl">
-          <slot name="footer" />
-        </footer>
       </div>
+      <footer v-if="$slots.footer" class="shrink-0 border-t border-line bg-surface px-3 py-2.5 sm:px-4 2xl:px-8">
+        <div class="flex flex-wrap justify-end gap-2"><slot name="footer" /></div>
+      </footer>
     </div>
   </Teleport>
 </template>

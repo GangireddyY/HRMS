@@ -142,7 +142,7 @@ const pipelineText = (r: Requisition) =>
           <AppBadge>{{ REASON_LABELS[selected.reason] }}</AppBadge>
           <AppBadge>{{ EMPLOYMENT_TYPE_LABELS[selected.employmentType] }}</AppBadge>
         </div>
-        <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+        <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
           <div><dt class="text-xs text-fg-muted">Department</dt><dd class="text-fg">{{ selected.department?.name ?? '—' }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Designation</dt><dd class="text-fg">{{ selected.designation?.name ?? '—' }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Hiring manager</dt><dd class="text-fg">{{ selected.hiringManager?.name ?? '—' }}</dd></div>
@@ -155,13 +155,13 @@ const pipelineText = (r: Requisition) =>
             <dd class="text-fg">{{ REQUISITION_STATUS_LABELS[selected.status] }} by {{ selected.reviewedBy }}{{ selected.reviewNote ? ` — “${selected.reviewNote}”` : '' }}</dd>
           </div>
         </dl>
-        <div v-if="decision" class="mt-5 border-t border-line pt-4">
+        <div v-if="decision" class="mt-4 border-t border-line pt-4">
           <AppTextarea v-model="note" :label="decision === 'approve' ? 'Note (optional)' : 'Reason'" :required="decision === 'reject'" :rows="2" :maxlength="500" />
         </div>
       </template>
       <template #footer>
         <template v-if="selected && decision">
-          <AppButton variant="secondary" @click="decision = null">Back</AppButton>
+          <AppButton variant="secondary" @click="decision = null">Cancel</AppButton>
           <AppButton :variant="decision === 'approve' ? 'primary' : 'danger'" :loading="busy" :disabled="decision === 'reject' && note.trim().length < 3" @click="decide">{{ decision === 'approve' ? 'Approve' : 'Reject' }}</AppButton>
         </template>
         <template v-else-if="selected">

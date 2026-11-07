@@ -31,7 +31,7 @@ const bars = (q: QuestionResult) => {
           <AppBadge v-if="r.survey.anonymous">Anonymous</AppBadge>
         </template>
       </AppPageHeader>
-      <div class="mb-6 grid gap-4 sm:grid-cols-3">
+      <div class="mb-4 grid gap-4 sm:grid-cols-3">
         <AppStatCard label="Responses" :value="r.responses" />
         <AppStatCard label="Audience" :value="r.audience" tone="info" />
         <AppStatCard label="Response rate" :value="r.responseRate === null ? '—' : `${r.responseRate}%`" tone="success" />
@@ -39,10 +39,10 @@ const bars = (q: QuestionResult) => {
       <AppAlert v-if="r.hidden" tone="info" title="Not enough responses yet">
         <span class="inline-flex items-start gap-2"><ShieldCheck :size="16" class="mt-0.5 shrink-0" aria-hidden="true" />To protect anonymity, results appear once at least {{ r.threshold }} people have answered.</span>
       </AppAlert>
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <AppCard v-for="(q, i) in r.questions" :key="q.questionId" :title="`${i + 1}. ${q.prompt}`" :description="`${q.answered} answer${q.answered === 1 ? '' : 's'}`">
           <template v-if="q.type === 'NPS' && q.nps">
-            <div class="mb-4 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <div class="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <p class="text-3xl font-semibold text-fg tabular-nums">{{ q.nps.score ?? '—' }}</p>
               <p class="text-sm text-fg-muted">eNPS · {{ q.nps.promoters }} promoters, {{ q.nps.passives }} passives, {{ q.nps.detractors }} detractors · average {{ q.average ?? '—' }}</p>
             </div>

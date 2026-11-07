@@ -105,7 +105,7 @@ async function exportAs(format: ReportExportFormat) {
         </template>
       </AppPageHeader>
 
-      <div class="mb-6 flex flex-wrap items-end gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
+      <div class="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
         <AppDatePicker v-if="def.period === 'asOf'" v-model="filters.asOf" class="w-48" label="On" :max="today" />
         <template v-else-if="def.period === 'range'">
           <AppDatePicker v-model="filters.from" class="w-48" label="From" :max="filters.to" />
@@ -121,12 +121,12 @@ async function exportAs(format: ReportExportFormat) {
 
       <AppSkeleton v-if="report.loading.value && !r" :lines="8" />
       <AppErrorState v-else-if="report.error.value" :error="report.error.value" @retry="report.run" />
-      <div v-else-if="r" class="space-y-6" :class="report.loading.value ? 'opacity-60 transition' : ''">
+      <div v-else-if="r" class="space-y-4" :class="report.loading.value ? 'opacity-60 transition' : ''">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <AppStatCard v-for="s in def.summary" :key="s.key" :label="s.label" :value="formatValue(r.summary[s.key] ?? null, s.format)" :tone="s.tone" />
         </div>
         <TrendChart v-if="def.chart" :title="def.chart.label" :points="chartPoints" :format="def.chart.format" />
-        <div class="grid items-start gap-6 xl:grid-cols-2">
+        <div class="grid items-start gap-4 xl:grid-cols-2">
           <ReportTableCard v-for="t in r.tables" :key="t.key" :table="t" :class="t.columns.length > 4 ? 'xl:col-span-2' : ''" />
         </div>
       </div>

@@ -39,7 +39,7 @@ async function submit() {
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl space-y-6">
+  <div class="mx-auto max-w-4xl space-y-4">
     <AppPageHeader title="Suggestions" description="Ideas to make work better. HR reviews every one." back="/me/engagement" back-label="Company" />
     <AppCard v-if="canSuggest" title="New suggestion">
       <form class="space-y-4" novalidate @submit.prevent="submit">
@@ -56,7 +56,7 @@ async function submit() {
     <AppCard title="Your suggestions" :padded="false">
       <AppEmptyState v-if="!table.loading.value && !table.rows.value.length" :icon="Lightbulb" title="No suggestions yet" compact />
       <ul v-else class="divide-y divide-line">
-        <li v-for="s in table.rows.value" :key="s.id" class="px-5 py-4">
+        <li v-for="s in table.rows.value" :key="s.id" class="px-4 py-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="font-medium text-fg">{{ s.title }}</p>
             <AppBadge :tone="suggestionTone[s.status]" dot>{{ SUGGESTION_STATUS_LABELS[s.status] }}</AppBadge>

@@ -72,7 +72,7 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
       </template>
     </AppPageHeader>
 
-    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+    <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
       <button
         v-for="t in tiles"
         :key="t.key"

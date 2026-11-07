@@ -28,7 +28,7 @@ async function onSaved(c: CaseDetail, failed: string[]) {
     <AppPageHeader title="Grievances" description="Raise a concern confidentially and follow it to a resolution.">
       <template #actions><AppButton :icon="Plus" @click="formOpen = true">Raise a grievance</AppButton></template>
     </AppPageHeader>
-    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div>
         <AppSkeleton v-if="table.loading.value && !table.rows.value.length" :lines="5" />
         <AppErrorState v-else-if="table.error.value" :error="table.error.value" @retry="table.load" />
@@ -38,7 +38,7 @@ async function onSaved(c: CaseDetail, failed: string[]) {
         <AppCard v-else :padded="false">
           <ul class="divide-y divide-line">
             <li v-for="c in table.rows.value" :key="c.id">
-              <RouterLink :to="`/me/grievances/${c.id}`" class="flex items-center gap-4 px-5 py-4 transition hover:bg-surface-muted/50">
+              <RouterLink :to="`/me/grievances/${c.id}`" class="flex items-center gap-4 px-4 py-4 transition hover:bg-surface-muted/50">
                 <div class="min-w-0 flex-1">
                   <p class="truncate font-medium text-fg">{{ c.subject }}</p>
                   <p class="text-xs text-fg-muted">

@@ -110,7 +110,7 @@ async function copy(text: string) {
       </AppDataTable>
     </AppCard>
 
-    <AppCard class="mt-6" title="Connecting a device" description="Most devices (or a small bridge program next to them) can send punches over HTTPS.">
+    <AppCard class="mt-4" title="Connecting a device" description="Most devices (or a small bridge program next to them) can send punches over HTTPS.">
       <ol class="list-decimal space-y-2 pl-5 text-sm text-fg">
         <li>Send <code class="text-xs">POST</code> requests to <code class="text-xs break-all">{{ endpoint }}</code></li>
         <li>Put the device key in the <code class="text-xs">X-Device-Key</code> header.</li>

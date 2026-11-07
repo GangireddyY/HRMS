@@ -20,6 +20,10 @@ const ORG_ADMIN_PAGES = [
   '/hr/attendance/regularizations',
   '/hr/attendance/closing',
   '/hr/attendance/shifts',
+  '/hr/attendance/regularizations?tab=wfh',
+  '/hr/attendance/regularizations?tab=overtime',
+  '/hr/attendance/roster',
+  '/hr/attendance/devices',
   '/hr/org-chart',
   '/hr/documents/expiring',
   '/hr/recruitment/requisitions',
@@ -35,12 +39,14 @@ const ORG_ADMIN_PAGES = [
   '/hr/payroll/runs',
   '/hr/payroll/salaries',
   '/hr/payroll/reimbursements',
+  '/hr/payroll/loans',
   '/hr/payroll/setup',
   '/hr/performance/reviews',
   '/hr/performance/cycles',
   '/hr/performance/pips',
   '/hr/training/courses',
   '/hr/training/team',
+  '/hr/training/skills',
   '/hr/engagement/announcements',
   '/hr/engagement/surveys',
   '/hr/engagement/suggestions',
@@ -50,6 +56,7 @@ const ORG_ADMIN_PAGES = [
   '/hr/compliance/policies',
   '/hr/compliance/calendar',
   '/hr/exits',
+  '/hr/alumni',
   '/hr/reports',
   '/hr/reports/headcount',
   '/hr/reports/attrition',
@@ -64,8 +71,10 @@ const ORG_ADMIN_PAGES = [
   '/me/payslips',
   '/me/salary',
   '/me/reimbursements',
+  '/me/loans',
   '/me/performance',
   '/me/training',
+  '/me/skills',
   '/me/training/catalog',
   '/me/engagement',
   '/me/engagement/suggestions',
@@ -100,7 +109,7 @@ async function checkCurrent(page: Page, testInfo: TestInfo, name: string): Promi
 
 async function checkPage(page: Page, testInfo: TestInfo, path: string): Promise<void> {
   await page.goto(path);
-  await checkCurrent(page, testInfo, path.replace(/\//g, '_').replace(/^_/, '') || 'root');
+  await checkCurrent(page, testInfo, path.replace(/[/?=&]/g, '_').replace(/^_/, '') || 'root');
 }
 
 test.describe('responsive layout', () => {
@@ -115,9 +124,9 @@ test.describe('responsive layout', () => {
 
   test('organization pages fit the screen', async ({ page }, testInfo) => {
     // Walks many pages in one session (one sign-in keeps the auth rate limit out of the picture).
-    test.setTimeout(120_000);
+    test.setTimeout(300_000);
     await signIn(page, orgAdmin.email, orgAdmin.password);
-    for (const path of ORG_ADMIN_PAGES) await checkPage(page, testInfo, path);
+    for (const path of ORG_ADMIN_PAGES) await test.step(path, () => checkPage(page, testInfo, path));
 
     await page.goto('/admin/roles');
     await page.getByText('HR Manager', { exact: true }).first().click();
@@ -178,6 +187,16 @@ test.describe('responsive layout', () => {
     await expect(page).toHaveURL(/\/hr\/performance\/cycles\/[0-9a-f-]+$/);
     await expect(page.getByText('Rating distribution')).toBeVisible();
     await checkCurrent(page, testInfo, 'performance-cycle');
+    const cycleUrl = page.url();
+    await page.goto(`${cycleUrl}/hikes`);
+    await expect(page.getByRole('heading', { name: 'Salary increases' })).toBeVisible();
+    await checkCurrent(page, testInfo, 'performance-hikes');
+    await page.getByRole('button', { name: 'Guidelines' }).click();
+    await expect(page.getByRole('dialog', { name: 'Merit guidelines' })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await capture(page, testInfo, 'performance-hike-guidelines');
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.goto(cycleUrl);
     const review = page.locator('#main table tbody tr').first();
     if (await review.isVisible()) {
       await review.click();
@@ -213,7 +232,7 @@ test.describe('responsive layout', () => {
     await page.getByRole('button', { name: 'New survey' }).click();
     await expect(page.getByRole('dialog', { name: 'New survey' }).getByLabel('Question 1', { exact: true })).toBeVisible();
     await checkCurrent(page, testInfo, 'survey-builder');
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     await page.waitForLoadState('networkidle');
     const results = page.getByRole('button', { name: 'Results' }).first();
     test.skip(!(await results.isVisible().catch(() => false)), 'needs an opened survey (created by engagement.spec.ts)');
@@ -229,7 +248,7 @@ test.describe('responsive layout', () => {
     await page.getByRole('button', { name: 'Raise a grievance' }).click();
     await expect(page.getByRole('dialog', { name: 'Raise a grievance' }).getByLabel('What happened?')).toBeVisible();
     await checkCurrent(page, testInfo, 'grievance-form');
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     await page.goto('/hr/grievances');
     await page.getByRole('combobox', { name: /^Filter by status/ }).click();
     await page.getByRole('option', { name: 'Closed', exact: true }).click();
@@ -251,7 +270,7 @@ test.describe('responsive layout', () => {
     await page.getByRole('button', { name: 'New plan' }).click();
     await expect(page.getByRole('dialog', { name: 'New benefit plan' }).getByLabel('Plan name')).toBeVisible();
     await checkCurrent(page, testInfo, 'benefit-plan-form');
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     const row = page.getByRole('row').filter({ hasText: 'Group health' }).first();
     const found = await row.waitFor({ state: 'visible', timeout: 8000 }).then(
       () => true,

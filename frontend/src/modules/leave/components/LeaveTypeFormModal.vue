@@ -89,7 +89,7 @@ async function save() {
 
 <template>
   <AppModal :open="open" :title="type ? `Edit ${type.name}` : 'New leave type'" size="xl" @close="emit('close')">
-    <form id="leave-type-form" class="space-y-6" novalidate @submit.prevent="save">
+    <form id="leave-type-form" class="space-y-4" novalidate @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
 
       <section class="space-y-4">
@@ -115,27 +115,27 @@ async function save() {
           </div>
         </div>
         <AppTextarea v-model="form.description" label="Description" :rows="2" :maxlength="500" placeholder="Shown to employees when they apply" />
-        <div class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
           <AppSwitch v-model="form.isPaid" label="Paid leave" description="Unpaid leave is deducted in payroll (loss of pay)." />
           <AppSwitch v-model="form.unlimited" label="No balance limit" description="For leave without pay; no balance is kept." />
         </div>
       </section>
 
-      <section v-if="!form.unlimited" class="space-y-4 border-t border-line/70 pt-5">
+      <section v-if="!form.unlimited" class="space-y-4 border-t border-line/70 pt-4">
         <h3 class="text-sm font-semibold text-fg">Balance</h3>
         <div class="grid gap-4 sm:grid-cols-2">
           <AppSelect v-model="form.accrualFrequency" label="How days are credited" :options="accrualOptions" :clearable="false" :error="fieldErrors.accrualFrequency" />
           <AppInput v-if="form.accrualFrequency !== 'NONE'" v-model="form.annualQuota" label="Days per year" type="number" :min="0" :max="366" :step="0.5" :error="fieldErrors.annualQuota" />
           <AppInput v-model="form.carryForwardLimit" label="Carry forward up to (days)" type="number" :min="0" :max="366" :step="0.5" help="0 = unused days lapse at year end" :error="fieldErrors.carryForwardLimit" />
         </div>
-        <div class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
           <AppSwitch v-if="form.accrualFrequency !== 'NONE'" v-model="form.prorateOnJoining" label="Prorate for new joiners" description="People joining mid-year get days for the months left." />
           <AppSwitch v-model="form.encashable" label="Can be encashed" description="HR can pay out unused days." />
           <AppSwitch v-model="form.allowNegativeBalance" label="Allow negative balance" description="Employees can take more than they have (adjusted later)." />
         </div>
       </section>
 
-      <section class="space-y-4 border-t border-line/70 pt-5">
+      <section class="space-y-4 border-t border-line/70 pt-4">
         <h3 class="text-sm font-semibold text-fg">Rules for applying</h3>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <AppInput v-model="form.minNoticeDays" label="Notice (days ahead)" type="number" :min="0" :max="365" :error="fieldErrors.minNoticeDays" />
@@ -143,7 +143,7 @@ async function save() {
           <AppInput v-model="maxConsecutive" label="Max days at a time" type="number" :min="1" :max="366" placeholder="No limit" :error="fieldErrors.maxConsecutiveDays" />
           <AppInput v-model="form.eligibleAfterDays" label="Usable after joining (days)" type="number" :min="0" :max="3650" :error="fieldErrors.eligibleAfterDays" />
         </div>
-        <div class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
           <AppSwitch v-model="form.allowHalfDay" label="Allow half days" />
           <AppSwitch v-model="form.countNonWorkingDays" label="Count weekends and holidays" description="Sandwich rule: days off inside the request count as leave." />
         </div>

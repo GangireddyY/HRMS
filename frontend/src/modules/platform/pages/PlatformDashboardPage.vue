@@ -17,7 +17,7 @@ function planShare(count: number): number {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="Platform overview" description="Tenants, subscriptions and platform-wide activity.">
       <template #actions><AppButton to="/platform/organizations?create=1" :icon="Building2">New organization</AppButton></template>
     </AppPageHeader>
@@ -36,12 +36,12 @@ function planShare(count: number): number {
         <AppStatCard label="Active users" :value="dashboard.data.value?.activeUsers" :loading="dashboard.loading.value" :icon="Users" tone="success" />
         <AppStatCard label="Live sessions" :value="dashboard.data.value?.activeSessions" :loading="dashboard.loading.value" :icon="Laptop" />
       </div>
-      <div class="grid gap-6 lg:grid-cols-5">
+      <div class="grid gap-4 lg:grid-cols-5">
         <AppCard class="lg:col-span-3" title="Platform sign-ins" description="Last 14 days, all tenants">
           <AppSkeleton v-if="dashboard.loading.value" line-class="h-64" />
           <SignInActivityChart v-else-if="dashboard.data.value" :stats="dashboard.data.value.loginActivity" />
         </AppCard>
-        <div class="space-y-6 lg:col-span-2">
+        <div class="space-y-4 lg:col-span-2">
           <AppCard title="Organizations by plan">
             <AppSkeleton v-if="dashboard.loading.value" :lines="3" />
             <ul v-else class="space-y-4">
@@ -57,10 +57,10 @@ function planShare(count: number): number {
             </ul>
           </AppCard>
           <AppCard title="Newest organizations" :padded="false">
-            <div v-if="dashboard.loading.value" class="p-5"><AppSkeleton :lines="4" /></div>
+            <div v-if="dashboard.loading.value" class="p-4"><AppSkeleton :lines="4" /></div>
             <ul v-else class="divide-y divide-line/70">
               <li v-for="o in dashboard.data.value?.recentOrganizations" :key="o.id">
-                <RouterLink :to="`/platform/organizations/${o.id}`" class="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface-muted/60">
+                <RouterLink :to="`/platform/organizations/${o.id}`" class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-muted/60">
                   <AppAvatar :name="o.name" size="sm" />
                   <span class="min-w-0 flex-1">
                     <span class="block truncate text-sm font-medium text-fg">{{ o.name }}</span>

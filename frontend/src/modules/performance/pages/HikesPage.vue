@@ -146,6 +146,11 @@ async function decide(approve: boolean) {
   }
 }
 
+const GUIDE_FIELDS = [
+  { key: 'min', label: 'Minimum %' },
+  { key: 'target', label: 'Target %' },
+  { key: 'max', label: 'Maximum %' },
+] as const;
 const guideForm = reactive({ matrix: [] as { rating: number; min: string | number; target: string | number; max: string | number }[], budgetPercent: '' as string | number, effectiveFrom: undefined as string | undefined });
 function openGuidelines() {
   reset();
@@ -209,17 +214,17 @@ async function apply() {
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="list.cycle.configured === false" tone="info" class="mb-6" title="Default guidelines">
+      <AppAlert v-if="list.cycle.configured === false" tone="info" class="mb-4" title="Default guidelines">
         Increases are checked against the standard merit guidelines until HR sets this cycle's own{{ comp?.permissions.configure ? ' — use Guidelines' : '' }}.
       </AppAlert>
-      <AppAlert v-if="comp && comp.counts.APPROVED && !comp.effectiveFrom" tone="warning" class="mb-6">Set the date the increases take effect (Guidelines) before applying them.</AppAlert>
-      <AppAlert v-if="failed.length" tone="warning" class="mb-6" :title="`${failed.length} increase${failed.length === 1 ? ' was' : 's were'} not applied`">
+      <AppAlert v-if="comp && comp.counts.APPROVED && !comp.effectiveFrom" tone="warning" class="mb-4">Set the date the increases take effect (Guidelines) before applying them.</AppAlert>
+      <AppAlert v-if="failed.length" tone="warning" class="mb-4" :title="`${failed.length} increase${failed.length === 1 ? ' was' : 's were'} not applied`">
         <ul class="list-disc pl-4">
           <li v-for="f in failed" :key="f.employee">{{ f.employee }}: {{ f.reason }}</li>
         </ul>
       </AppAlert>
 
-      <div v-if="comp" class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div v-if="comp" class="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AppStatCard label="Awaiting approval" :value="comp.counts.SUBMITTED" :icon="Send" :hint="`${comp.counts.DRAFT} draft${comp.counts.DRAFT === 1 ? '' : 's'}`" />
         <AppStatCard label="Approved" :value="comp.counts.APPROVED + comp.counts.APPLIED" :icon="CheckCircle2" :hint="comp.counts.APPLIED ? `${comp.counts.APPLIED} applied` : 'none applied yet'" />
         <template v-if="comp.budget">
@@ -271,7 +276,7 @@ async function apply() {
             <span v-else class="text-xs text-fg-muted">Not recommended</span>
           </template>
           <template #cell-actions="{ row }">
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-wrap justify-end gap-2">
               <AppButton v-if="row.permissions.edit" size="sm" variant="secondary" @click="openRecommend(row)">{{ row.recommendation ? 'Edit' : 'Recommend' }}</AppButton>
               <AppButton v-if="row.permissions.edit && row.recommendation && (row.recommendation.status === 'DRAFT' || row.recommendation.status === 'REJECTED')" size="sm" :icon="Send" :disabled="busy" @click="submit(row)">Submit</AppButton>
               <template v-if="row.permissions.decide">
@@ -326,19 +331,19 @@ async function apply() {
         <form id="hike-guidelines" class="space-y-5" novalidate @submit.prevent="saveGuidelines">
           <AppAlert v-if="formError">{{ formError }}</AppAlert>
           <p v-if="fieldErrors.meritMatrix" class="text-sm text-danger-600">{{ fieldErrors.meritMatrix }}</p>
-          <table class="w-full text-sm">
-            <thead class="text-left text-xs text-fg-muted">
-              <tr><th class="py-2 font-medium">Rating</th><th class="py-2 font-medium">Minimum %</th><th class="py-2 font-medium">Target %</th><th class="py-2 font-medium">Maximum %</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="g in guideForm.matrix" :key="g.rating">
-                <td class="py-1.5 pr-3 text-fg">{{ g.rating }}<span class="ml-1 text-xs text-fg-muted">{{ comp?.cycle.ratingLabels[g.rating - 1] }}</span></td>
-                <td class="py-1.5 pr-2"><AppInput v-model="g.min" :aria-label="`Minimum for rating ${g.rating}`" type="number" :min="0" :max="MAX_HIKE_PERCENT" :step="0.5" /></td>
-                <td class="py-1.5 pr-2"><AppInput v-model="g.target" :aria-label="`Target for rating ${g.rating}`" type="number" :min="0" :max="MAX_HIKE_PERCENT" :step="0.5" /></td>
-                <td class="py-1.5"><AppInput v-model="g.max" :aria-label="`Maximum for rating ${g.rating}`" type="number" :min="0" :max="MAX_HIKE_PERCENT" :step="0.5" /></td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- A row per rating from tablet width up; on phones each rating stacks its label above three labelled fields. -->
+          <div class="space-y-4 text-sm sm:space-y-2">
+            <div class="hidden grid-cols-[minmax(0,1fr)_repeat(3,7.5rem)] gap-2 text-xs font-medium text-fg-muted sm:grid" aria-hidden="true">
+              <span>Rating</span><span>Minimum %</span><span>Target %</span><span>Maximum %</span>
+            </div>
+            <div v-for="g in guideForm.matrix" :key="g.rating" role="group" :aria-label="`Rating ${g.rating}`" class="grid grid-cols-3 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_repeat(3,7.5rem)] sm:items-center">
+              <p class="col-span-3 text-fg sm:col-span-1">{{ g.rating }}<span class="ml-1 text-xs text-fg-muted">{{ comp?.cycle.ratingLabels[g.rating - 1] }}</span></p>
+              <div v-for="f in GUIDE_FIELDS" :key="f.key" class="min-w-0">
+                <span class="mb-1 block text-xs text-fg-muted sm:hidden" aria-hidden="true">{{ f.label }}</span>
+                <AppInput v-model="g[f.key]" :aria-label="`${f.label} for rating ${g.rating}`" type="number" :min="0" :max="MAX_HIKE_PERCENT" :step="0.5" />
+              </div>
+            </div>
+          </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <AppInput v-model="guideForm.budgetPercent" label="Budget" type="number" :min="0" :max="MAX_HIKE_PERCENT" :step="0.5" suffix="% of payroll" help="Optional; tracked, not enforced" :error="fieldErrors.budgetPercent" />
             <AppDatePicker v-model="guideForm.effectiveFrom" label="Increases take effect" :error="fieldErrors.effectiveFrom" help="Needed before applying" />

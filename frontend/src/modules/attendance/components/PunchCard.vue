@@ -65,12 +65,12 @@ defineExpose({ reload: () => today.run() });
 </script>
 
 <template>
-  <section class="card relative overflow-hidden p-5 sm:p-6">
+  <section class="card relative overflow-hidden p-4 sm:p-4">
     <div class="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-brand-500/10 blur-3xl" aria-hidden="true" />
     <AppSkeleton v-if="today.loading.value && !data" :lines="3" />
     <AppErrorState v-else-if="today.error.value" :error="today.error.value" @retry="today.run" />
     <AppEmptyState v-else-if="data && !data.employee" compact title="No employee record linked" description="Ask HR to link your account to your employee record to record attendance." />
-    <div v-else-if="data" class="relative flex flex-wrap items-center gap-6">
+    <div v-else-if="data" class="relative flex flex-wrap items-center gap-4">
       <div class="min-w-0 flex-1">
         <p class="text-sm text-fg-muted">{{ dateLabel }}</p>
         <p class="mt-1 font-mono text-4xl font-semibold tracking-tight text-fg tabular-nums sm:text-5xl" aria-live="off">{{ clock }}</p>

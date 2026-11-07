@@ -14,7 +14,7 @@ const deliveryOptions = COURSE_DELIVERIES.map((d) => ({ value: d, label: DELIVER
 <template>
   <div>
     <AppPageHeader title="Course catalog" description="Courses you can join, and the ones assigned to you." />
-    <div class="mb-6 grid gap-3 sm:grid-cols-[1fr_200px_200px]">
+    <div class="mb-4 grid gap-3 sm:grid-cols-[1fr_200px_200px]">
       <AppSearchInput v-model="table.search.value" placeholder="Search courses" aria-label="Search courses" />
       <AppSelect v-model="table.filters.category" :options="categoryOptions" placeholder="All categories" aria-label="Filter by category" />
       <AppSelect v-model="table.filters.delivery" :options="deliveryOptions" placeholder="Any format" aria-label="Filter by format" />
@@ -25,7 +25,7 @@ const deliveryOptions = COURSE_DELIVERIES.map((d) => ({ value: d, label: DELIVER
     <template v-else>
       <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <li v-for="c in table.rows.value" :key="c.id">
-          <RouterLink :to="`/me/training/courses/${c.id}`" class="flex h-full flex-col rounded-2xl bg-surface p-5 ring-1 ring-line transition hover:ring-brand-400">
+          <RouterLink :to="`/me/training/courses/${c.id}`" class="flex h-full flex-col rounded-2xl bg-surface p-4 ring-1 ring-line transition hover:ring-brand-400">
             <div class="mb-2 flex flex-wrap gap-1.5">
               <AppBadge size="sm">{{ CATEGORY_LABELS[c.category] }}</AppBadge>
               <AppBadge v-if="c.mandatory" size="sm" tone="warning">Mandatory</AppBadge>
@@ -37,7 +37,7 @@ const deliveryOptions = COURSE_DELIVERIES.map((d) => ({ value: d, label: DELIVER
           </RouterLink>
         </li>
       </ul>
-      <AppPagination v-if="table.meta.value && table.meta.value.totalPages > 1" class="mt-6" :meta="table.meta.value" @page="table.setPage" />
+      <AppPagination v-if="table.meta.value && table.meta.value.totalPages > 1" class="mt-4" :meta="table.meta.value" @page="table.setPage" />
     </template>
   </div>
 </template>

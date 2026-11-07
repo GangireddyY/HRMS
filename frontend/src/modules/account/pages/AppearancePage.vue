@@ -15,7 +15,7 @@ const theme = useThemeStore();
       </template>
     </AppPageHeader>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <AppCard title="Theme" description="Saved in this browser. Other devices keep their own setting.">
         <ThemeSwitcher variant="full" />
       </AppCard>

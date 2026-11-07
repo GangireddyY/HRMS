@@ -145,7 +145,7 @@ async function remove() {
       <AppErrorState v-else-if="role.error.value" :error="role.error.value" title="Could not load role" @retry="role.run" />
       <template v-else-if="role.data.value">
         <AppPageHeader
-          class="shrink-0 lg:mb-5"
+          class="shrink-0 lg:mb-4"
           :title="role.data.value.name"
           :description="role.data.value.description ?? undefined"
           back="/admin/roles"
@@ -181,12 +181,12 @@ async function remove() {
           </div>
 
           <!-- Details (scrolls inside the panel on large screens) -->
-          <div v-else class="space-y-6 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-1">
+          <div v-else class="space-y-4 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-1">
             <AppCard title="Role details" description="How this role appears when you assign it to people.">
               <form novalidate @submit.prevent="saveDetails">
-                <AppAlert v-if="detailErrors.formError.value" class="mb-5">{{ detailErrors.formError.value }}</AppAlert>
+                <AppAlert v-if="detailErrors.formError.value" class="mb-4">{{ detailErrors.formError.value }}</AppAlert>
                 <div class="divide-y divide-line/70">
-                  <div class="grid gap-3 pb-5 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-8">
+                  <div class="grid gap-3 pb-4 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-5">
                     <div>
                       <label for="role-name" class="text-sm font-medium text-fg">Name</label>
                       <p class="mt-0.5 text-[13px] text-fg-muted">Shown in user lists and invitations.</p>
@@ -201,19 +201,19 @@ async function remove() {
                       :error="detailErrors.fieldErrors.value.name"
                     />
                   </div>
-                  <div class="grid gap-3 py-5 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-8">
+                  <div class="grid gap-3 py-4 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-5">
                     <div>
                       <label for="role-description" class="text-sm font-medium text-fg">Description</label>
                       <p class="mt-0.5 text-[13px] text-fg-muted">Explain who should get this role.</p>
                     </div>
                     <AppTextarea id="role-description" v-model="details.description" :rows="3" :max-rows="6" :maxlength="500" :disabled="!canManage" :error="detailErrors.fieldErrors.value.description" />
                   </div>
-                  <div class="grid gap-3 pt-5 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-8">
+                  <div class="grid gap-3 pt-4 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-5">
                     <div>
                       <p class="text-sm font-medium text-fg">Role information</p>
                       <p class="mt-0.5 text-[13px] text-fg-muted">Managed by HRMS.</p>
                     </div>
-                    <dl class="grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl bg-surface-muted/60 p-4 ring-1 ring-line/70 sm:grid-cols-3">
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl bg-surface-muted/60 p-4 ring-1 ring-line/70 sm:grid-cols-3">
                       <div>
                         <dt class="text-xs text-fg-muted">Type</dt>
                         <dd class="mt-1 flex items-center gap-1.5 text-sm font-medium text-fg">
@@ -244,7 +244,7 @@ async function remove() {
                     </dl>
                   </div>
                 </div>
-                <div v-if="canManage" class="mt-6 flex justify-end gap-2 border-t border-line/70 pt-5">
+                <div v-if="canManage" class="mt-4 flex justify-end gap-2 border-t border-line/70 pt-4">
                   <AppButton variant="ghost" :disabled="!detailsDirty || savingDetails" @click="resetDetails">Reset</AppButton>
                   <AppButton type="submit" :loading="savingDetails" :disabled="!detailsDirty || details.name.trim().length < 2">Save details</AppButton>
                 </div>
@@ -264,7 +264,7 @@ async function remove() {
 
         <!-- Unsaved permission changes -->
         <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="translate-y-3 opacity-0" leave-active-class="transition duration-150" leave-to-class="translate-y-3 opacity-0">
-          <div v-if="!readonly && grantsDirty" class="pointer-events-none sticky bottom-4 z-20 mt-6 lg:absolute lg:inset-x-0 lg:bottom-4 lg:mt-0">
+          <div v-if="!readonly && grantsDirty" class="pointer-events-none sticky bottom-4 z-20 mt-4 lg:absolute lg:inset-x-0 lg:bottom-4 lg:mt-0">
             <div class="pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center gap-3 rounded-2xl bg-surface-raised px-4 py-3 shadow-pop ring-1 ring-line">
               <span class="flex h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
               <p class="min-w-0 flex-1 text-sm font-medium text-fg">{{ changeCount }} unsaved {{ changeCount === 1 ? 'change' : 'changes' }}</p>

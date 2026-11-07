@@ -91,7 +91,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
   <!-- Large screens: fills its parent's height; the side menu and the permission list scroll independently. -->
   <div class="@container/matrix lg:flex lg:flex-col">
   <div
-    class="grid grid-cols-[minmax(0,1fr)] gap-6 @3xl/matrix:grid-cols-[17.5rem_minmax(0,1fr)] lg:min-h-0 lg:flex-1 lg:grid-rows-[auto_minmax(0,1fr)] @3xl/matrix:lg:grid-rows-[minmax(0,1fr)]"
+    class="grid grid-cols-[minmax(0,1fr)] gap-4 @3xl/matrix:grid-cols-[17.5rem_minmax(0,1fr)] lg:min-h-0 lg:flex-1 lg:grid-rows-[auto_minmax(0,1fr)] @3xl/matrix:lg:grid-rows-[minmax(0,1fr)]"
   >
     <!-- Module navigator (side menu) -->
     <aside class="card min-w-0 self-start overflow-hidden @3xl/matrix:sticky @3xl/matrix:top-6 lg:flex lg:min-h-0 lg:flex-col @3xl/matrix:lg:static @3xl/matrix:lg:self-stretch">
@@ -158,7 +158,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
       <AppEmptyState v-if="!shown.length" :icon="SearchX" title="No permissions match" :description="`Nothing matches “${filter}”.`" class="py-16" />
 
       <section v-for="m in shown" :key="m.key" :aria-label="`${m.name} permissions`" class="border-line [&+&]:border-t">
-        <header class="flex flex-wrap items-center gap-x-4 gap-y-3 bg-surface px-5 py-4 sm:px-6 lg:sticky lg:top-0 lg:z-10 lg:mb-1 lg:border-b lg:border-line/70">
+        <header class="flex flex-wrap items-center gap-x-4 gap-y-3 bg-surface px-4 py-4 sm:px-4 lg:sticky lg:top-0 lg:z-10 lg:mb-1 lg:border-b lg:border-line/70">
 
           <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
             <component :is="MODULE_ICONS[m.key]" :size="18" aria-hidden="true" />

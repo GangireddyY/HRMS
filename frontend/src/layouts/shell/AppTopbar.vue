@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronRight, KeyRound, LogOut, Menu, Moon, Palette, Search, Sun, User } from '@lucide/vue';
+import { ChevronRight, KeyRound, LogOut, Menu, Moon, Palette, Sun, User } from '@lucide/vue';
 import { AppAvatar, AppDropdown, AppMenuItem } from '@/shared/components';
 import { visibleSections, type Workspace } from '@/core/navigation/workspaces';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/core/auth/auth.store';
 import { useUiStore } from '@/shared/stores/ui.store';
 import ThemeSwitcher from '@/core/theme/components/ThemeSwitcher.vue';
 import { useThemeStore } from '@/core/theme/theme.store';
+import GlobalSearch from '@/layouts/shell/GlobalSearch.vue';
 import NotificationBell from '@/layouts/shell/NotificationBell.vue';
 
 const props = defineProps<{ workspace: Workspace }>();
@@ -24,7 +25,7 @@ const workspaceHome = computed(() => visibleSections(props.workspace, subject.va
 const pageTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : ''));
 const showPage = computed(() => pageTitle.value && route.path !== workspaceHome.value);
 
-const iconButton = 'inline-flex h-9 w-9 items-center justify-center rounded-lg text-fg-muted transition hover:bg-surface-muted hover:text-fg';
+const iconButton = 'inline-flex h-8 w-8 items-center justify-center rounded-md text-fg-muted transition hover:bg-surface-muted hover:text-fg';
 
 async function signOut() {
   await auth.logout();
@@ -33,7 +34,7 @@ async function signOut() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-line bg-canvas/85 px-3 backdrop-blur-md sm:px-5">
+  <header class="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b border-line bg-canvas/85 px-3 backdrop-blur-md sm:px-4 lg:px-4">
     <button type="button" :class="[iconButton, 'lg:hidden']" aria-label="Open navigation" :aria-expanded="ui.mobileNavOpen" @click="ui.mobileNavOpen = true">
       <Menu :size="19" />
     </button>
@@ -50,19 +51,7 @@ async function signOut() {
     </nav>
 
     <div class="ml-auto flex items-center gap-1">
-      <button
-        type="button"
-        class="hidden h-9 w-56 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm text-fg-subtle shadow-xs transition hover:border-line-strong hover:text-fg-muted md:flex lg:w-64"
-        aria-label="Open search"
-        @click="ui.searchOpen = true"
-      >
-        <Search :size="15" aria-hidden="true" />
-        <span class="truncate">Search…</span>
-        <kbd class="ml-auto rounded-md border border-line bg-surface-muted px-1.5 py-px font-sans text-[10px] font-medium text-fg-subtle">Ctrl K</kbd>
-      </button>
-      <button type="button" :class="[iconButton, 'md:hidden']" aria-label="Search" @click="ui.searchOpen = true">
-        <Search :size="18" />
-      </button>
+      <GlobalSearch />
 
       <button
         type="button"

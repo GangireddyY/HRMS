@@ -97,13 +97,13 @@ const print = () => window.print();
         </template>
       </AppPageHeader>
 
-      <div class="space-y-6 print:hidden">
+      <div class="space-y-4 print:hidden">
         <AppAlert v-if="e.requirementsLeft.length" tone="info" title="To complete this course">{{ e.requirementsLeft.join(' · ') }}{{ e.dueDate ? ` — by ${formatDate(e.dueDate)}` : '' }}</AppAlert>
         <AppAlert v-if="e.status === 'FAILED'" tone="warning" title="Assessment not passed">All attempts were used. You can enrol again from the catalog.</AppAlert>
         <AppAlert v-if="e.status === 'NO_SHOW'" tone="warning" title="Session missed">Ask your manager or HR to assign the course again, or enrol in another session.</AppAlert>
 
-        <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div class="space-y-6">
+        <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div class="space-y-4">
             <AppCard v-if="e.course.contentUrl || e.permissions.markDone" title="Course content">
               <a v-if="e.course.contentUrl" :href="e.course.contentUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />Open the course</a>
               <div v-if="e.permissions.markDone" class="mt-4 border-t border-line/70 pt-4">
@@ -139,7 +139,7 @@ const print = () => window.print();
                     </fieldset>
                   </li>
                 </ol>
-                <div class="mt-5 flex justify-end gap-2">
+                <div class="mt-4 flex justify-end gap-2">
                   <AppButton variant="secondary" @click="quiz = null">Cancel</AppButton>
                   <AppButton :loading="busy === 'submit'" :disabled="!answeredAll" @click="submitQuiz">Submit answers</AppButton>
                 </div>
@@ -155,7 +155,7 @@ const print = () => window.print();
             </AppCard>
           </div>
 
-          <div class="space-y-6">
+          <div class="space-y-4">
             <AppCard v-if="e.status === 'COMPLETED'" title="Certificate">
               <p class="flex items-center gap-2 font-medium text-fg"><Award :size="18" class="text-brand-500" aria-hidden="true" />{{ e.certificateNumber }}</p>
               <p class="mt-1 text-sm text-fg-muted">Completed {{ formatDate(e.completedOn!) }}{{ e.expiresOn ? ` · valid until ${formatDate(e.expiresOn)}` : '' }}</p>
@@ -182,9 +182,9 @@ const print = () => window.print();
       <section v-if="e.status === 'COMPLETED'" class="hidden print:block">
         <div class="mx-auto mt-16 max-w-3xl border-4 border-double border-neutral-400 p-12 text-center text-neutral-900">
           <p class="text-sm tracking-[0.3em] uppercase">Certificate of completion</p>
-          <p class="mt-8 text-lg">This certifies that</p>
+          <p class="mt-4 text-lg">This certifies that</p>
           <p class="mt-2 text-4xl font-semibold">{{ e.employee.name }}</p>
-          <p class="mt-6 text-lg">has completed</p>
+          <p class="mt-4 text-lg">has completed</p>
           <p class="mt-2 text-2xl font-semibold">{{ e.course.title }}</p>
           <p class="mt-2 text-sm">{{ e.course.code }}{{ e.course.durationHours ? ` · ${hours(e.course.durationHours)}` : '' }}{{ e.bestScore !== null ? ` · score ${e.bestScore}%` : '' }}</p>
           <p class="mt-10 text-sm">{{ auth.organization?.name }} · completed {{ formatDate(e.completedOn!) }}{{ e.expiresOn ? ` · valid until ${formatDate(e.expiresOn)}` : '' }}</p>

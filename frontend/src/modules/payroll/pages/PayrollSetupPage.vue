@@ -155,10 +155,10 @@ async function saveSettings() {
       <template v-else-if="tab === 'components'">
         <AppErrorState v-if="components.error.value" :error="components.error.value" @retry="components.run" />
         <AppCard v-else :padded="false">
-          <AppSkeleton v-if="components.loading.value && !components.data.value" class="p-5" :lines="4" />
-          <p v-else-if="!components.data.value?.length" class="p-5 text-sm text-fg-muted">No components yet. Adding the standard structure creates Basic, HRA and a special allowance.</p>
+          <AppSkeleton v-if="components.loading.value && !components.data.value" class="p-4" :lines="4" />
+          <p v-else-if="!components.data.value?.length" class="p-4 text-sm text-fg-muted">No components yet. Adding the standard structure creates Basic, HRA and a special allowance.</p>
           <ul v-else class="divide-y divide-line">
-            <li v-for="c in components.data.value" :key="c.id" class="flex flex-wrap items-center gap-3 px-5 py-3">
+            <li v-for="c in components.data.value" :key="c.id" class="flex flex-wrap items-center gap-3 px-4 py-3">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ c.name }} <span class="text-xs font-normal text-fg-subtle">{{ c.code }}</span></p>
                 <p v-if="c.description" class="text-xs text-fg-muted">{{ c.description }}</p>
@@ -182,7 +182,7 @@ async function saveSettings() {
       <template v-else>
         <AppSkeleton v-if="settings.loading.value && !settings.data.value" :lines="6" />
         <AppErrorState v-else-if="settings.error.value" :error="settings.error.value" @retry="settings.run" />
-        <form v-else class="grid items-start gap-6 lg:grid-cols-2" novalidate @submit.prevent="saveSettings">
+        <form v-else class="grid items-start gap-4 lg:grid-cols-2" novalidate @submit.prevent="saveSettings">
           <AppAlert v-if="formError" class="lg:col-span-2">{{ formError }}</AppAlert>
           <AppCard title="Provident fund (EPF)" description="12% of PF wages from the employee and the employer; 8.33% of the employer share (on up to ₹15,000) goes to the pension scheme.">
             <div class="space-y-3">

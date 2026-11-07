@@ -64,9 +64,9 @@ async function save() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <AppPageHeader title="Salary & tax" description="Your salary structure and the tax regime and investments payroll uses to work out monthly TDS." />
-    <div class="grid items-start gap-6 lg:grid-cols-2">
+    <div class="grid items-start gap-4 lg:grid-cols-2">
       <AppCard title="Salary">
         <AppSkeleton v-if="salary.loading.value && !salary.data.value" :lines="6" />
         <AppErrorState v-else-if="salary.error.value" :error="salary.error.value" @retry="salary.run" />

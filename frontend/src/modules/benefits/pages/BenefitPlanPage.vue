@@ -147,25 +147,25 @@ async function census() {
           <AppButton v-if="p.status === 'DRAFT'" :icon="Rocket" :loading="busy === 'activate'" @click="activate">Activate</AppButton>
         </template>
       </AppPageHeader>
-      <AppAlert v-if="p.renewal" tone="info" class="mb-6">
+      <AppAlert v-if="p.renewal" tone="info" class="mb-4">
         Renewed as <RouterLink :to="`/hr/benefits/plans/${p.renewal.id}`" class="font-medium underline">{{ p.renewal.name }}</RouterLink> from {{ formatDate(p.renewal.coverageStartsOn) }} ({{ PLAN_STATUS_LABELS[p.renewal.status].toLowerCase() }}).
       </AppAlert>
-      <AppAlert v-if="p.renewedFrom" tone="info" class="mb-6">
+      <AppAlert v-if="p.renewedFrom" tone="info" class="mb-4">
         Renewal of <RouterLink :to="`/hr/benefits/plans/${p.renewedFrom.id}`" class="font-medium underline">{{ p.renewedFrom.name }}</RouterLink>, which ends {{ formatDate(p.renewedFrom.coverageEndsOn) }}.
         <template v-if="p.status === 'DRAFT'"> Activating it carries everyone covered then over to this plan.</template>
       </AppAlert>
 
-      <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AppStatCard label="Covered" :value="p.stats?.enrolled ?? 0" />
         <AppStatCard label="Waiting for approval" :value="p.stats?.pending ?? 0" tone="warning" />
         <AppStatCard label="Waived" :value="p.stats?.waived ?? 0" tone="info" />
         <AppStatCard label="Employer cost / month" :value="inr(p.stats?.employerMonthly ?? 0)" tone="success" :hint="`Employees pay ${inr(p.stats?.employeeMonthly ?? 0)}`" />
       </div>
 
-      <div class="mb-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div class="mb-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <AppCard title="Coverage options" :padded="false">
           <ul class="divide-y divide-line">
-            <li v-for="o in p.options" :key="o.id" class="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+            <li v-for="o in p.options" :key="o.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-fg">{{ o.name }} <AppBadge v-if="o.isDefault" size="sm" tone="brand">Default</AppBadge></p>
                 <p class="text-xs text-fg-muted">

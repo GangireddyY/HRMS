@@ -114,11 +114,11 @@ const columns: TableColumn<ReviewRow>[] = [
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="c.status === 'ACTIVE' && c.withoutReviewer" tone="warning" class="mb-6" :title="`${c.withoutReviewer} review${c.withoutReviewer === 1 ? ' has' : 's have'} no reviewer`">
+      <AppAlert v-if="c.status === 'ACTIVE' && c.withoutReviewer" tone="warning" class="mb-4" :title="`${c.withoutReviewer} review${c.withoutReviewer === 1 ? ' has' : 's have'} no reviewer`">
         Employees without a manager can't submit goals until a reviewer is assigned. Open their review to assign one.
       </AppAlert>
 
-      <div class="mb-6 grid items-start gap-6 lg:grid-cols-3">
+      <div class="mb-4 grid items-start gap-4 lg:grid-cols-3">
         <AppCard title="Setup">
           <dl class="space-y-2 text-sm">
             <div class="flex justify-between gap-3"><dt class="text-fg-muted">Score</dt><dd class="text-right">Goals {{ c.goalsWeight }}%{{ c.goalsWeight < 100 ? ` · competencies ${100 - c.goalsWeight}%` : '' }}</dd></div>

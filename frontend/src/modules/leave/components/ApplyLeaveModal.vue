@@ -127,7 +127,7 @@ async function submit() {
       </div>
       <template v-if="type?.allowHalfDay && form.startDate">
         <AppSelect v-if="singleDay" v-model="form.singleSession" label="Duration" :options="sessionOptions" :clearable="false" />
-        <div v-else class="flex flex-wrap gap-x-6 gap-y-2">
+        <div v-else class="flex flex-wrap gap-x-4 gap-y-2">
           <AppCheckbox v-model="form.startAfternoon" label="Start from the afternoon" />
           <AppCheckbox v-model="form.endMorning" label="End at noon on the last day" />
         </div>

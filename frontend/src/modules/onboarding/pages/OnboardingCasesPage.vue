@@ -52,7 +52,7 @@ const pct = (c: CaseSummary) => (c.progress.total ? Math.round((c.progress.done 
       </template>
     </AppPageHeader>
 
-    <AppCard v-if="canManage && joiners.data.value?.length" class="mb-6" title="New joiners without onboarding" :icon="UserPlus" :description="`${joiners.data.value.length} recent or upcoming joiner${joiners.data.value.length === 1 ? '' : 's'}.`">
+    <AppCard v-if="canManage && joiners.data.value?.length" class="mb-4" title="New joiners without onboarding" :icon="UserPlus" :description="`${joiners.data.value.length} recent or upcoming joiner${joiners.data.value.length === 1 ? '' : 's'}.`">
       <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <li v-for="j in joiners.data.value" :key="j.id" class="flex items-center gap-3 rounded-xl p-3 ring-1 ring-line">
           <AppAvatar :name="j.name" size="sm" />

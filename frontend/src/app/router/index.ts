@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { isAllowed, type AccessRule, type AccessSubject } from '@/core/navigation/access-rules';
 import { homePath } from '@/core/navigation/workspaces';
 import { useAuthStore } from '@/core/auth/auth.store';
+import { installFormPages } from '@/shared/composables/use-form-page';
 import { routes } from './routes';
 
 declare module 'vue-router' {
@@ -22,6 +23,7 @@ export const router = createRouter({
   routes,
   scrollBehavior: () => ({ top: 0 }),
 });
+installFormPages(router);
 
 function subjectFrom(auth: ReturnType<typeof useAuthStore>): AccessSubject {
   return { can: auth.can, hasFeature: auth.hasFeature, canPlatform: auth.canPlatform, hasOrganization: !!auth.organization };

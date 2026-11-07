@@ -100,7 +100,7 @@ async function submit() {
     <p class="mt-2 text-sm text-fg-muted">Set up your workspace and become its admin.</p>
 
     <!-- Steps -->
-    <nav class="mt-5" aria-label="Sign-up steps">
+    <nav class="mt-4" aria-label="Sign-up steps">
       <ol class="grid grid-cols-2 gap-1 rounded-2xl bg-surface-muted p-1 ring-1 ring-line ring-inset">
         <li v-for="(s, i) in STEPS" :key="s.key">
           <button
@@ -139,8 +139,8 @@ async function submit() {
       </div>
     </nav>
 
-    <form ref="formEl" class="mt-5" novalidate @submit.prevent="submit">
-      <AppAlert v-if="formError" class="mb-5">{{ formError }}</AppAlert>
+    <form ref="formEl" class="mt-4" novalidate @submit.prevent="submit">
+      <AppAlert v-if="formError" class="mb-4">{{ formError }}</AppAlert>
 
       <Transition mode="out-in" enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 translate-x-3" leave-active-class="transition duration-150" leave-to-class="opacity-0 -translate-x-3">
         <fieldset v-if="step === 'organization'" key="organization" class="space-y-4">
@@ -176,7 +176,7 @@ async function submit() {
         </fieldset>
       </Transition>
 
-      <div class="mt-6 flex gap-3">
+      <div class="mt-4 flex gap-3">
         <AppButton v-if="step === 'account'" type="button" variant="secondary" size="lg" :icon="ArrowLeft" :disabled="submitting" @click="goTo('organization')">Back</AppButton>
         <AppButton type="submit" block size="lg" :loading="submitting" :icon-right="step === 'organization' ? ArrowRight : undefined" class="flex-1">
           {{ step === 'organization' ? 'Continue' : 'Create organization' }}
@@ -184,7 +184,7 @@ async function submit() {
       </div>
     </form>
 
-    <p class="mt-auto pt-5 text-center text-sm text-fg-muted">
+    <p class="mt-auto pt-4 text-center text-sm text-fg-muted">
       Already have an account? <RouterLink to="/login" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Sign in</RouterLink>
     </p>
   </div>

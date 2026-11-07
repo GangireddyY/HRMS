@@ -63,11 +63,11 @@ function openAdd(skillId: string | null = null) {
     <AppSkeleton v-if="profile.loading.value && !p" :lines="6" />
     <AppErrorState v-else-if="profile.error.value" :error="profile.error.value" @retry="profile.run" />
     <AppAlert v-else-if="!p" tone="info">Your account isn't linked to an employee record yet.</AppAlert>
-    <div v-else class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div v-else class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
       <AppCard title="Skills" :padded="!p.skills.length">
         <AppEmptyState v-if="!p.skills.length" compact :icon="Sparkles" title="No skills yet" description="Add the skills you use at work and rate yourself." />
         <ul v-else class="divide-y divide-line">
-          <li v-for="s in p.skills" :key="s.skillId" class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+          <li v-for="s in p.skills" :key="s.skillId" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div class="min-w-0">
               <p class="font-medium text-fg">{{ s.name }} <AppBadge v-if="s.required" size="sm" :tone="s.effectiveLevel >= s.required ? 'success' : 'warning'">Role needs {{ s.required }}</AppBadge></p>
               <p class="text-xs text-fg-muted">
@@ -88,7 +88,7 @@ function openAdd(skillId: string | null = null) {
         </ul>
       </AppCard>
 
-      <div class="space-y-6">
+      <div class="space-y-4">
         <AppCard :title="p.designation ? `${p.designation.name}: what the role needs` : 'What your role needs'">
           <template v-if="p.requirements.length">
             <div class="mb-4 flex items-center gap-3">

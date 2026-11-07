@@ -61,13 +61,13 @@ const canChange = (p: MyPlan) => !p.ineligible && p.options.length > 0;
     <AppSkeleton v-if="mine.loading.value && !data" :lines="8" />
     <AppErrorState v-else-if="mine.error.value" :error="mine.error.value" @retry="mine.run" />
     <template v-else-if="data">
-      <div class="mb-6 grid gap-4 sm:grid-cols-3">
+      <div class="mb-4 grid gap-4 sm:grid-cols-3">
         <AppStatCard label="Plans you're covered by" :value="covered" />
         <AppStatCard label="Your contribution / month" :value="inr(data.monthlyContribution)" tone="info" hint="Deducted from your salary" />
         <AppStatCard label="Family members on record" :value="data.dependents.filter((d) => d.coverable).length" tone="success" :to="'/me/employment'" />
       </div>
       <AppCard v-if="!data.plans.length"><AppEmptyState :icon="HeartPulse" title="No benefit plans for you yet" description="When your employer offers a plan you're eligible for, it appears here." /></AppCard>
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <AppCard v-for="p in data.plans" :key="p.id" :title="p.name" :description="[TYPE_LABELS[p.type], p.provider, `policy ${formatDate(p.coverageStartsOn)} – ${formatDate(p.coverageEndsOn)}`].filter(Boolean).join(' · ')">
           <template #actions>
             <AppBadge v-if="p.mandatory" tone="info">Provided to everyone</AppBadge>
@@ -116,7 +116,7 @@ const canChange = (p: MyPlan) => !p.ineligible && p.options.length > 0;
         <p class="text-xs text-fg-muted">Health insurance premiums you pay for yourself, your family or your parents can be claimed under section 80D in your tax declaration (old tax regime).</p>
       </div>
 
-      <AppCard v-if="data.history.length" class="mt-6" title="History">
+      <AppCard v-if="data.history.length" class="mt-4" title="History">
         <ul class="divide-y divide-line text-sm">
           <li v-for="h in data.history" :key="h.id" class="flex flex-wrap items-center justify-between gap-2 py-2">
             <span class="text-fg">{{ h.plan.name }} · {{ h.option?.name ?? 'Waived' }}</span>

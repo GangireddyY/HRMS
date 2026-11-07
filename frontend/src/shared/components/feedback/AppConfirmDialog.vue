@@ -17,7 +17,7 @@ watch(pending, () => {
 </script>
 
 <template>
-  <AppModal :open="!!pending" :title="pending?.title ?? ''" size="sm" @close="feedback.settle(false)">
+  <AppModal :open="!!pending" :title="pending?.title ?? ''" size="sm" dialog @close="feedback.settle(false)">
     <div class="flex gap-3">
       <div v-if="pending?.danger" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 ring-1 ring-red-600/15 ring-inset dark:bg-red-500/12 dark:text-red-400">
         <AlertTriangle :size="18" aria-hidden="true" />

@@ -139,11 +139,11 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="!inHr && !c.selfEnrollment && !c.myEnrollment" tone="info" class="mb-6">This course is assigned by your manager or HR.</AppAlert>
-      <AppAlert v-if="inHr && c.status === 'DRAFT' && c.hasAssessment && !c.questionCount" tone="warning" class="mb-6" title="Add the assessment questions">The course can be published once it has questions.</AppAlert>
+      <AppAlert v-if="!inHr && !c.selfEnrollment && !c.myEnrollment" tone="info" class="mb-4">This course is assigned by your manager or HR.</AppAlert>
+      <AppAlert v-if="inHr && c.status === 'DRAFT' && c.hasAssessment && !c.questionCount" tone="warning" class="mb-4" title="Add the assessment questions">The course can be published once it has questions.</AppAlert>
 
-      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div class="space-y-6">
+      <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="space-y-4">
           <AppCard title="About this course">
             <p v-if="c.description" class="text-sm whitespace-pre-line text-fg">{{ c.description }}</p>
             <p v-else class="text-sm text-fg-muted">No description.</p>
@@ -173,10 +173,10 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
           </AppCard>
 
           <AppCard v-if="inHr && c.permissions.manage" title="Roster" :padded="false">
-            <AppSkeleton v-if="roster.loading.value && !roster.data.value" class="p-5" :lines="3" />
-            <p v-else-if="!rosterRows.length" class="p-5 text-sm text-fg-muted">Nobody has enrolled yet.</p>
+            <AppSkeleton v-if="roster.loading.value && !roster.data.value" class="p-4" :lines="3" />
+            <p v-else-if="!rosterRows.length" class="p-4 text-sm text-fg-muted">Nobody has enrolled yet.</p>
             <ul v-else class="divide-y divide-line">
-              <li v-for="r in rosterRows" :key="r.id" class="flex flex-wrap items-center gap-3 px-5 py-3">
+              <li v-for="r in rosterRows" :key="r.id" class="flex flex-wrap items-center gap-3 px-4 py-3">
                 <div class="min-w-0 flex-1">
                   <RouterLink :to="`/hr/training/enrollments/${r.id}`" class="font-medium text-fg hover:underline">{{ r.employee.name }}</RouterLink>
                   <p class="text-xs text-fg-muted">{{ r.employee.department ?? r.employee.employeeCode }} · {{ r.source === 'ASSIGNED' ? 'assigned' : 'self-enrolled' }}{{ r.dueDate ? ` · due ${formatDate(r.dueDate)}` : '' }}{{ r.bestScore !== null ? ` · best score ${r.bestScore}%` : '' }}</p>
@@ -188,7 +188,7 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
           </AppCard>
         </div>
 
-        <div class="space-y-6">
+        <div class="space-y-4">
           <AppCard title="Completion">
             <ul class="space-y-2 text-sm text-fg">
               <li v-if="sessionBased">Attend a session</li>

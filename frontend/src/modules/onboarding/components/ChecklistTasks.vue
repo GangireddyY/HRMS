@@ -97,7 +97,7 @@ async function remove(task: OnboardingTask) {
 <template>
   <div>
     <AppEmptyState v-if="!detail.tasks.length" compact title="No tasks in this checklist" />
-    <section v-for="g in groups" :key="g.key" class="mb-6 last:mb-0">
+    <section v-for="g in groups" :key="g.key" class="mb-4 last:mb-0">
       <h3 class="mb-2 text-xs font-semibold tracking-wide text-fg-subtle uppercase">{{ g.label }}</h3>
       <ul class="divide-y divide-line overflow-hidden rounded-xl ring-1 ring-line">
         <li v-for="t in g.tasks" :key="t.id" class="flex flex-wrap items-start gap-3 bg-surface px-4 py-3" :class="finished(t) && 'bg-surface-muted/30'">

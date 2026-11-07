@@ -32,7 +32,9 @@ test.describe('leave', () => {
     // The admin needs an employee record to apply.
     await page.goto('/me/leave');
     await expect(page.getByRole('heading', { name: 'Leave', exact: true })).toBeVisible();
-    if (await page.getByText(/Employee record linked to your account not found/).isVisible()) {
+    const noRecord = page.getByText(/Employee record linked to your account not found/);
+    await expect(noRecord.or(page.getByText('Casual leave')).first()).toBeVisible();
+    if (await noRecord.isVisible()) {
       await page.goto('/admin/users');
       await page.getByLabel('Search users').fill(orgAdmin.email);
       await page.getByRole('cell', { name: new RegExp(orgAdmin.email) }).click();
