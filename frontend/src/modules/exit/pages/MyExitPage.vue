@@ -10,7 +10,7 @@ import SettlementStatement from '@/modules/exit/components/SettlementStatement.v
 import type { ExitDetail } from '@/modules/exit/types';
 import { LETTER_LABELS, REASON_LABELS, RESIGNATION_REASONS, STATUS_LABELS, TYPE_LABELS, localIso, statusTone } from '@/modules/exit/utils/exit-format';
 import { employeesApi } from '@/modules/people/api/people.api';
-import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppFacts, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppSplit, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -40,6 +40,14 @@ const noticeEnds = computed(() => {
   d.setDate(d.getDate() + noticeDays.value - 1);
   return localIso(d);
 });
+
+const RESIGN_STEPS = [
+  { title: 'Manager and HR are told', text: 'They review your resignation and may talk to you about it.' },
+  { title: 'Last working day confirmed', text: 'Usually the end of your notice period; an earlier day may be agreed.' },
+  { title: 'Clearance', text: 'Return assets and hand over work; each team signs off here.' },
+  { title: 'Full & final settlement', text: 'Pending salary, leave encashment and recoveries, shown on this page.' },
+  { title: 'Letters', text: 'Relieving letter and experience certificate, ready to download.' },
+];
 
 // ---- Resign ----
 const { fieldErrors, formError, handle, reset } = useFormErrors();
@@ -97,17 +105,35 @@ const print = () => window.print();
       <template v-if="!current">
         <AppAlert v-if="me.data.value === null" tone="info">Only employees can resign here.</AppAlert>
         <AppAlert v-else-if="me.data.value && me.data.value.status !== 'ACTIVE'" tone="info">You are {{ me.data.value.status === 'ON_NOTICE' ? 'already serving notice' : 'no longer active' }}.</AppAlert>
-        <AppCard v-else-if="me.data.value" title="Resign" :icon="DoorOpen" :description="`Your notice period is ${noticeDays} days: it would end on ${formatDate(noticeEnds)}.`">
-          <form id="resign-form" class="max-w-2xl space-y-4" novalidate @submit.prevent="resign">
-            <AppAlert v-if="formError">{{ formError }}</AppAlert>
-            <AppSelect v-model="form.reason" label="Main reason" required :options="reasonOptions" :error="fieldErrors.reason" />
-            <AppTextarea v-model="form.reasonDetail" label="Anything you'd like to add" :rows="3" :maxlength="2000" />
-            <AppDatePicker v-model="form.requestedLastDay" label="Preferred last working day" :min="today" help="Leaving before the end of your notice period may mean notice pay is recovered, unless it is waived." :error="fieldErrors.requestedLastDay" />
-          </form>
-          <template #footer>
-            <div class="flex justify-end"><AppButton type="submit" form="resign-form" :icon="Send" :loading="busy" :disabled="!form.reason">Submit resignation</AppButton></div>
+        <AppSplit v-else-if="me.data.value">
+          <AppCard title="Resign" :icon="DoorOpen" :description="`Your notice period is ${noticeDays} days: it would end on ${formatDate(noticeEnds)}.`">
+            <form id="resign-form" class="space-y-4" novalidate @submit.prevent="resign">
+              <AppAlert v-if="formError">{{ formError }}</AppAlert>
+              <div class="grid gap-4 md:grid-cols-2">
+                <AppSelect v-model="form.reason" label="Main reason" required :options="reasonOptions" :error="fieldErrors.reason" />
+                <AppDatePicker v-model="form.requestedLastDay" label="Preferred last working day" :min="today" help="Leaving before the end of your notice period may mean notice pay is recovered, unless it is waived." :error="fieldErrors.requestedLastDay" />
+              </div>
+              <AppTextarea v-model="form.reasonDetail" label="Anything you'd like to add" :rows="5" :maxlength="2000" />
+            </form>
+            <template #footer>
+              <div class="flex justify-end"><AppButton type="submit" form="resign-form" :icon="Send" :loading="busy" :disabled="!form.reason">Submit resignation</AppButton></div>
+            </template>
+          </AppCard>
+          <template #aside>
+            <AppCard title="What happens next">
+              <ol class="relative space-y-3 border-l border-line pl-4 text-[13px]">
+                <li v-for="(step, i) in RESIGN_STEPS" :key="step.title" class="relative">
+                  <span class="absolute top-0 -left-[25px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-600 text-[10px] font-semibold text-white">{{ i + 1 }}</span>
+                  <p class="font-medium text-fg">{{ step.title }}</p>
+                  <p class="text-xs text-fg-muted">{{ step.text }}</p>
+                </li>
+              </ol>
+            </AppCard>
+            <AppCard title="Your notice">
+              <AppFacts :items="[{ label: 'Notice period', value: `${noticeDays} days` }, { label: 'Would end on', value: formatDate(noticeEnds), strong: true }]" />
+            </AppCard>
           </template>
-        </AppCard>
+        </AppSplit>
       </template>
 
       <div v-else class="space-y-4">
@@ -141,11 +167,11 @@ const print = () => window.print();
         <ClearanceList v-if="current.clearanceItems.length" :exit="current" @updated="set" />
 
         <AppCard v-if="current.permissions.feedback" title="Exit survey" description="Your answers go to HR only and help us improve.">
-          <div class="max-w-2xl space-y-4">
+          <div class="grid gap-4 md:grid-cols-2">
             <AppInput v-model="survey.wouldRecommend" label="How likely are you to recommend working here? (0–10)" type="number" :min="0" :max="10" />
-            <AppCheckbox v-model="survey.wouldRejoin" label="I would consider coming back" />
-            <AppTextarea v-model="survey.liked" label="What did you like most?" :rows="2" :maxlength="2000" />
-            <AppTextarea v-model="survey.improve" label="What should we improve?" :rows="2" :maxlength="2000" />
+            <div class="flex items-end pb-1.5"><AppCheckbox v-model="survey.wouldRejoin" label="I would consider coming back" /></div>
+            <AppTextarea v-model="survey.liked" label="What did you like most?" :rows="3" :maxlength="2000" />
+            <AppTextarea v-model="survey.improve" label="What should we improve?" :rows="3" :maxlength="2000" />
           </div>
           <template #footer>
             <div class="flex justify-end"><AppButton :loading="busy" @click="sendSurvey">Send feedback</AppButton></div>

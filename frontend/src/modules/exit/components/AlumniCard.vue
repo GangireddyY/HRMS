@@ -57,11 +57,11 @@ async function save() {
 <template>
   <AppSkeleton v-if="mine.loading.value && !mine.data.value" :lines="4" />
   <AppCard v-else-if="mine.data.value?.eligible" title="Stay in touch" :icon="Handshake" description="Join the alumni network so we can keep you posted about reunions, referrals and openings.">
-    <form id="alumni-form" class="max-w-3xl space-y-4" novalidate @submit.prevent="save">
+    <form id="alumni-form" class="space-y-4" novalidate @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
       <AppSwitch v-model="form.optedIn" label="Join the alumni network" description="HR sees the details below only while you are in the network." />
       <template v-if="form.optedIn">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <AppInput v-model="form.personalEmail" label="Personal email" type="email" :maxlength="254" :error="fieldErrors.personalEmail" />
           <AppInput v-model="form.phone" label="Phone" inputmode="tel" :maxlength="20" :error="fieldErrors.phone" />
           <AppInput v-model="form.currentCompany" label="Current company" :maxlength="200" :error="fieldErrors.currentCompany" />

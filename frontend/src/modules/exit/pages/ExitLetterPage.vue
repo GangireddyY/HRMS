@@ -5,7 +5,7 @@ import { Printer } from '@lucide/vue';
 import { exitApi } from '@/modules/exit/api/exit.api';
 import LetterDocument from '@/modules/exit/components/LetterDocument.vue';
 import { LETTER_LABELS } from '@/modules/exit/utils/exit-format';
-import { AppAlert, AppButton, AppErrorState, AppPageHeader, AppSkeleton } from '@/shared/components';
+import { AppAlert, AppButton, AppCard, AppErrorState, AppFacts, AppPageHeader, AppSkeleton, AppSplit } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { formatDate } from '@/shared/utils/format';
 
@@ -19,7 +19,7 @@ const print = () => window.print();
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl">
+  <div>
     <AppPageHeader
       class="print:hidden"
       :title="letter.data.value ? `${LETTER_LABELS[letter.data.value.type]} · ${letter.data.value.reference}` : 'Letter'"
@@ -31,11 +31,28 @@ const print = () => window.print();
     </AppPageHeader>
     <AppSkeleton v-if="letter.loading.value && !letter.data.value" :lines="12" />
     <AppErrorState v-else-if="letter.error.value" :error="letter.error.value" title="This letter isn't available" @retry="letter.run" />
-    <template v-else-if="letter.data.value">
-      <AppAlert v-if="letter.data.value.revokedAt" tone="warning" class="mb-4 print:hidden">
+    <AppSplit v-else-if="letter.data.value">
+      <AppAlert v-if="letter.data.value.revokedAt" tone="warning" class="print:hidden">
         Revoked by {{ letter.data.value.revokedBy }} on {{ formatDate(letter.data.value.revokedAt) }}: {{ letter.data.value.revokedReason }}
       </AppAlert>
       <LetterDocument :letter="letter.data.value" />
-    </template>
+      <template #aside>
+        <AppCard title="Letter details">
+          <AppFacts
+            :items="[
+              { label: 'Type', value: LETTER_LABELS[letter.data.value.type] },
+              { label: 'Reference', value: letter.data.value.reference, mono: true },
+              { label: 'Dated', value: formatDate(letter.data.value.letterDate) },
+              { label: 'Employee', value: `${letter.data.value.employee.name} (${letter.data.value.employee.employeeCode})` },
+              { label: 'Signed by', value: letter.data.value.signatoryName },
+              { label: 'Issued by', value: letter.data.value.issuedBy },
+              { label: 'Issued on', value: formatDate(letter.data.value.issuedAt) },
+              { label: 'Status', value: letter.data.value.revokedAt ? 'Revoked' : 'Valid', strong: true },
+            ]"
+          />
+        </AppCard>
+        <AppButton block variant="secondary" :icon="Printer" @click="print">Print / save as PDF</AppButton>
+      </template>
+    </AppSplit>
   </div>
 </template>

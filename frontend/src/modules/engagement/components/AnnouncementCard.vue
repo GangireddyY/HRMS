@@ -13,7 +13,7 @@ const eventOver = () => !!props.announcement.eventStartsAt && new Date(props.ann
 </script>
 
 <template>
-  <article class="rounded-2xl bg-surface p-4 ring-1" :class="announcement.pinned ? 'ring-brand-400/60' : 'ring-line'">
+  <article class="card p-4" :class="announcement.pinned && 'border-brand-400/60'">
     <div class="mb-2 flex flex-wrap items-center gap-2">
       <AppBadge :tone="categoryTone[announcement.category]" size="sm">{{ CATEGORY_LABELS[announcement.category] }}</AppBadge>
       <span v-if="announcement.pinned" class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-400"><Pin :size="12" aria-hidden="true" />Pinned</span>

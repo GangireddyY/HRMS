@@ -26,6 +26,8 @@ export { default as AppSparkline } from './data/AppSparkline.vue';
 export { default as AppInsights } from './data/AppInsights.vue';
 export { default as AppActionQueue } from './data/AppActionQueue.vue';
 export { default as AppPersonList } from './data/AppPersonList.vue';
+export { default as AppFacts } from './data/AppFacts.vue';
+export type { Fact } from './data/AppFacts.vue';
 export type { Insight } from './data/AppInsights.vue';
 export type { QueueItem } from './data/AppActionQueue.vue';
 export type { PersonRow } from './data/AppPersonList.vue';
@@ -49,6 +51,8 @@ export { default as AppTabs } from './layout/AppTabs.vue';
 export { default as AppHero } from './layout/AppHero.vue';
 export { default as AppQuickActions } from './layout/AppQuickActions.vue';
 export { default as AppSection } from './layout/AppSection.vue';
+export { default as AppSplit } from './layout/AppSplit.vue';
+export { default as AppAddTile } from './layout/AppAddTile.vue';
 export type { QuickAction } from './layout/AppQuickActions.vue';
 
 export type { SelectOption, TableColumn } from './types';

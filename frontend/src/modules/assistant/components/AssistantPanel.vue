@@ -63,8 +63,15 @@ function toggleShortcut(e: KeyboardEvent) {
     store.open = false;
   }
 }
-onMounted(() => window.addEventListener('keydown', toggleShortcut));
-onBeforeUnmount(() => window.removeEventListener('keydown', toggleShortcut));
+const openFromEvent = () => (store.open = true);
+onMounted(() => {
+  window.addEventListener('keydown', toggleShortcut);
+  window.addEventListener('hrms:assistant-open', openFromEvent);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', toggleShortcut);
+  window.removeEventListener('hrms:assistant-open', openFromEvent);
+});
 
 watch(
   () => store.open,

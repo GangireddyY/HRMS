@@ -1,21 +1,39 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useId, useSlots, watch } from 'vue';
 import { ArrowLeft, X } from '@lucide/vue';
 import { openFormPage } from '@/shared/composables/use-form-page';
+import AppFormGuide from './AppFormGuide.vue';
 
 /**
  * Forms open as a page over the content area (the sidebar and top bar stay), using its full width, with Back, the
  * title, the form and an action bar; the browser's Back button and Esc close it. `dialog` keeps a small centred
- * pop-up for confirmations (`size` sets its width).
+ * pop-up for confirmations (`size` sets its width). On wide screens a side panel shows the form's progress and
+ * shortcuts (`guide`), with anything form-specific from the `aside` slot above it.
  */
 const props = withDefaults(
-  defineProps<{ open: boolean; title: string; description?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; dismissible?: boolean; dialog?: boolean }>(),
-  { size: 'md', dismissible: true, dialog: false },
+  defineProps<{ open: boolean; title: string; description?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; dismissible?: boolean; dialog?: boolean; guide?: boolean }>(),
+  { size: 'md', dismissible: true, dialog: false, guide: true },
 );
 const emit = defineEmits<{ close: [] }>();
 
 const panel = ref<HTMLElement | null>(null);
 const body = ref<HTMLElement | null>(null);
+const bodyReady = ref(false);
+const slots = useSlots();
+const hasFields = ref(false);
+const showGuide = computed(() => props.guide && (!!slots.aside || hasFields.value));
+const detectFields = () => (hasFields.value = !!body.value?.querySelector(FIELDS));
+/** The assistant lives in a feature module; it listens for this event. */
+const askAssistant = () => window.dispatchEvent(new CustomEvent('hrms:assistant-open'));
+
+function submitShortcut() {
+  const root = panel.value;
+  if (!root) return;
+  const button = root.querySelector<HTMLButtonElement>('footer button[type="submit"]:not([disabled])');
+  if (button) return button.click();
+  const form = body.value?.querySelector('form');
+  form?.requestSubmit();
+}
 const titleId = useId();
 const host = ref('body');
 const inShell = ref(false);
@@ -32,6 +50,9 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     e.stopPropagation();
     close();
+  } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !props.dialog) {
+    e.preventDefault();
+    submitShortcut();
   } else if (e.key === 'Tab' && panel.value) {
     const items = [...panel.value.querySelectorAll<HTMLElement>(FOCUSABLE)];
     if (!items.length) return;
@@ -63,6 +84,9 @@ watch(
       if (props.dialog) document.body.style.overflow = 'hidden';
       else if (props.dismissible) unregister = openFormPage(close);
       await nextTick();
+      bodyReady.value = true;
+      detectFields();
+      setTimeout(detectFields, 400);
       // `autofocus` on a field component lands on its wrapper, so focus the first control inside it.
       const auto = panel.value?.querySelector<HTMLElement>('[autofocus]');
       const target =
@@ -72,6 +96,7 @@ watch(
         panel.value;
       target?.focus({ preventScroll: true });
     } else {
+      bodyReady.value = false;
       release();
       previouslyFocused?.focus?.({ preventScroll: true });
     }
@@ -132,7 +157,13 @@ onBeforeUnmount(release);
           </button>
           <h2 :id="titleId" class="text-xl font-semibold tracking-tight text-fg">{{ title }}</h2>
           <p v-if="description" class="mt-0.5 text-[13px] text-fg-muted">{{ description }}</p>
-          <div ref="body" class="card mt-4 p-4"><slot /></div>
+          <div :class="['mt-4 grid items-start gap-4', showGuide && 'xl:grid-cols-[minmax(0,1fr)_300px]']">
+            <div ref="body" class="card min-w-0 p-4"><slot /></div>
+            <aside v-if="showGuide" class="hidden space-y-4 xl:sticky xl:top-0 xl:block">
+              <slot name="aside" />
+              <AppFormGuide v-if="bodyReady && hasFields" :target="body" @ask="askAssistant" />
+            </aside>
+          </div>
         </div>
       </div>
       <footer v-if="$slots.footer" class="shrink-0 border-t border-line bg-surface px-3 py-2.5 sm:px-4 2xl:px-8">

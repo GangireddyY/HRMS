@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ClipboardList, Lightbulb, Megaphone, PartyPopper, Trash2 } from '@lucide/vue';
+import { CalendarDays, ClipboardList, Lightbulb, Megaphone, PartyPopper, Trash2 } from '@lucide/vue';
 import type { RsvpResponse } from '@contracts';
 import { engagementApi } from '@/modules/engagement/api/engagement.api';
 import { employeesApi } from '@/modules/people/api/people.api';
@@ -8,8 +8,8 @@ import AnnouncementCard from '@/modules/engagement/components/AnnouncementCard.v
 import BadgeIcon from '@/modules/engagement/components/BadgeIcon.vue';
 import RecognizeModal from '@/modules/engagement/components/RecognizeModal.vue';
 import type { Announcement } from '@/modules/engagement/types';
-import { BADGE_LABELS } from '@/modules/engagement/utils/engagement-format';
-import { AppAvatar, AppButton, AppCard, AppEmptyState, AppErrorState, AppPagination, AppPageHeader, AppSkeleton, AppTabs } from '@/shared/components';
+import { BADGE_LABELS, RSVP_LABELS, eventWhen } from '@/modules/engagement/utils/engagement-format';
+import { AppAvatar, AppButton, AppCard, AppEmptyState, AppErrorState, AppInsights, AppPagination, AppPageHeader, AppSkeleton, AppSplit, AppTabs, type Insight } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -47,12 +47,22 @@ const ack = (a: Announcement) => respond(a, () => engagementApi.acknowledge(a.id
 const rsvp = (a: Announcement, r: RsvpResponse) => respond(a, () => engagementApi.rsvp(a.id, r), 'RSVP saved');
 
 const wall = useTable((q) => engagementApi.recognitions(q), { pageSize: 10, immediate: false });
-const stats = useAsync(() => engagementApi.recognitionStats(), { immediate: false });
+const stats = useAsync(() => engagementApi.recognitionStats());
 watch(tab, (t) => {
-  if (t === 'wall' && !wall.rows.value.length) {
-    void wall.load();
-    void stats.run();
-  }
+  if (t === 'wall' && !wall.rows.value.length) void wall.load();
+});
+
+const events = computed(() =>
+  feed.rows.value.filter((a) => a.category === 'EVENT' && a.eventStartsAt && new Date(a.eventEndsAt ?? a.eventStartsAt) >= new Date()).slice(0, 4),
+);
+const highlights = computed<Insight[]>(() => {
+  const out: Insight[] = [];
+  const toAck = feed.rows.value.filter((a) => a.requiresAck && !a.mine.acknowledgedAt);
+  if (toAck.length) out.push({ id: 'ack', tone: 'warning', text: `${toAck.length} announcement${toAck.length === 1 ? '' : 's'} need${toAck.length === 1 ? 's' : ''} your acknowledgement.`, to: `/me/engagement/announcements/${toAck[0]!.id}`, action: 'Read' });
+  const noRsvp = events.value.filter((e) => !e.mine.rsvp);
+  if (noRsvp.length) out.push({ id: 'rsvp', tone: 'info', text: `Let the organisers know if you're coming to ${noRsvp[0]!.title}.`, to: `/me/engagement/announcements/${noRsvp[0]!.id}`, action: 'RSVP' });
+  if (pendingSurveys.value.length) out.push({ id: 'survey', tone: 'info', text: `${pendingSurveys.value.length} survey${pendingSurveys.value.length === 1 ? ' is' : 's are'} waiting for your views.`, to: `/me/engagement/surveys/${pendingSurveys.value[0]!.id}`, action: 'Answer' });
+  return out;
 });
 const recognizeOpen = ref(false);
 async function onRecognized() {
@@ -86,10 +96,34 @@ async function removeRecognition(id: string) {
         <AppSkeleton v-if="feed.loading.value && !feed.rows.value.length" :lines="6" />
         <AppErrorState v-else-if="feed.error.value" :error="feed.error.value" @retry="feed.load" />
         <AppCard v-else-if="!feed.rows.value.length"><AppEmptyState :icon="Megaphone" title="No announcements" description="News from your organization appears here." /></AppCard>
-        <div v-else class="space-y-4">
+        <AppSplit v-else>
           <AnnouncementCard v-for="a in feed.rows.value" :key="a.id" :announcement="a" clamp :busy="busy === a.id" :can-respond="!!me.data.value" @acknowledge="ack(a)" @rsvp="(r) => rsvp(a, r)" />
           <AppPagination v-if="feed.meta.value && feed.meta.value.totalPages > 1" :meta="feed.meta.value" @page="feed.setPage" />
-        </div>
+          <template #aside>
+            <AppInsights v-if="highlights.length" title="For you" caption="Things waiting for you" :items="highlights" />
+            <AppCard v-if="events.length" title="Upcoming events" :icon="CalendarDays" :padded="false">
+              <ul class="divide-y divide-line/70">
+                <li v-for="e in events" :key="e.id">
+                  <RouterLink :to="`/me/engagement/announcements/${e.id}`" class="block px-4 py-2.5 transition hover:bg-surface-muted/60">
+                    <p class="truncate text-[13px] font-medium text-fg">{{ e.title }}</p>
+                    <p class="text-xs text-fg-muted">{{ eventWhen(e) }}<template v-if="e.mine.rsvp"> · {{ RSVP_LABELS[e.mine.rsvp] }}</template></p>
+                  </RouterLink>
+                </li>
+              </ul>
+            </AppCard>
+            <AppCard title="Recognition this month" :icon="PartyPopper">
+              <p v-if="!stats.data.value?.topRecipients.length" class="text-[13px] text-fg-muted">Nobody yet — be the first to thank a colleague.</p>
+              <ol v-else class="space-y-2">
+                <li v-for="t in stats.data.value.topRecipients.slice(0, 5)" :key="t.employee.id" class="flex items-center gap-2.5 text-[13px]">
+                  <AppAvatar :name="t.employee.name" size="sm" />
+                  <span class="min-w-0 flex-1 truncate text-fg">{{ t.employee.name }}</span>
+                  <span class="text-fg-muted tabular-nums">{{ t.count }}</span>
+                </li>
+              </ol>
+              <AppButton class="mt-3" size="sm" variant="link" @click="tab = 'wall'">See the wall</AppButton>
+            </AppCard>
+          </template>
+        </AppSplit>
       </template>
 
       <div v-else-if="tab === 'wall'" class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">

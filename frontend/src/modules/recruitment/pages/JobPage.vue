@@ -106,16 +106,16 @@ async function addExisting(candidateId: string) {
       </AppPageHeader>
 
       <AppErrorState v-if="apps.error.value" :error="apps.error.value" @retry="apps.run" />
-      <AppEmptyState v-else-if="apps.data.value && !apps.data.value.items.length" class="rounded-2xl bg-surface ring-1 ring-line" title="No candidates yet" :description="job.data.value.status === 'OPEN' ? 'Add candidates, or share the careers page.' : 'Open the job to start adding candidates.'" />
+      <AppEmptyState v-else-if="apps.data.value && !apps.data.value.items.length" class="card" title="No candidates yet" :description="job.data.value.status === 'OPEN' ? 'Add candidates, or share the careers page.' : 'Open the job to start adding candidates.'" />
       <div v-else class="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
-        <section v-for="s in [...ACTIVE, ...(showClosed ? CLOSED : [])]" :key="s" class="flex w-72 shrink-0 flex-col rounded-2xl bg-surface-muted/50 p-3 ring-1 ring-line">
+        <section v-for="s in [...ACTIVE, ...(showClosed ? CLOSED : [])]" :key="s" class="flex min-h-[60vh] min-w-64 flex-1 basis-0 flex-col rounded-md border border-line bg-surface-muted/40 p-2.5">
           <h2 class="mb-3 flex items-center justify-between px-1 text-sm font-semibold text-fg">
             <span class="flex items-center gap-2"><span class="h-2 w-2 rounded-full" :class="stageAccent[s]" aria-hidden="true" />{{ STAGE_LABELS[s] }}</span>
             <span class="text-xs font-normal text-fg-muted tabular-nums">{{ byStage.get(s)?.length ?? 0 }}</span>
           </h2>
           <ul class="space-y-2">
             <li v-for="a in byStage.get(s) ?? []" :key="a.id">
-              <button type="button" class="w-full rounded-xl bg-surface p-3 text-left ring-1 ring-line transition hover:ring-brand-400" @click="router.push(`/hr/recruitment/applications/${a.id}`)">
+              <button type="button" class="w-full rounded-md border border-line bg-surface p-3 text-left transition hover:border-brand-400" @click="router.push(`/hr/recruitment/applications/${a.id}`)">
                 <span class="flex items-center gap-2.5">
                   <AppAvatar :name="a.candidate.name" size="sm" />
                   <span class="min-w-0">
@@ -134,7 +134,7 @@ async function addExisting(candidateId: string) {
             </li>
           </ul>
         </section>
-        <button type="button" class="w-40 shrink-0 rounded-2xl border-2 border-dashed border-line p-3 text-sm text-fg-muted hover:border-brand-400 hover:text-fg" @click="showClosed = !showClosed">
+        <button type="button" class="w-32 shrink-0 self-start rounded-md border border-dashed border-line-strong p-3 text-xs text-fg-muted hover:border-brand-400 hover:text-fg" @click="showClosed = !showClosed">
           {{ showClosed ? 'Hide' : 'Show' }} hired, rejected and withdrawn ({{ CLOSED.reduce((n, s) => n + (byStage.get(s)?.length ?? 0), 0) }})
         </button>
       </div>

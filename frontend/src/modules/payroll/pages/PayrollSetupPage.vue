@@ -7,7 +7,7 @@ import ComponentFormModal from '@/modules/payroll/components/ComponentFormModal.
 import StructureFormModal from '@/modules/payroll/components/StructureFormModal.vue';
 import type { SalaryComponentDef, SalaryStructure } from '@/modules/payroll/types';
 import { lineRule } from '@/modules/payroll/utils/payroll-format';
-import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppEmptyState, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppTabs } from '@/shared/components';
+import { AppAddTile, AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppEmptyState, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppTabs } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -132,7 +132,7 @@ async function saveSettings() {
             <AppButton v-if="canConfigure" :icon="Sparkles" :loading="seeding" @click="addStandard">Add standard structure</AppButton>
           </AppEmptyState>
         </AppCard>
-        <div v-else class="grid gap-4 lg:grid-cols-2">
+        <div v-else class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           <AppCard v-for="st in structures.data.value" :key="st.id" :title="st.name" :description="st.description ?? undefined">
             <template #actions>
               <AppBadge v-if="!st.isActive">Inactive</AppBadge>
@@ -149,6 +149,7 @@ async function saveSettings() {
               </li>
             </ul>
           </AppCard>
+          <AppAddTile v-if="canConfigure" title="New structure" description="Combine components into a template, e.g. for interns or a sales plan." @click="openStructure(null)" />
         </div>
       </template>
 

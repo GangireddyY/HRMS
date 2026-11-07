@@ -46,6 +46,7 @@ const typeOptions = computed(() =>
       return { value: t.id, label: `${t.name} (${t.code})`, description: b.available === null ? 'No limit' : `${formatDays(b.available)} available` };
     }),
 );
+const pickable = computed(() => props.balances.filter((b) => typeOptions.value.some((o) => o.value === b.leaveType.id)));
 const type = computed(() => props.types.find((t) => t.id === form.leaveTypeId) ?? null);
 const singleDay = computed(() => !!form.startDate && (!form.endDate || form.endDate === form.startDate));
 const sessionOptions = [
@@ -133,7 +134,7 @@ async function submit() {
         </div>
       </template>
 
-      <div v-if="quote || quoting" class="rounded-xl bg-surface-muted/60 p-4 text-sm" aria-live="polite">
+      <div v-if="quote || quoting" class="rounded-md border border-line bg-ai-wash p-4 text-sm" aria-live="polite">
         <div v-if="quote" class="flex flex-wrap items-baseline justify-between gap-3">
           <p class="flex items-center gap-2 font-medium text-fg">
             <CalendarDays :size="16" class="text-fg-muted" aria-hidden="true" />
@@ -155,8 +156,28 @@ async function submit() {
         </ul>
       </div>
 
-      <AppTextarea v-model="form.reason" label="Reason" required :rows="2" :maxlength="500" placeholder="e.g. Family function" :error="fieldErrors.reason" />
+      <AppTextarea v-model="form.reason" label="Reason" required :rows="3" :maxlength="500" placeholder="e.g. Family function" :error="fieldErrors.reason" />
     </form>
+    <template #aside>
+      <section v-if="pickable.length" class="card">
+        <h3 class="border-b border-line/70 px-4 py-2.5 text-sm font-semibold text-fg">Your balances</h3>
+        <ul class="p-1.5">
+          <li v-for="b in pickable" :key="b.leaveType.id">
+            <button
+              type="button"
+              :class="['flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition', form.leaveTypeId === b.leaveType.id ? 'bg-brand-50 ring-1 ring-brand-300 dark:bg-brand-500/10 dark:ring-brand-500/40' : 'hover:bg-surface-muted']"
+              :aria-pressed="form.leaveTypeId === b.leaveType.id"
+              @click="form.leaveTypeId = b.leaveType.id"
+            >
+              <span class="h-6 w-1 shrink-0 rounded-full" :style="{ background: b.leaveType.color }" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate text-fg">{{ b.leaveType.name }}</span>
+              <span class="font-semibold text-fg tabular-nums">{{ b.available === null ? '∞' : formatDays(b.available) }}</span>
+            </button>
+          </li>
+        </ul>
+        <p class="border-t border-line/70 px-4 py-2 text-xs text-fg-muted">Available after pending requests. Pick one to apply for it.</p>
+      </section>
+    </template>
     <template #footer>
       <AppButton variant="secondary" @click="emit('close')">Cancel</AppButton>
       <AppButton type="submit" form="apply-leave-form" :loading="saving" :disabled="!canSubmit">Submit request</AppButton>

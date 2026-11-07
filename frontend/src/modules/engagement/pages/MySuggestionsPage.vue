@@ -4,7 +4,7 @@ import { Lightbulb } from '@lucide/vue';
 import { SUGGESTION_CATEGORIES, type SuggestionCategory } from '@contracts';
 import { engagementApi } from '@/modules/engagement/api/engagement.api';
 import { SUGGESTION_CATEGORY_LABELS, SUGGESTION_STATUS_LABELS, suggestionTone } from '@/modules/engagement/utils/engagement-format';
-import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppEmptyState, AppInput, AppPageHeader, AppSelect, AppTextarea } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppEmptyState, AppInput, AppPageHeader, AppSelect, AppSplit, AppTextarea } from '@/shared/components';
 import { employeesApi } from '@/modules/people/api/people.api';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
@@ -39,20 +39,9 @@ async function submit() {
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl space-y-4">
+  <div>
     <AppPageHeader title="Suggestions" description="Ideas to make work better. HR reviews every one." back="/me/engagement" back-label="Company" />
-    <AppCard v-if="canSuggest" title="New suggestion">
-      <form class="space-y-4" novalidate @submit.prevent="submit">
-        <AppAlert v-if="formError">{{ formError }}</AppAlert>
-        <div class="grid gap-4 sm:grid-cols-[1fr_200px]">
-          <AppInput v-model="form.title" label="Idea" required :maxlength="200" :error="fieldErrors.title" />
-          <AppSelect v-model="form.category" label="Area" :options="categoryOptions" :clearable="false" />
-        </div>
-        <AppTextarea v-model="form.body" label="Details" required :rows="4" :maxlength="4000" placeholder="What would you change, and what difference would it make?" :error="fieldErrors.body" />
-        <AppCheckbox v-model="form.anonymous" label="Send anonymously" description="Your name isn't stored, so you won't see it in your list or get a reply." />
-        <AppButton type="submit" :loading="sending" :disabled="form.title.trim().length < 3 || form.body.trim().length < 10">Send</AppButton>
-      </form>
-    </AppCard>
+    <AppSplit aside="lg">
     <AppCard title="Your suggestions" :padded="false">
       <AppEmptyState v-if="!table.loading.value && !table.rows.value.length" :icon="Lightbulb" title="No suggestions yet" compact />
       <ul v-else class="divide-y divide-line">
@@ -66,5 +55,18 @@ async function submit() {
         </li>
       </ul>
     </AppCard>
+    <template v-if="canSuggest" #aside>
+      <AppCard title="New suggestion" :icon="Lightbulb">
+        <form class="space-y-4" novalidate @submit.prevent="submit">
+          <AppAlert v-if="formError">{{ formError }}</AppAlert>
+          <AppInput v-model="form.title" label="Idea" required :maxlength="200" :error="fieldErrors.title" />
+          <AppSelect v-model="form.category" label="Area" :options="categoryOptions" :clearable="false" />
+          <AppTextarea v-model="form.body" label="Details" required :rows="5" :maxlength="4000" placeholder="What would you change, and what difference would it make?" :error="fieldErrors.body" />
+          <AppCheckbox v-model="form.anonymous" label="Send anonymously" description="Your name isn't stored, so you won't see it in your list or get a reply." />
+          <AppButton type="submit" block :loading="sending" :disabled="form.title.trim().length < 3 || form.body.trim().length < 10">Send</AppButton>
+        </form>
+      </AppCard>
+    </template>
+    </AppSplit>
   </div>
 </template>

@@ -140,6 +140,7 @@ function onTriggerKey(e: KeyboardEvent) {
           ref="trigger"
           type="button"
           aria-haspopup="dialog"
+          :data-required="required || undefined"
           :aria-expanded="open"
           :aria-label="label ? undefined : `${ariaLabel ?? 'Date'}${display ? `, ${display}` : ''}`"
           :aria-labelledby="label ? `${fieldId}-label ${fieldId}-value` : undefined"

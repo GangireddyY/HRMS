@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { CheckCircle2, ShieldCheck } from '@lucide/vue';
 import { engagementApi } from '@/modules/engagement/api/engagement.api';
-import { AppAlert, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton, AppTextarea } from '@/shared/components';
+import { AppAlert, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton, AppSplit, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { formatDateTime } from '@/shared/utils/format';
@@ -16,6 +16,8 @@ const s = computed(() => survey.data.value);
 const answers = reactive<Record<string, number | string>>({});
 const { formError, handle, reset } = useFormErrors();
 const sending = ref(false);
+const answered = computed(() => (s.value ? s.value.questions.filter((q) => answers[q.id] !== undefined && String(answers[q.id]).trim() !== '').length : 0));
+const progress = computed(() => (!s.value?.questions.length ? 0 : s.value.responded ? 100 : Math.round((answered.value / s.value.questions.length) * 100)));
 const complete = computed(() => !!s.value && s.value.questions.every((q) => !q.required || (answers[q.id] !== undefined && String(answers[q.id]).trim() !== '')));
 async function submit() {
   reset();
@@ -32,14 +34,12 @@ async function submit() {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl">
+  <div>
     <AppSkeleton v-if="survey.loading.value && !s" :lines="8" />
     <AppErrorState v-else-if="survey.error.value" :error="survey.error.value" title="This survey isn't available" @retry="survey.run" />
     <template v-else-if="s">
       <AppPageHeader :title="s.title" :description="s.description ?? undefined" back="/me/engagement" back-label="Company" />
-      <AppAlert v-if="s.anonymous" tone="info" class="mb-4" title="Anonymous">
-        <span class="inline-flex items-start gap-2"><ShieldCheck :size="16" class="mt-0.5 shrink-0" aria-hidden="true" />Your answers are stored without your name, and results are only shown once at least three people have answered.</span>
-      </AppAlert>
+      <AppSplit>
       <AppCard v-if="s.responded">
         <div class="flex flex-col items-center py-8 text-center">
           <CheckCircle2 :size="40" class="text-emerald-500" aria-hidden="true" />
@@ -48,7 +48,7 @@ async function submit() {
         </div>
       </AppCard>
       <AppCard v-else-if="!s.permissions.respond"><p class="text-sm text-fg-muted">This survey is closed.</p></AppCard>
-      <form v-else class="space-y-4" novalidate @submit.prevent="submit">
+      <form v-else id="survey-form" class="space-y-4" novalidate @submit.prevent="submit">
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppCard v-for="(q, i) in s.questions" :key="q.id">
           <fieldset>
@@ -77,11 +77,27 @@ async function submit() {
             <AppTextarea v-else v-model="(answers[q.id] as string)" :aria-label="q.prompt" :rows="3" :maxlength="2000" />
           </fieldset>
         </AppCard>
-        <div class="flex items-center justify-between gap-3">
-          <p class="text-xs text-fg-muted">{{ s.closesAt ? `Closes ${formatDateTime(s.closesAt)}` : '' }}</p>
+        <div class="flex justify-end xl:hidden">
           <AppButton type="submit" size="lg" :loading="sending" :disabled="!complete">Send answers</AppButton>
         </div>
       </form>
+      <template #aside>
+        <section class="card ai-ring bg-ai-wash p-4">
+          <p class="text-xs font-medium tracking-wide text-fg-muted uppercase">Your progress</p>
+          <p class="mt-1 text-2xl font-semibold text-fg tabular-nums">{{ s.responded ? s.questions.length : answered }} / {{ s.questions.length }}</p>
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+            <div class="h-full bg-brand-500 transition-[width]" :style="{ width: `${progress}%` }" />
+          </div>
+          <p class="mt-2 text-xs text-fg-muted">{{ s.responded ? 'Sent — thank you.' : s.closesAt ? `Closes ${formatDateTime(s.closesAt)}` : 'Open until HR closes it.' }}</p>
+          <div v-if="!s.responded && s.permissions.respond" class="mt-3 hidden xl:block">
+            <AppButton block type="submit" form="survey-form" :loading="sending" :disabled="!complete">Send answers</AppButton>
+          </div>
+        </section>
+        <AppCard v-if="s.anonymous" title="Anonymous" :icon="ShieldCheck">
+          <p class="text-[13px] text-fg-muted">Your answers are stored without your name, and results are only shown once at least three people have answered.</p>
+        </AppCard>
+      </template>
+      </AppSplit>
     </template>
   </div>
 </template>

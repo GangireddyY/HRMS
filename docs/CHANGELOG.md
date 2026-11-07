@@ -11,6 +11,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Changed
 - HR, employee, administration and platform dashboards are rebuilt around these: a hero summary, KPI trends, a "waiting for you" queue, insights, who's out this week and what's coming up.
 - Sidebar sections collapse (remembered per browser); pages have a soft gradient wash at the top.
+- No more narrow centred pages: payslip, announcement, survey, suggestions, resignation and exit letter pages use the full width with a side panel (`AppSplit`, `AppFacts`) — net pay and attendance next to the payslip, progress and the send button next to a survey, "what happens next" next to the resignation form. The Company feed shows upcoming events and recognition beside it; the job pipeline's columns stretch to fill the screen; short card grids end with an "add" tile (`AppAddTile`).
+- Form pages have a side panel on wide screens (`AppFormGuide`): required fields still empty (click to jump to one), errors to fix, shortcuts (Ctrl/⌘+Enter saves, Esc goes back) and Ask AI. Forms add their own context through AppModal's `aside` slot — Apply for leave shows your balances there, and picking one selects that leave type.
 
 ## [1.10.2] – 2026-11-07 – Demo data
 
