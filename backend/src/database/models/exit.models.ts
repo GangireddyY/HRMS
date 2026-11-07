@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitReason, ExitStatus, ExitType, SettlementStatus } from '../../contracts';
+import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '../../contracts';
 import { Employee } from './people.models';
 
 export interface ExitFeedback {
@@ -107,6 +107,49 @@ export class ExitSettlement extends Model<InferAttributes<ExitSettlement>, Infer
   @Column(DataType.STRING(1000)) returnedNote: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) paidOn: CreationOptional<string | null>;
   @Column(DataType.STRING(120)) paymentReference: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
+@Table({ tableName: 'exit_letters', underscored: true })
+export class ExitLetter extends Model<InferAttributes<ExitLetter>, InferCreationAttributes<ExitLetter>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => ExitCase) @Column(DataType.UUID) caseId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(12)) type: ExitLetterType;
+  @Column(DataType.STRING(20)) reference: string;
+  @Column(DataType.DATEONLY) letterDate: string;
+  @Column(DataType.STRING(200)) subject: string;
+  @Column(DataType.TEXT) body: string;
+  @Column(DataType.STRING(200)) signatoryName: string;
+  @Column(DataType.STRING(200)) signatoryTitle: CreationOptional<string | null>;
+  @Column(DataType.UUID) issuedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) issuedAt: Date;
+  @Column(DataType.UUID) revokedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) revokedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(1000)) revokedReason: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
+@Table({ tableName: 'alumni_profiles', underscored: true })
+export class AlumniProfile extends Model<InferAttributes<AlumniProfile>, InferCreationAttributes<AlumniProfile>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.BOOLEAN) optedIn: CreationOptional<boolean>;
+  @Column(DataType.STRING(254)) personalEmail: CreationOptional<string | null>;
+  @Column(DataType.STRING(30)) phone: CreationOptional<string | null>;
+  @Column(DataType.STRING(255)) linkedinUrl: CreationOptional<string | null>;
+  @Column(DataType.STRING(200)) currentCompany: CreationOptional<string | null>;
+  @Column(DataType.STRING(200)) currentTitle: CreationOptional<string | null>;
+  @Column(DataType.STRING(100)) city: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) openToOpportunities: CreationOptional<boolean>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
 }

@@ -21,13 +21,23 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  ADVANCE_MAX_TENURE_MONTHS,
   COMPONENT_CALCULATIONS,
+  LOAN_MAX_INTEREST_RATE,
+  LOAN_MAX_PRINCIPAL,
+  LOAN_MAX_TENURE_MONTHS,
+  LOAN_STATUSES,
+  LOAN_TYPES,
+  OVERTIME_BASES,
   PAYROLL_RUN_STATUSES,
   PROFESSIONAL_TAX_STATES,
   REIMBURSEMENT_CATEGORIES,
   REIMBURSEMENT_STATUSES,
   TAX_REGIMES,
   type ComponentCalculation,
+  type LoanStatus,
+  type LoanType,
+  type OvertimeBasis,
   type PayrollRunStatus,
   type ReimbursementCategory,
   type ReimbursementStatus,
@@ -58,6 +68,9 @@ export class PayrollSettingsDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNullUpper) @optionalNullable @IsString() @MaxLength(30) esiEmployerCode?: string | null;
   @ApiPropertyOptional({ nullable: true, description: 'Tax deduction account number, e.g. BLRA12345B' })
   @Transform(emptyToNullUpper) @optionalNullable @Matches(/^[A-Z]{4}[0-9]{5}[A-Z]$/, { message: 'tan must look like BLRA12345B' }) tan?: string | null;
+  @ApiPropertyOptional({ description: 'Overtime is paid at this multiple of the hourly rate (Factories Act: twice)', default: 2 })
+  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 1 }) @Min(1) @Max(5) overtimeMultiplier?: number;
+  @ApiPropertyOptional({ enum: OVERTIME_BASES, description: 'Hourly rate = monthly Basic or gross ÷ 26 days ÷ 8 hours' }) @IsOptional() @IsIn(OVERTIME_BASES) overtimeBasis?: OvertimeBasis;
 }
 
 // ---- Components & structures -------------------------------------------------------------------
@@ -191,4 +204,54 @@ export class ClaimQueryDto extends PaginationQueryDto {
 
 export class ReviewClaimDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+
+// ---- Loans & salary advances ---------------------------------------------------------------------
+
+export class LoanRequestDto {
+  @ApiProperty({ enum: LOAN_TYPES }) @IsIn(LOAN_TYPES) type!: LoanType;
+  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1000) @Max(LOAN_MAX_PRINCIPAL) amount!: number;
+  @ApiProperty({ description: `Months to repay (advances: up to ${ADVANCE_MAX_TENURE_MONTHS})` }) @Type(() => Number) @IsInt() @Min(1) @Max(LOAN_MAX_TENURE_MONTHS) tenureMonths!: number;
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 500) purpose!: string;
+}
+
+/** Raised by payroll on an employee's behalf; still approved by someone else. */
+export class CreateLoanDto extends LoanRequestDto {
+  @ApiProperty() @IsUUID() employeeId!: string;
+}
+
+export class ApproveLoanDto {
+  @ApiPropertyOptional({ description: 'Approve a smaller amount than requested' }) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1000) @Max(LOAN_MAX_PRINCIPAL) amount?: number;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(LOAN_MAX_TENURE_MONTHS) tenureMonths?: number;
+  @ApiPropertyOptional({ description: 'Yearly interest on the reducing balance (loans only)', default: 0 }) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(LOAN_MAX_INTEREST_RATE) interestRate?: number;
+  @ApiProperty({ description: 'First month payroll deducts the instalment' }) @Type(() => Number) @IsInt() @Min(2000) @Max(2100) startYear!: number;
+  @ApiProperty() @Type(() => Number) @IsInt() @Min(1) @Max(12) startMonth!: number;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(1000) note?: string | null;
+}
+
+export class RejectLoanDto {
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 1000) note!: string;
+}
+
+export class DisburseLoanDto {
+  @ApiProperty() @IsISO8601(DATE) disbursedOn!: string;
+  @ApiProperty({ description: 'Bank transfer reference' }) @Transform(trim) @IsString() @Length(2, 120) reference!: string;
+}
+
+export class DeferLoanDto {
+  @ApiProperty({ description: 'Next month payroll deducts the instalment' }) @Type(() => Number) @IsInt() @Min(2000) @Max(2100) startYear!: number;
+  @ApiProperty() @Type(() => Number) @IsInt() @Min(1) @Max(12) startMonth!: number;
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 500) note!: string;
+}
+
+export class LoanRepaymentDto {
+  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(LOAN_MAX_PRINCIPAL) amount!: number;
+  @ApiProperty() @IsISO8601(DATE) paidOn!: string;
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 500) note!: string;
+}
+
+export class LoanQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: ['approve', 'all'], default: 'all', description: 'approve = requests waiting for me' }) @IsOptional() @IsIn(['approve', 'all']) view?: 'approve' | 'all';
+  @ApiPropertyOptional({ enum: [...LOAN_STATUSES, 'OPEN'] }) @IsOptional() @IsIn([...LOAN_STATUSES, 'OPEN']) status?: LoanStatus | 'OPEN';
+  @ApiPropertyOptional({ enum: LOAN_TYPES }) @IsOptional() @IsIn(LOAN_TYPES) type?: LoanType;
 }

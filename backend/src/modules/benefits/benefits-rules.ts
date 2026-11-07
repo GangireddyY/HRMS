@@ -1,6 +1,7 @@
 import {
   LIFE_EVENT_WINDOW_DAYS,
   NEW_JOINER_WINDOW_DAYS,
+  RENEWAL_WINDOW_DAYS,
   type DependentRelation,
   type EmployeeStatus,
   type EmploymentType,
@@ -8,7 +9,7 @@ import {
   type BenefitEnrollmentStatus,
   type FamilyRelationship,
 } from '../../contracts';
-import { addDays } from '../../common/utils/zoned-time';
+import { addDays, addMonths } from '../../common/utils/zoned-time';
 
 export interface EligibilityRules {
   employmentTypes: EmploymentType[] | null;
@@ -120,6 +121,30 @@ export function dependentProblems(option: { allowedRelations: DependentRelation[
     if (deps.filter((d) => d.relationship === single).length > 1) problems.push(`Only one ${single.toLowerCase()} can be covered`);
   }
   return problems;
+}
+
+/**
+ * The next policy period of a plan: starts the day after the current one ends and lasts as long. The renewal
+ * enrolment window opens RENEWAL_WINDOW_DAYS before it starts (not before today) and closes the day before.
+ */
+export function renewalPeriod(plan: Pick<EligibilityRules, 'coverageStartsOn' | 'coverageEndsOn'>, today: string) {
+  const coverageStartsOn = addDays(plan.coverageEndsOn, 1);
+  const [sy, sm, sd] = plan.coverageStartsOn.split('-').map(Number) as [number, number, number];
+  const [ny, nm, nd] = coverageStartsOn.split('-').map(Number) as [number, number, number];
+  // Whole months (e.g. a policy year) renew for the same number of months; otherwise for the same number of days.
+  const coverageEndsOn =
+    sd === nd
+      ? addDays(addMonths(coverageStartsOn, (ny - sy) * 12 + (nm - sm)), -1)
+      : addDays(coverageStartsOn, Math.round((Date.parse(`${plan.coverageEndsOn}T00:00:00Z`) - Date.parse(`${plan.coverageStartsOn}T00:00:00Z`)) / 86_400_000));
+  const closes = addDays(coverageStartsOn, -1);
+  const opens = later(addDays(coverageStartsOn, -RENEWAL_WINDOW_DAYS), today);
+  return { coverageStartsOn, coverageEndsOn, enrollmentOpensOn: opens <= closes ? opens : null, enrollmentClosesOn: opens <= closes ? closes : null };
+}
+
+/** The dependants that stay covered in a renewed option: relations it covers, children within the age limit, up to its maximum. */
+export function carriedDependents<T extends DependentCandidate>(option: { allowedRelations: DependentRelation[]; maxDependents: number }, maxChildAge: number | null, deps: T[], on: string): T[] {
+  const kept = deps.filter((d) => dependentProblems({ allowedRelations: option.allowedRelations, maxDependents: Number.MAX_SAFE_INTEGER }, maxChildAge, [d], on).length === 0);
+  return kept.slice(0, option.maxDependents);
 }
 
 /** Whether an enrolment's contribution is deducted in a payroll month: coverage on at least one day of it. */

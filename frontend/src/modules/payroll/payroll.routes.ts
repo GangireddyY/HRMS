@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 const view = { permissions: ['payroll.view'], feature: 'payroll' as const };
+const loanHandlers = { permissions: ['payroll.loan.approve', 'payroll.loan.manage', 'payroll.view'], feature: 'payroll' as const };
 
 /** HR operations (/hr): payroll runs, salaries, reimbursement approvals and setup. */
 export const payrollHrRoutes: RouteRecordRaw[] = [
@@ -15,6 +16,8 @@ export const payrollHrRoutes: RouteRecordRaw[] = [
     meta: { title: 'Reimbursements', access: { permissions: ['payroll.reimbursement.approve', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
   },
   { path: 'payroll/setup', name: 'hr-payroll-setup', component: () => import('./pages/PayrollSetupPage.vue'), meta: { title: 'Payroll setup', access: { permissions: ['payroll.configure', 'payroll.view'], feature: 'payroll' } } },
+  { path: 'payroll/loans', name: 'hr-loans', component: () => import('./pages/LoansPage.vue'), meta: { title: 'Loans & advances', access: loanHandlers } },
+  { path: 'payroll/loans/:id', name: 'hr-loan', component: () => import('./pages/LoanPage.vue'), meta: { title: 'Loan', access: loanHandlers } },
 ];
 
 /** My Workspace (/me): payslips, salary & tax declaration, reimbursement claims. */
@@ -23,4 +26,6 @@ export const payrollSelfRoutes: RouteRecordRaw[] = [
   { path: 'payslips/:id', name: 'me-payslip', component: () => import('./pages/PayslipPage.vue'), meta: { title: 'Payslip', access: { permissions: ['payroll.payslip.view'], feature: 'payroll' } } },
   { path: 'salary', name: 'me-salary', component: () => import('./pages/MySalaryPage.vue'), meta: { title: 'Salary & tax', access: { tenant: true, feature: 'payroll' } } },
   { path: 'reimbursements', name: 'me-reimbursements', component: () => import('./pages/MyReimbursementsPage.vue'), meta: { title: 'Reimbursements', access: { permissions: ['payroll.reimbursement.apply'], feature: 'payroll' } } },
+  { path: 'loans', name: 'me-loans', component: () => import('./pages/MyLoansPage.vue'), meta: { title: 'Loans & advances', access: { permissions: ['payroll.loan.apply'], feature: 'payroll' } } },
+  { path: 'loans/:id', name: 'me-loan', component: () => import('./pages/LoanPage.vue'), meta: { title: 'Loan', access: { permissions: ['payroll.loan.apply'], feature: 'payroll' } } },
 ];

@@ -7,13 +7,21 @@ import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/aut
 import { AppError } from '../../common/errors/app-error';
 import {
   AdjustmentDto,
+  ApproveLoanDto,
   ClaimDto,
   ClaimQueryDto,
   ComponentDto,
+  CreateLoanDto,
   CreateRunDto,
+  DeferLoanDto,
+  DisburseLoanDto,
   FinancialYearQueryDto,
+  LoanQueryDto,
+  LoanRepaymentDto,
+  LoanRequestDto,
   PayRunDto,
   PayrollSettingsDto,
+  RejectLoanDto,
   RejectRunDto,
   ReviewClaimDto,
   ReviewRunDto,
@@ -28,6 +36,7 @@ import {
   UpdatePayslipDto,
   UpdateStructureDto,
 } from './dto/payroll.dto';
+import { LoansService } from './loans.service';
 import { PayrollConfigService } from './payroll-config.service';
 import { PayrollRunsService } from './payroll-runs.service';
 import { ReimbursementsService, type UploadedReceipt } from './reimbursements.service';
@@ -53,6 +62,7 @@ export class PayrollController {
     private readonly salaries: SalariesService,
     private readonly runs: PayrollRunsService,
     private readonly claims: ReimbursementsService,
+    private readonly loans: LoansService,
   ) {}
 
   // ---- Settings, components & structures ---------------------------------------------------------
@@ -373,5 +383,87 @@ export class PayrollController {
   @RequirePermissions('payroll.reimbursement.apply')
   cancelClaim(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
     return this.claims.cancel(auth, id);
+  }
+
+  // ---- Loans & salary advances -----------------------------------------------------------------
+
+  @Get('me/loans')
+  @RequirePermissions('payroll.loan.apply')
+  myLoans(@CurrentAuth() auth: AuthContext) {
+    return this.loans.mine(auth);
+  }
+
+  @Post('me/loans')
+  @RequirePermissions('payroll.loan.apply')
+  @ApiOperation({ summary: 'Request a loan or salary advance' })
+  requestLoan(@CurrentAuth() auth: AuthContext, @Body() dto: LoanRequestDto) {
+    return this.loans.request(auth, dto);
+  }
+
+  @Get('loans')
+  @RequireTenant()
+  listLoans(@CurrentAuth() auth: AuthContext, @Query() query: LoanQueryDto) {
+    requireAny(auth, 'payroll.loan.approve', 'payroll.loan.manage', 'payroll.view');
+    return this.loans.list(auth, query);
+  }
+
+  @Post('loans')
+  @RequirePermissions('payroll.loan.manage')
+  @ApiOperation({ summary: "Raise a loan or advance on an employee's behalf (approved by someone else)" })
+  raiseLoan(@CurrentAuth() auth: AuthContext, @Body() dto: CreateLoanDto) {
+    return this.loans.raise(auth, dto);
+  }
+
+  @Get('loans/first-month')
+  @RequireTenant()
+  @ApiOperation({ summary: 'The first month payroll can still deduct an instalment in' })
+  loanFirstMonth(@CurrentAuth() auth: AuthContext) {
+    requireAny(auth, 'payroll.loan.approve', 'payroll.loan.manage');
+    return this.loans.firstOpenMonth(auth);
+  }
+
+  @Get('loans/:id')
+  @RequireTenant()
+  loan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth, 'payroll.loan.apply', 'payroll.loan.approve', 'payroll.loan.manage', 'payroll.view');
+    return this.loans.get(auth, id);
+  }
+
+  @Post('loans/:id/approve')
+  @RequirePermissions('payroll.loan.approve')
+  approveLoan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ApproveLoanDto) {
+    return this.loans.approve(auth, id, dto);
+  }
+
+  @Post('loans/:id/reject')
+  @RequirePermissions('payroll.loan.approve')
+  rejectLoan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectLoanDto) {
+    return this.loans.reject(auth, id, dto);
+  }
+
+  @Post('loans/:id/cancel')
+  @RequireTenant()
+  cancelLoan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth, 'payroll.loan.apply', 'payroll.loan.manage');
+    return this.loans.cancel(auth, id);
+  }
+
+  @Post('loans/:id/disburse')
+  @RequirePermissions('payroll.loan.manage')
+  disburseLoan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: DisburseLoanDto) {
+    return this.loans.disburse(auth, id, dto);
+  }
+
+  @Post('loans/:id/defer')
+  @RequirePermissions('payroll.loan.manage')
+  deferLoan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: DeferLoanDto) {
+    return this.loans.defer(auth, id, dto);
+  }
+
+  @Post('loans/:id/repayments')
+  @RequirePermissions('payroll.loan.manage')
+  @ApiOperation({ summary: 'Record a repayment made outside payroll' })
+  repayLoan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: LoanRepaymentDto) {
+    return this.loans.repay(auth, id, dto);
   }
 }

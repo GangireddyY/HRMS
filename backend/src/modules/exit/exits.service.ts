@@ -14,7 +14,7 @@ import { fullName, organizationToday, userIdsOf, usersWithPermission } from '../
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { ApproveExitDto, ClearanceItemDto, CloseExitDto, ExitQueryDto, FeedbackDto, InitiateExitDto, ResignDto, UpdateClearanceDto, UpdateExitDto } from './dto/exit.dto';
-import { noticeEnd, noticeShortfall, serviceLength } from './exit-rules';
+import { letterBlocker, noticeEnd, noticeShortfall, serviceLength } from './exit-rules';
 
 const PERSON = ['id', 'employeeCode', 'firstName', 'lastName', 'departmentId', 'designationId', 'managerId', 'dateOfJoining', 'status', 'employmentType', 'noticePeriodDays', 'membershipId'];
 const personInclude = () => [
@@ -448,6 +448,7 @@ export class ExitsService {
         completeBlocker: access.manage && full.status === 'APPROVED' ? blocker : null,
         cancel: access.manage && (full.status === 'SUBMITTED' || full.status === 'APPROVED'),
         settle: access.settle && (full.status === 'APPROVED' || full.status === 'COMPLETED'),
+        letters: access.manage && !letterBlocker(full.status, full.type),
       },
     };
   }

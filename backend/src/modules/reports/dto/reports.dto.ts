@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsISO8601, IsOptional, IsUUID, Matches } from 'class-validator';
+import { IsIn, IsISO8601, IsOptional, IsUUID, Matches } from 'class-validator';
+import { REPORT_EXPORT_FORMATS, type ReportExportFormat } from '../../../contracts';
 
 const DATE = { strict: true, strictSeparator: true };
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -11,4 +12,8 @@ export class ReportQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() departmentId?: string;
   @ApiPropertyOptional({ example: '2025-12', description: 'Payroll cost: first month (YYYY-MM)' }) @IsOptional() @Matches(MONTH, { message: 'fromMonth must be YYYY-MM' }) fromMonth?: string;
   @ApiPropertyOptional({ example: '2026-11' }) @IsOptional() @Matches(MONTH, { message: 'toMonth must be YYYY-MM' }) toMonth?: string;
+}
+
+export class ReportExportQueryDto extends ReportQueryDto {
+  @ApiPropertyOptional({ enum: REPORT_EXPORT_FORMATS, default: 'csv' }) @IsOptional() @IsIn(REPORT_EXPORT_FORMATS) format?: ReportExportFormat;
 }

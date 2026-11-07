@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { Transaction } from 'sequelize';
-import type { TrainingCourse, TrainingEnrollment } from '../../database/models';
+import { EmployeeSkill, TrainingCourseSkill, type TrainingCourse, type TrainingEnrollment } from '../../database/models';
 import { certificateExpiry, missingRequirements } from './training-rules';
 
 export const isSessionBased = (c: Pick<TrainingCourse, 'delivery'>) => c.delivery !== 'SELF_PACED';
@@ -26,5 +26,17 @@ export async function completeIfDone(e: TrainingEnrollment, c: TrainingCourse, t
     },
     { transaction },
   );
+  await awardCourseSkills(e, transaction);
   return true;
+}
+
+/** Completing a course verifies the skills it teaches at its level (never lowering a higher verified level). */
+export async function awardCourseSkills(e: TrainingEnrollment, transaction: Transaction): Promise<void> {
+  const taught = await TrainingCourseSkill.findAll({ where: { courseId: e.courseId }, transaction });
+  for (const t of taught) {
+    const existing = await EmployeeSkill.findOne({ where: { employeeId: e.employeeId, skillId: t.skillId }, transaction });
+    const values = { verifiedLevel: t.level, verifiedSource: 'TRAINING' as const, verifiedAt: new Date(), verifiedById: null };
+    if (!existing) await EmployeeSkill.create({ organizationId: e.organizationId, employeeId: e.employeeId, skillId: t.skillId, ...values }, { transaction });
+    else if ((existing.verifiedLevel ?? 0) < t.level) await existing.update(values, { transaction });
+  }
 }

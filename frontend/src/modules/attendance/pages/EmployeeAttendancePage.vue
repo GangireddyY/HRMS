@@ -7,7 +7,7 @@ import AttendanceCalendarView from '@/modules/attendance/components/AttendanceCa
 import DayEditModal from '@/modules/attendance/components/DayEditModal.vue';
 import type { CalendarDay } from '@/modules/attendance/types';
 import { currentMonth, formatMinutes, shiftMonth } from '@/modules/attendance/utils/attendance-format';
-import { AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton } from '@/shared/components';
+import { AppButton, AppCard, AppErrorState, AppInput, AppPageHeader, AppSkeleton } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -48,9 +48,33 @@ const stats = computed(() => {
         ['Late days', s.lateDays],
         ['Holidays', s.holidays],
         ['Worked', formatMinutes(s.workedMinutes)],
+        ['From home', s.workFromHomeDays],
+        ['Overtime approved', formatMinutes(s.overtimeMinutes)],
       ]
     : [];
 });
+
+// Device user number (biometric / card readers).
+const canConfigure = computed(() => auth.can('attendance.configure'));
+const code = ref('');
+watch(
+  () => calendar.data.value?.employee.biometricCode,
+  (v) => (code.value = v ?? ''),
+  { immediate: true },
+);
+const savingCode = ref(false);
+async function saveCode() {
+  savingCode.value = true;
+  try {
+    await attendanceApi.setBiometricCode(id.value, code.value.trim() || null);
+    feedback.success(code.value.trim() ? 'Device user number saved' : 'Device user number removed');
+    await calendar.run();
+  } catch (e) {
+    feedback.error('Could not save the device user number', e);
+  } finally {
+    savingCode.value = false;
+  }
+}
 </script>
 
 <template>
@@ -72,14 +96,22 @@ const stats = computed(() => {
         <AppCard class="xl:col-span-2" :description="canCorrect ? 'Select a day to correct its punch times.' : calendar.data.value.closed ? 'This month is closed.' : undefined">
           <AttendanceCalendarView :calendar="calendar.data.value" :selectable="canCorrect" @prev="month = shiftMonth(month, -1)" @next="month = shiftMonth(month, 1)" @select="onSelect" />
         </AppCard>
-        <AppCard title="Month summary">
-          <dl class="space-y-2.5 text-sm">
-            <div v-for="[label, value] in stats" :key="label" class="flex justify-between gap-3">
-              <dt class="text-fg-muted">{{ label }}</dt>
-              <dd class="font-medium text-fg tabular-nums">{{ value }}</dd>
-            </div>
-          </dl>
-        </AppCard>
+        <div class="space-y-6">
+          <AppCard title="Month summary">
+            <dl class="space-y-2.5 text-sm">
+              <div v-for="[label, value] in stats" :key="label" class="flex justify-between gap-3">
+                <dt class="text-fg-muted">{{ label }}</dt>
+                <dd class="font-medium text-fg tabular-nums">{{ value }}</dd>
+              </div>
+            </dl>
+          </AppCard>
+          <AppCard v-if="canConfigure" title="Attendance devices" description="The person's user number on biometric or card readers. Without one, punches are matched by employee code.">
+            <form class="flex items-end gap-2" @submit.prevent="saveCode">
+              <AppInput v-model="code" class="flex-1" label="Device user number" :maxlength="30" :placeholder="calendar.data.value.employee.employeeCode" />
+              <AppButton type="submit" variant="secondary" :loading="savingCode" :disabled="code.trim() === (calendar.data.value.employee.biometricCode ?? '')">Save</AppButton>
+            </form>
+          </AppCard>
+        </div>
       </div>
       <DayEditModal :open="!!selected" :day="selected" mode="correct" :time-zone="calendar.data.value.timeZone" :employee-id="id" @close="selected = null" @saved="onSaved" />
     </template>

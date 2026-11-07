@@ -4,8 +4,10 @@ import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import AttendanceCalendarView from '@/modules/attendance/components/AttendanceCalendar.vue';
 import DayEditModal from '@/modules/attendance/components/DayEditModal.vue';
 import PunchCard from '@/modules/attendance/components/PunchCard.vue';
+import WorkFromHomeModal from '@/modules/attendance/components/WorkFromHomeModal.vue';
 import type { CalendarDay } from '@/modules/attendance/types';
-import { REGULARIZATION_LABELS, currentMonth, formatMinutes, formatTime, regularizationTone, shiftMonth } from '@/modules/attendance/utils/attendance-format';
+import { OVERTIME_LABELS, REGULARIZATION_LABELS, currentMonth, dateRange, formatMinutes, formatTime, overtimeTone, regularizationTone, shiftMonth } from '@/modules/attendance/utils/attendance-format';
+import { House } from '@lucide/vue';
 import { AppBadge, AppButton, AppCard, AppEmptyState, AppErrorState, AppPageHeader, AppSkeleton } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -17,7 +19,25 @@ const feedback = useFeedbackStore();
 const month = ref(currentMonth());
 const calendar = useAsync(() => attendanceApi.calendar(month.value));
 const requests = useAsync(() => attendanceApi.regularizations({ view: 'mine', pageSize: 8 }));
+const canWfh = computed(() => auth.can('attendance.wfh.apply'));
+const wfh = useAsync(() => attendanceApi.workFromHome({ view: 'mine', pageSize: 6 }));
+const overtime = useAsync(() => attendanceApi.overtime({ view: 'mine', pageSize: 6 }));
 watch(month, () => void calendar.run());
+const askingWfh = ref(false);
+async function onWfh() {
+  askingWfh.value = false;
+  feedback.success('Request sent', 'Your manager has been notified.');
+  await wfh.run();
+}
+async function cancelWfh(id: string) {
+  try {
+    await attendanceApi.cancelWorkFromHome(id);
+    feedback.success('Request withdrawn');
+    await Promise.all([wfh.run(), calendar.run()]);
+  } catch (e) {
+    feedback.error('Could not withdraw the request', e);
+  }
+}
 
 const canRequest = computed(() => auth.can('attendance.regularize.apply'));
 const selected = ref<CalendarDay | null>(null);
@@ -57,6 +77,8 @@ const stats = computed(() => {
     { label: 'Absent', value: s.absent, tone: 'text-red-600 dark:text-red-400' },
     { label: 'Late days', value: s.lateDays, tone: 'text-orange-600 dark:text-orange-400' },
     { label: 'Worked', value: formatMinutes(s.workedMinutes), tone: 'text-fg' },
+    ...(s.workFromHomeDays ? [{ label: 'From home', value: s.workFromHomeDays, tone: 'text-sky-600 dark:text-sky-400' }] : []),
+    ...(s.overtimeMinutes ? [{ label: 'Overtime approved', value: formatMinutes(s.overtimeMinutes), tone: 'text-violet-600 dark:text-violet-400' }] : []),
   ];
 });
 </script>
@@ -107,9 +129,46 @@ const stats = computed(() => {
             </li>
           </ul>
         </AppCard>
+
+        <AppCard v-if="canWfh" title="Work from home">
+          <template #actions><AppButton size="sm" variant="secondary" :icon="House" @click="askingWfh = true">Request</AppButton></template>
+          <AppSkeleton v-if="wfh.loading.value && !wfh.data.value" :lines="2" />
+          <AppEmptyState v-else-if="!wfh.data.value?.items.length" compact title="No requests yet" />
+          <ul v-else class="divide-y divide-line">
+            <li v-for="r in wfh.data.value.items" :key="r.id" class="flex items-start justify-between gap-3 py-2.5">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-fg">{{ dateRange(r.startDate, r.endDate) }}</p>
+                <p class="truncate text-xs text-fg-muted">{{ r.reason }}</p>
+                <p v-if="r.reviewNote" class="mt-0.5 text-xs text-fg-subtle italic">“{{ r.reviewNote }}” — {{ r.reviewedBy }}</p>
+              </div>
+              <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <AppBadge :tone="regularizationTone[r.status]" dot>{{ REGULARIZATION_LABELS[r.status] }}</AppBadge>
+                <AppButton v-if="r.permissions.cancel && (r.status === 'PENDING' || r.startDate > (calendar.data.value?.today ?? ''))" size="xs" variant="ghost" @click="cancelWfh(r.id)">Withdraw</AppButton>
+              </div>
+            </li>
+          </ul>
+        </AppCard>
+
+        <AppCard v-if="overtime.data.value?.items.length" title="Overtime">
+          <ul class="divide-y divide-line">
+            <li v-for="o in overtime.data.value.items" :key="o.id" class="flex items-start justify-between gap-3 py-2.5">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-fg">{{ formatDate(o.workDate) }} · {{ formatMinutes(o.approvedMinutes ?? o.minutes) }}</p>
+                <p class="text-xs text-fg-muted">
+                  <template v-if="o.approvedMinutes !== null && o.approvedMinutes !== o.minutes">of {{ formatMinutes(o.minutes) }} worked · </template>
+                  <template v-if="o.paidIn">paid in {{ o.paidIn }} payroll</template>
+                  <template v-else-if="o.status === 'APPROVED'">paid with the next payroll</template>
+                </p>
+                <p v-if="o.reviewNote" class="mt-0.5 text-xs text-fg-subtle italic">“{{ o.reviewNote }}” — {{ o.reviewedBy }}</p>
+              </div>
+              <AppBadge :tone="overtimeTone[o.status]" dot>{{ OVERTIME_LABELS[o.status] }}</AppBadge>
+            </li>
+          </ul>
+        </AppCard>
       </div>
     </div>
 
     <DayEditModal :open="!!selected" :day="selected" mode="regularize" :time-zone="calendar.data.value?.timeZone ?? 'UTC'" @close="selected = null" @saved="onRequested" />
+    <WorkFromHomeModal :open="askingWfh" :today="calendar.data.value?.today ?? new Date().toISOString().slice(0, 10)" @close="askingWfh = false" @saved="onWfh" />
   </div>
 </template>

@@ -5,6 +5,8 @@ import {
   GRATUITY_MIN_YEARS,
   type DailyRateBasis,
   type EmploymentType,
+  type ExitLetterType,
+  type ExitStatus,
   type ExitType,
 } from '../../contracts';
 import { addDays, weekday } from '../../common/utils/zoned-time';
@@ -82,6 +84,8 @@ export interface SettlementInput {
   shortfallDays: number;
   noticeBasis: DailyRateBasis;
   recoveries: { id: string; title: string; amount: number }[];
+  /** Loans and salary advances still owed. */
+  loans?: { reference: string; type: 'LOAN' | 'ADVANCE'; amount: number }[];
   adjustments: { label: string; kind: 'EARNING' | 'DEDUCTION'; amount: number }[];
 }
 
@@ -121,10 +125,71 @@ export function settlementLines(input: SettlementInput): { lines: StatementLine[
   for (const r of input.recoveries) {
     if (r.amount > 0) lines.push({ code: `CLEARANCE_${r.id.slice(0, 8)}`, label: `Recovery – ${r.title}`, kind: 'DEDUCTION', amount: Math.round(r.amount), detail: 'From exit clearance' });
   }
+  for (const l of input.loans ?? []) {
+    if (l.amount > 0) lines.push({ code: `LOAN_${l.reference}`, label: `${l.type === 'ADVANCE' ? 'Salary advance' : 'Loan'} recovery – ${l.reference}`, kind: 'DEDUCTION', amount: Math.round(l.amount * 100) / 100, detail: 'Balance still owed' });
+  }
   input.adjustments.forEach((a, i) => {
     if (a.amount > 0) lines.push({ code: `ADJ_${i + 1}`, label: a.label, kind: a.kind, amount: Math.round(a.amount * 100) / 100, detail: null });
   });
   const totalEarnings = lines.filter((l) => l.kind === 'EARNING').reduce((s, l) => s + l.amount, 0);
   const totalDeductions = lines.filter((l) => l.kind === 'DEDUCTION').reduce((s, l) => s + l.amount, 0);
   return { lines, totalEarnings, totalDeductions, net: Math.round((totalEarnings - totalDeductions) * 100) / 100 };
+}
+
+/** Why letters can't be issued for an exit yet (or at all). */
+export function letterBlocker(status: ExitStatus, type: ExitType): string | null {
+  if (type === 'DEATH') return 'Letters are not issued for an exit on death';
+  if (status !== 'COMPLETED') return 'Letters are issued once the exit is completed';
+  return null;
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** "7 January 2019" — the way dates are written in letters. */
+export function letterDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+export interface LetterFacts {
+  organization: string;
+  firstName: string;
+  fullName: string;
+  employeeCode: string;
+  designation: string | null;
+  department: string | null;
+  dateOfJoining: string;
+  lastWorkingDay: string;
+  submittedOn: string;
+  exitType: ExitType;
+  /** The full & final settlement has been paid. */
+  settled: boolean;
+}
+
+/** Suggested subject and text of a letter; HR edits it before issuing. Paragraphs are separated by blank lines. */
+export function letterTemplate(type: ExitLetterType, f: LetterFacts): { subject: string; body: string } {
+  const role = f.designation ? `${f.designation}${f.department ? ` in the ${f.department} department` : ''}` : f.department ? `a member of the ${f.department} department` : 'an employee';
+  if (type === 'RELIEVING') {
+    const opening =
+      f.exitType === 'RESIGNATION'
+        ? `This is with reference to your resignation dated ${letterDate(f.submittedOn)}. We confirm that your resignation has been accepted and that you are relieved of your duties as ${role} at ${f.organization} with effect from the close of business on ${letterDate(f.lastWorkingDay)}.`
+        : `This is to confirm that you are relieved of your duties as ${role} at ${f.organization} with effect from the close of business on ${letterDate(f.lastWorkingDay)}.`;
+    return {
+      subject: 'Relieving letter',
+      body: [
+        `Dear ${f.fullName},`,
+        opening,
+        `You have completed the exit formalities${f.settled ? ' and your full and final settlement has been paid' : ''}.`,
+        'We thank you for your contribution to the organization and wish you every success in the future.',
+      ].join('\n\n'),
+    };
+  }
+  return {
+    subject: 'Experience certificate',
+    body: [
+      'To whom it may concern',
+      `This is to certify that ${f.fullName} (employee code ${f.employeeCode}) worked with ${f.organization} from ${letterDate(f.dateOfJoining)} to ${letterDate(f.lastWorkingDay)}, last as ${role}.`,
+      `${f.firstName} was relieved of all responsibilities on ${letterDate(f.lastWorkingDay)}.`,
+      `We wish ${f.firstName} every success in the future.`,
+    ].join('\n\n'),
+  };
 }

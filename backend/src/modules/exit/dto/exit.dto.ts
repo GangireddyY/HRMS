@@ -1,17 +1,19 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import {
   CLEARANCE_DEPARTMENTS,
   CLEARANCE_STATUSES,
   DAILY_RATE_BASES,
+  EXIT_LETTER_TYPES,
   EXIT_REASONS,
   EXIT_STATUSES,
   EXIT_TYPES,
   type ClearanceDepartment,
   type ClearanceStatus,
   type DailyRateBasis,
+  type ExitLetterType,
   type ExitReason,
   type ExitStatus,
   type ExitType,
@@ -100,4 +102,44 @@ export class ReturnSettlementDto {
 export class PaySettlementDto {
   @ApiProperty() @IsISO8601(DATE) paidOn!: string;
   @ApiProperty({ description: 'Bank transfer reference' }) @Transform(trim) @IsString() @Length(2, 120) reference!: string;
+}
+
+export class LetterDraftQueryDto {
+  @ApiProperty({ enum: EXIT_LETTER_TYPES }) @IsIn(EXIT_LETTER_TYPES) type!: ExitLetterType;
+}
+
+export class IssueLetterDto {
+  @ApiProperty({ enum: EXIT_LETTER_TYPES }) @IsIn(EXIT_LETTER_TYPES) type!: ExitLetterType;
+  @ApiProperty({ description: 'On or after the last working day, not in the future' }) @IsISO8601(DATE) letterDate!: string;
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 200) subject!: string;
+  @ApiProperty({ description: 'Plain text; separate paragraphs with a blank line' }) @Transform(trim) @IsString() @Length(20, 10000) body!: string;
+  @ApiProperty() @Transform(trim) @IsString() @Length(2, 200) signatoryName!: string;
+  @ApiPropertyOptional({ nullable: true }) @Text(200) signatoryTitle?: string | null;
+}
+
+export class RevokeLetterDto {
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 1000) reason!: string;
+}
+
+const PHONE = /^\+?[0-9 ()-]{7,20}$/;
+const lowerEmail = ({ value }: { value: unknown }) => {
+  const v = emptyToNull({ value });
+  return typeof v === 'string' ? v.toLowerCase() : v;
+};
+
+export class AlumniProfileDto {
+  @ApiProperty({ description: 'Stay in touch: HR sees your contact details only while you are opted in' }) @IsBoolean() optedIn!: boolean;
+  @ApiPropertyOptional({ nullable: true }) @Transform(lowerEmail) @optionalNullable @IsEmail() @MaxLength(254) personalEmail?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @Matches(PHONE, { message: 'phone must be a valid phone number' }) phone?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsUrl({ protocols: ['https', 'http'], require_protocol: true }) @MaxLength(255) linkedinUrl?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Text(200) currentCompany?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Text(200) currentTitle?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Text(100) city?: string | null;
+  @ApiPropertyOptional({ description: 'Happy to hear about openings and rehiring' }) @IsOptional() @IsBoolean() openToOpportunities?: boolean;
+}
+
+export class AlumniQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: ['yes', 'no', 'undecided'], description: 'Rehire eligibility recorded at exit' }) @IsOptional() @IsIn(['yes', 'no', 'undecided']) rehire?: 'yes' | 'no' | 'undecided';
+  @ApiPropertyOptional({ description: 'Only alumni who joined the network' }) @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() optedIn?: boolean;
+  @ApiPropertyOptional({ description: 'Only alumni open to opportunities' }) @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() openToOpportunities?: boolean;
 }

@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Op, type WhereOptions } from 'sequelize';
-import { EMPLOYMENT_TYPES, MAX_REPORT_DAYS, type ReportKey, type ReportTable } from '../../contracts';
+import { EMPLOYMENT_TYPES, MAX_REPORT_DAYS, REPORT_META, type ReportExportFormat, type ReportKey, type ReportTable } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
-import { csvCell } from '../../common/utils/csv';
 import { addDays, addMonths } from '../../common/utils/zoned-time';
 import {
   ApplicationEvent,
@@ -17,13 +16,16 @@ import {
   LeaveType,
   Location,
   Offer,
+  Organization,
   PayrollRun,
   Payslip,
+  User,
 } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { fullName, organizationToday } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import type { ReportQueryDto } from './dto/reports.dto';
+import { type ExportDocument, longDate, reportCsv, reportPdf, reportXlsx } from './report-export';
 import { TENURE_BANDS, attritionRate, completedYears, countBy, daysBetween, employedOn, headcountTrend, leftIn, median, monthsBetween, pct, tenureBand } from './reports-rules';
 
 const PEOPLE = ['id', 'employeeCode', 'firstName', 'lastName', 'dateOfJoining', 'exitDate', 'status', 'departmentId', 'locationId', 'gradeId', 'employmentType', 'gender'];
@@ -49,6 +51,12 @@ const STAGE_LABELS: Record<string, string> = { APPLIED: 'Applied', SCREENING: 'S
 const SOURCE_LABELS: Record<string, string> = { CAREERS: 'Careers page', REFERRAL: 'Referral', JOB_BOARD: 'Job board', LINKEDIN: 'LinkedIn', AGENCY: 'Agency', DIRECT: 'Direct', OTHER: 'Other' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const monthLabel = (year: number, month: number) => `${MONTHS[month - 1]} ${year}`;
+const monthText = (ym: string) => monthLabel(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)));
+const EXPORT_TYPES: Record<ReportExportFormat, string> = {
+  csv: 'text/csv; charset=utf-8',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pdf: 'application/pdf',
+};
 const money = (n: number) => Math.round(n * 100) / 100;
 
 const shareTable = (key: string, title: string, label: string, rows: { name: string; count: number; share: number | null }[]): ReportTable => ({
@@ -428,19 +436,30 @@ export class ReportsService {
     };
   }
 
-  /** The report's tables as CSV (each table under its title). */
-  async csv(auth: AuthContext, key: ReportKey, query: ReportQueryDto): Promise<{ fileName: string; content: string }> {
+  /** The report's tables as CSV, or as an Excel workbook or PDF that also carry the headline figures. */
+  async export(auth: AuthContext, key: ReportKey, query: ReportQueryDto, format: ReportExportFormat = 'csv'): Promise<{ fileName: string; contentType: string; content: Buffer }> {
     const report = await this.run(auth, key, query);
-    const lines: string[] = [];
-    for (const t of report.tables as ReportTable[]) {
-      if (lines.length) lines.push('');
-      lines.push(csvCell(t.title));
-      lines.push(t.columns.map((c) => csvCell(c.label)).join(','));
-      for (const r of t.rows) lines.push(t.columns.map((c) => csvCell(r[c.key])).join(','));
-    }
+    const tables = report.tables as ReportTable[];
     const period = 'asOf' in report ? report.asOf : 'from' in report ? `${report.from} to ${report.to}` : `${report.fromMonth} to ${report.toMonth}`;
-    await this.audit.record({ action: 'reports.exported', entityType: 'Report', entityId: key, summary: `${key} report exported (${period})` });
-    return { fileName: `${key} report ${period}.csv`, content: lines.join('\r\n') };
+    let content: Buffer;
+    if (format === 'csv') content = reportCsv(tables);
+    else {
+      const [org, user] = await Promise.all([Organization.findByPk(auth.organizationId!, { attributes: ['name', 'timezone'] }), User.findByPk(auth.userId, { attributes: ['firstName', 'lastName'] })]);
+      const meta = REPORT_META[key];
+      const values = report.summary as Record<string, number | string | null>;
+      const when = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: org?.timezone ?? 'UTC' }).format(new Date());
+      const doc: ExportDocument = {
+        title: `${meta.title} report`,
+        organization: org?.name ?? '',
+        period: 'asOf' in report ? `On ${longDate(report.asOf)}` : 'from' in report ? `${longDate(report.from)} – ${longDate(report.to)}` : `${monthText(report.fromMonth)} – ${monthText(report.toMonth)}`,
+        generated: `Generated ${when}${user ? ` by ${fullName(user)}` : ''}`,
+        summary: meta.summary.map((s) => ({ label: s.label, format: s.format, value: values[s.key] ?? null })),
+        tables,
+      };
+      content = format === 'xlsx' ? await reportXlsx(doc) : await reportPdf(doc);
+    }
+    await this.audit.record({ action: 'reports.exported', entityType: 'Report', entityId: key, summary: `${key} report exported as ${format.toUpperCase()} (${period})` });
+    return { fileName: `${key} report ${period}.${format}`, contentType: EXPORT_TYPES[format], content };
   }
 
   run(auth: AuthContext, key: ReportKey, query: ReportQueryDto) {

@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { Competency, CycleStatus, FeedbackStatus, PipObjective, PipProgress, PipStatus, ReviewStage } from '../../contracts';
+import type { Competency, CycleStatus, FeedbackStatus, HikeStatus, MeritGuideline, PipObjective, PipProgress, PipStatus, ReviewStage } from '../../contracts';
 import { Employee } from './people.models';
 
 export interface CompetencyRating {
@@ -32,6 +32,9 @@ export class PerformanceCycle extends Model<InferAttributes<PerformanceCycle>, I
   @Column(DataType.DATE) launchedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) resultsReleasedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) closedAt: CreationOptional<Date | null>;
+  @Column(DataType.JSONB) meritMatrix: CreationOptional<MeritGuideline[] | null>;
+  @Column(DataType.DECIMAL(5, 2)) hikeBudgetPercent: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) hikeEffectiveFrom: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
@@ -164,4 +167,35 @@ export class PipCheckIn extends Model<InferAttributes<PipCheckIn>, InferCreation
   @Column(DataType.STRING(2000)) note: string;
   @CreatedAt createdAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+}
+
+/** A salary-hike recommendation for a reviewed employee, taken through approval to a salary revision. */
+@Table({ tableName: 'hike_recommendations', underscored: true })
+export class HikeRecommendation extends Model<InferAttributes<HikeRecommendation>, InferCreationAttributes<HikeRecommendation>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => PerformanceCycle) @Column(DataType.UUID) cycleId: string;
+  @ForeignKey(() => PerformanceReview) @Column(DataType.UUID) reviewId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.SMALLINT) rating: number;
+  @Column(DataType.DECIMAL(14, 2)) currentCtc: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(5, 2)) percent: string;
+  @Column(DataType.DECIMAL(14, 2)) newCtc: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) promotion: CreationOptional<boolean>;
+  @Column(DataType.STRING(1000)) justification: CreationOptional<string | null>;
+  @Column(DataType.STRING(10)) status: CreationOptional<HikeStatus>;
+  @Column(DataType.UUID) recommendedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) submittedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) decidedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) decidedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(1000)) decisionNote: CreationOptional<string | null>;
+  @Column(DataType.UUID) salaryId: CreationOptional<string | null>;
+  @Column(DataType.DATE) appliedAt: CreationOptional<Date | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+  @BelongsTo(() => PerformanceReview, 'reviewId') review?: NonAttribute<PerformanceReview>;
 }

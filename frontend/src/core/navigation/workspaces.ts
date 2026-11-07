@@ -26,6 +26,9 @@ import {
   FileWarning,
   Gauge,
   GraduationCap,
+  Grid3x3,
+  HandCoins,
+  Handshake,
   HeartPulse,
   History,
   Home,
@@ -50,6 +53,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Target,
   User,
   UserSearch,
@@ -92,7 +96,7 @@ export const HR_OPERATIONS_PERMISSIONS = [
   'employee.view', 'employee.create', 'employee.lifecycle.manage', 'recruitment.view', 'recruitment.requisition.create', 'recruitment.requisition.approve',
   'onboarding.view', 'onboarding.manage', 'onboarding.confirmation.approve', 'attendance.view', 'attendance.manage', 'attendance.regularize.approve', 'attendance.close', 'attendance.configure',
   'leave.view', 'leave.approve', 'leave.allocate', 'leave.configure',
-  'payroll.view', 'payroll.configure', 'payroll.reimbursement.approve', 'employee.salary.view', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.configure', 'training.manage', 'training.assign',
+  'payroll.view', 'payroll.configure', 'payroll.reimbursement.approve', 'payroll.loan.approve', 'payroll.loan.manage', 'employee.salary.view', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.configure', 'training.manage', 'training.assign',
   'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage', 'reports.view', 'reports.payroll.view', 'reports.recruitment.view',
 ];
 
@@ -188,9 +192,11 @@ export const WORKSPACES: Workspace[] = [
         title: 'Attendance',
         items: [
           { label: 'Register', to: '/hr/attendance', icon: ClipboardList, exact: true, access: { permissions: ['attendance.view'], scope: 'TEAM' } },
-          { label: 'Regularizations', to: '/hr/attendance/regularizations', icon: ClockAlert, access: { permissions: ['attendance.regularize.approve'], scope: 'TEAM' } },
+          { label: 'Approvals', to: '/hr/attendance/regularizations', icon: ClockAlert, access: { permissions: ['attendance.regularize.approve'], scope: 'TEAM' } },
+          { label: 'Roster', to: '/hr/attendance/roster', icon: CalendarDays, access: { permissions: ['attendance.configure', 'attendance.view'], scope: 'TEAM' } },
           { label: 'Monthly closing', to: '/hr/attendance/closing', icon: CalendarCheck, access: { permissions: ['attendance.close'] } },
           { label: 'Shifts', to: '/hr/attendance/shifts', icon: Clock, access: { permissions: ['attendance.configure'] } },
+          { label: 'Devices', to: '/hr/attendance/devices', icon: Fingerprint, access: { permissions: ['attendance.configure'] } },
         ],
       },
       {
@@ -208,6 +214,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Payroll runs', to: '/hr/payroll/runs', icon: Banknote, access: { permissions: ['payroll.view'], feature: 'payroll' } },
           { label: 'Salaries', to: '/hr/payroll/salaries', icon: Wallet, access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } },
           { label: 'Reimbursements', to: '/hr/payroll/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.approve', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
+          { label: 'Loans & advances', to: '/hr/payroll/loans', icon: HandCoins, access: { permissions: ['payroll.loan.approve', 'payroll.loan.manage', 'payroll.view'], feature: 'payroll' } },
           { label: 'Payroll setup', to: '/hr/payroll/setup', icon: SlidersHorizontal, access: { permissions: ['payroll.configure', 'payroll.view'], feature: 'payroll' } },
         ],
       },
@@ -224,6 +231,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Courses', to: '/hr/training/courses', icon: GraduationCap, access: { permissions: ['training.manage', 'training.assign'], scope: 'TEAM', feature: 'training' } },
           { label: 'Team training', to: '/hr/training/team', icon: Award, access: { permissions: ['training.manage', 'training.assign'], scope: 'TEAM', feature: 'training' } },
+          { label: 'Skill matrix', to: '/hr/training/skills', icon: Grid3x3, access: { permissions: ['training.manage', 'training.assign'], scope: 'TEAM', feature: 'training' } },
         ],
       },
       {
@@ -259,6 +267,7 @@ export const WORKSPACES: Workspace[] = [
         title: 'Exits',
         items: [
           { label: 'Exits', to: '/hr/exits', icon: DoorOpen, access: { permissions: ['exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage'], scope: 'TEAM', feature: 'exit' } },
+          { label: 'Alumni', to: '/hr/alumni', icon: Handshake, access: { permissions: ['exit.manage', 'exit.view'], scope: 'TEAM', feature: 'exit' } },
         ],
       },
       {
@@ -293,9 +302,11 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Leave', to: '/me/leave', icon: Plane, access: { permissions: ['leave.view'] } },
           { label: 'Performance', to: '/me/performance', icon: Target, access: { tenant: true, feature: 'performance' } },
           { label: 'Learning', to: '/me/training', icon: GraduationCap, access: { tenant: true, feature: 'training' } },
+          { label: 'Skills', to: '/me/skills', icon: Sparkles, access: { permissions: ['training.view'], feature: 'training' } },
           { label: 'Payslips', to: '/me/payslips', icon: FileText, access: { permissions: ['payroll.payslip.view'], feature: 'payroll' } },
           { label: 'Salary & tax', to: '/me/salary', icon: Wallet, access: { tenant: true, feature: 'payroll' } },
           { label: 'Reimbursements', to: '/me/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.apply'], feature: 'payroll' } },
+          { label: 'Loans & advances', to: '/me/loans', icon: HandCoins, access: { permissions: ['payroll.loan.apply'], feature: 'payroll' } },
           { label: 'Benefits', to: '/me/benefits', icon: HeartPulse, access: { permissions: ['benefits.view'], feature: 'benefits' } },
           { label: 'Policies', to: '/me/policies', icon: ScrollText, access: { permissions: ['compliance.view'], feature: 'compliance' } },
           { label: 'Grievances', to: '/me/grievances', icon: ShieldAlert, access: { permissions: ['grievance.submit'], feature: 'grievance' } },

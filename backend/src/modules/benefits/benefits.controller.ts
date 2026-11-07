@@ -5,7 +5,7 @@ import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/aut
 import { AppError } from '../../common/errors/app-error';
 import { BenefitEnrollmentsService } from './benefit-enrollments.service';
 import { BenefitPlansService } from './benefit-plans.service';
-import { DecisionDto, EndEnrollmentDto, EnrollDto, EnrollmentQueryDto, PlanDto, PlanQueryDto, RejectDto, UpdatePlanDto, WaiveDto } from './dto/benefits.dto';
+import { DecisionDto, EndEnrollmentDto, EnrollDto, EnrollmentQueryDto, PlanDto, PlanQueryDto, RejectDto, RenewPlanDto, UpdatePlanDto, WaiveDto } from './dto/benefits.dto';
 
 const UUID = new ParseUUIDPipe();
 const attachment = (name: string) => `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
@@ -97,6 +97,13 @@ export class BenefitsController {
   @RequirePermissions('benefits.manage')
   archive(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
     return this.plans.archive(auth, id);
+  }
+
+  @Post('plans/:id/renew')
+  @RequirePermissions('benefits.manage')
+  @ApiOperation({ summary: 'Draft the plan for the next policy period; activating it carries current enrolments over' })
+  renew(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RenewPlanDto) {
+    return this.plans.renew(auth, id, dto);
   }
 
   @Post('plans/:id/enroll-eligible')

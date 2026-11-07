@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { CalendarClock, CheckCircle2, UserCheck, XCircle } from '@lucide/vue';
 import { exitApi } from '@/modules/exit/api/exit.api';
 import ClearanceList from '@/modules/exit/components/ClearanceList.vue';
+import ExitLettersPanel from '@/modules/exit/components/ExitLettersPanel.vue';
 import SettlementPanel from '@/modules/exit/components/SettlementPanel.vue';
 import type { ExitDetail } from '@/modules/exit/types';
 import { REASON_LABELS, STATUS_LABELS, TYPE_LABELS, serviceLabel, statusTone } from '@/modules/exit/utils/exit-format';
@@ -24,6 +25,7 @@ const tabs = computed(() => [
   { key: 'overview', label: 'Overview' },
   ...(e.value?.clearanceItems.length ? [{ key: 'clearance', label: `Clearance (${e.value.clearance.done}/${e.value.clearance.total})` }] : []),
   ...(e.value?.permissions.settle ? [{ key: 'settlement', label: 'Full & final' }] : []),
+  ...(e.value?.permissions.letters ? [{ key: 'letters', label: 'Letters' }] : []),
 ]);
 
 const busy = ref<string | null>(null);
@@ -147,6 +149,7 @@ const rehire = computed({
           </div>
         </div>
         <ClearanceList v-else-if="tab === 'clearance'" :exit="e" @updated="set" />
+        <ExitLettersPanel v-else-if="tab === 'letters'" :exit="e" />
         <SettlementPanel v-else :exit="e" @changed="detail.run" />
       </AppTabs>
 

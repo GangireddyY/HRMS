@@ -1,6 +1,6 @@
-import type { CycleStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
+import type { CycleStatus, HikeStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
 import { http, type ListQuery } from '@/core/http/http-client';
-import type { AssessmentInput, Colleague, Cycle, CycleDetail, CycleInput, FeedbackRequest, GoalInput, PipDetail, PipInput, PipRow, ReviewDetail, ReviewRow } from '../types';
+import type { AssessmentInput, Colleague, Compensation, CompensationInput, Cycle, CycleDetail, CycleInput, FeedbackRequest, GoalInput, HikeInput, HikeList, HikeRow, PipDetail, PipInput, PipRow, ReviewDetail, ReviewRow } from '../types';
 
 export const performanceApi = {
   cycles: (q: ListQuery & { status?: CycleStatus }) => http.page<Cycle>('/performance/cycles', q),
@@ -29,6 +29,15 @@ export const performanceApi = {
   reassign: (id: string, reviewerId: string) => http.post<ReviewDetail>(`/performance/reviews/${id}/reviewer`, { reviewerId }),
   requestFeedback: (id: string, employeeIds: string[]) => http.post<ReviewDetail>(`/performance/reviews/${id}/feedback-requests`, { employeeIds }),
   colleagues: (search?: string) => http.get<Colleague[]>('/performance/colleagues', { search: search || undefined }),
+
+  compensation: (cycleId: string) => http.get<Compensation>(`/performance/cycles/${cycleId}/compensation`),
+  setCompensation: (cycleId: string, body: CompensationInput) => http.put<Compensation>(`/performance/cycles/${cycleId}/compensation`, body),
+  hikes: (cycleId: string, q: { view?: 'mine' | 'all'; status?: HikeStatus }) => http.get<HikeList>(`/performance/cycles/${cycleId}/hikes`, q),
+  recommendHike: (reviewId: string, body: HikeInput) => http.put<HikeRow>(`/performance/reviews/${reviewId}/hike`, body),
+  submitHike: (id: string) => http.post<HikeRow>(`/performance/hikes/${id}/submit`),
+  approveHike: (id: string, body: { percent?: number; note?: string | null }) => http.post<HikeRow>(`/performance/hikes/${id}/approve`, body),
+  rejectHike: (id: string, note: string) => http.post<HikeRow>(`/performance/hikes/${id}/reject`, { note }),
+  applyHikes: (cycleId: string) => http.post<{ applied: number; failed: { employee: string; reason: string }[] }>(`/performance/cycles/${cycleId}/hikes/apply`),
 
   myFeedback: () => http.get<FeedbackRequest[]>('/performance/feedback'),
   giveFeedback: (id: string, body: { rating: number | null; strengths: string; improvements: string }) => http.post<FeedbackRequest>(`/performance/feedback/${id}`, body),

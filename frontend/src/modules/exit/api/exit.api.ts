@@ -1,6 +1,6 @@
-import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitReason, ExitStatus, ExitType } from '@contracts';
+import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitLetterType, ExitReason, ExitStatus, ExitType } from '@contracts';
 import { http, type ListQuery } from '@/core/http/http-client';
-import type { Adjustment, ExitDetail, ExitSummary, Settlement } from '../types';
+import type { Adjustment, AlumniDetails, AlumniRow, ExitDetail, ExitLetter, ExitLetterSummary, ExitSummary, LetterDraft, MyAlumni, Settlement } from '../types';
 
 export const exitApi = {
   resign: (body: { reason: ExitReason; reasonDetail: string | null; requestedLastDay: string | null }) => http.post<ExitDetail>('/exits/resign', body),
@@ -25,4 +25,16 @@ export const exitApi = {
   returnSettlement: (id: string, note: string) => http.post<Settlement>(`/exits/${id}/settlement/return`, { note }),
   approveSettlement: (id: string) => http.post<Settlement>(`/exits/${id}/settlement/approve`),
   paySettlement: (id: string, body: { paidOn: string; reference: string }) => http.post<Settlement>(`/exits/${id}/settlement/pay`, body),
+
+  letters: (id: string) => http.get<ExitLetterSummary[]>(`/exits/${id}/letters`),
+  letterDraft: (id: string, type: ExitLetterType) => http.get<LetterDraft>(`/exits/${id}/letters/draft`, { type }),
+  issueLetter: (id: string, body: LetterDraft) => http.post<ExitLetter>(`/exits/${id}/letters`, body),
+  letter: (id: string, letterId: string) => http.get<ExitLetter>(`/exits/${id}/letters/${letterId}`),
+  revokeLetter: (id: string, letterId: string, reason: string) => http.post<ExitLetter>(`/exits/${id}/letters/${letterId}/revoke`, { reason }),
+};
+
+export const alumniApi = {
+  list: (q: ListQuery & { rehire?: 'yes' | 'no' | 'undecided'; optedIn?: boolean; openToOpportunities?: boolean }) => http.page<AlumniRow>('/alumni', q),
+  mine: () => http.get<MyAlumni>('/alumni/me'),
+  update: (body: Omit<AlumniDetails, 'updatedAt'>) => http.put<MyAlumni>('/alumni/me', body),
 };

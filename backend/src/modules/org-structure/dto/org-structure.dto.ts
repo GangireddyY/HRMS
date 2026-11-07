@@ -1,6 +1,6 @@
 import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { emptyToNull, emptyToNullUpper, optionalNullable, trim } from '../../../common/validation/transforms';
 import { IsTimeZone } from '../../../common/validation/validators';
 
@@ -73,6 +73,18 @@ export class CreateLocationDto {
   @ApiPropertyOptional({ nullable: true })
   @Transform(emptyToNull) @optionalNullable @IsTimeZone()
   timezone?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Office position for the punch geofence' })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber() @Min(-90) @Max(90)
+  latitude?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber() @Min(-180) @Max(180)
+  longitude?: number | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Web punch-ins further away than this (metres) are refused, except on work-from-home days' })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(25) @Max(50000)
+  geofenceRadiusM?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional() @IsBoolean()

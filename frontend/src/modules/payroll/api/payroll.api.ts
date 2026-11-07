@@ -1,9 +1,12 @@
-import type { PayrollRunStatus, ReimbursementCategory, ReimbursementStatus } from '@contracts';
+import type { LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus } from '@contracts';
 import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
 import type {
   Claim,
   ComponentInput,
   EmployeeSalary,
+  Loan,
+  LoanDetail,
+  MyLoans,
   MyPayslip,
   PayrollRun,
   PayrollRunDetail,
@@ -77,4 +80,21 @@ export const payrollApi = {
   rejectClaim: (id: string, note: string) => http.post<Claim>(`/payroll/reimbursements/${id}/reject`, { note }),
   cancelClaim: (id: string) => http.post<Claim>(`/payroll/reimbursements/${id}/cancel`),
   downloadReceipt: (id: string, fileName: string) => downloadFile(`/payroll/reimbursements/${id}/receipt`, undefined, fileName),
+};
+
+type LoanRequest = { type: LoanType; amount: number; tenureMonths: number; purpose: string };
+
+export const loansApi = {
+  mine: () => http.get<MyLoans>('/payroll/me/loans'),
+  request: (body: LoanRequest) => http.post<LoanDetail>('/payroll/me/loans', body),
+  list: (q: ListQuery & { view?: 'approve' | 'all'; status?: LoanStatus | 'OPEN'; type?: LoanType }) => http.page<Loan>('/payroll/loans', q),
+  raise: (body: LoanRequest & { employeeId: string }) => http.post<LoanDetail>('/payroll/loans', body),
+  firstMonth: () => http.get<{ year: number; month: number }>('/payroll/loans/first-month'),
+  get: (id: string) => http.get<LoanDetail>(`/payroll/loans/${id}`),
+  approve: (id: string, body: { amount?: number; tenureMonths?: number; interestRate?: number; startYear: number; startMonth: number; note?: string | null }) => http.post<LoanDetail>(`/payroll/loans/${id}/approve`, body),
+  reject: (id: string, note: string) => http.post<LoanDetail>(`/payroll/loans/${id}/reject`, { note }),
+  cancel: (id: string) => http.post<LoanDetail>(`/payroll/loans/${id}/cancel`),
+  disburse: (id: string, body: { disbursedOn: string; reference: string }) => http.post<LoanDetail>(`/payroll/loans/${id}/disburse`, body),
+  defer: (id: string, body: { startYear: number; startMonth: number; note: string }) => http.post<LoanDetail>(`/payroll/loans/${id}/defer`, body),
+  repay: (id: string, body: { amount: number; paidOn: string; note: string }) => http.post<LoanDetail>(`/payroll/loans/${id}/repayments`, body),
 };

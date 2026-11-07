@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { Archive, CalendarPlus, ClipboardCheck, ExternalLink, ListChecks, Pencil, Rocket, Trash2, UserPlus, XCircle } from '@lucide/vue';
 import { trainingApi } from '@/modules/training/api/training.api';
 import AssignModal from '@/modules/training/components/AssignModal.vue';
+import CourseSkillsCard from '@/modules/training/components/CourseSkillsCard.vue';
 import AttendanceModal from '@/modules/training/components/AttendanceModal.vue';
 import CourseFormModal from '@/modules/training/components/CourseFormModal.vue';
 import QuestionsModal from '@/modules/training/components/QuestionsModal.vue';
@@ -197,6 +198,7 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
             </ul>
             <AppButton v-if="inHr && c.permissions.manage && c.hasAssessment && c.status !== 'ARCHIVED'" class="mt-4" size="sm" variant="secondary" :icon="ListChecks" @click="questionsOpen = true">Assessment questions ({{ c.questionCount ?? 0 }})</AppButton>
           </AppCard>
+          <CourseSkillsCard :course-id="c.id" :editable="inHr && c.permissions.manage && c.status !== 'ARCHIVED'" />
           <AppCard v-if="c.feedback.count" title="Learner feedback">
             <p class="text-2xl font-semibold text-fg">{{ c.feedback.average }} <span class="text-sm font-normal text-fg-muted">/ 5 from {{ c.feedback.count }} learner{{ c.feedback.count === 1 ? '' : 's' }}</span></p>
           </AppCard>

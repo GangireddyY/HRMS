@@ -1,4 +1,4 @@
-import type { CourseCategory, CourseDelivery, CourseStatus, EnrollmentSource, EnrollmentStatus, SessionStatus } from '@contracts';
+import type { CourseCategory, CourseDelivery, CourseStatus, EnrollmentSource, EnrollmentStatus, SessionStatus, SkillCategory } from '@contracts';
 
 export interface PersonRef {
   id: string;
@@ -116,4 +116,63 @@ export interface Assessment {
   passMark: number;
   attemptsLeft: number;
   questions: { id: string; prompt: string; options: string[] }[];
+}
+
+// ---- Skills ----
+
+export interface Skill {
+  id: string;
+  name: string;
+  category: SkillCategory;
+  description: string | null;
+  isActive: boolean;
+  people?: number;
+}
+
+export interface SkillLevelRow {
+  skillId: string;
+  name: string;
+  category?: SkillCategory;
+  level: number;
+}
+
+export interface SkillProfile {
+  employee: { id: string; name: string; employeeCode: string };
+  designation: { id: string; name: string } | null;
+  skills: {
+    skillId: string;
+    name: string;
+    category?: SkillCategory;
+    level: number | null;
+    verifiedLevel: number | null;
+    verifiedSource: 'MANAGER' | 'TRAINING' | null;
+    verifiedBy: string | null;
+    verifiedAt: string | null;
+    effectiveLevel: number;
+    notes: string | null;
+    required: number | null;
+  }[];
+  requirements: { skillId: string; name: string; category?: SkillCategory; requiredLevel: number; current: number }[];
+  readiness: number;
+  gaps: { skillId: string; name: string; required: number; current: number; gap: number; courses: { id: string; code: string; title: string; delivery: CourseDelivery; teachesLevel: number; durationHours: number | null }[] }[];
+  permissions: { edit: boolean; verify: boolean };
+}
+
+export interface RoleRequirements {
+  designation: { id: string; name: string };
+  skills: { skillId: string; name: string; category?: SkillCategory; requiredLevel: number }[];
+}
+
+export interface MatrixCell {
+  skillId: string;
+  level: number;
+  selfLevel: number | null;
+  verifiedLevel: number | null;
+  required: number | null;
+  gap: number;
+}
+
+export interface MatrixRow {
+  employee: { id: string; name: string; employeeCode: string; department: string | null; designation: string | null };
+  cells: MatrixCell[];
 }

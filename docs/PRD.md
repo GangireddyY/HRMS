@@ -104,3 +104,17 @@ A secure, multi-tenant HR platform that runs the complete employee lifecycle —
 * **Email**: SendGrid only. Without `SENDGRID_API_KEY` in development, emails are printed to the API log.
 * **Record-scope enforcement** (OWN/TEAM/DEPARTMENT filters) is modelled and stored; it is applied to queries once employees and reporting lines exist (Phase 2).
 * **RLS**, Redis-backed throttling, i18n and SSO (SAML/OIDC) are scheduled for Phase 10.
+
+## 8. Lifecycle completion (1.10)
+
+The deliverables in §4 that were still open after the module releases are built (see CHANGELOG 1.10.0):
+
+| Phase | Deliverable | Notes / limits |
+|---|---|---|
+| 3 | Resume parsing | PDF and .docx text read in an isolated process; heuristics for contact details, current role, experience, notice period and skills (built-in list + the organization's skill catalog). Scanned (image-only) resumes have no text — OCR is not included. |
+| 4 | Shift rotations, overtime, WFH / geofencing, biometric interface | Rotations and a day-by-day roster; overtime from the shift's threshold with approval and payroll pay; WFH requests; punch geofence per location; terminals push punches to a keyed API (vendor SDK connectors are not included — a small relay maps vendor exports to the API). |
+| 5 | Loans and salary advances | EMI schedules, payroll deductions, deferral, manual repayment, recovery in F&F. |
+| 6 | Hike recommendations, skill matrix | Merit guidelines per rating with budget tracking, segregation of duties and salary revisions on apply; skills by designation and course, self-assessment, manager verification, matrix. |
+| 7 | Benefit renewals | Next year's plan as a draft copy; activation carries enrolments over. |
+| 8 | Letters and alumni | Relieving and experience letters (numbered, revocable); opt-in alumni directory. |
+| 9 | Excel and PDF export | Every report; the PDF uses the standard PDF fonts (Latin-1 text, "Rs" for the rupee sign). |

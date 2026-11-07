@@ -1,4 +1,4 @@
-import type { Competency, CycleStatus, FeedbackStatus, PipObjective, PipProgress, PipStatus, ReviewStage } from '@contracts';
+import type { Competency, CycleStatus, FeedbackStatus, HikeStatus, MeritGuideline, PipObjective, PipProgress, PipStatus, ReviewStage } from '@contracts';
 
 export interface PersonRef {
   id: string;
@@ -206,6 +206,61 @@ export interface PipDetail extends PipRow {
   employeeComment: string | null;
   checkIns: { id: string; checkInDate: string; progress: PipProgress; note: string; createdBy: string | null; createdAt: string }[];
   permissions: { manage: boolean; acknowledge: boolean };
+}
+
+export interface Compensation {
+  cycle: { id: string; name: string; status: CycleStatus; ratingLabels: string[] };
+  configured: boolean;
+  meritMatrix: MeritGuideline[];
+  budgetPercent: number | null;
+  effectiveFrom: string | null;
+  counts: Record<HikeStatus, number>;
+  /** Only with organisation-wide salary access. */
+  budget: { base: number; pool: number | null; recommended: number; approved: number; remaining: number | null; averagePercent: number } | null;
+  permissions: { configure: boolean; decide: boolean; apply: boolean };
+}
+
+export interface CompensationInput {
+  meritMatrix: MeritGuideline[];
+  budgetPercent?: number | null;
+  effectiveFrom?: string | null;
+}
+
+export interface HikeRow {
+  reviewId: string;
+  employee: PersonRef & { department: string | null; designation: string | null };
+  rating: number;
+  ratingLabel: string | null;
+  guideline: MeritGuideline;
+  /** Undefined when the viewer can't see this employee's salary. */
+  currentCtc?: number | null;
+  recommendation: {
+    id: string;
+    percent: number;
+    newCtc?: number | null;
+    promotion: boolean;
+    justification: string | null;
+    status: HikeStatus;
+    outsideGuideline: boolean;
+    recommendedBy: string | null;
+    submittedAt: string | null;
+    decidedBy: string | null;
+    decidedAt: string | null;
+    decisionNote: string | null;
+    appliedAt: string | null;
+  } | null;
+  permissions: { edit: boolean; decide: boolean };
+}
+
+export interface HikeList {
+  cycle: { id: string; name: string; status?: CycleStatus; effectiveFrom?: string | null; configured?: boolean };
+  rows: HikeRow[];
+}
+
+export interface HikeInput {
+  percent: number;
+  promotion?: boolean;
+  justification?: string | null;
 }
 
 export interface PipInput {

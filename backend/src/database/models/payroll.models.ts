@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { ComponentCalculation, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '../../contracts';
+import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '../../contracts';
 import { Employee } from './people.models';
 
 /** Decimal columns come back from PostgreSQL as strings. */
@@ -17,6 +17,8 @@ export class PayrollSettings extends Model<InferAttributes<PayrollSettings>, Inf
   @Column(DataType.STRING(30)) pfEstablishmentCode: CreationOptional<string | null>;
   @Column(DataType.STRING(30)) esiEmployerCode: CreationOptional<string | null>;
   @Column(DataType.STRING(10)) tan: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(3, 1)) overtimeMultiplier: CreationOptional<string>;
+  @Column(DataType.STRING(5)) overtimeBasis: CreationOptional<'BASIC' | 'GROSS'>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
@@ -236,5 +238,57 @@ export class ReimbursementClaim extends Model<InferAttributes<ReimbursementClaim
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
 
   @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+  @BelongsTo(() => PayrollRun, 'payrollRunId') run?: NonAttribute<PayrollRun | null>;
+}
+
+@Table({ tableName: 'employee_loans', underscored: true })
+export class EmployeeLoan extends Model<InferAttributes<EmployeeLoan>, InferCreationAttributes<EmployeeLoan>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(8)) type: LoanType;
+  @Column(DataType.STRING(20)) reference: string;
+  @Column(DataType.STRING(500)) purpose: string;
+  @Column(DataType.DECIMAL(12, 2)) principal: string;
+  @Column(DataType.DECIMAL(5, 2)) interestRate: CreationOptional<string>;
+  @Column(DataType.SMALLINT) tenureMonths: number;
+  @Column(DataType.DECIMAL(12, 2)) emi: CreationOptional<string | null>;
+  @Column(DataType.SMALLINT) startYear: CreationOptional<number | null>;
+  @Column(DataType.SMALLINT) startMonth: CreationOptional<number | null>;
+  @Column(DataType.STRING(10)) status: CreationOptional<LoanStatus>;
+  @Column(DataType.UUID) decidedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) decidedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(1000)) decisionNote: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) disbursedOn: CreationOptional<string | null>;
+  @Column(DataType.STRING(120)) disbursementReference: CreationOptional<string | null>;
+  @Column(DataType.UUID) disbursedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) closedAt: CreationOptional<Date | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+  @HasMany(() => EmployeeLoanRepayment, 'loanId') repayments?: NonAttribute<EmployeeLoanRepayment[]>;
+}
+
+@Table({ tableName: 'employee_loan_repayments', underscored: true, updatedAt: false })
+export class EmployeeLoanRepayment extends Model<InferAttributes<EmployeeLoanRepayment>, InferCreationAttributes<EmployeeLoanRepayment>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => EmployeeLoan) @Column(DataType.UUID) loanId: string;
+  @Column(DataType.STRING(10)) source: LoanRepaymentSource;
+  @ForeignKey(() => PayrollRun) @Column(DataType.UUID) payrollRunId: CreationOptional<string | null>;
+  @Column(DataType.UUID) settlementId: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) paidOn: string;
+  @Column(DataType.DECIMAL(12, 2)) principal: string;
+  @Column(DataType.DECIMAL(12, 2)) interest: CreationOptional<string>;
+  @Column(DataType.STRING(500)) note: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+
   @BelongsTo(() => PayrollRun, 'payrollRunId') run?: NonAttribute<PayrollRun | null>;
 }

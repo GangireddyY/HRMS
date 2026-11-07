@@ -10,6 +10,7 @@ import {
   IsIn,
   IsInt,
   IsISO8601,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -22,6 +23,9 @@ import {
 } from 'class-validator';
 import {
   CYCLE_STATUSES,
+  HIKE_STATUSES,
+  MAX_HIKE_PERCENT,
+  type HikeStatus,
   MAX_FEEDBACK_REQUESTS_PER_REVIEW,
   PIP_PROGRESS,
   PIP_STATUSES,
@@ -190,4 +194,36 @@ export class ClosePipDto {
   @ApiProperty({ enum: ['SUCCESSFUL', 'UNSUCCESSFUL', 'CANCELLED'] }) @IsIn(['SUCCESSFUL', 'UNSUCCESSFUL', 'CANCELLED']) outcome!: 'SUCCESSFUL' | 'UNSUCCESSFUL' | 'CANCELLED';
   @ApiProperty() @Transform(trim) @IsString() @Length(10, 2000) note!: string;
   @ApiPropertyOptional({ type: [Boolean], description: 'Whether each objective was met (same order)' }) @IsOptional() @IsArray() @IsBoolean({ each: true }) objectivesMet?: boolean[];
+}
+
+// ---- Salary-hike recommendations -----------------------------------------------------------------
+
+export class MeritGuidelineDto {
+  @ApiProperty({ minimum: 1, maximum: 5 }) @Type(() => Number) @IsInt() @Min(1) @Max(5) rating!: number;
+  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_HIKE_PERCENT) min!: number;
+  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_HIKE_PERCENT) target!: number;
+  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_HIKE_PERCENT) max!: number;
+}
+
+export class CompensationDto {
+  @ApiProperty({ type: [MeritGuidelineDto], description: 'One row per rating 1–5, in % of the annual CTC' }) @IsArray() @ArrayMinSize(5) @ArrayMaxSize(5) @ValidateNested({ each: true }) @Type(() => MeritGuidelineDto) meritMatrix!: MeritGuidelineDto[];
+  @ApiPropertyOptional({ nullable: true, description: 'Increase budget as % of the current CTC of everyone reviewed' })
+  @Transform(({ value }) => (value === '' ? null : value)) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(100) budgetPercent?: number | null;
+  @ApiPropertyOptional({ nullable: true, example: '2027-04-01', description: 'When approved increments take effect' }) @Transform(({ value }) => (value === '' ? null : value)) @IsOptional() @IsISO8601({ strict: true, strictSeparator: true }) effectiveFrom?: string | null;
+}
+
+export class HikeQueryDto {
+  @ApiPropertyOptional({ enum: ['mine', 'all'], description: "mine = the caller's reviewees; all = HR" }) @IsOptional() @IsIn(['mine', 'all']) view?: 'mine' | 'all';
+  @ApiPropertyOptional({ enum: HIKE_STATUSES }) @IsOptional() @IsIn(HIKE_STATUSES) status?: HikeStatus;
+}
+
+export class HikeDto {
+  @ApiProperty({ description: 'Increase in % of the annual CTC' }) @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_HIKE_PERCENT) percent!: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() promotion?: boolean;
+  @ApiPropertyOptional({ nullable: true, description: 'Required outside the guideline' }) @Transform(({ value }) => (typeof value === 'string' && !value.trim() ? null : value)) @IsOptional() @IsString() @MaxLength(1000) justification?: string | null;
+}
+
+export class DecideHikeDto {
+  @ApiPropertyOptional({ description: 'Approve a different percentage' }) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_HIKE_PERCENT) percent?: number;
+  @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsString() @MaxLength(1000) note?: string | null;
 }

@@ -16,6 +16,7 @@ export const benefitsApi = {
   removePlan: (id: string) => http.delete<{ deleted: boolean }>(`/benefits/plans/${id}`),
   activate: (id: string) => http.post<Plan>(`/benefits/plans/${id}/activate`),
   archive: (id: string) => http.post<Plan>(`/benefits/plans/${id}/archive`),
+  renew: (id: string, body: { name?: string; policyNumber?: string | null } = {}) => http.post<Plan>(`/benefits/plans/${id}/renew`, body),
   enrollEligible: (id: string) => http.post<{ enrolled: number }>(`/benefits/plans/${id}/enroll-eligible`),
   census: (plan: Plan) => downloadFile(`/benefits/plans/${plan.id}/census`, undefined, `${plan.name} census.csv`),
 

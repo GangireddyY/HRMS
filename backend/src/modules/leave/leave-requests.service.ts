@@ -345,10 +345,13 @@ export class LeaveRequestsService {
     }
 
     // Days.
-    const empCtx = await this.rules.context(auth.organizationId!, employee);
+    const empCtx = await this.rules.context(auth.organizationId!, employee, { from: dto.startDate, to: dto.endDate });
     const holidayRows = await Holiday.findAll({ where: { date: { [Op.between]: [dto.startDate, dto.endDate] }, isOptional: false }, attributes: ['date'], transaction });
+    const restDays = new Set<string>();
+    for (let d = dto.startDate; d <= dto.endDate; d = addDays(d, 1)) if (this.rules.isRestDay(empCtx, d)) restDays.add(d);
     const { days, breakdown } = countLeaveDays(dto.startDate, dto.endDate, startSession, endSession, {
       weeklyOffs: empCtx.shift.weeklyOffs,
+      restDays,
       holidays: new Set(holidayRows.map((h) => h.date)),
       countNonWorkingDays: type.countNonWorkingDays,
     });

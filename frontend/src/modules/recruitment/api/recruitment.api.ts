@@ -1,4 +1,4 @@
-import type { ApplicationStage, CandidateSource, JobStatus, RequisitionStatus } from '@contracts';
+import type { ApplicationStage, CandidateSource, JobStatus, ParsedResume, RequisitionStatus } from '@contracts';
 import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
 import type {
   ApplicationCard,
@@ -48,6 +48,7 @@ export const recruitmentApi = {
   createCandidate: (body: CandidateInput) => http.post<Candidate>('/recruitment/candidates', body),
   updateCandidate: (id: string, body: Partial<CandidateInput>) => http.patch<Candidate>(`/recruitment/candidates/${id}`, body),
   removeCandidate: (id: string) => http.delete<{ deleted: boolean }>(`/recruitment/candidates/${id}`),
+  parseResume: (file: File) => http.upload<{ parsed: ParsedResume; readable: boolean }>('/recruitment/resumes/parse', file, { fileName: file.name }),
   uploadResume: (id: string, file: File) => http.upload<Candidate>(`/recruitment/candidates/${id}/resume`, file, { fileName: file.name }),
   resumeBlob: (id: string) => http.download(`/recruitment/candidates/${id}/resume`),
   downloadResume: (id: string, fileName: string) => downloadFile(`/recruitment/candidates/${id}/resume`, undefined, fileName),

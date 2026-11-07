@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Clock, LogIn, LogOut, PartyPopper, Sun } from '@lucide/vue';
+import { Clock, House, LogIn, LogOut, MapPin, PartyPopper, Sun } from '@lucide/vue';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import { DAY_STATUS_LABELS, dayStatusTone, formatMinutes, formatTime } from '@/modules/attendance/utils/attendance-format';
 import { AppBadge, AppButton, AppEmptyState, AppErrorState, AppSkeleton } from '@/shared/components';
@@ -28,14 +28,15 @@ const dateLabel = computed(() => new Intl.DateTimeFormat('en-GB', { weekday: 'lo
 const workedSoFar = computed(() => (open.value?.checkInAt ? Math.max(0, Math.floor((now.value - new Date(open.value.checkInAt).getTime()) / 60_000)) : 0));
 const progress = computed(() => Math.min(100, (workedSoFar.value / (data.value?.shift?.fullDayMinutes || 480)) * 100));
 
-/** Location is optional: it is attached when the browser shares it within a few seconds. */
+/** Location is attached when the browser shares it; offices with a geofence need it, so we wait longer and ask for accuracy. */
 function position(): Promise<{ latitude?: number; longitude?: number }> {
   if (!('geolocation' in navigator)) return Promise.resolve({});
+  const needed = !!data.value?.geofence;
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ latitude: Number(p.coords.latitude.toFixed(6)), longitude: Number(p.coords.longitude.toFixed(6)) }),
       () => resolve({}),
-      { timeout: 4000, maximumAge: 60_000 },
+      { timeout: needed ? 10_000 : 4000, maximumAge: needed ? 0 : 60_000, enableHighAccuracy: needed },
     );
   });
 }
@@ -76,9 +77,14 @@ defineExpose({ reload: () => today.run() });
         <p class="mt-2 inline-flex flex-wrap items-center gap-2 text-sm text-fg-muted">
           <Clock :size="14" aria-hidden="true" />
           {{ data.shift?.name }} · {{ data.shift?.startTime }}–{{ data.shift?.endTime }}
+          <AppBadge v-if="data.rostered" tone="brand">Rostered</AppBadge>
           <AppBadge v-if="data.holiday && !data.holiday.isOptional" tone="violet"><PartyPopper :size="11" /> {{ data.holiday.name }}</AppBadge>
           <AppBadge v-else-if="data.holiday" tone="violet">Optional holiday · {{ data.holiday.name }}</AppBadge>
-          <AppBadge v-else-if="data.isWeeklyOff"><Sun :size="11" /> Weekly off</AppBadge>
+          <AppBadge v-else-if="data.isWeeklyOff"><Sun :size="11" /> {{ data.rostered ? 'Day off' : 'Weekly off' }}</AppBadge>
+          <AppBadge v-if="data.workFromHome" tone="info"><House :size="11" /> Working from home</AppBadge>
+        </p>
+        <p v-if="data.geofence && canPunch && !done" class="mt-1 inline-flex items-center gap-1.5 text-xs text-fg-subtle">
+          <MapPin :size="12" aria-hidden="true" />Punch in within {{ data.geofence.radiusMetres }} m of {{ data.geofence.location }} (your browser will ask for your location).
         </p>
       </div>
 
@@ -97,7 +103,10 @@ defineExpose({ reload: () => today.run() });
           <div><dt class="text-xs text-fg-muted">In</dt><dd class="font-semibold text-fg">{{ formatTime(done.checkInAt, tz) }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Out</dt><dd class="font-semibold text-fg">{{ formatTime(done.checkOutAt, tz) }}</dd></div>
           <div><dt class="text-xs text-fg-muted">Worked</dt><dd class="font-semibold text-fg">{{ formatMinutes(done.workedMinutes) }}</dd></div>
-          <div class="col-span-3"><AppBadge v-if="done.status" :tone="dayStatusTone[done.status]" dot>{{ DAY_STATUS_LABELS[done.status] }}</AppBadge></div>
+          <div class="col-span-3 flex flex-wrap gap-1.5">
+            <AppBadge v-if="done.status" :tone="dayStatusTone[done.status]" dot>{{ DAY_STATUS_LABELS[done.status] }}</AppBadge>
+            <AppBadge v-if="done.overtimeMinutes" tone="violet">Overtime {{ formatMinutes(done.overtimeMinutes) }}</AppBadge>
+          </div>
         </dl>
         <p v-else class="text-sm text-fg-muted">You haven't punched in today.</p>
 

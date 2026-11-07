@@ -1,14 +1,12 @@
 import { TrainingEnrollment } from '../src/database/models';
 import { addDays } from '../src/common/utils/zoned-time';
-import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
+import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, orgToday as today, resetDatabase, uniqueEmail } from './helpers';
 
 const QUESTIONS = [
   { prompt: 'Who can raise a POSH complaint?', options: ['Only women employees', 'Any aggrieved woman at the workplace', 'Only managers'], correctIndex: 1 },
   { prompt: 'Within how many months of an incident should a complaint usually be made?', options: ['3 months', '12 months'], correctIndex: 0 },
   { prompt: 'Who heads the Internal Committee?', options: ['The CEO', 'A senior woman employee', 'An external lawyer'], correctIndex: 1 },
 ];
-const today = () => new Date().toISOString().slice(0, 10);
-
 describe('Training (e2e)', () => {
   let ctx: TestContext;
 

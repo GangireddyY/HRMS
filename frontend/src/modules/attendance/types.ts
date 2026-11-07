@@ -1,4 +1,4 @@
-import type { AttendanceRecordStatus, AttendanceSource, DayStatus, LeaveSession, RegularizationStatus } from '@contracts';
+import type { AttendanceRecordStatus, AttendanceSource, DayStatus, LeaveSession, OvertimeStatus, RegularizationStatus, WorkMode } from '@contracts';
 
 export interface AttendanceRecord {
   id: string;
@@ -7,8 +7,10 @@ export interface AttendanceRecord {
   checkOutAt: string | null;
   workedMinutes: number | null;
   lateMinutes: number;
+  overtimeMinutes: number;
   status: AttendanceRecordStatus | null;
   source: AttendanceSource;
+  workMode: WorkMode;
   note: string | null;
 }
 
@@ -21,6 +23,7 @@ export interface ShiftSummary {
   fullDayMinutes: number;
   halfDayMinutes: number;
   weeklyOffs: number[];
+  overtimeEnabled: boolean;
 }
 
 export interface TodayAttendance {
@@ -28,8 +31,13 @@ export interface TodayAttendance {
   date?: string;
   timeZone?: string;
   shift?: ShiftSummary;
+  /** Today's shift comes from the roster. */
+  rostered?: boolean;
   holiday?: { name: string; isOptional: boolean } | null;
   isWeeklyOff?: boolean;
+  workFromHome?: boolean;
+  /** Punch-ins must come from within the radius of the office. */
+  geofence?: { location: string; radiusMetres: number } | null;
   record?: AttendanceRecord | null;
   openRecord?: AttendanceRecord | null;
   periodClosed?: boolean;
@@ -44,17 +52,20 @@ export interface CalendarDay {
   leave: { code: string; name: string; color: string; session: LeaveSession; isPaid: boolean } | null;
   record: AttendanceRecord | null;
   pendingRegularizationId: string | null;
+  shift: { name: string; startTime: string; endTime: string; rostered: boolean };
+  workFromHome: boolean;
+  overtime: { status: OvertimeStatus; minutes: number } | null;
 }
 
 export interface AttendanceCalendar {
-  employee: { id: string; name: string; employeeCode: string };
+  employee: { id: string; name: string; employeeCode: string; biometricCode: string | null };
   month: string;
   timeZone: string;
   shift: ShiftSummary;
   closed: boolean;
   today: string;
   days: CalendarDay[];
-  summary: { present: number; halfDay: number; absent: number; missedPunch: number; onLeave: number; holidays: number; weeklyOffs: number; lateDays: number; workedMinutes: number };
+  summary: { present: number; halfDay: number; absent: number; missedPunch: number; onLeave: number; holidays: number; weeklyOffs: number; lateDays: number; workedMinutes: number; workFromHomeDays: number; overtimeMinutes: number };
 }
 
 export interface DailyRow {
@@ -62,7 +73,8 @@ export interface DailyRow {
   status: DayStatus;
   leave: { code: string; name: string; color: string; session: LeaveSession } | null;
   record: AttendanceRecord | null;
-  shift: { name: string; startTime: string; endTime: string };
+  workFromHome: boolean;
+  shift: { name: string; startTime: string; endTime: string; rostered: boolean };
 }
 
 export interface DailySummary {
@@ -75,6 +87,7 @@ export interface DailySummary {
   onLeave: number;
   late: number;
   off: number;
+  remote: number;
 }
 
 export interface Regularization {
@@ -91,6 +104,35 @@ export interface Regularization {
   employee: { id: string; name: string; employeeCode: string } | null;
 }
 
+export interface Overtime {
+  id: string;
+  workDate: string;
+  minutes: number;
+  approvedMinutes: number | null;
+  status: OvertimeStatus;
+  reviewNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  paidIn: string | null;
+  employee: { id: string; name: string; employeeCode: string } | null;
+  record: { checkInAt: string | null; checkOutAt: string | null; workedMinutes: number | null } | null;
+  permissions: { review: boolean };
+}
+
+export interface WorkFromHome {
+  id: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: RegularizationStatus;
+  reviewNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  employee: { id: string; name: string; employeeCode: string } | null;
+  permissions: { review: boolean; cancel: boolean };
+}
+
 export interface Shift {
   id: string;
   name: string;
@@ -101,9 +143,55 @@ export interface Shift {
   halfDayMinutes: number;
   fullDayMinutes: number;
   weeklyOffs: number[];
+  overtimeEnabled: boolean;
+  overtimeAfterMinutes: number;
+  overtimeMinMinutes: number;
   isDefault: boolean;
   isActive: boolean;
   employeeCount: number;
+}
+
+export interface RotationStep {
+  shiftId: string | null;
+  days: number;
+}
+
+export interface Rotation {
+  id: string;
+  name: string;
+  isActive: boolean;
+  cycleDays: number;
+  pattern: (RotationStep & { shiftName: string | null })[];
+}
+
+export interface RosterDay {
+  date: string;
+  rostered: boolean;
+  off: boolean;
+  shiftId: string | null;
+  shiftName: string;
+  time: string;
+}
+
+export interface RosterRow {
+  employee: { id: string; name: string; employeeCode: string; department: string | null };
+  usualShift: { id: string | null; name: string };
+  days: RosterDay[];
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  locationId: string | null;
+  location?: { id: string; name: string } | null;
+  serialNumber: string | null;
+  keyHint: string;
+  isActive: boolean;
+  lastSeenAt: string | null;
+  createdAt: string;
+  punchesLast24h?: number;
+  /** Only when the device is added or its key is replaced. */
+  apiKey?: string;
 }
 
 export interface Holiday {
@@ -122,4 +210,5 @@ export interface AttendancePeriod {
   closedBy: string | null;
   summary: Record<string, number> | null;
   pendingRegularizations: number;
+  pendingOvertime: number;
 }

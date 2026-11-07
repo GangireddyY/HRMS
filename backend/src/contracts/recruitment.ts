@@ -33,3 +33,19 @@ export type OfferStatus = (typeof OFFER_STATUSES)[number];
 export const RESUME_CONTENT_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'] as const;
 export type ResumeContentType = (typeof RESUME_CONTENT_TYPES)[number];
 export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
+export const CANDIDATE_SKILLS_MAX = 50;
+
+/** Details read from a resume; anything not found is left out. */
+export interface ParsedResume {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  currentTitle?: string;
+  currentCompany?: string;
+  experienceYears?: number;
+  noticePeriodDays?: number;
+  location?: string;
+  linkedinUrl?: string;
+  skills: string[];
+}

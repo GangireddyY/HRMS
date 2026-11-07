@@ -73,9 +73,13 @@ async function act(p: AttendancePeriod, fn: () => Promise<AttendancePeriod>, mes
           {{ p.pendingRegularizations }} pending regularization{{ p.pendingRegularizations === 1 ? '' : 's' }} –
           <RouterLink to="/hr/attendance/regularizations" class="underline">review</RouterLink>
         </p>
+        <p v-if="p.pendingOvertime" class="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+          {{ p.pendingOvertime }} overtime entr{{ p.pendingOvertime === 1 ? 'y' : 'ies' }} to approve –
+          <RouterLink to="/hr/attendance/regularizations?tab=overtime" class="underline">review</RouterLink>
+        </p>
         <div class="mt-4 flex justify-end">
           <AppButton v-if="p.closed" size="sm" variant="secondary" :icon="LockOpen" :loading="busy === p.month" @click="reopen(p)">Reopen</AppButton>
-          <AppButton v-else-if="p.ended" size="sm" :icon="Lock" :loading="busy === p.month" :disabled="p.pendingRegularizations > 0" @click="close(p)">Close month</AppButton>
+          <AppButton v-else-if="p.ended" size="sm" :icon="Lock" :loading="busy === p.month" :disabled="p.pendingRegularizations > 0 || p.pendingOvertime > 0" @click="close(p)">Close month</AppButton>
         </div>
       </AppCard>
     </div>

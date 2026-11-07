@@ -87,7 +87,11 @@ async function removeComponent(c: SalaryComponentDef) {
 // Statutory settings
 const settings = useAsync(() => payrollApi.settings());
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const s = reactive({ pfEnabled: true, pfRestrictToCeiling: true, esiEnabled: true, ptEnabled: true, ptState: null as string | null, lopFromAttendance: false, pfEstablishmentCode: '', esiEmployerCode: '', tan: '' });
+const s = reactive({ pfEnabled: true, pfRestrictToCeiling: true, esiEnabled: true, ptEnabled: true, ptState: null as string | null, lopFromAttendance: false, pfEstablishmentCode: '', esiEmployerCode: '', tan: '', overtimeMultiplier: 2 as number | string, overtimeBasis: 'GROSS' as 'BASIC' | 'GROSS' });
+const overtimeBasisOptions = [
+  { value: 'GROSS', label: 'Monthly gross ÷ 26 ÷ 8' },
+  { value: 'BASIC', label: 'Monthly Basic ÷ 26 ÷ 8' },
+];
 watch(
   () => settings.data.value,
   (v) => {
@@ -101,7 +105,7 @@ async function saveSettings() {
   reset();
   savingSettings.value = true;
   try {
-    settings.data.value = await payrollApi.updateSettings({ ...s, pfEstablishmentCode: s.pfEstablishmentCode || null, esiEmployerCode: s.esiEmployerCode || null, tan: s.tan || null });
+    settings.data.value = await payrollApi.updateSettings({ ...s, overtimeMultiplier: Number(s.overtimeMultiplier), pfEstablishmentCode: s.pfEstablishmentCode || null, esiEmployerCode: s.esiEmployerCode || null, tan: s.tan || null });
     feedback.success('Payroll settings saved');
   } catch (e) {
     handle(e, 'Could not save the settings');
@@ -209,6 +213,12 @@ async function saveSettings() {
                 label="Loss of pay from attendance"
                 description="Absences and half days count as loss of pay, not just unpaid leave. Payroll then waits for the month's attendance to be closed."
               />
+            </div>
+          </AppCard>
+          <AppCard title="Overtime pay" description="Approved overtime (on shifts that count it) is paid with the next payroll. It is taxable and outside PF and ESI wages.">
+            <div class="grid gap-3 sm:grid-cols-2">
+              <AppInput v-model="s.overtimeMultiplier" :disabled="!canConfigure" type="number" :min="1" :max="5" :step="0.5" label="Rate" suffix="× hourly" help="The Factories Act sets twice the ordinary rate." :error="fieldErrors.overtimeMultiplier" />
+              <AppSelect v-model="s.overtimeBasis" :disabled="!canConfigure" label="Hourly rate" :options="overtimeBasisOptions" :clearable="false" :error="fieldErrors.overtimeBasis" />
             </div>
           </AppCard>
           <div v-if="canConfigure" class="lg:col-span-2">

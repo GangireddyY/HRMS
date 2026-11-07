@@ -119,6 +119,7 @@ export interface Candidate {
   source: CandidateSource;
   referredBy: Ref | null;
   notes: string | null;
+  skills: string[];
   resume: { fileName: string; contentType: string; size: number; uploadedAt: string } | null;
   consentAt: string | null;
   createdAt: string;

@@ -22,6 +22,29 @@ export type PipStatus = (typeof PIP_STATUSES)[number];
 export const PIP_PROGRESS = ['ON_TRACK', 'SOME_PROGRESS', 'OFF_TRACK'] as const;
 export type PipProgress = (typeof PIP_PROGRESS)[number];
 
+/**
+ * Salary-hike recommendations after a review: DRAFT (reviewer working on it) → SUBMITTED → APPROVED / REJECTED (by
+ * someone who revises salaries) → APPLIED (a salary revision from the cycle's effective date).
+ */
+export const HIKE_STATUSES = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'APPLIED'] as const;
+export type HikeStatus = (typeof HIKE_STATUSES)[number];
+
+/** Increase guideline (% of the annual CTC) for a final rating. */
+export interface MeritGuideline {
+  rating: number;
+  min: number;
+  target: number;
+  max: number;
+}
+export const DEFAULT_MERIT_MATRIX: readonly MeritGuideline[] = [
+  { rating: 1, min: 0, target: 0, max: 0 },
+  { rating: 2, min: 0, target: 2, max: 4 },
+  { rating: 3, min: 4, target: 6, max: 8 },
+  { rating: 4, min: 8, target: 10, max: 12 },
+  { rating: 5, min: 12, target: 15, max: 20 },
+];
+export const MAX_HIKE_PERCENT = 100;
+
 export interface PipObjective {
   title: string;
   measure: string | null;

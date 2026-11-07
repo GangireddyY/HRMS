@@ -1,18 +1,9 @@
 import { Notification, PolicyAcknowledgement, PolicyVersion } from '../src/database/models';
-import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
+import { addMonths } from '../src/common/utils/zoned-time';
+import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, orgDays as days, orgToday, resetDatabase, uniqueEmail } from './helpers';
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n');
-const days = (n: number) => {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-const months = (n: number) => {
-  const d = new Date();
-  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));
-  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
-  return `${t.toISOString().slice(0, 8)}${String(Math.min(d.getUTCDate(), last)).padStart(2, '0')}`;
-};
+const months = (n: number) => addMonths(orgToday(), n);
 
 describe('Compliance (e2e)', () => {
   let ctx: TestContext;

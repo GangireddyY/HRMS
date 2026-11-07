@@ -19,6 +19,8 @@ export type EffectiveSettings = {
   pfEstablishmentCode: string | null;
   esiEmployerCode: string | null;
   tan: string | null;
+  overtimeMultiplier: number;
+  overtimeBasis: 'BASIC' | 'GROSS';
 };
 
 const DEFAULTS: EffectiveSettings = {
@@ -31,6 +33,8 @@ const DEFAULTS: EffectiveSettings = {
   pfEstablishmentCode: null,
   esiEmployerCode: null,
   tan: null,
+  overtimeMultiplier: 2,
+  overtimeBasis: 'GROSS',
 };
 
 /** Recommended starting point (created only on request): Basic at half the CTC, HRA at half of Basic, the rest as a special allowance. */
@@ -67,6 +71,8 @@ export class PayrollConfigService {
       pfEstablishmentCode: s.pfEstablishmentCode,
       esiEmployerCode: s.esiEmployerCode,
       tan: s.tan,
+      overtimeMultiplier: Number(s.overtimeMultiplier),
+      overtimeBasis: s.overtimeBasis,
     };
   }
 
@@ -80,7 +86,7 @@ export class PayrollConfigService {
     const before = await this.settings(auth.organizationId!);
     const next = { ...before, ...Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined)) } as EffectiveSettings;
     await this.db.transaction(async (transaction) => {
-      await PayrollSettings.upsert({ organizationId: auth.organizationId!, ...next, updatedById: auth.userId }, { transaction });
+      await PayrollSettings.upsert({ organizationId: auth.organizationId!, ...next, overtimeMultiplier: String(next.overtimeMultiplier), updatedById: auth.userId }, { transaction });
       await this.audit.record({ action: 'payroll.settings_updated', entityType: 'PayrollSettings', summary: 'Payroll settings updated', changes: diff(before, next) }, transaction);
     });
     return this.settingsView(auth);

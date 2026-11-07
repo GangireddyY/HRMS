@@ -95,6 +95,16 @@ export class PlanDto {
 
 export class UpdatePlanDto extends PartialType(PlanDto) {}
 
+/** Everything defaults to the next policy period with the same options; edit the draft afterwards for new costs. */
+export class RenewPlanDto {
+  @ApiPropertyOptional({ example: 'Group health insurance 2027-28' }) @IsOptional() @Transform(trim) @IsString() @Length(3, 150) name?: string;
+  @ApiPropertyOptional({ nullable: true }) @Text(80) policyNumber?: string | null;
+  @ApiPropertyOptional({ description: 'Defaults to the day after the current policy ends' }) @IsOptional() @IsISO8601(DATE) coverageStartsOn?: string;
+  @ApiPropertyOptional({ description: 'Defaults to a period as long as the current one' }) @IsOptional() @IsISO8601(DATE) coverageEndsOn?: string;
+  @ApiPropertyOptional({ nullable: true, description: 'Defaults to 30 days before the renewed policy starts' }) @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE) enrollmentOpensOn?: string | null;
+  @ApiPropertyOptional({ nullable: true, description: 'Defaults to the day before the renewed policy starts' }) @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE) enrollmentClosesOn?: string | null;
+}
+
 export class PlanQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: BENEFIT_PLAN_STATUSES }) @IsOptional() @IsIn(BENEFIT_PLAN_STATUSES) status?: BenefitPlanStatus;
 }

@@ -1,4 +1,16 @@
-import { ageOn, chargedInMonth, coverageStart, dependentProblems, enrollmentWindow, ineligibility, lifeEventProblem, type EligibilityPerson, type EligibilityRules } from './benefits-rules';
+import {
+  ageOn,
+  carriedDependents,
+  chargedInMonth,
+  coverageStart,
+  dependentProblems,
+  enrollmentWindow,
+  ineligibility,
+  lifeEventProblem,
+  renewalPeriod,
+  type EligibilityPerson,
+  type EligibilityRules,
+} from './benefits-rules';
 
 const plan = (over: Partial<EligibilityRules> = {}): EligibilityRules => ({
   employmentTypes: null,
@@ -91,5 +103,28 @@ describe('benefits rules', () => {
     expect(chargedInMonth({ ...e, status: 'ENDED', effectiveTo: '2026-08-02' }, '2026-08-01', '2026-08-31')).toBe(true);
     expect(chargedInMonth({ ...e, status: 'ENDED', effectiveTo: '2026-08-02' }, '2026-09-01', '2026-09-30')).toBe(false);
     expect(chargedInMonth({ ...e, status: 'PENDING' }, '2026-06-01', '2026-06-30')).toBe(false);
+  });
+
+  it('works out the renewal period and which dependants carry over', () => {
+    expect(renewalPeriod({ coverageStartsOn: '2026-04-01', coverageEndsOn: '2027-03-31' }, '2027-01-10')).toEqual({
+      coverageStartsOn: '2027-04-01',
+      coverageEndsOn: '2028-03-31',
+      enrollmentOpensOn: '2027-03-02',
+      enrollmentClosesOn: '2027-03-31',
+    });
+    // Renewed late: the window opens today; renewed after the new start: no window.
+    expect(renewalPeriod({ coverageStartsOn: '2026-04-01', coverageEndsOn: '2027-03-31' }, '2027-03-20')).toMatchObject({ enrollmentOpensOn: '2027-03-20', enrollmentClosesOn: '2027-03-31' });
+    expect(renewalPeriod({ coverageStartsOn: '2026-04-01', coverageEndsOn: '2027-03-31' }, '2027-04-05')).toMatchObject({ enrollmentOpensOn: null, enrollmentClosesOn: null });
+
+    const deps = [
+      { name: 'Ravi', relationship: 'SPOUSE' as const, dateOfBirth: '1990-02-01' },
+      { name: 'Anya', relationship: 'CHILD' as const, dateOfBirth: '2001-06-01' },
+      { name: 'Kabir', relationship: 'CHILD' as const, dateOfBirth: '2015-06-01' },
+      { name: 'Mohan', relationship: 'FATHER' as const, dateOfBirth: '1960-01-01' },
+    ];
+    // Anya turns 25 before the new policy starts; parents aren't covered by this option.
+    expect(carriedDependents({ allowedRelations: ['SPOUSE', 'CHILD'], maxDependents: 3 }, 24, deps, '2027-04-01').map((d) => d.name)).toEqual(['Ravi', 'Kabir']);
+    expect(carriedDependents({ allowedRelations: ['SPOUSE', 'CHILD'], maxDependents: 1 }, 24, deps, '2027-04-01').map((d) => d.name)).toEqual(['Ravi']);
+    expect(carriedDependents({ allowedRelations: [], maxDependents: 0 }, null, deps, '2027-04-01')).toEqual([]);
   });
 });

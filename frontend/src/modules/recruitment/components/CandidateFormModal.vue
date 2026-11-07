@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { AlertTriangle } from '@lucide/vue';
+import { AlertTriangle, FileText, ScanText } from '@lucide/vue';
 import { CANDIDATE_SOURCES, type CandidateSource } from '@contracts';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import type { Candidate } from '@/modules/recruitment/types';
 import { SOURCE_LABELS } from '@/modules/recruitment/utils/recruitment-format';
 import { AppAlert, AppButton, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { useFeedbackStore } from '@/shared/stores/feedback.store';
 
 /** Add a candidate (optionally straight into a job) with live duplicate checks, or edit one. */
 const props = defineProps<{ open: boolean; candidate: Candidate | null; jobId?: string | null }>();
 const emit = defineEmits<{ close: []; saved: [c: Candidate]; existing: [candidateId: string] }>();
 
 const { fieldErrors, formError, handle, reset } = useFormErrors();
+const feedback = useFeedbackStore();
 const saving = ref(false);
 const blank = () => ({
   firstName: '',
@@ -29,19 +31,67 @@ const blank = () => ({
   linkedinUrl: '',
   source: 'DIRECT' as CandidateSource,
   notes: '',
+  skills: '',
 });
 const draft = reactive(blank());
+// New candidates can be filled in from their resume; only empty fields are filled and the file is attached on save.
+const fileInput = ref<HTMLInputElement | null>(null);
+const resumeFile = ref<File | null>(null);
+const reading = ref(false);
+const resumeNote = ref<{ tone: 'info' | 'warning'; text: string } | null>(null);
 watch(
   () => props.open,
   (open) => {
     if (!open) return;
     reset();
     duplicates.value = [];
+    resumeFile.value = null;
+    resumeNote.value = null;
     const c = props.candidate;
-    Object.assign(draft, blank(), c ? { ...c, phone: c.phone ?? '', currentCompany: c.currentCompany ?? '', currentTitle: c.currentTitle ?? '', experienceYears: c.experienceYears ?? '', currentCtc: c.currentCtc ?? '', expectedCtc: c.expectedCtc ?? '', noticePeriodDays: c.noticePeriodDays ?? '', location: c.location ?? '', linkedinUrl: c.linkedinUrl ?? '', notes: c.notes ?? '' } : {});
+    Object.assign(draft, blank(), c ? { ...c, phone: c.phone ?? '', currentCompany: c.currentCompany ?? '', currentTitle: c.currentTitle ?? '', experienceYears: c.experienceYears ?? '', currentCtc: c.currentCtc ?? '', expectedCtc: c.expectedCtc ?? '', noticePeriodDays: c.noticePeriodDays ?? '', location: c.location ?? '', linkedinUrl: c.linkedinUrl ?? '', notes: c.notes ?? '', skills: c.skills.join(', ') } : {});
   },
   { immediate: true },
 );
+
+async function onResume(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  reading.value = true;
+  resumeNote.value = null;
+  try {
+    const { parsed, readable } = await recruitmentApi.parseResume(file);
+    resumeFile.value = file;
+    const filled: string[] = [];
+    const fill = <K extends Exclude<keyof typeof draft, 'source'>>(key: K, value: (typeof draft)[K] | undefined, label: string) => {
+      if (value === undefined || value === '' || draft[key] !== '') return;
+      draft[key] = value;
+      if (!filled.includes(label)) filled.push(label);
+    };
+    fill('firstName', parsed.firstName, 'name');
+    fill('lastName', parsed.lastName, 'name');
+    fill('email', parsed.email, 'email');
+    fill('phone', parsed.phone, 'phone');
+    fill('currentTitle', parsed.currentTitle, 'title');
+    fill('currentCompany', parsed.currentCompany, 'company');
+    fill('experienceYears', parsed.experienceYears, 'experience');
+    fill('noticePeriodDays', parsed.noticePeriodDays, 'notice period');
+    fill('location', parsed.location, 'location');
+    fill('linkedinUrl', parsed.linkedinUrl, 'LinkedIn');
+    fill('skills', parsed.skills.join(', '), 'skills');
+    resumeNote.value = !readable
+      ? { tone: 'warning', text: "No text could be read from this resume (it may be a scanned image). It will still be attached; fill in the details yourself." }
+      : filled.length
+        ? { tone: 'info', text: `Filled in ${filled.join(', ')} from the resume — check them before saving.` }
+        : { tone: 'info', text: 'Nothing was found for the empty fields. The resume will be attached.' };
+  } catch (err) {
+    handle(err, 'Could not read the resume');
+  } finally {
+    reading.value = false;
+  }
+}
+const skillList = () => draft.skills.split(',').map((s) => s.trim()).filter(Boolean);
 
 const duplicates = ref<{ id: string; name: string; email: string; match: 'EMAIL' | 'PHONE' }[]>([]);
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -80,9 +130,19 @@ async function save() {
     currentCtc: n(draft.currentCtc),
     expectedCtc: n(draft.expectedCtc),
     noticePeriodDays: n(draft.noticePeriodDays),
+    skills: skillList(),
   };
   try {
-    emit('saved', props.candidate ? await recruitmentApi.updateCandidate(props.candidate.id, body) : await recruitmentApi.createCandidate({ ...body, jobId: props.jobId ?? null }));
+    if (props.candidate) return emit('saved', await recruitmentApi.updateCandidate(props.candidate.id, body));
+    let created = await recruitmentApi.createCandidate({ ...body, jobId: props.jobId ?? null });
+    if (resumeFile.value) {
+      try {
+        created = await recruitmentApi.uploadResume(created.id, resumeFile.value);
+      } catch (e) {
+        feedback.error('The candidate was added but the resume could not be attached', e);
+      }
+    }
+    emit('saved', created);
   } catch (e) {
     handle(e, 'Could not save the candidate');
   } finally {
@@ -95,6 +155,15 @@ async function save() {
   <AppModal :open="open" :title="candidate ? `Edit ${candidate.name}` : 'Add candidate'" size="lg" @close="emit('close')">
     <form id="candidate-form" class="space-y-4" novalidate @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
+      <div v-if="!candidate" class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-muted/60 px-4 py-3">
+        <p class="flex min-w-0 items-center gap-2 text-sm text-fg-muted">
+          <FileText :size="16" class="shrink-0" aria-hidden="true" />
+          <span class="truncate">{{ resumeFile ? resumeFile.name : 'Have their resume? Fill the form from it (PDF or .docx).' }}</span>
+        </p>
+        <AppButton size="sm" variant="secondary" :icon="ScanText" :loading="reading" @click="fileInput?.click()">{{ resumeFile ? 'Use another resume' : 'Fill from resume' }}</AppButton>
+        <input ref="fileInput" type="file" class="sr-only" accept=".pdf,.docx" aria-label="Resume file" @change="onResume" />
+      </div>
+      <AppAlert v-if="resumeNote" :tone="resumeNote.tone">{{ resumeNote.text }}</AppAlert>
       <div class="grid gap-4 sm:grid-cols-2">
         <AppInput v-model="draft.firstName" label="First name" required :error="fieldErrors.firstName" />
         <AppInput v-model="draft.lastName" label="Last name" required :error="fieldErrors.lastName" />
@@ -122,6 +191,7 @@ async function save() {
         <AppInput v-model="draft.location" label="Location" />
         <AppInput v-model="draft.linkedinUrl" class="sm:col-span-2" label="LinkedIn profile" placeholder="linkedin.com/in/name" :error="fieldErrors.linkedinUrl" />
       </div>
+      <AppInput v-model="draft.skills" label="Skills" placeholder="TypeScript, Figma, Negotiation" help="Separate with commas" :error="fieldErrors.skills" />
       <AppSelect v-model="draft.source" class="max-w-xs" label="Source" :options="sourceOptions" :clearable="false" />
       <AppTextarea v-model="draft.notes" label="Notes" :rows="2" :maxlength="2000" />
     </form>

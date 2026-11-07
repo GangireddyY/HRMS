@@ -151,6 +151,17 @@ export class RecruitmentController {
     return this.candidates.duplicates(query.email, query.phone);
   }
 
+  @Post('resumes/parse')
+  @RequirePermissions('recruitment.manage')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @UseInterceptors(RESUME_UPLOAD)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({ summary: 'Read candidate details from a resume (PDF or .docx) to prefill the candidate form; the file is not kept' })
+  parseResume(@UploadedFile() file?: UploadedResume) {
+    return this.candidates.parseResume(file);
+  }
+
   @Post('candidates')
   @RequirePermissions('recruitment.manage')
   createCandidate(@CurrentAuth() auth: AuthContext, @Body() dto: CandidateDto) {

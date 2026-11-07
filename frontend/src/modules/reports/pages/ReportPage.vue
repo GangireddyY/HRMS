@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { Download } from '@lucide/vue';
+import { ChevronDown, Download, FileSpreadsheet, FileText, Sheet } from '@lucide/vue';
+import type { ReportExportFormat } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { structureApi } from '@/modules/people/api/people.api';
 import { reportsApi, type ReportQuery } from '@/modules/reports/api/reports.api';
 import ReportTableCard from '@/modules/reports/components/ReportTableCard.vue';
 import TrendChart from '@/modules/reports/components/TrendChart.vue';
 import { REPORTS, formatValue } from '@/modules/reports/utils/report-definitions';
-import { AppAlert, AppButton, AppDatePicker, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppStatCard } from '@/shared/components';
+import { AppAlert, AppButton, AppDatePicker, AppDropdown, AppErrorState, AppInput, AppMenuItem, AppPageHeader, AppSelect, AppSkeleton, AppStatCard } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -73,12 +74,16 @@ const periodLabel = computed(() => {
   if (r.value.from) return `${formatDate(r.value.from)} – ${formatDate(r.value.to!)}`;
   return `${r.value.fromMonth} – ${r.value.toMonth}`;
 });
-async function exportCsv() {
+const exporting = ref<ReportExportFormat | null>(null);
+async function exportAs(format: ReportExportFormat) {
   if (!def.value) return;
+  exporting.value = format;
   try {
-    await reportsApi.export(def.value.key, query.value);
+    await reportsApi.export(def.value.key, query.value, format);
   } catch (e) {
     feedback.error('Could not export the report', e);
+  } finally {
+    exporting.value = null;
   }
 }
 </script>
@@ -89,7 +94,14 @@ async function exportCsv() {
     <template v-else>
       <AppPageHeader :title="def.title" :description="def.description" back="/hr/reports" back-label="Reports">
         <template v-if="auth.can('reports.export')" #actions>
-          <AppButton variant="secondary" :icon="Download" :disabled="!r" @click="exportCsv">Export CSV</AppButton>
+          <AppDropdown label="Export" width="w-56">
+            <template #trigger="{ toggle }"><AppButton variant="secondary" :icon="Download" :icon-right="ChevronDown" :disabled="!r" :loading="!!exporting" @click="toggle">Export</AppButton></template>
+            <template #default="{ close }">
+              <AppMenuItem :icon="FileSpreadsheet" @select="close(); exportAs('xlsx')">Excel workbook (.xlsx)</AppMenuItem>
+              <AppMenuItem :icon="FileText" @select="close(); exportAs('pdf')">PDF document</AppMenuItem>
+              <AppMenuItem :icon="Sheet" @select="close(); exportAs('csv')">CSV (tables only)</AppMenuItem>
+            </template>
+          </AppDropdown>
         </template>
       </AppPageHeader>
 

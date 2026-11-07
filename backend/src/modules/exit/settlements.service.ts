@@ -4,11 +4,12 @@ import { SETTLEMENT_DUE_WORKING_DAYS } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Designation, Employee, EmployeeSalary, ExitCase, ExitClearanceItem, ExitSettlement, LeaveLedgerEntry, User } from '../../database/models';
+import { Department, Designation, Employee, EmployeeLoan, EmployeeLoanRepayment, EmployeeSalary, ExitCase, ExitClearanceItem, ExitSettlement, LeaveLedgerEntry, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { fullName, organizationToday, userIdsOf } from '../employees/employee-people';
 import { LeaveBalanceService } from '../leave/leave-balance.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { closeRepaidLoans, loanBalances } from '../payroll/loan-balances';
 import type { SalaryComponent } from '../payroll/payroll-engine';
 import type { CalculateSettlementDto, PaySettlementDto, ReturnSettlementDto } from './dto/exit.dto';
 import { addWorkingDays, gratuityEligibility, gratuityYears, noticeShortfall, serviceLength, settlementLines } from './exit-rules';
@@ -84,6 +85,9 @@ export class SettlementsService {
     const adjustments = dto.adjustments ?? existing?.adjustments ?? [];
     const shortfallDays = noticeShortfall(c.noticeEndsOn, lastDay, c.noticeWaived);
     const recoveries = (await ExitClearanceItem.findAll({ where: { caseId, recoveryAmount: { [Op.gt]: 0 } }, order: [['sortOrder', 'ASC']] })).map((i) => ({ id: i.id, title: i.title, amount: Number(i.recoveryAmount) }));
+    const activeLoans = await EmployeeLoan.findAll({ where: { employeeId: employee.id, status: 'ACTIVE' }, order: [['createdAt', 'ASC']] });
+    const owed = await loanBalances(activeLoans);
+    const loans = activeLoans.map((l) => ({ loanId: l.id, reference: l.reference, type: l.type, amount: owed.get(l.id)!.outstanding })).filter((l) => l.amount > 0);
     const years = gratuityYears(service);
     const result = settlementLines({
       type: c.type,
@@ -95,6 +99,7 @@ export class SettlementsService {
       shortfallDays,
       noticeBasis,
       recoveries,
+      loans,
       adjustments,
     });
     const today = await organizationToday(c.organizationId);
@@ -105,7 +110,7 @@ export class SettlementsService {
       gratuityNote,
       adjustments,
       lines: result.lines,
-      inputs: { asOf: today, lastWorkingDay: lastDay, monthlyBasic, monthlyGross, salaryEffectiveFrom: salary.effectiveFrom, service, gratuityYears: years, gratuity: eligibility, leave, noticeEndsOn: c.noticeEndsOn, shortfallDays, noticeWaived: c.noticeWaived },
+      inputs: { asOf: today, lastWorkingDay: lastDay, monthlyBasic, monthlyGross, salaryEffectiveFrom: salary.effectiveFrom, service, gratuityYears: years, gratuity: eligibility, leave, loans, noticeEndsOn: c.noticeEndsOn, shortfallDays, noticeWaived: c.noticeWaived },
       totalEarnings: String(result.totalEarnings),
       totalDeductions: String(result.totalDeductions),
       netPayable: String(result.net),
@@ -153,6 +158,18 @@ export class SettlementsService {
           defaults: { organizationId: c.organizationId, employeeId: c.employeeId, leaveTypeId: l.leaveTypeId, leaveYear: l.leaveYear, kind: 'ENCASHMENT', days: String(-l.days), effectiveDate: today, note: 'Encashed in the full & final settlement', idempotencyKey: `exit:${c.id}:${l.leaveTypeId}`, createdById: auth.userId },
           transaction,
         });
+      }
+      // Loans still owed are recovered by the settlement (never more than is owed by now).
+      const loans = ((s.inputs as { loans?: { loanId: string; reference: string }[] }).loans ?? []).filter((l) => s.lines!.some((x) => x.code === `LOAN_${l.reference}`));
+      if (loans.length) {
+        const open = await EmployeeLoan.findAll({ where: { id: loans.map((l) => l.loanId), status: 'ACTIVE' }, transaction });
+        const balances = await loanBalances(open, transaction);
+        for (const l of open) {
+          const line = s.lines!.find((x) => x.code === `LOAN_${l.reference}`)!;
+          const recovered = Math.min(line.amount, balances.get(l.id)!.outstanding);
+          if (recovered > 0) await EmployeeLoanRepayment.create({ organizationId: c.organizationId, loanId: l.id, source: 'SETTLEMENT', settlementId: s.id, paidOn: today, principal: String(recovered), note: 'Recovered in the full & final settlement', createdById: auth.userId }, { transaction });
+        }
+        await closeRepaidLoans(open.map((l) => l.id), transaction);
       }
       await this.audit.record({ action: 'exit.settlement_approved', entityType: 'ExitCase', entityId: c.id, summary: `Full & final settlement approved (net ₹${Number(s.netPayable).toLocaleString('en-IN')})` }, transaction);
       const userId = (await userIdsOf([c.employeeId], transaction)).get(c.employeeId);

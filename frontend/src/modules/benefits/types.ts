@@ -41,6 +41,12 @@ export interface Plan {
   maxChildAge: number | null;
   options: PlanOption[];
   updatedAt: string;
+  renewedFromId: string | null;
+  /** HR only: the plan of the next policy period, and the plan this one renews. */
+  renewal?: { id: string; name: string; status: BenefitPlanStatus; coverageStartsOn: string } | null;
+  renewedFrom?: { id: string; name: string; status: BenefitPlanStatus; coverageEndsOn: string } | null;
+  /** Returned when a renewal is activated. */
+  carriedOver?: { carried: number; skipped: number };
   /** Only for benefits.manage. */
   stats?: PlanStats;
 }

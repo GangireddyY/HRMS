@@ -4,7 +4,7 @@ import { REPORT_KEYS, REPORT_PERMISSIONS, type ReportKey } from '../../contracts
 import type { AuthContext } from '../../common/auth/auth-context';
 import { CurrentAuth, RequirePermissions } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
-import { ReportQueryDto } from './dto/reports.dto';
+import { ReportExportQueryDto, ReportQueryDto } from './dto/reports.dto';
 import { ReportsService } from './reports.service';
 
 const attachment = (name: string) => `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
@@ -53,10 +53,11 @@ export class ReportsController {
 
   @Get(':key/export')
   @RequirePermissions('reports.export')
-  @ApiOperation({ summary: 'A report as CSV (also needs the permission for that report)' })
-  async export(@CurrentAuth() auth: AuthContext, @Param('key', KEY) key: ReportKey, @Query() query: ReportQueryDto) {
+  @ApiOperation({ summary: 'A report as CSV, Excel (xlsx) or PDF (also needs the permission for that report)' })
+  async export(@CurrentAuth() auth: AuthContext, @Param('key', KEY) key: ReportKey, @Query() query: ReportExportQueryDto) {
     if (!auth.permissions.has(REPORT_PERMISSIONS[key])) throw AppError.forbidden();
-    const f = await this.reports.csv(auth, key, query);
-    return new StreamableFile(Buffer.from(`\uFEFF${f.content}`, 'utf8'), { type: 'text/csv; charset=utf-8', disposition: attachment(f.fileName) });
+    const { format, ...filters } = query;
+    const f = await this.reports.export(auth, key, filters, format);
+    return new StreamableFile(f.content, { type: f.contentType, length: f.content.length, disposition: attachment(f.fileName) });
   }
 }

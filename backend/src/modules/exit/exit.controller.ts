@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
+import { AlumniService } from './alumni.service';
 import {
+  AlumniProfileDto,
+  AlumniQueryDto,
   ApproveExitDto,
   CalculateSettlementDto,
   ClearanceItemDto,
@@ -11,12 +14,16 @@ import {
   ExitQueryDto,
   FeedbackDto,
   InitiateExitDto,
+  IssueLetterDto,
+  LetterDraftQueryDto,
   PaySettlementDto,
   ResignDto,
   ReturnSettlementDto,
+  RevokeLetterDto,
   UpdateClearanceDto,
   UpdateExitDto,
 } from './dto/exit.dto';
+import { ExitLettersService } from './exit-letters.service';
 import { ExitsService } from './exits.service';
 import { SettlementsService } from './settlements.service';
 
@@ -36,6 +43,7 @@ export class ExitController {
   constructor(
     private readonly exits: ExitsService,
     private readonly settlements: SettlementsService,
+    private readonly letterService: ExitLettersService,
   ) {}
 
   // ---- Employees --------------------------------------------------------------------------------
@@ -171,5 +179,70 @@ export class ExitController {
   pay(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: PaySettlementDto) {
     requireAny(auth, ['payroll.settlement.manage']);
     return this.settlements.pay(auth, id, dto);
+  }
+
+  // ---- Letters ----------------------------------------------------------------------------------
+
+  @Get(':id/letters')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Letters issued for the exit (HR sees revoked ones too)' })
+  letters(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth, ['exit.manage', 'exit.resign']);
+    return this.letterService.list(auth, id);
+  }
+
+  @Get(':id/letters/draft')
+  @RequirePermissions('exit.manage')
+  @ApiOperation({ summary: 'Suggested text for a relieving letter or experience certificate' })
+  letterDraft(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Query() query: LetterDraftQueryDto) {
+    return this.letterService.draft(auth, id, query.type);
+  }
+
+  @Post(':id/letters')
+  @RequirePermissions('exit.manage')
+  @ApiOperation({ summary: 'Issue a letter once the exit is completed' })
+  issueLetter(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: IssueLetterDto) {
+    return this.letterService.issue(auth, id, dto);
+  }
+
+  @Get(':id/letters/:letterId')
+  @RequireTenant()
+  letter(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Param('letterId', UUID) letterId: string) {
+    requireAny(auth, ['exit.manage', 'exit.resign']);
+    return this.letterService.get(auth, id, letterId);
+  }
+
+  @Post(':id/letters/:letterId/revoke')
+  @RequirePermissions('exit.manage')
+  revokeLetter(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Param('letterId', UUID) letterId: string, @Body() dto: RevokeLetterDto) {
+    return this.letterService.revoke(auth, id, letterId, dto);
+  }
+}
+
+@ApiTags('Exits')
+@ApiBearerAuth()
+@Controller({ path: 'alumni', version: '1' })
+export class AlumniController {
+  constructor(private readonly alumni: AlumniService) {}
+
+  @Get()
+  @RequireTenant()
+  @ApiOperation({ summary: 'Former employees, with contact details of those in the alumni network' })
+  list(@CurrentAuth() auth: AuthContext, @Query() query: AlumniQueryDto) {
+    requireAny(auth, ['exit.manage', 'exit.view']);
+    return this.alumni.list(auth, query);
+  }
+
+  @Get('me')
+  @RequirePermissions('exit.resign')
+  mine(@CurrentAuth() auth: AuthContext) {
+    return this.alumni.mine(auth);
+  }
+
+  @Put('me')
+  @RequirePermissions('exit.resign')
+  @ApiOperation({ summary: 'Join or leave the alumni network and keep the details up to date (former employees)' })
+  updateMine(@CurrentAuth() auth: AuthContext, @Body() dto: AlumniProfileDto) {
+    return this.alumni.updateMine(auth, dto);
   }
 }

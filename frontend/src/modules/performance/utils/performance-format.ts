@@ -1,4 +1,4 @@
-import type { CycleStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
+import type { CycleStatus, HikeStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
 
 export const CYCLE_STATUS_LABELS: Record<CycleStatus, string> = { DRAFT: 'Draft', ACTIVE: 'In progress', CLOSED: 'Closed' };
 export const cycleTone: Record<CycleStatus, 'neutral' | 'info' | 'success'> = { DRAFT: 'neutral', ACTIVE: 'info', CLOSED: 'success' };
@@ -25,6 +25,9 @@ export const PIP_STATUS_LABELS: Record<PipStatus, string> = { ACTIVE: 'Active', 
 export const pipTone: Record<PipStatus, 'warning' | 'success' | 'danger' | 'neutral'> = { ACTIVE: 'warning', SUCCESSFUL: 'success', UNSUCCESSFUL: 'danger', CANCELLED: 'neutral' };
 export const PIP_PROGRESS_LABELS: Record<PipProgress, string> = { ON_TRACK: 'On track', SOME_PROGRESS: 'Some progress', OFF_TRACK: 'Off track' };
 export const pipProgressTone: Record<PipProgress, 'success' | 'warning' | 'danger'> = { ON_TRACK: 'success', SOME_PROGRESS: 'warning', OFF_TRACK: 'danger' };
+
+export const HIKE_STATUS_LABELS: Record<HikeStatus, string> = { DRAFT: 'Draft', SUBMITTED: 'Awaiting approval', APPROVED: 'Approved', REJECTED: 'Not approved', APPLIED: 'Applied' };
+export const hikeTone: Record<HikeStatus, 'neutral' | 'warning' | 'success' | 'danger' | 'brand'> = { DRAFT: 'neutral', SUBMITTED: 'warning', APPROVED: 'success', REJECTED: 'danger', APPLIED: 'brand' };
 
 /** "3 · Meets expectations" using the cycle's labels. */
 export const ratingText = (rating: number | null | undefined, labels: string[]) => (rating ? `${rating} · ${labels[rating - 1] ?? ''}` : '—');

@@ -6,15 +6,16 @@ import { paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { containsPattern } from '../../common/utils/like';
-import { minutesToTime, monthRange, weekday } from '../../common/utils/zoned-time';
+import { minutesToTime, monthRange } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
-import { AttendanceRecord, AttendanceRegularization, Department, Designation, Employee } from '../../database/models';
+import { AttendanceOvertime, AttendanceRecord, AttendanceRegularization, Department, Designation, Employee, Location } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
-import { AttendanceRulesService, OPEN_PUNCH_HOURS, type EmployeeContext } from './attendance-rules.service';
+import { AttendanceRulesService, OPEN_PUNCH_HOURS, distanceMetres, type EffectiveShift, type EmployeeContext } from './attendance-rules.service';
 import type { CalendarQueryDto, DailyQueryDto, PunchDto, UpsertRecordDto } from './dto/attendance.dto';
+import { OvertimeService } from './overtime.service';
 
-const EMPLOYEE_ATTRS = ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'status', 'dateOfJoining', 'exitDate', 'shiftId', 'locationId', 'managerId', 'departmentId', 'membershipId'];
+const EMPLOYEE_ATTRS = ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'status', 'dateOfJoining', 'exitDate', 'shiftId', 'locationId', 'managerId', 'departmentId', 'membershipId', 'biometricCode'];
 
 export function presentRecord(r: AttendanceRecord | undefined | null) {
   if (!r) return null;
@@ -25,22 +26,25 @@ export function presentRecord(r: AttendanceRecord | undefined | null) {
     checkOutAt: r.checkOutAt,
     workedMinutes: r.workedMinutes,
     lateMinutes: r.lateMinutes,
+    overtimeMinutes: r.overtimeMinutes,
     status: r.status,
     source: r.source,
+    workMode: r.workMode,
     note: r.note,
   };
 }
 
-function shiftSummary(ctx: EmployeeContext) {
+function shiftSummary(shift: EffectiveShift) {
   return {
-    name: ctx.shift.name,
-    startTime: minutesToTime(ctx.shift.startMinutes),
-    endTime: minutesToTime(ctx.shift.endMinutes),
-    crossesMidnight: ctx.shift.crossesMidnight,
-    graceMinutes: ctx.shift.graceMinutes,
-    fullDayMinutes: ctx.shift.fullDayMinutes,
-    halfDayMinutes: ctx.shift.halfDayMinutes,
-    weeklyOffs: ctx.shift.weeklyOffs,
+    name: shift.name,
+    startTime: minutesToTime(shift.startMinutes),
+    endTime: minutesToTime(shift.endMinutes),
+    crossesMidnight: shift.crossesMidnight,
+    graceMinutes: shift.graceMinutes,
+    fullDayMinutes: shift.fullDayMinutes,
+    halfDayMinutes: shift.halfDayMinutes,
+    weeklyOffs: shift.weeklyOffs,
+    overtimeEnabled: shift.overtimeEnabled,
   };
 }
 
@@ -53,6 +57,7 @@ export class AttendanceService {
     private readonly audit: AuditService,
     private readonly scope: EmployeeScopeService,
     private readonly rules: AttendanceRulesService,
+    private readonly overtime: OvertimeService,
   ) {}
 
   // ---- Self-service ----------------------------------------------------------------------------
@@ -63,20 +68,26 @@ export class AttendanceService {
     const ctx = await this.rules.context(auth.organizationId!, self);
     const now = new Date();
     const date = this.rules.today(ctx.timeZone, now);
-    const [record, open, holidays, closed] = await Promise.all([
+    const [record, open, holidays, closed, wfh, location] = await Promise.all([
       AttendanceRecord.findOne({ where: { employeeId: self.id, workDate: date } }),
       this.findOpen(self.id, now),
       this.rules.holidays(date, date),
       this.rules.isClosed(date),
+      this.rules.workFromHomeDays([self.id], date, date),
+      self.locationId ? Location.findByPk(self.locationId, { attributes: ['id', 'name', 'latitude', 'longitude', 'geofenceRadiusM'] }) : null,
     ]);
     const holiday = holidays.get(date);
+    const workFromHome = !!wfh.get(self.id)?.has(date);
     return {
       employee: { id: self.id, name: fullName(self), employeeCode: self.employeeCode, status: self.status },
       date,
       timeZone: ctx.timeZone,
-      shift: shiftSummary(ctx),
+      shift: shiftSummary(this.rules.shiftOn(ctx, date)),
+      rostered: !!this.rules.rosterOn(ctx, date),
       holiday: holiday ? { name: holiday.name, isOptional: holiday.isOptional } : null,
-      isWeeklyOff: ctx.shift.weeklyOffs.includes(weekday(date)),
+      isWeeklyOff: this.rules.isRestDay(ctx, date),
+      workFromHome,
+      geofence: location?.geofenceRadiusM && !workFromHome ? { location: location.name, radiusMetres: location.geofenceRadiusM } : null,
       record: presentRecord(record),
       openRecord: presentRecord(open),
       periodClosed: closed,
@@ -94,14 +105,18 @@ export class AttendanceService {
     await this.rules.assertOpen(date);
     const existing = await AttendanceRecord.findOne({ where: { employeeId: self.id, workDate: date } });
     if (existing?.checkInAt) throw AppError.conflict(`You already recorded attendance today (in at ${this.localTime(existing.checkInAt, ctx)}). Ask for a regularization if it is wrong.`);
+    const workFromHome = !!(await this.rules.workFromHomeDays([self.id], date, date)).get(self.id)?.has(date);
+    if (!workFromHome) await this.checkGeofence(self, dto);
+    const outcome = await this.rules.evaluate(ctx, date, now, null);
     await AttendanceRecord.create({
       organizationId: auth.organizationId!,
       employeeId: self.id,
       workDate: date,
-      shiftId: ctx.shift.id,
+      shiftId: outcome.shiftId,
       checkInAt: now,
-      lateMinutes: this.rules.lateMinutes(now, date, ctx),
+      lateMinutes: outcome.lateMinutes,
       source: 'WEB',
+      workMode: workFromHome ? 'REMOTE' : 'OFFICE',
       checkInIp: ip ?? null,
       checkInLatitude: dto.latitude === undefined ? null : String(dto.latitude),
       checkInLongitude: dto.longitude === undefined ? null : String(dto.longitude),
@@ -117,7 +132,11 @@ export class AttendanceService {
     const open = await this.findOpen(self.id, now);
     if (!open) throw AppError.conflict("You haven't punched in yet.");
     await this.rules.assertOpen(open.workDate);
-    await open.update({ checkOutAt: now, checkOutIp: ip ?? null, ...this.rules.outcome(open.checkInAt!, now, ctx.shift), updatedById: auth.userId });
+    await this.db.transaction(async (transaction) => {
+      const outcome = await this.rules.evaluate(ctx, open.workDate, open.checkInAt!, now, transaction);
+      await open.update({ checkOutAt: now, checkOutIp: ip ?? null, ...outcome, updatedById: auth.userId }, { transaction });
+      await this.overtime.sync(open, transaction);
+    });
     return this.today(auth);
   }
 
@@ -125,24 +144,30 @@ export class AttendanceService {
 
   async calendar(auth: AuthContext, query: CalendarQueryDto) {
     const employee = await this.resolveEmployee(auth, query.employeeId);
-    const ctx = await this.rules.context(auth.organizationId!, employee);
     const [year, month] = query.month.split('-').map(Number) as [number, number];
     const { from, to, days } = monthRange(year, month);
+    const ctx = await this.rules.context(auth.organizationId!, employee, { from, to });
     const today = this.rules.today(ctx.timeZone);
-    const [records, holidays, pending, closed, leave] = await Promise.all([
+    const [records, holidays, pending, closed, leave, wfh, overtime] = await Promise.all([
       AttendanceRecord.findAll({ where: { employeeId: employee.id, workDate: { [Op.between]: [from, to] } } }),
       this.rules.holidays(from, to),
       AttendanceRegularization.findAll({ where: { employeeId: employee.id, status: 'PENDING', workDate: { [Op.between]: [from, to] } }, attributes: ['id', 'workDate'] }),
       this.rules.isClosed(from),
       this.rules.approvedLeave([employee.id], from, to),
+      this.rules.workFromHomeDays([employee.id], from, to),
+      AttendanceOvertime.findAll({ where: { employeeId: employee.id, workDate: { [Op.between]: [from, to] } }, attributes: ['workDate', 'status', 'minutes', 'approvedMinutes'] }),
     ]);
     const byDate = new Map(records.map((r) => [r.workDate, r]));
     const pendingDates = new Map(pending.map((p) => [p.workDate, p.id]));
     const leaveByDate = leave.get(employee.id);
+    const wfhDays = wfh.get(employee.id);
+    const otByDate = new Map(overtime.map((o) => [o.workDate, o]));
     const result = days.map((date) => {
       const holiday = holidays.get(date);
       const record = byDate.get(date);
       const dayLeave = leaveByDate?.get(date);
+      const shift = this.rules.shiftOn(ctx, date);
+      const ot = otByDate.get(date);
       return {
         date,
         status: this.rules.dayStatus(date, today, employee, ctx, holiday, record, dayLeave),
@@ -150,14 +175,17 @@ export class AttendanceService {
         leave: dayLeave ? { code: dayLeave.code, name: dayLeave.name, color: dayLeave.color, session: dayLeave.session, isPaid: dayLeave.isPaid } : null,
         record: presentRecord(record),
         pendingRegularizationId: pendingDates.get(date) ?? null,
+        shift: { name: shift.name, startTime: minutesToTime(shift.startMinutes), endTime: minutesToTime(shift.endMinutes), rostered: !!this.rules.rosterOn(ctx, date) },
+        workFromHome: !!wfhDays?.has(date),
+        overtime: ot ? { status: ot.status, minutes: ot.approvedMinutes ?? ot.minutes } : null,
       };
     });
     const count = (s: DayStatus) => result.filter((d) => d.status === s).length;
     return {
-      employee: { id: employee.id, name: fullName(employee), employeeCode: employee.employeeCode },
+      employee: { id: employee.id, name: fullName(employee), employeeCode: employee.employeeCode, biometricCode: employee.biometricCode },
       month: query.month,
       timeZone: ctx.timeZone,
-      shift: shiftSummary(ctx),
+      shift: shiftSummary(ctx.shift),
       closed,
       today,
       days: result,
@@ -171,6 +199,8 @@ export class AttendanceService {
         weeklyOffs: count('WEEKLY_OFF'),
         lateDays: records.filter((r) => r.lateMinutes > 0).length,
         workedMinutes: records.reduce((n, r) => n + (r.workedMinutes ?? 0), 0),
+        workFromHomeDays: result.filter((d) => d.workFromHome).length,
+        overtimeMinutes: overtime.filter((o) => o.status === 'APPROVED').reduce((n, o) => n + (o.approvedMinutes ?? 0), 0),
       },
     };
   }
@@ -178,7 +208,7 @@ export class AttendanceService {
   async daily(auth: AuthContext, query: DailyQueryDto) {
     const scoped = await this.scope.where(auth, 'attendance.view');
     const date = query.date ?? this.rules.today(await this.rules.organizationTimeZone(auth.organizationId!));
-    const emptySummary = { total: 0, present: 0, halfDay: 0, absent: 0, inProgress: 0, missedPunch: 0, onLeave: 0, late: 0, off: 0 };
+    const emptySummary = { total: 0, present: 0, halfDay: 0, absent: 0, inProgress: 0, missedPunch: 0, onLeave: 0, late: 0, off: 0, remote: 0 };
     if (!scoped) return { date, summary: emptySummary, page: new PaginatedResult([], paginationMeta(query, 0)) };
 
     const filters: WhereOptions[] = [scoped, { dateOfJoining: { [Op.lte]: date } }, { [Op.or]: [{ exitDate: null }, { exitDate: { [Op.gte]: date } }] }];
@@ -194,11 +224,13 @@ export class AttendanceService {
       order: [['firstName', 'ASC'], ['lastName', 'ASC']],
       limit: 5000,
     });
-    const [contexts, records, holidays, leave] = await Promise.all([
-      this.rules.contexts(auth.organizationId!, employees),
-      employees.length ? AttendanceRecord.findAll({ where: { workDate: date, employeeId: employees.map((e) => e.id) } }) : [],
+    const ids = employees.map((e) => e.id);
+    const [contexts, records, holidays, leave, wfh] = await Promise.all([
+      this.rules.contexts(auth.organizationId!, employees, { from: date, to: date }),
+      employees.length ? AttendanceRecord.findAll({ where: { workDate: date, employeeId: ids } }) : [],
       this.rules.holidays(date, date),
-      this.rules.approvedLeave(employees.map((e) => e.id), date, date),
+      this.rules.approvedLeave(ids, date, date),
+      this.rules.workFromHomeDays(ids, date, date),
     ]);
     const byEmployee = new Map(records.map((r) => [r.employeeId, r]));
     const rows = employees.map((e) => {
@@ -206,12 +238,14 @@ export class AttendanceService {
       const record = byEmployee.get(e.id);
       const dayLeave = leave.get(e.id)?.get(date);
       const status = this.rules.dayStatus(date, this.rules.today(ctx.timeZone), e, ctx, holidays.get(date), record, dayLeave);
+      const shift = this.rules.shiftOn(ctx, date);
       return {
         employee: { id: e.id, name: fullName(e), employeeCode: e.employeeCode, department: e.department ? { id: e.department.id, name: e.department.name } : null, designation: e.designation?.name ?? null },
         status,
         leave: dayLeave ? { code: dayLeave.code, name: dayLeave.name, color: dayLeave.color, session: dayLeave.session } : null,
         record: presentRecord(record),
-        shift: { name: ctx.shift.name, startTime: minutesToTime(ctx.shift.startMinutes), endTime: minutesToTime(ctx.shift.endMinutes) },
+        workFromHome: !!wfh.get(e.id)?.has(date),
+        shift: { name: shift.name, startTime: minutesToTime(shift.startMinutes), endTime: minutesToTime(shift.endMinutes), rostered: !!this.rules.rosterOn(ctx, date) },
       };
     });
     const is = (s: DayStatus) => rows.filter((r) => r.status === s).length;
@@ -225,9 +259,12 @@ export class AttendanceService {
       onLeave: is('ON_LEAVE'),
       late: rows.filter((r) => (r.record?.lateMinutes ?? 0) > 0).length,
       off: is('HOLIDAY') + is('WEEKLY_OFF'),
+      remote: rows.filter((r) => r.workFromHome).length,
     };
     const filtered = query.status
-      ? rows.filter((r) => (query.status === 'LATE' ? (r.record?.lateMinutes ?? 0) > 0 : query.status === 'ABSENT' ? r.status === 'ABSENT' || r.status === 'UPCOMING' : r.status === query.status))
+      ? rows.filter((r) =>
+          query.status === 'LATE' ? (r.record?.lateMinutes ?? 0) > 0 : query.status === 'REMOTE' ? r.workFromHome : query.status === 'ABSENT' ? r.status === 'ABSENT' || r.status === 'UPCOMING' : r.status === query.status,
+        )
       : rows;
     const start = (query.page - 1) * query.pageSize;
     return { date, summary, page: new PaginatedResult(filtered.slice(start, start + query.pageSize), paginationMeta(query, filtered.length)) };
@@ -240,27 +277,19 @@ export class AttendanceService {
     if (dto.workDate < employee.dateOfJoining || (employee.exitDate && dto.workDate > employee.exitDate)) {
       throw AppError.validation([{ field: 'workDate', message: 'The employee was not employed on this date' }]);
     }
-    const ctx = await this.rules.context(auth.organizationId!, employee);
+    const ctx = await this.rules.context(auth.organizationId!, employee, { from: dto.workDate, to: dto.workDate });
     if (dto.workDate > this.rules.today(ctx.timeZone)) throw AppError.validation([{ field: 'workDate', message: 'Attendance cannot be recorded for a future date' }]);
     await this.rules.assertOpen(dto.workDate);
     const { checkInAt, checkOutAt } = this.rules.instants(dto.workDate, dto.checkIn, dto.checkOut, ctx.timeZone);
     if (checkOutAt && checkOutAt > new Date()) throw AppError.validation([{ field: 'checkOut', message: 'Check-out cannot be in the future' }]);
-    const values = {
-      shiftId: ctx.shift.id,
-      checkInAt,
-      checkOutAt,
-      lateMinutes: this.rules.lateMinutes(checkInAt, dto.workDate, ctx),
-      ...this.rules.outcome(checkInAt, checkOutAt, ctx.shift),
-      source: 'MANUAL' as const,
-      note: dto.note,
-      updatedById: auth.userId,
-    };
     const record = await this.db.transaction(async (transaction) => {
+      const values = { ...(await this.rules.evaluate(ctx, dto.workDate, checkInAt, checkOutAt, transaction)), checkInAt, checkOutAt, source: 'MANUAL' as const, note: dto.note, updatedById: auth.userId };
       const existing = await AttendanceRecord.findOne({ where: { employeeId: employee.id, workDate: dto.workDate }, transaction });
       const before = existing ? { checkInAt: existing.checkInAt, checkOutAt: existing.checkOutAt, status: existing.status } : null;
       const saved = existing
         ? await existing.update(values, { transaction })
         : await AttendanceRecord.create({ ...values, organizationId: auth.organizationId!, employeeId: employee.id, workDate: dto.workDate }, { transaction });
+      await this.overtime.sync(saved, transaction);
       await this.audit.record(
         {
           action: 'attendance.record_corrected',
@@ -278,6 +307,21 @@ export class AttendanceService {
   }
 
   // ---- Helpers ---------------------------------------------------------------------------------
+
+  /** The office geofence of the employee's location: web punch-ins must come from within the radius. */
+  private async checkGeofence(self: Employee, dto: PunchDto) {
+    if (!self.locationId) return;
+    const location = await Location.findByPk(self.locationId, { attributes: ['name', 'latitude', 'longitude', 'geofenceRadiusM'] });
+    if (!location?.geofenceRadiusM || location.latitude === null || location.longitude === null) return;
+    if (dto.latitude === undefined || dto.longitude === undefined) {
+      throw AppError.validation([{ field: 'location', message: `Share your location to punch in: ${location.name} only accepts punches from the office` }]);
+    }
+    const distance = distanceMetres({ latitude: dto.latitude, longitude: dto.longitude }, { latitude: Number(location.latitude), longitude: Number(location.longitude) });
+    if (distance > location.geofenceRadiusM) {
+      const away = distance >= 1000 ? `${(distance / 1000).toFixed(1)} km` : `${distance} m`;
+      throw AppError.validation([{ field: 'location', message: `You are about ${away} from ${location.name}. Punch in from the office, or ask to work from home.` }]);
+    }
+  }
 
   private async requireSelf(auth: AuthContext): Promise<Employee> {
     const self = await this.scope.self(auth);
@@ -312,4 +356,3 @@ export class AttendanceService {
     return new Intl.DateTimeFormat('en-IN', { timeZone: ctx.timeZone, hour: '2-digit', minute: '2-digit' }).format(instant);
   }
 }
-

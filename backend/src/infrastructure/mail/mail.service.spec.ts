@@ -79,7 +79,7 @@ describe('mail configuration', () => {
   });
 
   it('requires a real SendGrid configuration in production', () => {
-    const prod = { ...BASE_ENV, NODE_ENV: 'production', COOKIE_SECURE: 'true' };
+    const prod = { ...BASE_ENV, NODE_ENV: 'production', COOKIE_SECURE: 'true', STORAGE_DRIVER: 's3', S3_BUCKET: 'hrms-documents', S3_REGION: 'ap-south-1' };
     expect(() => validateEnv(prod)).toThrow(/SENDGRID_API_KEY is required/);
     expect(() => validateEnv({ ...prod, SENDGRID_API_KEY: 'SG.abc', SENDGRID_SANDBOX_MODE: 'true' })).toThrow(/SANDBOX/);
     expect(validateEnv({ ...prod, SENDGRID_API_KEY: 'SG.abc' }).NODE_ENV).toBe('production');

@@ -30,3 +30,15 @@ export const MAX_OPTIONS_PER_QUESTION = 6;
 export const MAX_ASSIGN_AT_ONCE = 500;
 /** Certifications expiring within this many days are flagged. */
 export const CERTIFICATION_WARNING_DAYS = 30;
+
+/** Skill matrix. */
+export const SKILL_CATEGORIES = ['TECHNICAL', 'TOOL', 'DOMAIN', 'SOFT', 'LANGUAGE', 'OTHER'] as const;
+export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
+/** Proficiency 1–5. */
+export const SKILL_LEVELS = [1, 2, 3, 4, 5] as const;
+export const SKILL_LEVEL_LABELS: Record<number, string> = { 1: 'Beginner', 2: 'Basic', 3: 'Intermediate', 4: 'Advanced', 5: 'Expert' };
+/** A verified level comes from a manager / HR or from completing a course that teaches the skill. */
+export const SKILL_VERIFIED_SOURCES = ['MANAGER', 'TRAINING'] as const;
+export type SkillVerifiedSource = (typeof SKILL_VERIFIED_SOURCES)[number];
+export const MAX_SKILLS_PER_ROLE = 40;
+export const MATRIX_MAX_SKILLS = 25;

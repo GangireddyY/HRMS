@@ -58,3 +58,9 @@ export const FIXED_TERM_GRATUITY_MIN_YEARS = 1;
 export const GRATUITY_CAP = 2_000_000;
 /** Wages due on separation are paid within two working days (Code on Wages, section 17(2)). */
 export const SETTLEMENT_DUE_WORKING_DAYS = 2;
+
+/** Letters issued once an exit is completed. */
+export const EXIT_LETTER_TYPES = ['RELIEVING', 'EXPERIENCE'] as const;
+export type ExitLetterType = (typeof EXIT_LETTER_TYPES)[number];
+/** Reference prefixes: REL-0001, EXP-0001… numbered separately per organization. */
+export const EXIT_LETTER_PREFIX: Record<ExitLetterType, string> = { RELIEVING: 'REL', EXPERIENCE: 'EXP' };

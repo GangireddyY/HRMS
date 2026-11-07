@@ -1,4 +1,4 @@
-import type { ReportKey, ReportTable } from '@contracts';
+import type { ReportExportFormat, ReportKey, ReportTable } from '@contracts';
 import { downloadFile, http } from '@/core/http/http-client';
 
 export interface ReportQuery {
@@ -23,5 +23,5 @@ export interface ReportResult {
 
 export const reportsApi = {
   run: (key: ReportKey, q: ReportQuery) => http.get<ReportResult>(`/reports/${key}`, { ...q }),
-  export: (key: ReportKey, q: ReportQuery) => downloadFile(`/reports/${key}/export`, { ...q }, `${key} report.csv`),
+  export: (key: ReportKey, q: ReportQuery, format: ReportExportFormat = 'csv') => downloadFile(`/reports/${key}/export`, { ...q, format }, `${key} report.${format}`),
 };

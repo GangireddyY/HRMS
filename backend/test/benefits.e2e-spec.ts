@@ -1,11 +1,6 @@
-import { API, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
+import { API, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, orgDays as days, orgToday, resetDatabase, uniqueEmail } from './helpers';
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const days = (n: number) => {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + n);
-  return iso(d);
-};
 type Line = { code: string; name: string; amount: number };
 
 describe('Benefits (e2e)', () => {
@@ -151,7 +146,7 @@ describe('Benefits (e2e)', () => {
 
   it('covers everyone eligible in a mandatory plan and deducts contributions in payroll', async () => {
     const t = await team();
-    const now = new Date();
+    const now = new Date(`${orgToday()}T00:00:00Z`);
     const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     const start = iso(prev);
     const life = await ctx.http().post(`${API}/benefits/plans`).set(t.h).send({
@@ -187,5 +182,48 @@ describe('Benefits (e2e)', () => {
     const slip = (await ctx.http().get(`${API}/payroll/payslips/${slips.find((p) => p.employeeId === t.asha.employee.id)!.id}`).set(t.h)).body.data;
     const benefit = (slip.deductions as Line[]).find((l) => l.code.startsWith('BEN_'));
     expect(benefit).toEqual({ code: `BEN_${id.slice(0, 8)}`, name: 'Group term life (Standard)', amount: 200 });
+  });
+
+  it('renews a plan for the next policy period and carries enrolments over', async () => {
+    const t = await team();
+    const spouse = await t.family('Ravi Kumar', 'SPOUSE', '1988-02-01');
+    const child = await t.family('Anu Kumar', 'CHILD', '2018-05-01');
+    const current = (await ctx.http().post(`${API}/benefits/plans`).set(t.hr.h).send(healthPlan({ coverageStartsOn: days(-300), coverageEndsOn: days(20) }))).body.data;
+    expect((await ctx.http().post(`${API}/benefits/plans/${current.id}/renew`).set(t.hr.h).send({})).status).toBe(409);
+    await ctx.http().post(`${API}/benefits/plans/${current.id}/activate`).set(t.hr.h).send({});
+    const family = current.options.find((o: { name: string }) => o.name === 'Family');
+    const self = current.options.find((o: { name: string }) => o.name === 'Employee only');
+    expect((await ctx.http().post(`${API}/benefits/plans/${current.id}/enroll`).set(t.asha.h).send({ optionId: family.id, dependentIds: [spouse, child] })).status).toBe(201);
+    expect((await ctx.http().post(`${API}/benefits/plans/${current.id}/enroll`).set(t.ben.h).send({ optionId: self.id, dependentIds: [] })).status).toBe(201);
+
+    // The renewal is a draft for the next period, with the same options and a window just before it starts.
+    expect((await ctx.http().post(`${API}/benefits/plans/${current.id}/renew`).set(t.asha.h).send({})).status).toBe(403);
+    const renewal = await ctx.http().post(`${API}/benefits/plans/${current.id}/renew`).set(t.hr.h).send({ name: 'Group health 2027' });
+    expect(renewal.status).toBe(201);
+    expect(renewal.body.data).toMatchObject({ status: 'DRAFT', name: 'Group health 2027', renewedFromId: current.id, coverageStartsOn: days(21), enrollmentOpensOn: days(0), enrollmentClosesOn: days(20), renewedFrom: { id: current.id } });
+    expect(renewal.body.data.options.map((o: { name: string }) => o.name)).toEqual(['Employee only', 'Family']);
+    expect((await ctx.http().post(`${API}/benefits/plans/${current.id}/renew`).set(t.hr.h).send({})).status).toBe(409);
+    expect((await ctx.http().get(`${API}/benefits/plans/${current.id}`).set(t.hr.h)).body.data.renewal).toMatchObject({ id: renewal.body.data.id, status: 'DRAFT' });
+
+    // New terms: dearer family cover, a lower age limit for children, and the single option renamed as the default.
+    const next = renewal.body.data;
+    const options = next.options.map((o: Record<string, unknown>) => (o.name === 'Family' ? { ...o, employeeMonthly: 900 } : { ...o, name: 'Self', isDefault: true }));
+    expect((await ctx.http().patch(`${API}/benefits/plans/${next.id}`).set(t.hr.h).send({ maxChildAge: 7, options })).status).toBe(200);
+    const activated = await ctx.http().post(`${API}/benefits/plans/${next.id}/activate`).set(t.hr.h).send({});
+    expect(activated.body.data).toMatchObject({ status: 'ACTIVE', carriedOver: { carried: 2, skipped: 0 } });
+
+    const renewed = (await ctx.http().get(`${API}/benefits/enrollments?planId=${next.id}`).set(t.hr.h)).body.data as { employee: { name: string }; reason: string; effectiveFrom: string; option: { name: string }; employeeMonthly: number; dependents: { name: string }[] }[];
+    const asha = renewed.find((e) => e.employee.name === 'Asha Person')!;
+    expect(asha).toMatchObject({ reason: 'RENEWAL', effectiveFrom: days(21), option: { name: 'Family' }, employeeMonthly: 900 });
+    expect(asha.dependents.map((d) => d.name)).toEqual(['Ravi Kumar']);
+    expect(renewed.find((e) => e.employee.name === 'Ben Person')).toMatchObject({ option: { name: 'Self' } });
+    const previous = (await ctx.http().get(`${API}/benefits/enrollments?planId=${current.id}`).set(t.hr.h)).body.data as { employee: { name: string }; effectiveTo: string | null }[];
+    expect(previous.find((e) => e.employee.name === 'Asha Person')!.effectiveTo).toBe(days(20));
+
+    // During the renewal window Asha can still switch, replacing the carried-over choice before it starts.
+    const mine = (await ctx.http().get(`${API}/benefits/me`).set(t.asha.h)).body.data.plans.find((p: { id: string }) => p.id === next.id);
+    expect(mine).toMatchObject({ window: { kind: 'OPEN_ENROLLMENT' }, current: { reason: 'RENEWAL' } });
+    const selfOption = next.options.find((o: { name: string }) => o.name === 'Employee only');
+    expect((await ctx.http().post(`${API}/benefits/plans/${next.id}/enroll`).set(t.asha.h).send({ optionId: selfOption.id, dependentIds: [] })).body.data).toMatchObject({ status: 'ACTIVE', effectiveFrom: days(21), option: { name: 'Self' } });
   });
 });

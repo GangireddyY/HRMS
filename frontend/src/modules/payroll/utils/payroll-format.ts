@@ -1,4 +1,4 @@
-import type { ComponentCalculation, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '@contracts';
+import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '@contracts';
 
 export const RUN_STATUS_LABELS: Record<PayrollRunStatus, string> = { DRAFT: 'Draft', SUBMITTED: 'Awaiting approval', APPROVED: 'Approved', PAID: 'Paid', CANCELLED: 'Cancelled' };
 export const runTone: Record<PayrollRunStatus, 'neutral' | 'warning' | 'info' | 'success'> = { DRAFT: 'neutral', SUBMITTED: 'warning', APPROVED: 'info', PAID: 'success', CANCELLED: 'neutral' };
@@ -23,6 +23,19 @@ export const CLAIM_CATEGORY_LABELS: Record<ReimbursementCategory, string> = {
 };
 export const CLAIM_STATUS_LABELS: Record<ReimbursementStatus, string> = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Withdrawn', PAID: 'Paid' };
 export const claimTone: Record<ReimbursementStatus, 'warning' | 'info' | 'danger' | 'neutral' | 'success'> = { PENDING: 'warning', APPROVED: 'info', REJECTED: 'danger', CANCELLED: 'neutral', PAID: 'success' };
+
+export const LOAN_TYPE_LABELS: Record<LoanType, string> = { LOAN: 'Loan', ADVANCE: 'Salary advance' };
+export const LOAN_STATUS_LABELS: Record<LoanStatus, string> = { REQUESTED: 'Waiting for approval', APPROVED: 'Approved', ACTIVE: 'Repaying', CLOSED: 'Repaid', REJECTED: 'Not approved', CANCELLED: 'Cancelled' };
+export const loanTone: Record<LoanStatus, 'warning' | 'info' | 'brand' | 'success' | 'danger' | 'neutral'> = { REQUESTED: 'warning', APPROVED: 'info', ACTIVE: 'brand', CLOSED: 'success', REJECTED: 'danger', CANCELLED: 'neutral' };
+export const REPAYMENT_SOURCE_LABELS: Record<LoanRepaymentSource, string> = { PAYROLL: 'Salary deduction', MANUAL: 'Paid directly', SETTLEMENT: 'Full & final settlement' };
+/** Monthly instalment on the reducing balance, rounded up to the rupee (same rule as the server). */
+export function loanEmi(principal: number, annualRate: number, months: number): number {
+  if (!principal || !months) return 0;
+  if (annualRate <= 0) return Math.ceil(principal / months);
+  const r = annualRate / 1200;
+  const f = (1 + r) ** months;
+  return Math.ceil((principal * r * f) / (f - 1));
+}
 
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const inr2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

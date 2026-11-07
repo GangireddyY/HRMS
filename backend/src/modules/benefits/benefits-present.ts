@@ -44,6 +44,7 @@ export function presentPlan(p: BenefitPlan) {
     waitingDays: p.waitingDays,
     maxChildAge: p.maxChildAge,
     options: [...(p.options ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map(presentOption),
+    renewedFromId: p.renewedFromId,
     updatedAt: p.updatedAt,
   };
 }

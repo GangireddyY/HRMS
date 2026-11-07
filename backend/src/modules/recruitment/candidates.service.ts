@@ -1,18 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
-import { col, fn, Op, UniqueConstraintError, where, type Transaction, type WhereOptions } from 'sequelize';
-import { RESUME_MAX_BYTES, type ResumeContentType } from '../../contracts';
+import { cast, col, fn, Op, UniqueConstraintError, where, type Transaction, type WhereOptions } from 'sequelize';
+import { RESUME_MAX_BYTES, type ParsedResume, type ResumeContentType } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { containsPattern } from '../../common/utils/like';
 import { DatabaseService } from '../../database/database.service';
-import { ApplicationEvent, Candidate, Employee, JobApplication, JobOpening } from '../../database/models';
+import { ApplicationEvent, Candidate, Employee, JobApplication, JobOpening, Skill } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import type { CandidateDto, CandidateQueryDto, UpdateCandidateDto } from './dto/recruitment.dto';
+import { parseResume } from './resume-parser';
+import { resumeText } from './resume-text';
 
 export interface UploadedResume {
   buffer: Buffer;
@@ -51,6 +53,7 @@ export function presentCandidate(c: Candidate) {
     source: c.source,
     referredBy: c.referredBy ? { id: c.referredBy.id, name: fullName(c.referredBy) } : null,
     notes: c.notes,
+    skills: c.skills ?? [],
     resume: c.resumeKey ? { fileName: c.resumeFileName, contentType: c.resumeContentType, size: c.resumeSize, uploadedAt: c.resumeUploadedAt } : null,
     consentAt: c.consentAt,
     createdAt: c.createdAt,
@@ -60,6 +63,8 @@ export function presentCandidate(c: Candidate) {
 /** The candidate database (recruitment.view / recruitment.manage). Email is unique per organization; phone matches are flagged. */
 @Injectable()
 export class CandidatesService {
+  private readonly logger = new Logger(CandidatesService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly audit: AuditService,
@@ -71,7 +76,7 @@ export class CandidatesService {
     if (query.source) filters.push({ source: query.source });
     if (query.search) {
       const p = containsPattern(query.search);
-      filters.push({ [Op.or]: [{ firstName: { [Op.iLike]: p } }, { lastName: { [Op.iLike]: p } }, { email: { [Op.iLike]: p } }, { phone: { [Op.iLike]: p } }, { currentCompany: { [Op.iLike]: p } }, { currentTitle: { [Op.iLike]: p } }] });
+      filters.push({ [Op.or]: [{ firstName: { [Op.iLike]: p } }, { lastName: { [Op.iLike]: p } }, { email: { [Op.iLike]: p } }, { phone: { [Op.iLike]: p } }, { currentCompany: { [Op.iLike]: p } }, { currentTitle: { [Op.iLike]: p } }, where(cast(col('Candidate.skills'), 'text'), { [Op.iLike]: p })] });
     }
     const { rows, count } = await Candidate.findAndCountAll({
       where: { [Op.and]: filters },
@@ -147,18 +152,29 @@ export class CandidatesService {
     if (c.resumeKey) await this.storage.deleteQuietly([c.resumeKey]);
   }
 
+  /** Reads candidate details from a resume without keeping it, to prefill the candidate form. */
+  async parseResume(file: UploadedResume | undefined): Promise<{ parsed: ParsedResume; readable: boolean }> {
+    const type = this.checkResume(file);
+    const text = await this.readResume(file!.buffer, type);
+    return { parsed: parseResume(text ?? '', await this.skillNames()), readable: !!text && text.replace(/\s/g, '').length >= 50 };
+  }
+
   async uploadResume(auth: AuthContext | null, organizationId: string, candidate: Candidate, file: UploadedResume | undefined, transaction?: Transaction): Promise<void> {
-    if (!file?.buffer?.length) throw AppError.validation([{ field: 'file', message: 'Choose a resume to upload' }]);
-    if (file.size > RESUME_MAX_BYTES) throw AppError.validation([{ field: 'file', message: 'The resume must be 5 MB or smaller' }]);
-    const type = detectResumeType(file.buffer);
-    if (!type) throw AppError.validation([{ field: 'file', message: 'Upload the resume as a PDF or Word (.docx) file' }]);
+    const type = this.checkResume(file);
+    // Skills are picked from the resume only while the candidate has none (never overwriting a recruiter's list).
+    const fillSkills = Array.isArray(candidate.skills) && !candidate.skills.length;
+    const text = fillSkills ? await this.readResume(file!.buffer, type) : null;
+    const skills = text ? parseResume(text, await this.skillNames(transaction)).skills : [];
     const key = `organizations/${organizationId}/candidates/${candidate.id}/resumes/${randomUUID()}`;
     const ext = type === 'application/pdf' ? 'pdf' : 'docx';
-    const stem = (file.originalname.split(/[\\/]/).pop() ?? '').replace(/[\u0000-\u001f\u007f"<>:|?*]/g, '').replace(/\.[^.]*$/, '').trim().slice(0, 200) || `${fullName(candidate)} resume`;
-    await this.storage.put(key, file.buffer, type);
+    const stem = (file!.originalname.split(/[\\/]/).pop() ?? '').replace(/[\u0000-\u001f\u007f"<>:|?*]/g, '').replace(/\.[^.]*$/, '').trim().slice(0, 200) || `${fullName(candidate)} resume`;
+    await this.storage.put(key, file!.buffer, type);
     const previous = candidate.resumeKey;
     try {
-      await candidate.update({ resumeKey: key, resumeFileName: `${stem}.${ext}`, resumeContentType: type, resumeSize: file.size, resumeUploadedAt: new Date(), ...(auth ? { updatedById: auth.userId } : {}) }, { transaction });
+      await candidate.update(
+        { resumeKey: key, resumeFileName: `${stem}.${ext}`, resumeContentType: type, resumeSize: file!.size, resumeUploadedAt: new Date(), ...(skills.length ? { skills } : {}), ...(auth ? { updatedById: auth.userId } : {}) },
+        { transaction },
+      );
     } catch (e) {
       await this.storage.deleteQuietly([key]);
       throw e;
@@ -187,6 +203,29 @@ export class CandidatesService {
     return app;
   }
 
+  private checkResume(file: UploadedResume | undefined): ResumeContentType {
+    if (!file?.buffer?.length) throw AppError.validation([{ field: 'file', message: 'Choose a resume to upload' }]);
+    if (file.size > RESUME_MAX_BYTES) throw AppError.validation([{ field: 'file', message: 'The resume must be 5 MB or smaller' }]);
+    const type = detectResumeType(file.buffer);
+    if (!type) throw AppError.validation([{ field: 'file', message: 'Upload the resume as a PDF or Word (.docx) file' }]);
+    return type;
+  }
+
+  /** The resume's text, or null when it can't be read (scanned image, damaged or password-protected file). */
+  private async readResume(data: Buffer, type: ResumeContentType): Promise<string | null> {
+    try {
+      return await resumeText(data, type);
+    } catch (e) {
+      this.logger.warn(`Could not read a resume: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }
+  }
+
+  /** The organization's skill catalog, so its own skill names are recognised too. */
+  private async skillNames(transaction?: Transaction) {
+    return (await Skill.findAll({ attributes: ['name'], transaction })).map((s) => s.name);
+  }
+
   async find(id: string): Promise<Candidate> {
     const c = await Candidate.findByPk(id, { include: [{ model: Employee, as: 'referredBy', attributes: ['id', 'firstName', 'lastName'] }] });
     if (!c) throw AppError.notFound('Candidate');
@@ -210,6 +249,7 @@ export class CandidatesService {
     set('source', dto.source);
     set('referredById', dto.referredById);
     set('notes', dto.notes);
+    set('skills', dto.skills);
     return out;
   }
 }

@@ -1,11 +1,17 @@
+import ExcelJS from 'exceljs';
+import type { Test } from 'supertest';
 import { LeaveRequest } from '../src/database/models';
-import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
+import { resumeText } from '../src/modules/recruitment/resume-text';
+import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, orgDays as days, orgToday, resetDatabase, uniqueEmail } from './helpers';
 
-const days = (n: number) => {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
+/** Collects a binary response body as a Buffer. */
+const binary = (req: Test) =>
+  req.buffer(true).parse((res, cb) => {
+    const chunks: Buffer[] = [];
+    res.on('data', (c: Buffer) => chunks.push(c));
+    res.on('end', () => cb(null, Buffer.concat(chunks)));
+  }) as unknown as Promise<{ status: number; headers: Record<string, string>; body: Buffer }>;
+
 type Row = Record<string, string | number | null>;
 type Table = { key: string; rows: Row[] };
 const table = (body: { tables: Table[] }, key: string) => body.tables.find((t) => t.key === key)!.rows;
@@ -96,6 +102,28 @@ describe('Reports (e2e)', () => {
     expect(csv.text).toContain('Operations,4,57.1');
     expect((await ctx.http().get(`${API}/reports/headcount/export`).set(t.mgr.h)).status).toBe(403);
     expect((await ctx.http().get(`${API}/reports/unknown/export`).set(t.hr.h)).status).toBe(400);
+    expect((await ctx.http().get(`${API}/reports/headcount/export?format=docx`).set(t.hr.h)).status).toBe(422);
+
+    // Excel: a summary sheet with the headline figures, then a sheet per table.
+    const xlsx = await binary(ctx.http().get(`${API}/reports/headcount/export?format=xlsx`).set(t.hr.h));
+    expect(xlsx.status).toBe(200);
+    expect(xlsx.headers['content-type']).toContain('spreadsheetml');
+    expect(xlsx.headers['content-disposition']).toContain(`headcount report ${days(0)}.xlsx`);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(xlsx.body.buffer.slice(xlsx.body.byteOffset, xlsx.body.byteOffset + xlsx.body.byteLength) as ArrayBuffer);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(expect.arrayContaining(['Summary', 'By department']));
+    expect(wb.getWorksheet('Summary')!.getCell('A1').value).toBe('Headcount report');
+    expect(wb.getWorksheet('Summary')!.getRow(6).values).toEqual([undefined, 'Headcount', 7]);
+    expect(wb.getWorksheet('By department')!.getRow(2).values).toEqual([undefined, 'Operations', 4, 0.571]);
+
+    // PDF: the same figures, readable as text.
+    const pdf = await binary(ctx.http().get(`${API}/reports/headcount/export?format=pdf`).set(t.hr.h));
+    expect(pdf.headers['content-type']).toBe('application/pdf');
+    const text = await resumeText(pdf.body, 'application/pdf');
+    expect(text).toContain('Headcount report');
+    expect(text).toContain('Hema Person');
+    expect(text).toMatch(/Operations\s+4\s+57\.1%/);
+    expect((await ctx.http().get(`${API}/reports/headcount/export?format=pdf`).set(t.mgr.h)).status).toBe(403);
 
     const other = await createOrgWithAdmin(ctx);
     const oh = bearer((await login(ctx, other.admin.email)).accessToken);
@@ -114,7 +142,7 @@ describe('Reports (e2e)', () => {
     // Payroll cost: an approved run.
     const structure = (await ctx.http().post(`${API}/payroll/structures/recommended`).set(t.h).send({})).body.data.structures.find((s: { name: string }) => s.name === 'Standard');
     await ctx.http().post(`${API}/payroll/employees/${t.asha.employee.id}/salaries`).set(t.pm.h).send({ structureId: structure.id, annualCtc: 720000, effectiveFrom: '2024-01-08' });
-    const now = new Date();
+    const now = new Date(`${orgToday()}T00:00:00Z`);
     const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     const run = (await ctx.http().post(`${API}/payroll/runs`).set(t.pm.h).send({ year: prev.getUTCFullYear(), month: prev.getUTCMonth() + 1 })).body.data;
     await ctx.http().post(`${API}/payroll/runs/${run.id}/submit`).set(t.pm.h).send({});

@@ -1,4 +1,17 @@
-import { addWorkingDays, dailyRate, gratuityAmount, gratuityEligibility, gratuityYears, noticeEnd, noticeShortfall, serviceLength, settlementLines } from './exit-rules';
+import {
+  addWorkingDays,
+  dailyRate,
+  gratuityAmount,
+  gratuityEligibility,
+  gratuityYears,
+  letterBlocker,
+  letterDate,
+  letterTemplate,
+  noticeEnd,
+  noticeShortfall,
+  serviceLength,
+  settlementLines,
+} from './exit-rules';
 
 describe('exit rules', () => {
   it('works out the notice period and days not served', () => {
@@ -71,5 +84,40 @@ describe('exit rules', () => {
       ['NOTICE_PAY', 'EARNING', 10000],
     ]);
     expect(terminated.net).toBe(20000);
+  });
+
+  it('decides when letters can be issued and suggests their text', () => {
+    expect(letterBlocker('APPROVED', 'RESIGNATION')).toMatch(/once the exit is completed/);
+    expect(letterBlocker('COMPLETED', 'DEATH')).toMatch(/not issued/);
+    expect(letterBlocker('COMPLETED', 'TERMINATION')).toBeNull();
+    expect(letterDate('2019-01-07')).toBe('7 January 2019');
+
+    const facts = {
+      organization: 'Acme Technologies Pvt Ltd',
+      firstName: 'Asha',
+      fullName: 'Asha Rao',
+      employeeCode: 'EMP-0007',
+      designation: 'Senior Engineer',
+      department: 'Engineering',
+      dateOfJoining: '2019-01-07',
+      lastWorkingDay: '2026-11-06',
+      submittedOn: '2026-10-07',
+      exitType: 'RESIGNATION' as const,
+      settled: true,
+    };
+    const relieving = letterTemplate('RELIEVING', facts);
+    expect(relieving.subject).toBe('Relieving letter');
+    expect(relieving.body.split('\n\n')).toEqual([
+      'Dear Asha Rao,',
+      'This is with reference to your resignation dated 7 October 2026. We confirm that your resignation has been accepted and that you are relieved of your duties as Senior Engineer in the Engineering department at Acme Technologies Pvt Ltd with effect from the close of business on 6 November 2026.',
+      'You have completed the exit formalities and your full and final settlement has been paid.',
+      'We thank you for your contribution to the organization and wish you every success in the future.',
+    ]);
+    expect(letterTemplate('RELIEVING', { ...facts, exitType: 'CONTRACT_END', settled: false }).body).toContain('This is to confirm that you are relieved of your duties');
+    expect(letterTemplate('RELIEVING', { ...facts, settled: false }).body).toContain('You have completed the exit formalities.');
+
+    const experience = letterTemplate('EXPERIENCE', { ...facts, designation: null });
+    expect(experience.subject).toBe('Experience certificate');
+    expect(experience.body).toContain('This is to certify that Asha Rao (employee code EMP-0007) worked with Acme Technologies Pvt Ltd from 7 January 2019 to 6 November 2026, last as a member of the Engineering department.');
   });
 });

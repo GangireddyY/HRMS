@@ -149,6 +149,40 @@ Legend: 🔓 public · 🔑 authenticated · `perm` required permission · ⚙ p
 
 `GET /health` 🔓 → `{status, database, timestamp}` (503 when the database is down).
 
-## 3. Planned resource roots
+## 3. Module resource roots
 
-`/employees` (2), `/recruitment`, `/onboarding` (3), `/attendance`, `/leaves` (4), `/payroll` (5), `/performance`, `/training` (6), `/engagement`, `/grievances`, `/benefits` (7), `/compliance`, `/exits` (8), `/reports` (9) — all following the conventions above.
+`/employees`, `/recruitment`, `/careers` (public), `/onboarding`, `/attendance`, `/leaves`, `/payroll`, `/performance`, `/training`, `/skills`, `/engagement`, `/grievances`, `/benefits`, `/compliance`, `/exits`, `/alumni`, `/reports` — all following the conventions above. The full, always-current reference (every route, DTO and permission) is the OpenAPI document served at `/api/docs` (`/api/docs/openapi.json`); the tables below list the endpoints added in 1.10.
+
+### 1.10 additions
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| GET · POST | `/exits/:id/letters` | `exit.manage` (employee: own, issued only) | Relieving / experience letters of an exit; issue one (numbered, snapshot of the text) |
+| GET | `/exits/:id/letters/draft` | `exit.manage` | Draft text of a letter type, with what still blocks it |
+| GET · POST | `/exits/:id/letters/:letterId` · `…/revoke` | `exit.manage` / subject | One letter; revoke with a reason |
+| GET | `/alumni` | `exit.manage` or `exit.view` ≥ TEAM | Alumni directory (opted-in former employees) |
+| GET · PUT | `/alumni/me` | 🔑 former employee | Own alumni profile and consent |
+| GET · POST | `/payroll/me/loans` | `payroll.loan.apply` | Own loans and advances; request one |
+| GET · POST | `/payroll/loans` | `payroll.loan.approve` / `payroll.loan.manage` | All requests; raise one for an employee |
+| GET | `/payroll/loans/first-month` · `/payroll/loans/:id` | as above | First open payroll month; one loan with schedule and repayments |
+| POST | `/payroll/loans/:id/approve` · `reject` · `cancel` · `disburse` · `defer` · `repayments` | approve / manage | Lifecycle (approver ≠ requester); instalments are deducted by payroll runs and recovered in full & final settlements |
+| GET | `/attendance/overtime` · POST `…/:id/approve` · `…/:id/reject` | `attendance.view` / `attendance.regularize.approve` in scope | Overtime worked beyond the shift; approved minutes are paid by payroll (`OVERTIME` earning) |
+| GET · POST | `/attendance/work-from-home` · POST `…/:id/approve` · `reject` · `cancel` | `attendance.view`, `attendance.wfh.apply` / `attendance.regularize.approve` in scope | Work-from-home requests (punches outside the geofence are allowed on approved days) |
+| GET · POST · PATCH · DELETE | `/attendance/rotations[/:id]` | `attendance.configure` | Shift rotation patterns |
+| GET | `/attendance/roster` · POST `…/assign` · `…/apply-rotation` · `…/clear` | view / `attendance.configure` | Roster of shift assignments by day (overrides the default shift) |
+| GET · POST · PATCH · DELETE | `/attendance/devices[/:id]` · POST `…/:id/rotate-key` | `attendance.configure` | Biometric / attendance terminals and their API keys (shown once) |
+| POST | `/attendance/device/punches` | 🔓 `X-Device-Key` | Devices push up to 500 punches (employee biometric code, time, direction); idempotent |
+| POST | `/benefits/plans/:id/renew` | `benefits.manage` | Draft of next year's plan (options copied); activating it carries enrolments over |
+| GET · POST · PATCH · DELETE | `/skills[/:id]` | 🔑 member / `training.manage` | Skill catalog |
+| GET `/skills/requirements/all` · PUT `/skills/requirements/:designationId` | | 🔑 member / `training.manage` | Skills (and levels) each designation needs |
+| GET · PUT | `/skills/courses/:courseId` | 🔑 member / `training.manage` | Skills a course awards on completion |
+| GET · PUT | `/skills/me/profile` · DELETE `…/:skillId` | `training.view` | Own skills (self-assessed levels) and gaps for the role |
+| GET | `/skills/matrix/view` · `/skills/employees/:id` | `training.view` in scope | Skill matrix (people × skills) and one employee's skills |
+| POST | `/skills/employees/:employeeId/:skillId/verify` | manager in scope or `training.manage` | Confirm a level (never one's own) |
+| GET · PUT | `/performance/cycles/:id/compensation` | `performance.configure` (read: also `employee.salary.revise`) | Merit guidelines per rating, budget % and effective date; counts and budget use (amounts with org-wide salary access) |
+| GET | `/performance/cycles/:id/hikes` | reviewer / HR | Completed reviews with their increase recommendation (`view=mine\|all`, `status`) |
+| PUT | `/performance/reviews/:reviewId/hike` | the reviewer or `performance.configure` | Recommend an increase (a justification is needed outside the guideline) |
+| POST | `/performance/hikes/:id/submit` · `approve` · `reject` | recommender / `employee.salary.revise` | Submit; approve (optionally a different %) or reject with a reason — never one's own or one recommended by the approver |
+| POST | `/performance/cycles/:id/hikes/apply` | `employee.salary.revise` | Approved increases become salary revisions from the effective date (`{applied, failed}`) |
+| POST | `/recruitment/resumes/parse` | `recruitment.manage` | Multipart `file` (PDF / .docx, ≤ 5 MB): details read from a resume to prefill the candidate form (`{parsed, readable}`); the file isn't kept |
+| GET | `/reports/:key/export?format=csv\|xlsx\|pdf` | `reports.export` + the report's permission | CSV (tables), Excel (summary sheet + a sheet per table, typed cells) or PDF (A4 landscape with the headline figures) |

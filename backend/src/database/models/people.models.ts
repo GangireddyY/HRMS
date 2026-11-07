@@ -67,6 +67,10 @@ export class Location extends Model<InferAttributes<Location>, InferCreationAttr
   @Column(DataType.STRING(100)) state: CreationOptional<string | null>;
   @Column(DataType.CHAR(2)) country: CreationOptional<string | null>;
   @Column(DataType.STRING(64)) timezone: CreationOptional<string | null>;
+  /** Office geofence for web punches (radius in metres). */
+  @Column(DataType.DECIMAL(9, 6)) latitude: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(9, 6)) longitude: CreationOptional<string | null>;
+  @Column(DataType.INTEGER) geofenceRadiusM: CreationOptional<number | null>;
   @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
@@ -138,6 +142,8 @@ export class Employee extends Model<InferAttributes<Employee>, InferCreationAttr
   @ForeignKey(() => Employee) @Column(DataType.UUID) managerId: CreationOptional<string | null>;
   /** Assigned shift; null = the organization's default shift. */
   @ForeignKey(() => Shift) @Column(DataType.UUID) shiftId: CreationOptional<string | null>;
+  /** User number on biometric devices (punches fall back to matching the employee code). */
+  @Column(DataType.STRING(30)) biometricCode: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) probationEndDate: CreationOptional<string | null>;
   /** When probation was confirmed; null = not confirmed yet. */
   @Column(DataType.DATEONLY) confirmedOn: CreationOptional<string | null>;

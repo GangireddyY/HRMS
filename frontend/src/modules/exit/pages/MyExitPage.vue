@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { DoorOpen, Printer, Send, Undo2 } from '@lucide/vue';
+import { DoorOpen, FileText, Printer, Send, Undo2 } from '@lucide/vue';
 import { type ExitReason } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { exitApi } from '@/modules/exit/api/exit.api';
+import AlumniCard from '@/modules/exit/components/AlumniCard.vue';
 import ClearanceList from '@/modules/exit/components/ClearanceList.vue';
 import SettlementStatement from '@/modules/exit/components/SettlementStatement.vue';
 import type { ExitDetail } from '@/modules/exit/types';
-import { REASON_LABELS, RESIGNATION_REASONS, STATUS_LABELS, TYPE_LABELS, localIso, statusTone } from '@/modules/exit/utils/exit-format';
+import { LETTER_LABELS, REASON_LABELS, RESIGNATION_REASONS, STATUS_LABELS, TYPE_LABELS, localIso, statusTone } from '@/modules/exit/utils/exit-format';
 import { employeesApi } from '@/modules/people/api/people.api';
 import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
@@ -21,10 +22,12 @@ const me = useAsync(() => employeesApi.me());
 const mine = useAsync(() => exitApi.mine());
 const current = computed(() => mine.data.value?.current ?? null);
 const settlement = useAsync(() => exitApi.settlement(current.value!.id), { immediate: false });
+const letters = useAsync(() => exitApi.letters(current.value!.id), { immediate: false });
 watch(
   () => current.value?.id,
   (id) => {
     if (id && (current.value!.status === 'APPROVED' || current.value!.status === 'COMPLETED')) void settlement.run();
+    if (id && current.value!.status === 'COMPLETED') void letters.run();
   },
 );
 const set = (e: ExitDetail) => {
@@ -150,11 +153,26 @@ const print = () => window.print();
         </AppCard>
         <p v-else-if="current.feedbackGiven" class="text-sm text-fg-muted">Thank you — you have shared your exit feedback.</p>
 
+        <AppCard v-if="current.status === 'COMPLETED' && current.type !== 'DEATH'" title="Your letters" :icon="FileText" class="print:hidden">
+          <ul v-if="letters.data.value?.length" class="divide-y divide-line text-sm">
+            <li v-for="l in letters.data.value" :key="l.id" class="flex flex-wrap items-center justify-between gap-2 py-2">
+              <div>
+                <p class="font-medium text-fg">{{ LETTER_LABELS[l.type] }}</p>
+                <p class="text-xs text-fg-muted">{{ l.reference }} · dated {{ formatDate(l.letterDate) }}</p>
+              </div>
+              <AppButton size="sm" variant="secondary" :to="`/me/exit/${current.id}/letters/${l.id}`">Open</AppButton>
+            </li>
+          </ul>
+          <p v-else-if="!letters.loading.value" class="text-sm text-fg-muted">Your relieving letter and experience certificate appear here once HR issues them.</p>
+        </AppCard>
+
         <template v-if="settlement.data.value">
           <div class="flex justify-end print:hidden"><AppButton variant="secondary" :icon="Printer" @click="print">Print statement</AppButton></div>
           <SettlementStatement :settlement="settlement.data.value" :organization="auth.organization?.name" />
         </template>
         <AppAlert v-else-if="current.status === 'APPROVED' || current.status === 'COMPLETED'" tone="info">Your full &amp; final settlement appears here once it has been approved.</AppAlert>
+
+        <AlumniCard v-if="current.status === 'COMPLETED'" class="print:hidden" />
       </div>
 
       <AppCard v-if="mine.data.value.history.length" class="mt-6" title="Earlier">

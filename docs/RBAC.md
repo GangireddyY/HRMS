@@ -81,9 +81,9 @@ Cells show *permissions granted / permissions in module* and the broadest **reco
 | Employee Management | 11/11 · Org | 11/11 · Org | 11/11 · Org | 6/11 · Org | 1/11 · Own | 4/11 · Org | 2/11 · Org | 1/11 · Dept | 1/11 · Team | 1/11 · Own | 2/11 · Org |
 | Recruitment | 6/6 · Org | 6/6 · Org | 6/6 · Org | — | 5/6 | — | — | 3/6 · Dept | 1/6 | — | 1/6 |
 | Onboarding | 4/4 · Org | 4/4 · Org | 4/4 · Org | 3/4 · Org | 1/4 · Org | — | — | 2/4 · Dept | — | — | 1/4 · Org |
-| Attendance | 7/7 · Org | 7/7 · Org | 7/7 · Org | 4/7 · Org | 3/7 · Own | 3/7 · Org | 3/7 · Own | 4/7 · Dept | 4/7 · Team | 3/7 · Own | 1/7 · Org |
+| Attendance | 8/8 · Org | 8/8 · Org | 8/8 · Org | 5/8 · Org | 4/8 · Own | 4/8 · Org | 4/8 · Own | 5/8 · Dept | 5/8 · Team | 4/8 · Own | 1/8 · Org |
 | Leave Management | 5/5 · Org | 5/5 · Org | 5/5 · Org | 3/5 · Org | 2/5 · Own | 2/5 · Org | 2/5 · Own | 3/5 · Dept | 3/5 · Team | 2/5 · Own | 1/5 · Org |
-| Payroll | 11/11 · Org | 6/11 · Org | 3/11 · Own | 2/11 · Own | 2/11 · Own | 8/11 · Org | 8/11 · Org | 3/11 · Dept | 2/11 · Own | 2/11 · Own | 2/11 · Org |
+| Payroll | 14/14 · Org | 8/14 · Org | 4/14 · Own | 3/14 · Own | 3/14 · Own | 10/14 · Org | 11/14 · Org | 4/14 · Dept | 3/14 · Own | 3/14 · Own | 2/14 · Org |
 | Performance | 6/6 · Org | 6/6 · Org | 6/6 · Org | 3/6 · Own | 3/6 · Own | 3/6 · Own | 3/6 · Own | 5/6 · Dept | 4/6 · Team | 3/6 · Own | 1/6 · Org |
 | Training & Development | 4/4 · Org | 4/4 · Org | 4/4 · Org | 3/4 · Org | 2/4 | 2/4 | 2/4 | 3/4 · Dept | 2/4 | 2/4 | 1/4 |
 | Employee Engagement | 5/5 | 5/5 | 5/5 | 4/5 | 3/5 | 3/5 | 3/5 | 3/5 | 3/5 | 3/5 | 1/5 |
@@ -157,6 +157,7 @@ Cells show *permissions granted / permissions in module* and the broadest **reco
 | `attendance.manage` (scoped) | Org | Org | Org | Org |  |  |  |  |  |  |  |
 | `attendance.regularize.apply` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | `attendance.regularize.approve` (scoped) | Org | Org | Org |  |  |  |  | Dept | Team |  |  |
+| `attendance.wfh.apply` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | `attendance.configure` | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |
 | `attendance.close` | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |
 
@@ -185,6 +186,9 @@ Cells show *permissions granted / permissions in module* and the broadest **reco
 | `payroll.reimbursement.apply` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | `payroll.reimbursement.approve` (scoped) | Org |  |  |  |  | Org | Org | Dept |  |  |  |
 | `payroll.settlement.manage` | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |  |  |
+| `payroll.loan.apply` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| `payroll.loan.approve` | ✓ | ✓ |  |  |  |  | ✓ |  |  |  |  |
+| `payroll.loan.manage` | ✓ |  |  |  |  | ✓ | ✓ |  |  |  |  |
 
 ### Performance (`performance`)
 

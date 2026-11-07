@@ -74,3 +74,20 @@ Requirement ids: `FR-<area>-<n>`. Status: ✅ implemented · ◻ planned (phase)
 ## 6. Later-phase modules
 
 Detailed functional requirements for Recruitment, Onboarding, Attendance, Leave, Payroll, Performance, Training, Engagement, Grievance, Benefits, Compliance, Exit and Reports are written at the start of each phase (task breakdown → requirements → schema → API → UI → tests) and appended here. The permission catalog for all modules already exists so RBAC is stable across phases.
+
+### 6.1 Lifecycle completion (1.10)
+
+| Id | Requirement | Status |
+|---|---|:-:|
+| FR-EXIT-L1 | HR issues relieving and experience letters once an exit is completed (not for an exit on death), numbered per type, with the text fixed at issue; letters can be revoked with a reason; the employee sees and prints their issued letters. | ✅ |
+| FR-EXIT-L2 | Former employees opt in to an alumni directory (contact details they choose, open to rehire); HR and managers with team-wide exit access browse it. | ✅ |
+| FR-PAY-L1 | Employees request a loan or salary advance; an approver other than the requester sets amount, tenure, interest (loans) and the first deduction month; payroll pays out, deducts the EMI each run (deferrals and manual repayments possible) and the full & final settlement recovers the balance. | ✅ |
+| FR-ATT-L1 | Shifts define an overtime threshold and a minimum that counts; overtime beyond it (all hours on a day off) is recorded per day, approved by the manager in scope and paid in payroll at the organization's multiplier (basic or gross basis); a period can't close with overtime pending. | ✅ |
+| FR-ATT-L2 | Employees request work-from-home days (up to a limit); approved days are attendance in WFH mode; office punches are checked against the location's geofence. | ✅ |
+| FR-ATT-L3 | HR defines rotation patterns and assigns shifts per day (rotation or manual) for up to 92 days; the roster overrides the default shift for attendance, rest days and leave counting. | ✅ |
+| FR-ATT-L4 | Attendance terminals are registered with a secret key (shown once, rotatable) and push batches of punches (up to 500) identified by the employee's biometric code; repeated batches are idempotent. | ✅ |
+| FR-BEN-L1 | HR renews a plan for the next policy year as a draft copy; activating it carries active enrolments over (same option or the default, with the dependants it still covers) for employees still eligible. | ✅ |
+| FR-TRN-L1 | A skill catalog, skills and levels required per designation and awarded per course; employees self-assess, managers verify, HR sees a skill matrix with gaps. | ✅ |
+| FR-PERF-L1 | HR sets merit guidelines (increase % by rating), a budget and an effective date per cycle; reviewers recommend increases for completed reviews (justified outside the guideline); someone with salary-revision rights — never the employee or the recommender — approves or rejects; approved increases are applied as salary revisions. Salary amounts are shown only with salary access. | ✅ |
+| FR-REC-L1 | Recruiters fill the candidate form from a resume (PDF or .docx): name, email, phone, LinkedIn, current title and company, experience, notice period, location and skills; candidates keep a skills list (filled from the first resume, editable, searchable). | ✅ |
+| FR-REP-L1 | Every report exports as CSV, an Excel workbook (summary sheet and a sheet per table with typed cells) or a PDF (headline figures and tables), with the same permissions and audit as CSV. | ✅ |

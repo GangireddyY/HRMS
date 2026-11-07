@@ -1,4 +1,4 @@
-import type { DayStatus, RegularizationStatus } from '@contracts';
+import type { DayStatus, OvertimeStatus, RegularizationStatus } from '@contracts';
 
 export const DAY_STATUS_LABELS: Record<DayStatus, string> = {
   PRESENT: 'Present',
@@ -42,6 +42,22 @@ export const dayStatusCell: Record<DayStatus, string> = {
 
 export const REGULARIZATION_LABELS: Record<RegularizationStatus, string> = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Cancelled' };
 export const regularizationTone: Record<RegularizationStatus, 'warning' | 'success' | 'danger' | 'neutral'> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'neutral' };
+
+export const OVERTIME_LABELS: Record<OvertimeStatus, string> = { PENDING: 'Waiting for approval', APPROVED: 'Approved', REJECTED: 'Not approved' };
+export const overtimeTone: Record<OvertimeStatus, 'warning' | 'success' | 'danger'> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' };
+
+/** "12 Nov" or "12–14 Nov". */
+export function dateRange(start: string, end: string): string {
+  const f = (d: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { ...opts, timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
+  if (start === end) return f(start, { day: 'numeric', month: 'short' });
+  return start.slice(0, 7) === end.slice(0, 7) ? `${f(start, { day: 'numeric' })}–${f(end, { day: 'numeric', month: 'short' })}` : `${f(start, { day: 'numeric', month: 'short' })} – ${f(end, { day: 'numeric', month: 'short' })}`;
+}
+
+export function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

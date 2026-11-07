@@ -13,6 +13,7 @@ import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AttendanceRulesService } from './attendance-rules.service';
 import type { CreateRegularizationDto, RegularizationQueryDto, ReviewDto } from './dto/attendance.dto';
+import { OvertimeService } from './overtime.service';
 
 const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`;
 
@@ -41,6 +42,7 @@ export class RegularizationService {
     private readonly scope: EmployeeScopeService,
     private readonly rules: AttendanceRulesService,
     private readonly notifications: NotificationsService,
+    private readonly overtime: OvertimeService,
   ) {}
 
   async create(auth: AuthContext, dto: CreateRegularizationDto) {
@@ -110,21 +112,21 @@ export class RegularizationService {
   async approve(auth: AuthContext, id: string, dto: ReviewDto) {
     const { request, employee } = await this.forReview(auth, id);
     await this.rules.assertOpen(request.workDate);
-    const ctx = await this.rules.context(auth.organizationId!, employee);
+    const ctx = await this.rules.context(auth.organizationId!, employee, { from: request.workDate, to: request.workDate });
     await this.db.transaction(async (transaction) => {
       const values = {
-        shiftId: ctx.shift.id,
+        ...(await this.rules.evaluate(ctx, request.workDate, request.checkInAt, request.checkOutAt, transaction)),
         checkInAt: request.checkInAt,
         checkOutAt: request.checkOutAt,
-        lateMinutes: this.rules.lateMinutes(request.checkInAt, request.workDate, ctx),
-        ...this.rules.outcome(request.checkInAt, request.checkOutAt, ctx.shift),
         source: 'REGULARIZED' as const,
         note: request.reason,
         updatedById: auth.userId,
       };
       const existing = await AttendanceRecord.findOne({ where: { employeeId: employee.id, workDate: request.workDate }, transaction });
-      if (existing) await existing.update(values, { transaction });
-      else await AttendanceRecord.create({ ...values, organizationId: auth.organizationId!, employeeId: employee.id, workDate: request.workDate }, { transaction });
+      const saved = existing
+        ? await existing.update(values, { transaction })
+        : await AttendanceRecord.create({ ...values, organizationId: auth.organizationId!, employeeId: employee.id, workDate: request.workDate }, { transaction });
+      await this.overtime.sync(saved, transaction);
       await request.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
       await this.audit.record({ action: 'attendance.regularization_approved', entityType: 'AttendanceRegularization', entityId: id, summary: `Regularization for ${fullName(employee)} on ${request.workDate} approved` }, transaction);
     });

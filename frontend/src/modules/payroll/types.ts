@@ -1,4 +1,4 @@
-import type { ComponentCalculation, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '@contracts';
+import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '@contracts';
 
 export interface PayrollSettings {
   pfEnabled: boolean;
@@ -7,6 +7,8 @@ export interface PayrollSettings {
   ptEnabled: boolean;
   ptState: string | null;
   lopFromAttendance: boolean;
+  overtimeMultiplier: number;
+  overtimeBasis: 'BASIC' | 'GROSS';
   pfEstablishmentCode: string | null;
   esiEmployerCode: string | null;
   tan: string | null;
@@ -261,4 +263,49 @@ export interface Claim {
   payroll: { id: string; period: string; status: PayrollRunStatus } | null;
   createdAt: string;
   permissions: { review: boolean; cancel: boolean };
+}
+
+export interface Instalment {
+  principal: number;
+  interest: number;
+  amount: number;
+}
+
+export interface Loan {
+  id: string;
+  reference: string;
+  type: LoanType;
+  employee: { id: string; name: string; employeeCode: string; department: string | null } | null;
+  purpose: string;
+  principal: number;
+  interestRate: number;
+  tenureMonths: number;
+  emi: number | null;
+  start: { year: number; month: number; label: string } | null;
+  status: LoanStatus;
+  disbursedOn: string | null;
+  repaid: number;
+  interestPaid: number;
+  outstanding: number;
+  instalmentsPaid: number;
+  nextInstalment: Instalment | null;
+  createdAt: string;
+}
+
+export interface LoanDetail extends Loan {
+  decisionNote: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  raisedBy: string | null;
+  disbursedBy: string | null;
+  disbursementReference: string | null;
+  closedAt: string | null;
+  repayments: { id: string; source: LoanRepaymentSource; paidOn: string; period: string | null; principal: number; interest: number; note: string | null }[];
+  schedule: (Instalment & { year: number; month: number; balance: number })[];
+  permissions: { approve: boolean; reject: boolean; cancel: boolean; disburse: boolean; defer: boolean; repay: boolean };
+}
+
+export interface MyLoans {
+  loans: (Loan & { permissions: { cancel: boolean } })[];
+  canRequest: boolean;
 }

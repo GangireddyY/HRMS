@@ -24,6 +24,7 @@ import {
 } from 'class-validator';
 import {
   APPLICATION_STAGES,
+  CANDIDATE_SKILLS_MAX,
   CANDIDATE_SOURCES,
   EMPLOYMENT_TYPES,
   FEEDBACK_RECOMMENDATIONS,
@@ -45,6 +46,16 @@ import { emptyToNull, optionalNullable, trim } from '../../../common/validation/
 
 const DATE = { strict: true, strictSeparator: true };
 const PHONE = /^\+?[0-9 ()-]{7,20}$/;
+/** Trimmed, without blanks or case-insensitive duplicates. */
+const skillList = ({ value }: { value: unknown }) => {
+  if (!Array.isArray(value)) return value;
+  const seen = new Map<unknown, unknown>();
+  for (const v of value) {
+    const s = typeof v === 'string' ? v.trim() : v;
+    if (s !== '' && !seen.has(typeof s === 'string' ? s.toLowerCase() : s)) seen.set(typeof s === 'string' ? s.toLowerCase() : s, s);
+  }
+  return [...seen.values()];
+};
 /** Optional, nullable amount with up to two decimals. */
 const Money = () => applyDecorators(Transform(({ value }) => (value === '' ? null : value)), optionalNullable, Type(() => Number), IsNumber({ maxDecimalPlaces: 2 }), Min(0), Max(1_000_000_000_000));
 const lowerEmail = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
@@ -118,6 +129,14 @@ export class CandidateDto {
   @ApiPropertyOptional({ enum: CANDIDATE_SOURCES }) @IsOptional() @IsIn(CANDIDATE_SOURCES) source?: CandidateSource;
   @ApiPropertyOptional({ nullable: true, description: 'Employee who referred the candidate' }) @Transform(emptyToNull) @optionalNullable @IsUUID() referredById?: string | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(2000) notes?: string | null;
+  @ApiPropertyOptional({ type: [String] })
+  @Transform(skillList)
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(CANDIDATE_SKILLS_MAX)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  skills?: string[];
   @ApiPropertyOptional({ nullable: true, description: 'Also add the candidate to this job' }) @Transform(emptyToNull) @optionalNullable @IsUUID() jobId?: string | null;
 }
 export class UpdateCandidateDto extends PartialType(CandidateDto) {}

@@ -12,8 +12,31 @@ export type AttendanceRecordStatus = (typeof ATTENDANCE_RECORD_STATUSES)[number]
 export const DAY_STATUSES = ['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'HOLIDAY', 'WEEKLY_OFF', 'UPCOMING', 'NOT_EMPLOYED'] as const;
 export type DayStatus = (typeof DAY_STATUSES)[number];
 
-export const ATTENDANCE_SOURCES = ['WEB', 'REGULARIZED', 'MANUAL'] as const;
+export const ATTENDANCE_SOURCES = ['WEB', 'REGULARIZED', 'MANUAL', 'DEVICE'] as const;
 export type AttendanceSource = (typeof ATTENDANCE_SOURCES)[number];
+
+/** Where a day was worked from: the office, or remotely on an approved work-from-home day. */
+export const WORK_MODES = ['OFFICE', 'REMOTE'] as const;
+export type WorkMode = (typeof WORK_MODES)[number];
+
+/** Overtime is approved (possibly for fewer minutes) before payroll pays it. */
+export const OVERTIME_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export type OvertimeStatus = (typeof OVERTIME_STATUSES)[number];
+/** Overtime pay: approved hours × (monthly Basic or gross ÷ 26 days ÷ 8 hours) × the multiplier. */
+export const OVERTIME_BASES = ['BASIC', 'GROSS'] as const;
+export type OvertimeBasis = (typeof OVERTIME_BASES)[number];
+export const OVERTIME_HOURLY_DIVISOR = 26 * 8;
+
+/** Work-from-home requests cover at most this many consecutive days. */
+export const WFH_MAX_DAYS = 31;
+
+/** Device punches: IN / OUT when the device knows, AUTO = first punch of the day is in, the last is out. */
+export const PUNCH_DIRECTIONS = ['IN', 'OUT', 'AUTO'] as const;
+export type PunchDirection = (typeof PUNCH_DIRECTIONS)[number];
+export const DEVICE_BATCH_MAX = 500;
+
+/** Rosters are planned at most this many days at a time. */
+export const ROSTER_MAX_DAYS = 92;
 
 export const REGULARIZATION_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
 export type RegularizationStatus = (typeof REGULARIZATION_STATUSES)[number];

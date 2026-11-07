@@ -61,6 +61,10 @@ export interface Location {
   state: string | null;
   country: string | null;
   timezone: string | null;
+  /** Decimal strings, e.g. "12.971600". */
+  latitude: string | null;
+  longitude: string | null;
+  geofenceRadiusM: number | null;
   isActive: boolean;
   employeeCount: number;
 }

@@ -44,6 +44,7 @@ const statusOptions = [
   { value: 'MISSED_PUNCH', label: 'Missed punch-out' },
   { value: 'ON_LEAVE', label: 'On leave' },
   { value: 'LATE', label: 'Late' },
+  { value: 'REMOTE', label: 'Working from home' },
 ];
 const tiles = computed(() => {
   const s = summary.value;
@@ -56,6 +57,7 @@ const tiles = computed(() => {
     { key: 'HALF_DAY', label: 'Half day', value: s.halfDay, cls: 'text-amber-600 dark:text-amber-400' },
     { key: 'MISSED_PUNCH', label: 'Missed punch-out', value: s.missedPunch, cls: 'text-orange-600 dark:text-orange-400' },
     { key: 'ON_LEAVE', label: 'On leave', value: s.onLeave, cls: 'text-cyan-600 dark:text-cyan-400' },
+    ...(s.remote ? [{ key: 'REMOTE', label: 'From home', value: s.remote, cls: 'text-sky-600 dark:text-sky-400' }] : []),
   ];
 });
 const today = new Date().toISOString().slice(0, 10);
@@ -70,7 +72,7 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
       </template>
     </AppPageHeader>
 
-    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
       <button
         v-for="t in tiles"
         :key="t.key"
@@ -114,7 +116,14 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
             </div>
           </div>
         </template>
-        <template #cell-status="{ row }"><AppBadge :tone="dayStatusTone[row.status]" dot>{{ row.status === 'UPCOMING' ? 'Not in yet' : DAY_STATUS_LABELS[row.status] }}</AppBadge></template>
+        <template #cell-status="{ row }">
+          <div class="flex flex-wrap items-center gap-1">
+            <AppBadge :tone="dayStatusTone[row.status]" dot>{{ row.status === 'UPCOMING' ? 'Not in yet' : DAY_STATUS_LABELS[row.status] }}</AppBadge>
+            <AppBadge v-if="row.workFromHome" tone="info" size="sm">From home</AppBadge>
+            <AppBadge v-if="row.record?.overtimeMinutes" tone="violet" size="sm">+{{ formatMinutes(row.record.overtimeMinutes) }}</AppBadge>
+          </div>
+          <p v-if="row.shift.rostered" class="mt-0.5 text-xs text-fg-subtle">{{ row.shift.name }} {{ row.shift.startTime }}–{{ row.shift.endTime }}</p>
+        </template>
         <template #cell-in="{ row }">{{ formatTime(row.record?.checkInAt) }}</template>
         <template #cell-out="{ row }">{{ formatTime(row.record?.checkOutAt) }}</template>
         <template #cell-worked="{ row }"><span class="tabular-nums">{{ formatMinutes(row.record?.workedMinutes) }}</span></template>

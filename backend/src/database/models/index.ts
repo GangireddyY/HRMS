@@ -1,8 +1,22 @@
 import { AuditLog, Notification } from './activity.models';
-import { AttendancePeriod, AttendanceRecord, AttendanceRegularization, Holiday, Shift } from './attendance.models';
+import {
+  AttendanceDevice,
+  AttendanceOvertime,
+  AttendancePeriod,
+  AttendancePunch,
+  AttendanceRecord,
+  AttendanceRegularization,
+  Holiday,
+  Shift,
+  ShiftAssignment,
+  ShiftRotation,
+  WorkFromHomeRequest,
+} from './attendance.models';
 import { LeaveLedgerEntry, LeaveRequest, LeaveType } from './leave.models';
 import { OnboardingCase, OnboardingTask, OnboardingTemplate, OnboardingTemplateTask, ProbationReview } from './onboarding.models';
 import {
+  EmployeeLoan,
+  EmployeeLoanRepayment,
   EmployeeSalary,
   PayrollAdjustment,
   PayrollRun,
@@ -14,13 +28,13 @@ import {
   SalaryStructureLine,
   TaxDeclarationRecord,
 } from './payroll.models';
-import { PerformanceCycle, PerformanceFeedback, PerformanceGoal, PerformancePip, PerformanceReview, PipCheckIn } from './performance.models';
+import { HikeRecommendation, PerformanceCycle, PerformanceFeedback, PerformanceGoal, PerformancePip, PerformanceReview, PipCheckIn } from './performance.models';
 import { Announcement, AnnouncementResponse, Recognition, RecognitionRecipient, Suggestion, Survey, SurveyParticipant, SurveyQuestionRecord, SurveyResponse } from './engagement.models';
 import { GrievanceAttachment, GrievanceCase, GrievanceEvent, GrievanceNote } from './grievance.models';
 import { BenefitEnrollment, BenefitEnrollmentDependent, BenefitPlan, BenefitPlanOption } from './benefits.models';
 import { ComplianceFiling, ComplianceObligation, Policy, PolicyAcknowledgement, PolicyVersion } from './compliance.models';
-import { ExitCase, ExitClearanceItem, ExitSettlement } from './exit.models';
-import { TrainingAttempt, TrainingCourse, TrainingEnrollment, TrainingQuestion, TrainingSession } from './training.models';
+import { AlumniProfile, ExitCase, ExitClearanceItem, ExitLetter, ExitSettlement } from './exit.models';
+import { DesignationSkill, EmployeeSkill, Skill, TrainingAttempt, TrainingCourse, TrainingCourseSkill, TrainingEnrollment, TrainingQuestion, TrainingSession } from './training.models';
 import { ApplicationEvent, Candidate, Interview, InterviewPanelist, JobApplication, JobOpening, JobRequisition, Offer } from './recruitment.models';
 import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserSession } from './identity.models';
 import { Feature, Organization, OrganizationFeature, OrganizationLogo, OrganizationMembership, OrganizationSecurityPolicy, Plan, PlanFeature } from './organization.models';
@@ -95,6 +109,12 @@ export const ALL_MODELS = [
   AttendanceRecord,
   AttendanceRegularization,
   AttendancePeriod,
+  AttendanceOvertime,
+  WorkFromHomeRequest,
+  ShiftRotation,
+  ShiftAssignment,
+  AttendanceDevice,
+  AttendancePunch,
   LeaveType,
   LeaveRequest,
   LeaveLedgerEntry,
@@ -121,17 +141,24 @@ export const ALL_MODELS = [
   Payslip,
   PayrollAdjustment,
   ReimbursementClaim,
+  EmployeeLoan,
+  EmployeeLoanRepayment,
   PerformanceCycle,
   PerformanceReview,
   PerformanceGoal,
   PerformanceFeedback,
   PerformancePip,
   PipCheckIn,
+  HikeRecommendation,
   TrainingCourse,
   TrainingQuestion,
   TrainingSession,
   TrainingEnrollment,
   TrainingAttempt,
+  Skill,
+  EmployeeSkill,
+  DesignationSkill,
+  TrainingCourseSkill,
   Announcement,
   AnnouncementResponse,
   Survey,
@@ -157,6 +184,8 @@ export const ALL_MODELS = [
   ExitCase,
   ExitClearanceItem,
   ExitSettlement,
+  ExitLetter,
+  AlumniProfile,
 ];
 
 /**
@@ -188,6 +217,12 @@ export const TENANT_MODELS = [
   AttendanceRecord,
   AttendanceRegularization,
   AttendancePeriod,
+  AttendanceOvertime,
+  WorkFromHomeRequest,
+  ShiftRotation,
+  ShiftAssignment,
+  AttendanceDevice,
+  AttendancePunch,
   LeaveType,
   LeaveRequest,
   LeaveLedgerEntry,
@@ -214,17 +249,24 @@ export const TENANT_MODELS = [
   Payslip,
   PayrollAdjustment,
   ReimbursementClaim,
+  EmployeeLoan,
+  EmployeeLoanRepayment,
   PerformanceCycle,
   PerformanceReview,
   PerformanceGoal,
   PerformanceFeedback,
   PerformancePip,
   PipCheckIn,
+  HikeRecommendation,
   TrainingCourse,
   TrainingQuestion,
   TrainingSession,
   TrainingEnrollment,
   TrainingAttempt,
+  Skill,
+  EmployeeSkill,
+  DesignationSkill,
+  TrainingCourseSkill,
   Announcement,
   AnnouncementResponse,
   Survey,
@@ -250,6 +292,8 @@ export const TENANT_MODELS = [
   ExitCase,
   ExitClearanceItem,
   ExitSettlement,
+  ExitLetter,
+  AlumniProfile,
   // Nullable organization_id (platform-level rows exist); written with explicit organization ids.
   AuditLog,
   LoginEvent,

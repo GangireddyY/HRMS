@@ -27,6 +27,8 @@ export class BenefitPlan extends Model<InferAttributes<BenefitPlan>, InferCreati
   @Column(DataType.JSONB) gradeIds: CreationOptional<string[] | null>;
   @Column(DataType.INTEGER) waitingDays: CreationOptional<number>;
   @Column(DataType.INTEGER) maxChildAge: CreationOptional<number | null>;
+  /** The plan of the previous policy period this one renews. */
+  @Column(DataType.UUID) renewedFromId: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;

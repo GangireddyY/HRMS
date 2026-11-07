@@ -179,6 +179,7 @@ async function acknowledge() {
           <AppButton v-if="r.permissions.reassign" variant="secondary" :icon="UserCog" @click="newReviewer = null; reassignOpen = true">{{ r.reviewer ? 'Change reviewer' : 'Assign reviewer' }}</AppButton>
           <AppButton v-if="r.permissions.calibrate" variant="secondary" :icon="Scale" @click="calibration.rating = r.manager?.rating ?? null; calibration.note = ''; calibrateOpen = true">Calibrate</AppButton>
           <AppButton v-if="r.permissions.acknowledge" :icon="Check" @click="ackComment = ''; ackOpen = true">Acknowledge</AppButton>
+          <AppButton v-if="inHr && !r.viewer.isSubject && (r.viewer.isReviewer || r.viewer.isHr) && (r.stage === 'COMPLETED' || r.stage === 'ACKNOWLEDGED')" variant="secondary" :icon="TrendingUp" :to="`/hr/performance/cycles/${r.cycle.id}/hikes`">Salary increase</AppButton>
         </template>
       </AppPageHeader>
 

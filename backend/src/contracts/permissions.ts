@@ -151,7 +151,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('attendance', 'attendance.records', 'attendance.mark', 'Check in and check out'),
   def('attendance', 'attendance.records', 'attendance.manage', 'Edit attendance records', S),
   def('attendance', 'attendance.regularization', 'attendance.regularize.apply', 'Apply for attendance regularization'),
-  def('attendance', 'attendance.regularization', 'attendance.regularize.approve', 'Approve attendance regularization', S),
+  def('attendance', 'attendance.regularization', 'attendance.regularize.approve', 'Approve attendance regularization, work from home and overtime', S),
+  def('attendance', 'attendance.regularization', 'attendance.wfh.apply', 'Request to work from home'),
   def('attendance', 'attendance.configuration', 'attendance.configure', 'Configure shifts, rules and devices'),
   def('attendance', 'attendance.closing', 'attendance.close', 'Close monthly attendance'),
 
@@ -174,6 +175,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('payroll', 'payroll.reimbursements', 'payroll.reimbursement.apply', 'Submit reimbursement claims'),
   def('payroll', 'payroll.reimbursements', 'payroll.reimbursement.approve', 'Approve reimbursement claims', S),
   def('payroll', 'payroll.settlements', 'payroll.settlement.manage', 'Manage full and final settlements'),
+  def('payroll', 'payroll.loans', 'payroll.loan.apply', 'Request loans and salary advances'),
+  def('payroll', 'payroll.loans', 'payroll.loan.approve', 'Approve loan and salary advance requests and set their terms'),
+  def('payroll', 'payroll.loans', 'payroll.loan.manage', 'Raise, disburse and track loans and advances and record repayments'),
 
   // Performance
   def('performance', 'performance.reviews', 'performance.view', 'View performance reviews and goals', S),

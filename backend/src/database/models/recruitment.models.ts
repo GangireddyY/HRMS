@@ -98,6 +98,7 @@ export class Candidate extends Model<InferAttributes<Candidate>, InferCreationAt
   @Column(DataType.STRING(12)) source: CreationOptional<CandidateSource>;
   @ForeignKey(() => Employee) @Column(DataType.UUID) referredById: CreationOptional<string | null>;
   @Column(DataType.STRING(2000)) notes: CreationOptional<string | null>;
+  @Default([]) @Column(DataType.JSONB) skills: CreationOptional<string[]>;
   @Column(DataType.STRING(500)) resumeKey: CreationOptional<string | null>;
   @Column(DataType.STRING(255)) resumeFileName: CreationOptional<string | null>;
   @Column(DataType.STRING(100)) resumeContentType: CreationOptional<string | null>;

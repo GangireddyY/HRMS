@@ -118,11 +118,13 @@ export function countLeaveDays(
   end: string,
   startSession: LeaveSession,
   endSession: LeaveSession,
-  calendar: { weeklyOffs: number[]; holidays: Set<string>; countNonWorkingDays: boolean },
+  calendar: { weeklyOffs: number[]; holidays: Set<string>; countNonWorkingDays: boolean; restDays?: Set<string> },
 ): { days: number; breakdown: CountedDay[] } {
   const breakdown: CountedDay[] = [];
+  // Rostered rest days (when known) replace the weekly offs of the usual shift.
+  const isRest = (d: string) => (calendar.restDays ? calendar.restDays.has(d) : calendar.weeklyOffs.includes(weekday(d)));
   for (let d = start; d <= end; d = addDays(d, 1)) {
-    const skipped = calendar.countNonWorkingDays ? undefined : calendar.holidays.has(d) ? 'HOLIDAY' : calendar.weeklyOffs.includes(weekday(d)) ? 'WEEKLY_OFF' : undefined;
+    const skipped = calendar.countNonWorkingDays ? undefined : calendar.holidays.has(d) ? 'HOLIDAY' : isRest(d) ? 'WEEKLY_OFF' : undefined;
     let portion = skipped ? 0 : 1;
     if (portion && start === end && startSession !== 'FULL') portion = 0.5;
     else if (portion && d === start && start !== end && startSession === 'SECOND_HALF') portion = 0.5;

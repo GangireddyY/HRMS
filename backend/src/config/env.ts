@@ -3,6 +3,7 @@ import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUrl, Max, Min,
 
 const toBool = ({ value }: { value: unknown }) => value === true || value === 'true' || value === '1';
 const toInt = ({ value }: { value: unknown }) => (value === undefined || value === '' ? undefined : Number(value));
+const emptyToUndefined = ({ value }: { value: unknown }) => (value === '' ? undefined : value);
 
 export class EnvironmentVariables {
   @IsIn(['development', 'test', 'production'])
@@ -96,7 +97,7 @@ export class EnvironmentVariables {
   S3_REGION?: string;
 
   /** Custom endpoint for S3-compatible stores (MinIO, R2); leave empty for AWS. Credentials come from the standard AWS chain. */
-  @IsOptional() @IsUrl({ require_tld: false })
+  @Transform(emptyToUndefined) @IsOptional() @IsUrl({ require_tld: false })
   S3_ENDPOINT?: string;
 
   @Transform(toBool) @IsBoolean()

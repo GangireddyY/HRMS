@@ -6,6 +6,7 @@ import { Op, QueryTypes } from 'sequelize';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
+import { addDays, zonedParts } from '../src/common/utils/zoned-time';
 import { DatabaseService } from '../src/database/database.service';
 import { MembershipRole, OrganizationMembership, Plan, Role } from '../src/database/models';
 import { PasswordHasher } from '../src/infrastructure/crypto/password-hasher.service';
@@ -18,6 +19,11 @@ export const API = '/api/v1';
 
 /** Test fixtures and assertions read/write across tenants directly. */
 export const RAW = { skipTenantScope: true } as const;
+
+/** Test organizations use the default time zone; "today" must be theirs, which can be a day ahead of UTC. */
+export const ORG_TIMEZONE = 'Asia/Kolkata';
+export const orgToday = () => zonedParts(new Date(), ORG_TIMEZONE).date;
+export const orgDays = (n: number) => addDays(orgToday(), n);
 
 export interface TestContext {
   app: INestApplication;

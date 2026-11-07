@@ -1,4 +1,4 @@
-import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, EmploymentType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
+import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, EmploymentType, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
 
 export interface ExitSummary {
   id: string;
@@ -65,7 +65,69 @@ export interface ExitDetail extends ExitSummary {
     completeBlocker: string | null;
     cancel: boolean;
     settle: boolean;
+    letters: boolean;
   };
+}
+
+export interface ExitLetterSummary {
+  id: string;
+  type: ExitLetterType;
+  reference: string;
+  letterDate: string;
+  subject: string;
+  signatoryName: string;
+  signatoryTitle: string | null;
+  issuedBy: string | null;
+  issuedAt: string;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  revokedReason: string | null;
+}
+
+export interface ExitLetter extends ExitLetterSummary {
+  body: string;
+  employee: { name: string; employeeCode: string };
+  letterhead: { name: string; logoUrl: string | null; address: string[]; email: string | null; phone: string | null; website: string | null; registrationNumber: string | null };
+}
+
+export interface LetterDraft {
+  type: ExitLetterType;
+  letterDate: string;
+  subject: string;
+  body: string;
+  signatoryName: string;
+  signatoryTitle: string | null;
+}
+
+export interface AlumniDetails {
+  optedIn: boolean;
+  personalEmail: string | null;
+  phone: string | null;
+  linkedinUrl: string | null;
+  currentCompany: string | null;
+  currentTitle: string | null;
+  city: string | null;
+  openToOpportunities: boolean;
+  updatedAt: string | null;
+}
+
+export interface MyAlumni {
+  eligible: boolean;
+  joined: boolean;
+  profile: AlumniDetails | null;
+}
+
+export interface AlumniRow {
+  id: string;
+  name: string;
+  employeeCode: string;
+  department: string | null;
+  designation: string | null;
+  dateOfJoining: string;
+  exitDate: string | null;
+  exit: { id: string; type: ExitType; reason: ExitReason; lastWorkingDay: string | null; eligibleForRehire?: boolean | null } | null;
+  optedIn: boolean;
+  alumni: AlumniDetails | null;
 }
 
 export interface SettlementLine {

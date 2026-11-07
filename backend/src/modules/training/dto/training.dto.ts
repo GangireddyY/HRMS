@@ -30,6 +30,9 @@ import {
   MAX_ASSIGN_AT_ONCE,
   MAX_OPTIONS_PER_QUESTION,
   MAX_QUESTIONS_PER_COURSE,
+  MATRIX_MAX_SKILLS,
+  SKILL_CATEGORIES,
+  type SkillCategory,
   type CourseCategory,
   type CourseDelivery,
   type CourseStatus,
@@ -137,4 +140,47 @@ export class CourseFeedbackDto {
 
 export class CertificationQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: ['EXPIRING', 'EXPIRED'], default: 'EXPIRING' }) @IsOptional() @IsIn(['EXPIRING', 'EXPIRED']) state?: 'EXPIRING' | 'EXPIRED';
+}
+
+// ---- Skills --------------------------------------------------------------------------------------
+
+export class SkillQueryDto {
+  @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MaxLength(100) search?: string;
+  @ApiPropertyOptional({ enum: SKILL_CATEGORIES }) @IsOptional() @IsIn(SKILL_CATEGORIES) category?: SkillCategory;
+  @ApiPropertyOptional({ description: 'Include inactive skills (training.manage)' }) @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() includeInactive?: boolean;
+}
+
+export class SkillDto {
+  @ApiProperty({ example: 'TypeScript' }) @Transform(trim) @IsString() @Length(2, 80) name!: string;
+  @ApiProperty({ enum: SKILL_CATEGORIES }) @IsIn(SKILL_CATEGORIES) category!: SkillCategory;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) description?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+}
+export class UpdateSkillDto extends PartialType(SkillDto) {}
+
+export class SkillLevelDto {
+  @ApiProperty() @IsUUID() skillId!: string;
+  @ApiProperty({ minimum: 1, maximum: 5 }) @Type(() => Number) @IsInt() @Min(1) @Max(5) level!: number;
+}
+
+export class RequirementsDto {
+  @ApiProperty({ type: [SkillLevelDto] }) @IsArray() @ArrayMaxSize(60) @ValidateNested({ each: true }) @Type(() => SkillLevelDto) skills!: SkillLevelDto[];
+}
+
+export class CourseSkillsDto extends RequirementsDto {}
+
+export class MySkillDto extends SkillLevelDto {
+  @ApiPropertyOptional({ nullable: true, description: 'Where you used it, certifications…' }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) notes?: string | null;
+}
+
+export class VerifySkillDto {
+  @ApiProperty({ minimum: 1, maximum: 5 }) @Type(() => Number) @IsInt() @Min(1) @Max(5) level!: number;
+}
+
+export class MatrixQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() departmentId?: string;
+  @ApiPropertyOptional({ description: "Shows the skills this designation needs, for its people" }) @IsOptional() @IsUUID() designationId?: string;
+  @ApiPropertyOptional({ type: [String], description: `Up to ${MATRIX_MAX_SKILLS} skills (comma-separated); defaults to the most common ones` })
+  @IsOptional() @Transform(({ value }) => (Array.isArray(value) ? value : typeof value === 'string' && value ? value.split(',') : undefined)) @IsArray() @ArrayMaxSize(MATRIX_MAX_SKILLS) @IsUUID('all', { each: true })
+  skillIds?: string[];
 }

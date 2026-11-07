@@ -11,9 +11,9 @@ import { BenefitEnrollment, BenefitEnrollmentDependent, BenefitPlan, BenefitPlan
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { fullName, organizationToday, userIdsOf } from '../employees/employee-people';
 import { NotificationsService } from '../notifications/notifications.service';
-import { ageOn, coverageStart, ineligibility } from './benefits-rules';
-import { presentPlan } from './benefits-present';
-import type { PlanDto, PlanOptionDto, PlanQueryDto, UpdatePlanDto } from './dto/benefits.dto';
+import { ageOn, carriedDependents, coverageStart, ineligibility, renewalPeriod } from './benefits-rules';
+import { presentOption, presentPlan } from './benefits-present';
+import type { PlanDto, PlanOptionDto, PlanQueryDto, RenewPlanDto, UpdatePlanDto } from './dto/benefits.dto';
 
 type PlanValues = Omit<PlanDto, 'options'>;
 /** Fixed once a plan is active (they decide how existing enrolments started). */
@@ -46,7 +46,17 @@ export class BenefitPlansService {
     const p = await this.find(id);
     const manage = auth.permissions.has('benefits.manage');
     if (!manage && p.status !== 'ACTIVE') throw AppError.notFound('Plan');
-    return { ...presentPlan(p), ...(manage ? { stats: (await this.stats([p.id])).get(p.id) ?? EMPTY_STATS } : {}) };
+    if (!manage) return presentPlan(p);
+    const [renewal, renewedFrom] = await Promise.all([
+      BenefitPlan.findOne({ where: { renewedFromId: p.id }, attributes: ['id', 'name', 'status', 'coverageStartsOn'] }),
+      p.renewedFromId ? BenefitPlan.findByPk(p.renewedFromId, { attributes: ['id', 'name', 'status', 'coverageEndsOn'] }) : null,
+    ]);
+    return {
+      ...presentPlan(p),
+      stats: (await this.stats([p.id])).get(p.id) ?? EMPTY_STATS,
+      renewal: renewal ? { id: renewal.id, name: renewal.name, status: renewal.status, coverageStartsOn: renewal.coverageStartsOn } : null,
+      renewedFrom: renewedFrom ? { id: renewedFrom.id, name: renewedFrom.name, status: renewedFrom.status, coverageEndsOn: renewedFrom.coverageEndsOn } : null,
+    };
   }
 
   async create(auth: AuthContext, dto: PlanDto) {
@@ -82,15 +92,124 @@ export class BenefitPlansService {
   }
 
   async activate(auth: AuthContext, id: string) {
-    await this.db.transaction(async (transaction) => {
+    const carried = await this.db.transaction(async (transaction) => {
       const p = await this.find(id, transaction);
       if (p.status !== 'DRAFT') throw AppError.conflict('Only a draft plan can be activated');
       if (p.coverageEndsOn < (await organizationToday(p.organizationId))) throw AppError.conflict('The policy period has already ended');
       if (!p.options?.length) throw AppError.conflict('Add at least one coverage option');
       await p.update({ status: 'ACTIVE', updatedById: auth.userId }, { transaction });
       await this.audit.record({ action: 'benefits.plan_activated', entityType: 'BenefitPlan', entityId: p.id, summary: `Benefit plan "${p.name}" activated` }, transaction);
+      return p.renewedFromId ? this.carryOver(auth, p, transaction) : null;
     });
-    return this.get(auth, id);
+    return { ...(await this.get(auth, id)), ...(carried ? { carriedOver: carried } : {}) };
+  }
+
+  /**
+   * The plan for the next policy period: a draft copy with the same options, starting the day after this one ends,
+   * with a renewal enrolment window just before. Activating it carries current enrolments over.
+   */
+  async renew(auth: AuthContext, id: string, dto: RenewPlanDto) {
+    const renewalId = await this.db.transaction(async (transaction) => {
+      const source = await this.find(id, transaction);
+      if (source.status !== 'ACTIVE') throw AppError.conflict('Only an active plan can be renewed');
+      const existing = await BenefitPlan.findOne({ where: { renewedFromId: source.id }, attributes: ['name'], transaction });
+      if (existing) throw AppError.conflict(`This plan has already been renewed as "${existing.name}"`);
+      const period = renewalPeriod(source, await organizationToday(source.organizationId));
+      const values: PlanValues = {
+        ...(presentPlan(source) as unknown as PlanValues),
+        name: dto.name ?? source.name,
+        policyNumber: dto.policyNumber !== undefined ? dto.policyNumber : source.policyNumber,
+        coverageStartsOn: dto.coverageStartsOn ?? period.coverageStartsOn,
+        coverageEndsOn: dto.coverageEndsOn ?? period.coverageEndsOn,
+        enrollmentOpensOn: dto.enrollmentOpensOn !== undefined ? dto.enrollmentOpensOn : period.enrollmentOpensOn,
+        enrollmentClosesOn: dto.enrollmentClosesOn !== undefined ? dto.enrollmentClosesOn : period.enrollmentClosesOn,
+      };
+      if (values.coverageStartsOn <= source.coverageStartsOn) throw AppError.validation([{ field: 'coverageStartsOn', message: 'The renewed policy must start after the current one' }]);
+      const options = (source.options ?? []).map((o) => ({ ...presentOption(o), id: undefined })) as PlanOptionDto[];
+      this.validate(values, options);
+      const p = await BenefitPlan.create({ organizationId: source.organizationId, ...this.columns(values), renewedFromId: source.id, createdById: auth.userId, updatedById: auth.userId }, { transaction });
+      await this.syncOptions(p, options, transaction);
+      await this.audit.record({ action: 'benefits.plan_renewed', entityType: 'BenefitPlan', entityId: p.id, summary: `Benefit plan "${source.name}" renewed for ${values.coverageStartsOn} – ${values.coverageEndsOn} (draft)` }, transaction);
+      return p.id;
+    });
+    return this.get(auth, renewalId);
+  }
+
+  /**
+   * Activating a renewal: everyone still covered at the end of the previous period (and still eligible) continues in
+   * the same option — or the default one — from the start of the new period, with the dependants it still covers.
+   */
+  private async carryOver(auth: AuthContext, p: BenefitPlan, transaction: Transaction) {
+    const source = (await BenefitPlan.findByPk(p.renewedFromId!, { transaction }))!;
+    const rows = await BenefitEnrollment.findAll({
+      where: { planId: source.id, status: 'ACTIVE', [Op.or]: [{ effectiveTo: null }, { effectiveTo: { [Op.gte]: source.coverageEndsOn } }] },
+      include: [{ model: BenefitEnrollmentDependent }],
+      transaction,
+    });
+    const employees = new Map((rows.length ? await Employee.findAll({ where: { id: rows.map((r) => r.employeeId) }, transaction }) : []).map((e) => [e.id, e]));
+    const already = new Set((await BenefitEnrollment.findAll({ where: { planId: p.id, status: ['ACTIVE', 'PENDING', 'WAIVED'] }, attributes: ['employeeId'], transaction })).map((e) => e.employeeId));
+    const carried: { enrollment: BenefitEnrollment; employeeId: string; option: string }[] = [];
+    let skipped = 0;
+    for (const r of rows) {
+      const e = employees.get(r.employeeId);
+      const leaving = e?.exitDate && e.exitDate < p.coverageStartsOn;
+      if (!e || already.has(e.id) || leaving || ineligibility(p, e)) {
+        skipped++;
+        continue;
+      }
+      const option = p.options?.find((o) => o.name.toLowerCase() === (r.optionName ?? '').toLowerCase()) ?? p.options?.find((o) => o.isDefault);
+      if (!option) {
+        skipped++;
+        continue;
+      }
+      const effectiveFrom = coverageStart(p, e, 'HR', p.coverageStartsOn);
+      if (effectiveFrom > p.coverageEndsOn) {
+        skipped++;
+        continue;
+      }
+      const dependents = carriedDependents(option, p.maxChildAge, (r.dependents ?? []).map((d) => ({ ...d.get({ plain: true }), relationship: d.relationship })), effectiveFrom);
+      const created = await BenefitEnrollment.create(
+        {
+          organizationId: p.organizationId,
+          planId: p.id,
+          optionId: option.id,
+          employeeId: e.id,
+          status: 'ACTIVE',
+          reason: 'RENEWAL',
+          effectiveFrom,
+          optionName: option.name,
+          coverageAmount: option.coverageAmount,
+          employeeMonthly: option.employeeMonthly,
+          employerMonthly: option.employerMonthly,
+          replacesId: r.id,
+          decidedById: auth.userId,
+          decidedAt: new Date(),
+          createdById: auth.userId,
+        },
+        { transaction },
+      );
+      if (dependents.length) {
+        await BenefitEnrollmentDependent.bulkCreate(
+          dependents.map((d) => ({ organizationId: p.organizationId, enrollmentId: created.id, familyMemberId: d.familyMemberId, name: d.name, relationship: d.relationship, dateOfBirth: d.dateOfBirth, gender: d.gender })),
+          { transaction },
+        );
+      }
+      if (!r.effectiveTo) await r.update({ effectiveTo: source.coverageEndsOn }, { transaction });
+      carried.push({ enrollment: created, employeeId: e.id, option: option.name });
+    }
+    const users = await userIdsOf(carried.map((c) => c.employeeId), transaction);
+    for (const c of carried) {
+      const userId = users.get(c.employeeId);
+      if (userId) {
+        await this.notifications.notify(
+          userId,
+          { organizationId: p.organizationId, type: 'benefits.enrollment', title: `Your cover continues in ${p.name}`, body: `${c.option} from ${c.enrollment.effectiveFrom}. You can change it while renewal enrolment is open.`, link: '/me/benefits' },
+          transaction,
+        );
+      }
+    }
+    await this.audit.record({ action: 'benefits.renewal_carried_over', entityType: 'BenefitPlan', entityId: p.id, summary: `${carried.length} enrolment${carried.length === 1 ? '' : 's'} carried over from "${source.name}"${skipped ? ` (${skipped} not carried over)` : ''}` }, transaction);
+    return { carried: carried.length, skipped };
   }
 
   /** Ends the plan: active coverage ends today (or at the end of the policy period), pending requests are cancelled. */

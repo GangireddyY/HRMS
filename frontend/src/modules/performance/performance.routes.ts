@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router';
 const feature = 'performance' as const;
 const cycles = { permissions: ['performance.configure', 'performance.view'], scope: 'TEAM' as const, feature };
 const reviews = { permissions: ['performance.review', 'performance.view', 'performance.configure'], scope: 'TEAM' as const, feature };
+const hikes = { permissions: ['performance.review', 'performance.configure', 'employee.salary.revise'], scope: 'TEAM' as const, feature };
 const pips = { permissions: ['performance.pip.manage'], scope: 'TEAM' as const, feature };
 
 /** HR operations (/hr): review cycles, reviews to conduct or follow, improvement plans. */
@@ -11,6 +12,7 @@ export const performanceHrRoutes: RouteRecordRaw[] = [
   { path: 'performance/reviews/:id', name: 'hr-review', component: () => import('./pages/ReviewPage.vue'), meta: { title: 'Review', access: reviews } },
   { path: 'performance/cycles', name: 'hr-cycles', component: () => import('./pages/CyclesPage.vue'), meta: { title: 'Review cycles', access: cycles } },
   { path: 'performance/cycles/:id', name: 'hr-cycle', component: () => import('./pages/CyclePage.vue'), meta: { title: 'Review cycle', access: cycles } },
+  { path: 'performance/cycles/:id/hikes', name: 'hr-cycle-hikes', component: () => import('./pages/HikesPage.vue'), meta: { title: 'Salary increases', access: hikes } },
   { path: 'performance/pips', name: 'hr-pips', component: () => import('./pages/PipsPage.vue'), meta: { title: 'Improvement plans', access: pips } },
   { path: 'performance/pips/:id', name: 'hr-pip', component: () => import('./pages/PipPage.vue'), meta: { title: 'Improvement plan', access: pips } },
 ];

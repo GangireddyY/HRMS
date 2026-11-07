@@ -1,7 +1,7 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { CourseCategory, CourseDelivery, CourseStatus, EnrollmentSource, EnrollmentStatus, SessionStatus } from '../../contracts';
-import { Employee } from './people.models';
+import type { CourseCategory, CourseDelivery, CourseStatus, EnrollmentSource, EnrollmentStatus, SessionStatus, SkillCategory, SkillVerifiedSource } from '../../contracts';
+import { Designation, Employee } from './people.models';
 
 /** Decimal columns come back from PostgreSQL as strings. */
 @Table({ tableName: 'training_courses', underscored: true })
@@ -115,4 +115,69 @@ export class TrainingAttempt extends Model<InferAttributes<TrainingAttempt>, Inf
   @Column(DataType.SMALLINT) score: number;
   @Column(DataType.BOOLEAN) passed: boolean;
   @CreatedAt createdAt: CreationOptional<Date>;
+}
+
+@Table({ tableName: 'skills', underscored: true })
+export class Skill extends Model<InferAttributes<Skill>, InferCreationAttributes<Skill>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(80)) name: string;
+  @Column(DataType.STRING(10)) category: SkillCategory;
+  @Column(DataType.STRING(500)) description: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+}
+
+/** An employee's proficiency in a skill (1–5): their own rating and the verified one (manager / HR or a course). */
+@Table({ tableName: 'employee_skills', underscored: true })
+export class EmployeeSkill extends Model<InferAttributes<EmployeeSkill>, InferCreationAttributes<EmployeeSkill>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @ForeignKey(() => Skill) @Column(DataType.UUID) skillId: string;
+  @Column(DataType.SMALLINT) level: CreationOptional<number | null>;
+  @Column(DataType.SMALLINT) verifiedLevel: CreationOptional<number | null>;
+  @Column(DataType.UUID) verifiedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) verifiedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(8)) verifiedSource: CreationOptional<SkillVerifiedSource | null>;
+  @Column(DataType.STRING(500)) notes: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Skill, 'skillId') skill?: NonAttribute<Skill>;
+}
+
+/** A skill a designation needs, at a minimum level. */
+@Table({ tableName: 'designation_skills', underscored: true, timestamps: false })
+export class DesignationSkill extends Model<InferAttributes<DesignationSkill>, InferCreationAttributes<DesignationSkill>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Designation) @Column(DataType.UUID) designationId: string;
+  @ForeignKey(() => Skill) @Column(DataType.UUID) skillId: string;
+  @Column(DataType.SMALLINT) requiredLevel: number;
+
+  @BelongsTo(() => Skill, 'skillId') skill?: NonAttribute<Skill>;
+}
+
+/** A skill a course teaches, up to a level. */
+@Table({ tableName: 'training_course_skills', underscored: true, timestamps: false })
+export class TrainingCourseSkill extends Model<InferAttributes<TrainingCourseSkill>, InferCreationAttributes<TrainingCourseSkill>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => TrainingCourse) @Column(DataType.UUID) courseId: string;
+  @ForeignKey(() => Skill) @Column(DataType.UUID) skillId: string;
+  @Column(DataType.SMALLINT) level: number;
+
+  @BelongsTo(() => Skill, 'skillId') skill?: NonAttribute<Skill>;
+  @BelongsTo(() => TrainingCourse, 'courseId') course?: NonAttribute<TrainingCourse>;
 }

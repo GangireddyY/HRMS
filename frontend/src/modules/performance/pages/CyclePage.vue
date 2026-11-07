@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Eye, Lock, Pencil, Rocket, Trash2, UserPlus } from '@lucide/vue';
+import { Eye, Lock, Pencil, Rocket, Trash2, TrendingUp, UserPlus } from '@lucide/vue';
 import { REVIEW_STAGES, type ReviewStage } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import ColleaguePicker from '@/modules/performance/components/ColleaguePicker.vue';
@@ -20,6 +20,7 @@ const router = useRouter();
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const canConfigure = computed(() => auth.can('performance.configure'));
+const canRevise = computed(() => auth.can('employee.salary.revise'));
 const id = computed(() => String(route.params.id));
 const cycle = useAsync(() => performanceApi.cycle(id.value));
 const c = computed(() => cycle.data.value);
@@ -98,14 +99,17 @@ const columns: TableColumn<ReviewRow>[] = [
           <AppBadge :tone="cycleTone[c.status]" dot>{{ CYCLE_STATUS_LABELS[c.status] }}</AppBadge>
           <AppBadge v-if="c.resultsReleasedAt" tone="success">Results released</AppBadge>
         </template>
-        <template v-if="canConfigure" #actions>
-          <AppButton v-if="c.status === 'DRAFT'" variant="ghost" :icon="Trash2" aria-label="Delete cycle" @click="remove" />
-          <AppButton v-if="c.status !== 'CLOSED'" variant="secondary" :icon="Pencil" @click="editOpen = true">Edit</AppButton>
-          <AppButton v-if="c.status === 'DRAFT'" :icon="Rocket" :loading="busy === 'launch'" @click="launch">Launch</AppButton>
-          <template v-if="c.status === 'ACTIVE'">
-            <AppButton variant="secondary" :icon="UserPlus" @click="addOpen = true">Add people</AppButton>
-            <AppButton v-if="!c.resultsReleasedAt" :icon="Eye" :loading="busy === 'release'" @click="release">Release results</AppButton>
-            <AppButton variant="secondary" :icon="Lock" :loading="busy === 'close'" @click="closeCycle">Close</AppButton>
+        <template v-if="canConfigure || canRevise" #actions>
+          <AppButton v-if="c.status !== 'DRAFT'" variant="secondary" :icon="TrendingUp" :to="`/hr/performance/cycles/${c.id}/hikes`">Salary increases</AppButton>
+          <template v-if="canConfigure">
+            <AppButton v-if="c.status === 'DRAFT'" variant="ghost" :icon="Trash2" aria-label="Delete cycle" @click="remove" />
+            <AppButton v-if="c.status !== 'CLOSED'" variant="secondary" :icon="Pencil" @click="editOpen = true">Edit</AppButton>
+            <AppButton v-if="c.status === 'DRAFT'" :icon="Rocket" :loading="busy === 'launch'" @click="launch">Launch</AppButton>
+            <template v-if="c.status === 'ACTIVE'">
+              <AppButton variant="secondary" :icon="UserPlus" @click="addOpen = true">Add people</AppButton>
+              <AppButton v-if="!c.resultsReleasedAt" :icon="Eye" :loading="busy === 'release'" @click="release">Release results</AppButton>
+              <AppButton variant="secondary" :icon="Lock" :loading="busy === 'close'" @click="closeCycle">Close</AppButton>
+            </template>
           </template>
         </template>
       </AppPageHeader>

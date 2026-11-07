@@ -23,7 +23,7 @@ export const enrollmentTone: Record<BenefitEnrollmentStatus, 'neutral' | 'succes
   ENDED: 'info',
 };
 
-export const REASON_LABELS: Record<BenefitEnrollmentReason, string> = { OPEN_ENROLLMENT: 'Open enrolment', NEW_JOINER: 'New joiner', LIFE_EVENT: 'Life event', HR: 'Enrolled by HR' };
+export const REASON_LABELS: Record<BenefitEnrollmentReason, string> = { OPEN_ENROLLMENT: 'Open enrolment', NEW_JOINER: 'New joiner', LIFE_EVENT: 'Life event', HR: 'Enrolled by HR', RENEWAL: 'Carried over at renewal' };
 export const LIFE_EVENT_LABELS: Record<LifeEvent, string> = {
   MARRIAGE: 'Marriage',
   CHILDBIRTH: 'Birth of a child',

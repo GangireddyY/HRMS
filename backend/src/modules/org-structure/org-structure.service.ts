@@ -99,11 +99,29 @@ export class OrgStructureService {
   }
 
   createLocation(auth: AuthContext, dto: CreateLocationDto) {
-    return this.create('location', (transaction) => Location.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }));
+    this.checkGeofence(dto);
+    const { latitude, longitude, ...rest } = dto;
+    return this.create('location', (transaction) =>
+      Location.create({ ...rest, latitude: latitude == null ? null : String(latitude), longitude: longitude == null ? null : String(longitude), organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }),
+    );
   }
 
   async updateLocation(auth: AuthContext, id: string, dto: UpdateLocationDto) {
-    return this.update('location', auth, await this.find('location', id), dto);
+    const row = (await this.find('location', id)) as Location;
+    this.checkGeofence({
+      latitude: dto.latitude !== undefined ? dto.latitude : row.latitude === null ? null : Number(row.latitude),
+      longitude: dto.longitude !== undefined ? dto.longitude : row.longitude === null ? null : Number(row.longitude),
+      geofenceRadiusM: dto.geofenceRadiusM !== undefined ? dto.geofenceRadiusM : row.geofenceRadiusM,
+    });
+    return this.update('location', auth, row, dto);
+  }
+
+  /** Coordinates come as a pair; a geofence radius needs them. */
+  private checkGeofence(dto: { latitude?: number | null; longitude?: number | null; geofenceRadiusM?: number | null }) {
+    const hasLat = dto.latitude !== undefined && dto.latitude !== null;
+    const hasLng = dto.longitude !== undefined && dto.longitude !== null;
+    if (hasLat !== hasLng) throw AppError.validation([{ field: hasLat ? 'longitude' : 'latitude', message: 'Give both the latitude and the longitude' }]);
+    if (dto.geofenceRadiusM && !hasLat) throw AppError.validation([{ field: 'geofenceRadiusM', message: 'Set the office position (latitude and longitude) to use a geofence' }]);
   }
 
   createGrade(auth: AuthContext, dto: CreateGradeDto) {

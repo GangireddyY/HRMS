@@ -22,8 +22,8 @@ export const BENEFIT_ENROLLMENT_STATUSES = ['PENDING', 'ACTIVE', 'WAIVED', 'REJE
 export type BenefitEnrollmentStatus = (typeof BENEFIT_ENROLLMENT_STATUSES)[number];
 export const LIVE_BENEFIT_STATUSES: readonly BenefitEnrollmentStatus[] = ['PENDING', 'ACTIVE', 'WAIVED'];
 
-/** Why the employee could enrol: the open enrolment window, joining, a life event, or enrolled by HR. */
-export const BENEFIT_ENROLLMENT_REASONS = ['OPEN_ENROLLMENT', 'NEW_JOINER', 'LIFE_EVENT', 'HR'] as const;
+/** Why the employee could enrol: the open enrolment window, joining, a life event, enrolled by HR, or carried over to a renewed plan. */
+export const BENEFIT_ENROLLMENT_REASONS = ['OPEN_ENROLLMENT', 'NEW_JOINER', 'LIFE_EVENT', 'HR', 'RENEWAL'] as const;
 export type BenefitEnrollmentReason = (typeof BENEFIT_ENROLLMENT_REASONS)[number];
 
 export const LIFE_EVENTS = ['MARRIAGE', 'CHILDBIRTH', 'ADOPTION', 'DIVORCE', 'DEATH_OF_DEPENDENT', 'LOSS_OF_OTHER_COVER'] as const;
@@ -34,3 +34,5 @@ export const NEW_JOINER_WINDOW_DAYS = 30;
 /** Changes after a life event are requested within this many days of it. */
 export const LIFE_EVENT_WINDOW_DAYS = 30;
 export const MAX_PLAN_OPTIONS = 10;
+/** The renewal enrolment window opens this many days before the renewed policy starts. */
+export const RENEWAL_WINDOW_DAYS = 30;

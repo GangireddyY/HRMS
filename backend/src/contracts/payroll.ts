@@ -76,6 +76,26 @@ export function professionalTaxState(state: string | null | undefined): Professi
   return PROFESSIONAL_TAX_STATES.find((p) => p.code.toLowerCase() === s || p.name.toLowerCase() === s) ?? null;
 }
 
+/** Loans (with optional interest) and salary advances (interest-free, repaid within a year), recovered from salary. */
+export const LOAN_TYPES = ['LOAN', 'ADVANCE'] as const;
+export type LoanType = (typeof LOAN_TYPES)[number];
+/** Reference prefixes: LOAN-0001, ADV-0001… numbered separately per organization. */
+export const LOAN_PREFIX: Record<LoanType, string> = { LOAN: 'LOAN', ADVANCE: 'ADV' };
+/**
+ * REQUESTED → APPROVED (terms set by someone other than the employee or whoever raised it) → ACTIVE (disbursed;
+ * instalments deducted by payroll) → CLOSED (fully repaid); REQUESTED → REJECTED; REQUESTED / APPROVED → CANCELLED.
+ */
+export const LOAN_STATUSES = ['REQUESTED', 'APPROVED', 'ACTIVE', 'CLOSED', 'REJECTED', 'CANCELLED'] as const;
+export type LoanStatus = (typeof LOAN_STATUSES)[number];
+export const OPEN_LOAN_STATUSES: readonly LoanStatus[] = ['REQUESTED', 'APPROVED', 'ACTIVE'];
+/** How a repayment was made: deducted by a payroll run, paid back directly, or recovered in the full & final settlement. */
+export const LOAN_REPAYMENT_SOURCES = ['PAYROLL', 'MANUAL', 'SETTLEMENT'] as const;
+export type LoanRepaymentSource = (typeof LOAN_REPAYMENT_SOURCES)[number];
+export const LOAN_MAX_PRINCIPAL = 10_000_000;
+export const LOAN_MAX_TENURE_MONTHS = 60;
+export const ADVANCE_MAX_TENURE_MONTHS = 12;
+export const LOAN_MAX_INTEREST_RATE = 30;
+
 /** Financial year (April–March) containing the month; returned as its starting year (2026 = FY 2026-27). */
 export const financialYearOf = (year: number, month: number) => (month >= 4 ? year : year - 1);
 export const financialYearLabel = (fy: number) => `FY ${fy}-${String((fy + 1) % 100).padStart(2, '0')}`;

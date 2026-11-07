@@ -1,4 +1,4 @@
-import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
+import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
 
 export const TYPE_LABELS: Record<ExitType, string> = { RESIGNATION: 'Resignation', TERMINATION: 'Termination', RETIREMENT: 'Retirement', CONTRACT_END: 'End of contract', DEATH: 'Death', OTHER: 'Other' };
 export const REASON_LABELS: Record<ExitReason, string> = {
@@ -33,4 +33,11 @@ export const BASIS_LABELS: Record<DailyRateBasis, string> = { BASIC_26: 'Monthly
 export const inr = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`);
 export const serviceLabel = (s: { years: number; months: number; days: number }) =>
   [s.years ? `${s.years} year${s.years === 1 ? '' : 's'}` : null, s.months ? `${s.months} month${s.months === 1 ? '' : 's'}` : null, `${s.days} day${s.days === 1 ? '' : 's'}`].filter(Boolean).join(', ');
+export const LETTER_LABELS: Record<ExitLetterType, string> = { RELIEVING: 'Relieving letter', EXPERIENCE: 'Experience certificate' };
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** "7 January 2019" — how dates are written on letters. */
+export function longDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number) as [number, number, number];
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
 export const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

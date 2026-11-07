@@ -1,12 +1,6 @@
 import { Employee, EmployeeLifecycleEvent, Notification } from '../src/database/models';
 import { gratuityAmount, gratuityYears, serviceLength } from '../src/modules/exit/exit-rules';
-import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
-
-const days = (n: number) => {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
+import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, orgDays as days, resetDatabase, uniqueEmail } from './helpers';
 type Line = { code: string; kind: string; amount: number };
 
 describe('Exits (e2e)', () => {
@@ -154,5 +148,74 @@ describe('Exits (e2e)', () => {
     const oh = bearer((await login(ctx, other.admin.email)).accessToken);
     expect((await ctx.http().get(`${API}/exits/${id}`).set(oh)).status).toBe(404);
     expect((await ctx.http().get(`${API}/exits`).set(oh)).body.data).toEqual([]);
+  });
+
+  it('issues relieving and experience letters after the exit and keeps former employees in the alumni network', async () => {
+    const t = await team();
+    const designation = (await ctx.http().post(`${API}/designations`).set(t.h).send({ name: 'Senior Engineer' })).body.data;
+    await Employee.update({ designationId: designation.id }, { where: { id: t.asha.employee.id }, ...RAW });
+    expect((await ctx.http().patch(`${API}/employees/${t.asha.employee.id}`).set(t.h).send({ personalEmail: 'asha.home@example.test' })).status).toBe(200);
+    const id = (await ctx.http().post(`${API}/exits/resign`).set(t.asha.h).send({ reason: 'RELOCATION' })).body.data.id;
+    const accepted = (await ctx.http().post(`${API}/exits/${id}/approve`).set(t.mgr.h).send({ lastWorkingDay: days(0) })).body.data;
+    expect(accepted.permissions.letters).toBe(false);
+
+    // Not before the exit is completed, and the employee can't join the alumni network while still employed.
+    expect((await ctx.http().get(`${API}/exits/${id}/letters/draft?type=RELIEVING`).set(t.hr.h)).status).toBe(409);
+    expect((await ctx.http().get(`${API}/alumni/me`).set(t.asha.h)).body.data).toMatchObject({ eligible: false, joined: false, profile: { personalEmail: 'asha.home@example.test' } });
+    expect((await ctx.http().put(`${API}/alumni/me`).set(t.asha.h).send({ optedIn: true })).status).toBe(409);
+    for (const i of accepted.clearanceItems) await ctx.http().patch(`${API}/exits/${id}/clearance/${i.id}`).set(t.hr.h).send({ status: 'CLEARED' });
+    expect((await ctx.http().post(`${API}/exits/${id}/complete`).set(t.hr.h).send({})).body.data.permissions.letters).toBe(true);
+
+    // HR starts from the suggested text, edits it and issues the letter; only HR can.
+    const draft = (await ctx.http().get(`${API}/exits/${id}/letters/draft?type=RELIEVING`).set(t.hr.h)).body.data;
+    expect(draft).toMatchObject({ type: 'RELIEVING', letterDate: days(0), subject: 'Relieving letter', signatoryName: 'Hema Person' });
+    expect(draft.body).toContain('relieved of your duties as Senior Engineer in the Engineering department');
+    expect((await ctx.http().get(`${API}/exits/${id}/letters/draft?type=RELIEVING`).set(t.mgr.h)).status).toBe(403);
+    expect((await ctx.http().post(`${API}/exits/${id}/letters`).set(t.asha.h).send({ ...draft })).status).toBe(403);
+    expect((await ctx.http().post(`${API}/exits/${id}/letters`).set(t.hr.h).send({ ...draft, letterDate: days(1) })).status).toBe(422);
+    expect((await ctx.http().post(`${API}/exits/${id}/letters`).set(t.hr.h).send({ ...draft, letterDate: '2020-01-01' })).status).toBe(422);
+    const issued = await ctx.http().post(`${API}/exits/${id}/letters`).set(t.hr.h).send({ ...draft, body: `${draft.body}\n\nWith best wishes.` });
+    expect(issued.status).toBe(201);
+    expect(issued.body.data).toMatchObject({ reference: 'REL-0001', issuedBy: 'Hema Person', employee: { name: 'Asha Person' }, letterhead: { name: t.org.organization.name } });
+    expect(issued.body.data.body.endsWith('With best wishes.')).toBe(true);
+    expect((await ctx.http().post(`${API}/exits/${id}/letters`).set(t.hr.h).send(draft)).status).toBe(409);
+    expect(await Notification.count({ where: { userId: t.asha.user.id, type: 'exit.letter' }, ...RAW })).toBe(1);
+
+    // Revoked letters disappear for the employee; a new one gets the next number.
+    const letterId = issued.body.data.id;
+    expect((await ctx.http().post(`${API}/exits/${id}/letters/${letterId}/revoke`).set(t.hr.h).send({ reason: 'Wrong designation' })).body.data).toMatchObject({ revokedBy: 'Hema Person', revokedReason: 'Wrong designation' });
+    expect((await ctx.http().get(`${API}/exits/${id}/letters/${letterId}`).set(t.asha.h)).status).toBe(404);
+    const reissued = (await ctx.http().post(`${API}/exits/${id}/letters`).set(t.hr.h).send(draft)).body.data;
+    expect(reissued.reference).toBe('REL-0002');
+    const experience = (await ctx.http().get(`${API}/exits/${id}/letters/draft?type=EXPERIENCE`).set(t.hr.h)).body.data;
+    expect((await ctx.http().post(`${API}/exits/${id}/letters`).set(t.hr.h).send(experience)).body.data.reference).toBe('EXP-0001');
+    expect((await ctx.http().get(`${API}/exits/${id}/letters`).set(t.hr.h)).body.data).toHaveLength(3);
+    const mine = (await ctx.http().get(`${API}/exits/${id}/letters`).set(t.asha.h)).body.data as { reference: string }[];
+    expect(mine.map((l) => l.reference).sort()).toEqual(['EXP-0001', 'REL-0002']);
+    expect((await ctx.http().get(`${API}/exits/${id}/letters/${reissued.id}`).set(t.asha.h)).body.data.body).toContain('Dear Asha Person');
+    expect((await ctx.http().get(`${API}/exits/${id}/letters`).set(t.ben.h)).status).toBe(404);
+
+    // Alumni: contact details are visible to HR only while opted in.
+    let directory = (await ctx.http().get(`${API}/alumni`).set(t.hr.h)).body.data;
+    expect(directory).toEqual([expect.objectContaining({ id: t.asha.employee.id, optedIn: false, alumni: null, exit: expect.objectContaining({ id, type: 'RESIGNATION', eligibleForRehire: null }) })]);
+    expect((await ctx.http().put(`${API}/alumni/me`).set(t.asha.h).send({ optedIn: true, personalEmail: 'not-an-email' })).status).toBe(422);
+    const joined = await ctx.http().put(`${API}/alumni/me`).set(t.asha.h).send({ optedIn: true, personalEmail: 'Asha.Home@Example.test', currentCompany: 'Globex', currentTitle: 'Staff Engineer', linkedinUrl: 'https://linkedin.com/in/asha', openToOpportunities: true });
+    expect(joined.body.data).toMatchObject({ eligible: true, joined: true, profile: { optedIn: true, personalEmail: 'asha.home@example.test', currentCompany: 'Globex', openToOpportunities: true } });
+    await ctx.http().patch(`${API}/exits/${id}`).set(t.hr.h).send({ eligibleForRehire: true });
+    directory = (await ctx.http().get(`${API}/alumni?openToOpportunities=true&rehire=yes`).set(t.hr.h)).body.data;
+    expect(directory).toEqual([expect.objectContaining({ optedIn: true, alumni: expect.objectContaining({ currentCompany: 'Globex', personalEmail: 'asha.home@example.test' }), exit: expect.objectContaining({ eligibleForRehire: true }) })]);
+    expect((await ctx.http().get(`${API}/alumni?rehire=no`).set(t.hr.h)).body.data).toEqual([]);
+    // The department manager sees alumni from their department without rehire decisions; others see nobody.
+    expect((await ctx.http().get(`${API}/alumni`).set(t.mgr.h)).body.data).toEqual([expect.objectContaining({ id: t.asha.employee.id, exit: expect.not.objectContaining({ eligibleForRehire: expect.anything() }) })]);
+    expect((await ctx.http().get(`${API}/alumni`).set(t.ben.h)).status).toBe(403);
+    await ctx.http().put(`${API}/alumni/me`).set(t.asha.h).send({ optedIn: false, openToOpportunities: true });
+    directory = (await ctx.http().get(`${API}/alumni`).set(t.hr.h)).body.data;
+    expect(directory[0]).toMatchObject({ optedIn: false, alumni: null });
+    expect((await ctx.http().get(`${API}/alumni?optedIn=true`).set(t.hr.h)).body.data).toEqual([]);
+
+    const other = await createOrgWithAdmin(ctx);
+    const oh = bearer((await login(ctx, other.admin.email)).accessToken);
+    expect((await ctx.http().get(`${API}/exits/${id}/letters/${reissued.id}`).set(oh)).status).toBe(404);
+    expect((await ctx.http().get(`${API}/alumni`).set(oh)).body.data).toEqual([]);
   });
 });

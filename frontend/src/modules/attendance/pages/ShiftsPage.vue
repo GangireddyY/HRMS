@@ -28,12 +28,12 @@ const open = ref(false);
 const editing = ref<Shift | null>(null);
 const saving = ref(false);
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const form = reactive({ name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, graceMinutes: 15, halfDayMinutes: 240, fullDayMinutes: 480, weeklyOffs: [0, 6] as number[], isDefault: false, isActive: true });
+const form = reactive({ name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, graceMinutes: 15, halfDayMinutes: 240, fullDayMinutes: 480, weeklyOffs: [0, 6] as number[], overtimeEnabled: false, overtimeAfterMinutes: 540 as number | string, overtimeMinMinutes: 30 as number | string, isDefault: false, isActive: true });
 
 function edit(shift: Shift | null) {
   reset();
   editing.value = shift;
-  Object.assign(form, shift ? { ...shift, weeklyOffs: [...shift.weeklyOffs] } : { name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, graceMinutes: 15, halfDayMinutes: 240, fullDayMinutes: 480, weeklyOffs: [0, 6], isDefault: false, isActive: true });
+  Object.assign(form, shift ? { ...shift, weeklyOffs: [...shift.weeklyOffs] } : { name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, graceMinutes: 15, halfDayMinutes: 240, fullDayMinutes: 480, weeklyOffs: [0, 6], overtimeEnabled: false, overtimeAfterMinutes: 540, overtimeMinMinutes: 30, isDefault: false, isActive: true });
   open.value = true;
 }
 function toggleOff(day: number) {
@@ -43,7 +43,7 @@ function toggleOff(day: number) {
 async function save() {
   reset();
   saving.value = true;
-  const body = { ...form, breakMinutes: Number(form.breakMinutes), graceMinutes: Number(form.graceMinutes), halfDayMinutes: Number(form.halfDayMinutes), fullDayMinutes: Number(form.fullDayMinutes) };
+  const body = { ...form, breakMinutes: Number(form.breakMinutes), graceMinutes: Number(form.graceMinutes), halfDayMinutes: Number(form.halfDayMinutes), fullDayMinutes: Number(form.fullDayMinutes), overtimeAfterMinutes: Number(form.overtimeAfterMinutes), overtimeMinMinutes: Number(form.overtimeMinMinutes) };
   try {
     if (editing.value) await attendanceApi.updateShift(editing.value.id, body);
     else await attendanceApi.createShift(body);
@@ -124,6 +124,11 @@ const crossesMidnight = computed(() => form.endTime <= form.startTime);
             </button>
           </div>
         </fieldset>
+        <AppSwitch v-model="form.overtimeEnabled" label="Count overtime" description="Time worked beyond the threshold (and everything worked on a day off) goes to the manager for approval and is paid with payroll." />
+        <div v-if="form.overtimeEnabled" class="grid grid-cols-2 gap-3">
+          <AppInput v-model="form.overtimeAfterMinutes" type="number" label="Overtime after (min worked)" :min="1" :max="1440" :error="fieldErrors.overtimeAfterMinutes" />
+          <AppInput v-model="form.overtimeMinMinutes" type="number" label="Ignore overtime under (min)" :min="0" :max="480" :error="fieldErrors.overtimeMinMinutes" />
+        </div>
         <AppSwitch v-model="form.isDefault" label="Default shift" description="Used for employees without an assigned shift." :disabled="editing?.isDefault" />
         <AppSwitch v-model="form.isActive" label="Active" :disabled="editing?.isDefault" />
       </form>

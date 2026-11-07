@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Op, UniqueConstraintError, type Transaction, type WhereOptions } from 'sequelize';
-import { financialYearOf, professionalTaxState, type ProfessionalTaxState } from '../../contracts';
+import { OVERTIME_HOURLY_DIVISOR, financialYearOf, professionalTaxState, type ProfessionalTaxState } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
@@ -10,6 +10,7 @@ import { containsPattern } from '../../common/utils/like';
 import { monthRange } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import {
+  AttendanceOvertime,
   AttendancePeriod,
   AttendanceRecord,
   BenefitEnrollment,
@@ -17,6 +18,7 @@ import {
   Department,
   Designation,
   Employee,
+  EmployeeLoanRepayment,
   EmployeeSalary,
   Holiday,
   Location,
@@ -39,6 +41,7 @@ import { AttendanceRulesService, type DayLeave, type EmployeeContext } from '../
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AdjustmentDto, CreateRunDto, PayRunDto, RejectRunDto, ReviewRunDto, RunPayslipQueryDto, RunQueryDto, UpdatePayslipDto } from './dto/payroll.dto';
+import { closeRepaidLoans, dueInstalments, type DueInstalment } from './loan-balances';
 import { PayrollConfigService, type EffectiveSettings } from './payroll-config.service';
 import {
   ageOn,
@@ -94,12 +97,16 @@ function earlierInFinancialYear(year: number, month: number): { year: number; mo
 
 const periodWhere = (periods: { year: number; month: number }[]): WhereOptions => (periods.length ? { [Op.or]: periods.map((p) => ({ year: p.year, month: p.month })) } : { id: null });
 
-/** One contribution per benefit plan and month: when coverage changed during the month, the latest enrolment's. */
+/**
+ * One contribution per benefit plan and month: when coverage changed during the month, the latest enrolment's. A
+ * renewed plan counts as the same plan as the one it renews (no double charge in the month the policy rolls over).
+ */
 function latestPerPlan(enrollments: BenefitEnrollment[]): BenefitEnrollment[] {
   const by = new Map<string, BenefitEnrollment>();
   for (const e of enrollments) {
-    const prior = by.get(e.planId);
-    if (!prior || (e.effectiveFrom ?? '') >= (prior.effectiveFrom ?? '')) by.set(e.planId, e);
+    const key = e.plan?.renewedFromId ?? e.planId;
+    const prior = by.get(key);
+    if (!prior || (e.effectiveFrom ?? '') >= (prior.effectiveFrom ?? '')) by.set(key, e);
   }
   return [...by.values()];
 }
@@ -251,7 +258,21 @@ export class PayrollRunsService {
       if (run.submittedById === auth.userId || run.calculatedById === auth.userId) throw AppError.forbidden('Someone other than the person who processed this payroll must approve it');
       await run.update({ status: 'APPROVED', reviewedAt: new Date(), reviewedById: auth.userId, reviewNote: dto.note ?? null }, { transaction });
       await this.audit.record({ action: 'payroll.run_approved', entityType: 'PayrollRun', entityId: id, summary: `Payroll for ${periodLabel(run.year, run.month)} approved`, metadata: { totalNet: Number(run.totalNet), employees: run.employeeCount } }, transaction);
-      const payslips = await Payslip.findAll({ where: { runId: id, excluded: false }, attributes: ['id', 'employeeId'], transaction });
+      const payslips = await Payslip.findAll({ where: { runId: id, excluded: false }, attributes: ['id', 'employeeId', 'statutory'], transaction });
+      // Loan instalments deducted by this run are now repaid.
+      const { to } = monthRange(run.year, run.month);
+      const instalments = payslips.flatMap((p) => ((p.statutory as { loans?: { loanId: string; principal: number; interest: number }[] }).loans ?? []));
+      if (instalments.length) {
+        await EmployeeLoanRepayment.bulkCreate(
+          instalments.map((i) => ({ organizationId: run.organizationId, loanId: i.loanId, source: 'PAYROLL' as const, payrollRunId: run.id, paidOn: to, principal: String(i.principal), interest: String(i.interest), createdById: auth.userId })),
+          { transaction },
+        );
+        const closed = await closeRepaidLoans([...new Set(instalments.map((i) => i.loanId))], transaction);
+        if (closed.length) await this.audit.record({ action: 'payroll.loans_closed', entityType: 'PayrollRun', entityId: id, summary: `Fully repaid with ${periodLabel(run.year, run.month)} payroll: ${closed.join(', ')}` }, transaction);
+      }
+      // Overtime paid by this run.
+      const overtimeIds = payslips.flatMap((p) => ((p.statutory as { overtime?: string[] }).overtime ?? []));
+      if (overtimeIds.length) await AttendanceOvertime.update({ payrollRunId: run.id }, { where: { id: overtimeIds, status: 'APPROVED', payrollRunId: null }, transaction });
       const users = await this.userIdsOfEmployees(payslips.map((p) => p.employeeId), transaction);
       for (const p of payslips) {
         const userId = users.get(p.employeeId);
@@ -558,8 +579,8 @@ export class PayrollRunsService {
     const ids = payable.map((e) => e.id);
 
     const fy = financialYearOf(run.year, run.month);
-    const [contexts, holidays, leave, records, existing, adjustments, claims, ytdSlips, esiSlips, declarations, benefits] = await Promise.all([
-      this.rules.contexts(auth.organizationId!, payable),
+    const [contexts, holidays, leave, records, existing, adjustments, claims, ytdSlips, esiSlips, declarations, benefits, loans, overtime] = await Promise.all([
+      this.rules.contexts(auth.organizationId!, payable, { from, to }),
       this.rules.holidays(from, to),
       this.rules.approvedLeave(ids, from, to),
       ctx.attendanceLop && ids.length ? AttendanceRecord.findAll({ where: { employeeId: ids, workDate: { [Op.between]: [from, to] } }, transaction }) : Promise.resolve([] as AttendanceRecord[]),
@@ -575,11 +596,16 @@ export class PayrollRunsService {
       auth.features.has('benefits') && ids.length
         ? BenefitEnrollment.findAll({
             where: { employeeId: ids, status: ['ACTIVE', 'ENDED'], employeeMonthly: { [Op.gt]: 0 }, effectiveFrom: { [Op.lte]: to }, [Op.or]: [{ effectiveTo: null }, { effectiveTo: { [Op.gte]: from } }] },
-            include: [{ model: BenefitPlan, attributes: ['id', 'name'] }],
+            include: [{ model: BenefitPlan, attributes: ['id', 'name', 'renewedFromId'] }],
             order: [['effectiveFrom', 'ASC']],
             transaction,
           })
         : Promise.resolve([] as BenefitEnrollment[]),
+      dueInstalments(ids, run.year, run.month, transaction),
+      // Approved overtime not paid yet (including late approvals from earlier months).
+      auth.features.has('attendance') && ids.length
+        ? AttendanceOvertime.findAll({ where: { employeeId: ids, status: 'APPROVED', workDate: { [Op.lte]: to }, [Op.or]: [{ payrollRunId: null }, { payrollRunId: run.id }] }, transaction })
+        : Promise.resolve([] as AttendanceOvertime[]),
     ]);
     const recordsBy = new Map<string, Map<string, AttendanceRecord>>();
     for (const r of records) recordsBy.set(r.employeeId, (recordsBy.get(r.employeeId) ?? new Map()).set(r.workDate, r));
@@ -609,6 +635,8 @@ export class PayrollRunsService {
         declaration: declarationBy.get(e.id),
         fy,
         benefits: excluded ? [] : latestPerPlan(benefits.filter((b) => b.employeeId === e.id)),
+        loans: excluded ? [] : (loans.get(e.id) ?? []),
+        overtime: excluded ? [] : overtime.filter((o) => o.employeeId === e.id),
       });
       if (prior) await prior.update(values, { transaction });
       else await Payslip.create({ organizationId: auth.organizationId!, runId: run.id, employeeId: e.id, ...values }, { transaction });
@@ -640,6 +668,8 @@ export class PayrollRunsService {
       declaration: TaxDeclarationRecord | undefined;
       fy: number;
       benefits: BenefitEnrollment[];
+      loans: DueInstalment[];
+      overtime: AttendanceOvertime[];
     },
   ) {
     const { run, settings, days, today } = ctx;
@@ -681,12 +711,18 @@ export class PayrollRunsService {
     // Earnings
     const earningAdjustments = input.adjustments.filter((a) => a.kind === 'EARNING');
     const reimbursements = sum(input.claims.map((c) => Number(c.amount)));
+    // Overtime: approved hours × (monthly Basic or gross ÷ 26 ÷ 8) × multiplier; taxable, outside PF and ESI wages.
+    const overtimeMinutes = sum(input.overtime.map((o) => o.approvedMinutes ?? 0));
+    const overtimeRate = settings.overtimeBasis === 'BASIC' ? sum(earned.filter((c) => c.role === 'BASIC').map((c) => c.rate)) : sum(earned.map((c) => c.rate));
+    const overtimePay = overtimeMinutes ? Math.round(((overtimeMinutes / 60) * overtimeRate * settings.overtimeMultiplier) / OVERTIME_HOURLY_DIVISOR) : 0;
+    const overtimeHours = Math.round((overtimeMinutes / 60) * 100) / 100;
     const earnings: PayslipLine[] = [
       ...earned.filter((c) => c.amount > 0 || c.rate > 0).map((c) => ({ code: c.code, name: c.name, amount: c.amount, rate: c.rate, taxable: c.taxable })),
       ...earningAdjustments.map((a) => ({ code: `ADJ_${a.id.slice(0, 8)}`, name: a.label, amount: Number(a.amount), taxable: a.taxable })),
+      ...(overtimePay > 0 ? [{ code: 'OVERTIME', name: `Overtime (${overtimeHours} h × ${settings.overtimeMultiplier})`, amount: overtimePay, taxable: true }] : []),
       ...(reimbursements > 0 ? [{ code: 'REIMBURSEMENT', name: `Reimbursements (${input.claims.length})`, amount: reimbursements, taxable: false }] : []),
     ];
-    const salaryGross = sum(earned.map((c) => c.amount)) + sum(earningAdjustments.map((a) => Number(a.amount)));
+    const salaryGross = sum(earned.map((c) => c.amount)) + sum(earningAdjustments.map((a) => Number(a.amount))) + overtimePay;
 
     // PF
     const age = ageOn(e.dateOfBirth, ctx.from);
@@ -721,7 +757,7 @@ export class PayrollRunsService {
     } as const;
     const byRole = (role: 'BASIC' | 'HRA', field: 'amount' | 'rate') => sum(earned.filter((c) => c.role === role).map((c) => c[field]));
     const current: TaxFigures = {
-      taxable: sum(earned.filter((c) => c.taxable).map((c) => c.amount)) + sum(earningAdjustments.filter((a) => a.taxable).map((a) => Number(a.amount))),
+      taxable: sum(earned.filter((c) => c.taxable).map((c) => c.amount)) + sum(earningAdjustments.filter((a) => a.taxable).map((a) => Number(a.amount))) + overtimePay,
       basic: byRole('BASIC', 'amount'),
       hra: byRole('HRA', 'amount'),
       employeePf: pf?.employee ?? 0,
@@ -778,6 +814,7 @@ export class PayrollRunsService {
       ...(tds ? [{ code: 'TDS', name: 'Income tax (TDS)', amount: tds }] : []),
       ...deductionAdjustments.map((a) => ({ code: `ADJ_${a.id.slice(0, 8)}`, name: a.label, amount: Number(a.amount) })),
       ...input.benefits.map((b) => ({ code: `BEN_${b.planId.slice(0, 8)}`, name: `${b.plan?.name ?? 'Benefit'} (${b.optionName})`, amount: Number(b.employeeMonthly) })),
+      ...input.loans.map((l) => ({ code: `LOAN_${l.loanId.slice(0, 8)}`, name: `${l.type === 'ADVANCE' ? 'Salary advance recovery' : 'Loan repayment'} (${l.reference})`, amount: l.amount })),
     ];
     const employerContributions: PayslipLine[] = [
       ...(pf ? [{ code: 'EPF', name: 'Employer PF', amount: pf.employerEpf }, { code: 'EPS', name: 'Employer pension (EPS)', amount: pf.employerEps }] : []),
@@ -825,6 +862,8 @@ export class PayrollRunsService {
         ptState: ptState?.code ?? null,
         reimbursementClaims: input.claims.map((c) => c.id),
         benefitEnrollments: input.benefits.map((b) => b.id),
+        loans: input.loans.map((l) => ({ loanId: l.loanId, principal: l.principal, interest: l.interest })),
+        overtime: overtimePay > 0 ? input.overtime.map((o) => o.id) : [],
       },
       tax: tax ? { ...tax, figures: current, thisMonth: tds } : null,
       warnings,

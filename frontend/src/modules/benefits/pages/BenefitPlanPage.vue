@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Archive, Download, Pencil, Rocket, Trash2, Users } from '@lucide/vue';
+import { Archive, Download, Pencil, RefreshCw, Rocket, Trash2, Users } from '@lucide/vue';
 import { benefitsApi } from '@/modules/benefits/api/benefits.api';
 import EnrollmentsTable from '@/modules/benefits/components/EnrollmentsTable.vue';
 import PlanFormModal from '@/modules/benefits/components/PlanFormModal.vue';
@@ -9,7 +9,7 @@ import type { Plan } from '@/modules/benefits/types';
 import { PLAN_STATUS_LABELS, RELATION_LABELS, TYPE_LABELS, inr, planTone } from '@/modules/benefits/utils/benefits-format';
 import { structureApi } from '@/modules/people/api/people.api';
 import { EMPLOYMENT_TYPE_LABELS } from '@/modules/people/utils/labels';
-import { AppBadge, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton, AppStatCard } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton, AppStatCard } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -57,8 +57,35 @@ async function act(key: string, fn: () => Promise<Plan>, success: string, descri
   }
 }
 async function activate() {
-  if (!(await feedback.confirm({ title: `Activate ${p.value?.name}?`, message: 'Eligible employees can see it and enrol in their windows.', confirmLabel: 'Activate' }))) return;
-  await act('activate', () => benefitsApi.activate(id.value), 'Plan activated');
+  const renewal = !!p.value?.renewedFrom;
+  const message = renewal
+    ? `Everyone still covered by ${p.value!.renewedFrom!.name} at the end of its policy continues in the same option (or the default one) from ${formatDate(p.value!.coverageStartsOn)}, and is told.`
+    : 'Eligible employees can see it and enrol in their windows.';
+  if (!(await feedback.confirm({ title: `Activate ${p.value?.name}?`, message, confirmLabel: 'Activate' }))) return;
+  busy.value = 'activate';
+  try {
+    const next = await benefitsApi.activate(id.value);
+    plan.data.value = next;
+    feedback.success('Plan activated', next.carriedOver ? `${next.carriedOver.carried} enrolment${next.carriedOver.carried === 1 ? '' : 's'} carried over${next.carriedOver.skipped ? `; ${next.carriedOver.skipped} not eligible any more` : ''}.` : undefined);
+    tableKey.value++;
+  } catch (e) {
+    feedback.error('Could not activate the plan', e);
+  } finally {
+    busy.value = null;
+  }
+}
+async function renew() {
+  if (!(await feedback.confirm({ title: `Renew ${p.value?.name}?`, message: 'A draft for the next policy period is created with the same options and a renewal enrolment window. Review its costs, then activate it to carry current enrolments over.', confirmLabel: 'Create renewal' }))) return;
+  busy.value = 'renew';
+  try {
+    const next = await benefitsApi.renew(id.value);
+    feedback.success('Renewal drafted', `${formatDate(next.coverageStartsOn)} – ${formatDate(next.coverageEndsOn)}.`);
+    await router.push(`/hr/benefits/plans/${next.id}`);
+  } catch (e) {
+    feedback.error('Could not renew the plan', e);
+  } finally {
+    busy.value = null;
+  }
 }
 async function archive() {
   if (!(await feedback.confirm({ title: `Archive ${p.value?.name}?`, message: 'Coverage ends today (or at the end of the policy) and pending requests are cancelled.', confirmLabel: 'Archive', danger: true }))) return;
@@ -116,9 +143,17 @@ async function census() {
           <AppButton v-if="p.status !== 'ARCHIVED'" variant="secondary" :icon="Pencil" @click="editing = true">Edit</AppButton>
           <AppButton v-if="p.status === 'DRAFT'" variant="ghost" :icon="Trash2" aria-label="Delete plan" @click="remove" />
           <AppButton v-if="p.status === 'ACTIVE'" variant="ghost" :icon="Archive" :loading="busy === 'archive'" @click="archive">Archive</AppButton>
+          <AppButton v-if="p.status === 'ACTIVE' && !p.renewal" variant="secondary" :icon="RefreshCw" :loading="busy === 'renew'" @click="renew">Renew</AppButton>
           <AppButton v-if="p.status === 'DRAFT'" :icon="Rocket" :loading="busy === 'activate'" @click="activate">Activate</AppButton>
         </template>
       </AppPageHeader>
+      <AppAlert v-if="p.renewal" tone="info" class="mb-6">
+        Renewed as <RouterLink :to="`/hr/benefits/plans/${p.renewal.id}`" class="font-medium underline">{{ p.renewal.name }}</RouterLink> from {{ formatDate(p.renewal.coverageStartsOn) }} ({{ PLAN_STATUS_LABELS[p.renewal.status].toLowerCase() }}).
+      </AppAlert>
+      <AppAlert v-if="p.renewedFrom" tone="info" class="mb-6">
+        Renewal of <RouterLink :to="`/hr/benefits/plans/${p.renewedFrom.id}`" class="font-medium underline">{{ p.renewedFrom.name }}</RouterLink>, which ends {{ formatDate(p.renewedFrom.coverageEndsOn) }}.
+        <template v-if="p.status === 'DRAFT'"> Activating it carries everyone covered then over to this plan.</template>
+      </AppAlert>
 
       <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AppStatCard label="Covered" :value="p.stats?.enrolled ?? 0" />
