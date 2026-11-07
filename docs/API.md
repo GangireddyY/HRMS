@@ -184,5 +184,7 @@ Legend: 🔓 public · 🔑 authenticated · `perm` required permission · ⚙ p
 | PUT | `/performance/reviews/:reviewId/hike` | the reviewer or `performance.configure` | Recommend an increase (a justification is needed outside the guideline) |
 | POST | `/performance/hikes/:id/submit` · `approve` · `reject` | recommender / `employee.salary.revise` | Submit; approve (optionally a different %) or reject with a reason — never one's own or one recommended by the approver |
 | POST | `/performance/cycles/:id/hikes/apply` | `employee.salary.revise` | Approved increases become salary revisions from the effective date (`{applied, failed}`) |
+| POST · DELETE | `/auth/me/avatar` | 🔑 R | Own profile photo (multipart `file`: PNG, JPEG or WebP, ≤ 5 MB; stored as a 256 × 256 WebP) |
+| GET | `/users/:id/avatar?v=…` | 🔓 (needs the photo URL's `v`) | Profile photo image |
 | POST | `/recruitment/resumes/parse` | `recruitment.manage` | Multipart `file` (PDF / .docx, ≤ 5 MB): details read from a resume to prefill the candidate form (`{parsed, readable}`); the file isn't kept |
 | GET | `/reports/:key/export?format=csv\|xlsx\|pdf` | `reports.export` + the report's permission | CSV (tables), Excel (summary sheet + a sheet per table, typed cells) or PDF (A4 landscape with the headline figures) |

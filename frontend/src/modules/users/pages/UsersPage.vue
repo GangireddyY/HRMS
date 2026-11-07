@@ -79,7 +79,7 @@ function onInvited(member: Member) {
       >
         <template #cell-name="{ row }">
           <div class="flex items-center gap-3">
-            <AppAvatar :name="`${row.firstName} ${row.lastName}`" size="sm" />
+            <AppAvatar :name="`${row.firstName} ${row.lastName}`" :src="row.avatarUrl" size="sm" />
             <div class="min-w-0">
               <p class="truncate font-medium text-fg">{{ row.firstName }} {{ row.lastName }}</p>
               <p class="truncate text-xs text-fg-muted">{{ row.email }}</p>

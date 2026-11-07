@@ -55,7 +55,7 @@ async function create() {
         <li v-for="m in members" :key="m.membershipId">
           <label class="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-surface-muted/50">
             <input type="checkbox" class="h-4 w-4 accent-brand-600" :checked="selected.has(m.membershipId)" :aria-label="`${m.firstName} ${m.lastName}`" @change="toggle(m.membershipId)" />
-            <AppAvatar :name="`${m.firstName} ${m.lastName}`" size="sm" />
+            <AppAvatar :name="`${m.firstName} ${m.lastName}`" :src="m.avatarUrl" size="sm" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium text-fg">{{ m.firstName }} {{ m.lastName }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ m.email }}{{ m.joinedAt ? ` · joined ${formatDate(m.joinedAt)}` : '' }}</span>

@@ -43,7 +43,7 @@ const INCLUDE: Includeable[] = [
   { model: CostCenter, attributes: ['id', 'name', 'code'] },
   { model: Employee, as: 'manager', attributes: ['id', 'firstName', 'lastName', 'employeeCode'] },
   { model: Shift, attributes: ['id', 'name'] },
-  { model: OrganizationMembership, attributes: ['id', 'status'], include: [{ model: User, attributes: ['email'] }] },
+  { model: OrganizationMembership, attributes: ['id', 'status'], include: [{ model: User, attributes: ['email', 'avatarUrl'] }] },
 ];
 
 const ref = (r: { id: string; name: string } | null | undefined) => (r ? { id: r.id, name: r.name } : null);
@@ -84,6 +84,7 @@ export function toEmployee(e: Employee) {
     shift: ref(e.shift),
     manager: e.manager ? { id: e.manager.id, name: fullName(e.manager), employeeCode: e.manager.employeeCode } : null,
     account: e.membership ? { membershipId: e.membership.id, email: e.membership.user?.email ?? null, status: e.membership.status } : null,
+    avatarUrl: e.membership?.user?.avatarUrl ?? null,
     hasBankAccount: !!e.bankAccountLast4,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
@@ -371,7 +372,7 @@ export class EmployeesService {
       where: { status: ['ACTIVE', 'INVITED'], ...(linked.length ? { id: { [Op.notIn]: linked } } : {}) },
       attributes: ['id', 'status', 'joinedAt', 'invitedAt'],
       include: [
-        { model: User, attributes: ['email', 'firstName', 'lastName'] },
+        { model: User, attributes: ['email', 'firstName', 'lastName', 'avatarUrl'] },
         { model: MembershipRole, attributes: ['id'], include: [{ model: Role, attributes: ['name'] }] },
       ],
       order: [[{ model: User, as: 'user' }, 'firstName', 'ASC']],
@@ -382,6 +383,7 @@ export class EmployeesService {
       email: m.user!.email,
       firstName: m.user!.firstName,
       lastName: m.user!.lastName,
+      avatarUrl: m.user!.avatarUrl,
       joinedAt: m.joinedAt ?? m.invitedAt,
       roles: (m.roles ?? []).map((r) => r.role!.name),
     }));

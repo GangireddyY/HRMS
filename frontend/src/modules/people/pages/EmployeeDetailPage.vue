@@ -95,7 +95,7 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
         back="/hr/employees"
         back-label="All employees"
       >
-        <template #leading><AppAvatar :name="employee.data.value.fullName" size="xl" /></template>
+        <template #leading><AppAvatar :name="employee.data.value.fullName" :src="employee.data.value.avatarUrl" size="xl" /></template>
         <template #badges>
           <AppBadge :tone="employeeStatusTone[employee.data.value.status]" dot>{{ EMPLOYEE_STATUS_LABELS[employee.data.value.status] }}</AppBadge>
           <AppBadge>{{ employee.data.value.employeeCode }}</AppBadge>

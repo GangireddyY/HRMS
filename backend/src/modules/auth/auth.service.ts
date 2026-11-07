@@ -558,6 +558,7 @@ export class AuthService {
       platformRole: user.platformRole,
       mfaEnabled: user.mfaEnabled,
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+      avatarUrl: user.avatarUrl,
     };
   }
 

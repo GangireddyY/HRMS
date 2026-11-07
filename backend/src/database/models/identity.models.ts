@@ -67,6 +67,10 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
   @Column(DataType.DATE)
   lastLoginAt: CreationOptional<Date | null>;
 
+  /** Versioned, API-relative URL of the profile photo (see UserAvatar). */
+  @Column(DataType.STRING(200))
+  avatarUrl: CreationOptional<string | null>;
+
   @ForeignKey(() => Organization) @Column(DataType.UUID)
   lastOrganizationId: CreationOptional<string | null>;
 
@@ -84,6 +88,22 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
 
   @HasMany(() => OrganizationMembership, 'userId')
   memberships?: NonAttribute<OrganizationMembership[]>;
+}
+
+/** A user's profile photo (square WebP, re-encoded from the upload). */
+@Table({ tableName: 'user_avatars', underscored: true })
+export class UserAvatar extends Model<InferAttributes<UserAvatar>, InferCreationAttributes<UserAvatar>> {
+  @PrimaryKey @ForeignKey(() => User) @Column(DataType.UUID)
+  userId: string;
+
+  @Column(DataType.STRING(50)) contentType: string;
+  @Column(DataType.BLOB) data: Buffer;
+  @Column(DataType.INTEGER) byteSize: number;
+  /** SHA-256 hex of `data`; part of the URL (so it can't be guessed from the user id) and the ETag. */
+  @Column(DataType.CHAR(64)) checksum: string;
+
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
 }
 
 @Table({ tableName: 'password_history', underscored: true, updatedAt: false })

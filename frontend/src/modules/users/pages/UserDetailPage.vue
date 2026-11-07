@@ -135,7 +135,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
       <div class="grid items-start gap-4 lg:grid-cols-3">
         <AppCard title="Profile">
           <div class="mb-4 flex items-center gap-3">
-            <AppAvatar :name="`${member.data.value.firstName} ${member.data.value.lastName}`" size="lg" />
+            <AppAvatar :name="`${member.data.value.firstName} ${member.data.value.lastName}`" :src="member.data.value.avatarUrl" size="lg" />
             <div class="min-w-0">
               <p class="truncate font-medium">{{ member.data.value.firstName }} {{ member.data.value.lastName }}</p>
               <p class="truncate text-sm text-fg-muted">{{ member.data.value.email }}</p>

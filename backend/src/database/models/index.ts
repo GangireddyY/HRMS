@@ -36,7 +36,7 @@ import { ComplianceFiling, ComplianceObligation, Policy, PolicyAcknowledgement, 
 import { AlumniProfile, ExitCase, ExitClearanceItem, ExitLetter, ExitSettlement } from './exit.models';
 import { DesignationSkill, EmployeeSkill, Skill, TrainingAttempt, TrainingCourse, TrainingCourseSkill, TrainingEnrollment, TrainingQuestion, TrainingSession } from './training.models';
 import { ApplicationEvent, Candidate, Interview, InterviewPanelist, JobApplication, JobOpening, JobRequisition, Offer } from './recruitment.models';
-import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserSession } from './identity.models';
+import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserAvatar, UserSession } from './identity.models';
 import { Feature, Organization, OrganizationFeature, OrganizationLogo, OrganizationMembership, OrganizationSecurityPolicy, Plan, PlanFeature } from './organization.models';
 import {
   CostCenter,
@@ -73,6 +73,7 @@ export * from './rbac.models';
 
 export const ALL_MODELS = [
   User,
+  UserAvatar,
   PasswordHistory,
   MfaRecoveryCode,
   UserSession,

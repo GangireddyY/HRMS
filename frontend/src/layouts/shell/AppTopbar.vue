@@ -71,11 +71,11 @@ async function signOut() {
       <AppDropdown width="w-72" label="Account menu">
         <template #trigger="{ toggle }">
           <button type="button" class="flex items-center gap-2 rounded-full p-0.5 transition hover:ring-4 hover:ring-surface-muted" aria-label="Account menu" @click="toggle">
-            <AppAvatar :name="displayName || 'User'" size="sm" />
+            <AppAvatar :name="displayName || 'User'" :src="auth.user?.avatarUrl" size="sm" />
           </button>
         </template>
         <div class="flex items-center gap-3 px-2.5 pt-1.5 pb-3">
-          <AppAvatar :name="displayName || 'User'" size="md" />
+          <AppAvatar :name="displayName || 'User'" :src="auth.user?.avatarUrl" size="md" />
           <div class="min-w-0">
             <p class="truncate text-sm font-semibold text-fg">{{ displayName }}</p>
             <p class="truncate text-xs text-fg-muted">{{ auth.user?.email }}</p>

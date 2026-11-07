@@ -27,7 +27,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
 <template>
   <div class="space-y-4">
     <div class="flex flex-wrap items-center gap-4">
-      <AppAvatar :name="`${auth.user?.firstName ?? ''} ${auth.user?.lastName ?? ''}`" size="xl" />
+      <AppAvatar :name="`${auth.user?.firstName ?? ''} ${auth.user?.lastName ?? ''}`" :src="auth.user?.avatarUrl" size="xl" />
       <div class="min-w-0">
         <h1 class="text-2xl font-semibold tracking-tight sm:text-[28px]">{{ greeting }}, {{ auth.user?.firstName }}</h1>
         <div class="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-fg-muted">

@@ -17,7 +17,7 @@ import { InvitationService } from './invitation.service';
 
 const ORG_ADMIN_ROLE = 'org_admin';
 
-const USER_ATTRIBUTES = ['id', 'email', 'firstName', 'lastName', 'phone', 'lastLoginAt', 'mfaEnabled', 'status'];
+const USER_ATTRIBUTES = ['id', 'email', 'firstName', 'lastName', 'phone', 'lastLoginAt', 'mfaEnabled', 'status', 'avatarUrl'];
 
 const MEMBER_INCLUDE: Includeable[] = [
   { model: User, attributes: USER_ATTRIBUTES },
@@ -33,6 +33,7 @@ function toMember(m: OrganizationMembership) {
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
+    avatarUrl: user.avatarUrl,
     status: m.status,
     accountStatus: user.status,
     mfaEnabled: user.mfaEnabled,

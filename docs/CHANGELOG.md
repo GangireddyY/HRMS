@@ -2,6 +2,11 @@
 
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow SemVer.
 
+## [1.10.1] – 2026-11-07 – Profile photos
+
+### Added
+- Profile photos (migration `20261107110000_user_avatars`: `user_avatars`, `users.avatar_url`). Everyone uploads their own on My profile (`POST /auth/me/avatar`, PNG, JPG or WebP up to 5 MB; the type is read from the file, SVG refused), removes it (`DELETE /auth/me/avatar`). The image is cropped to a 256 × 256 square around the most interesting area and re-encoded as WebP, which strips metadata such as GPS. `GET /users/:id/avatar?v=…` serves it only with the version from the photo URL, so photos can't be fetched by user id alone. Shown in the top bar, account home, users list and detail, employees list and profile; avatars fall back to initials. Test: `avatars.e2e-spec.ts`.
+
 ## [1.10.0] – 2026-11-06 – Lifecycle completion
 
 Builds the deliverables that were still open in the phase plan (PRD §4, §8).

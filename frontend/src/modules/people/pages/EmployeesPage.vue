@@ -105,7 +105,7 @@ async function exportCsv() {
       >
         <template #cell-name="{ row }">
           <div class="flex items-center gap-3">
-            <AppAvatar :name="row.fullName" size="sm" />
+            <AppAvatar :name="row.fullName" :src="row.avatarUrl" size="sm" />
             <div class="min-w-0">
               <p class="truncate font-medium text-fg">{{ row.fullName }}</p>
               <p class="truncate text-xs text-fg-muted">{{ row.workEmail ?? EMPLOYMENT_TYPE_LABELS[row.employmentType] }}</p>

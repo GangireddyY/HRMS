@@ -2,8 +2,9 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Save } from '@lucide/vue';
 import { authApi } from '@/modules/auth/api/auth.api';
+import AvatarUploader from '@/modules/account/components/AvatarUploader.vue';
 import MyEmploymentCard from '@/modules/people/components/MyEmploymentCard.vue';
-import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppInput, AppPageHeader } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppInput, AppPageHeader } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -62,12 +63,10 @@ async function save() {
         </form>
       </AppCard>
       <AppCard title="Account">
-        <div class="flex items-center gap-3">
-          <AppAvatar :name="`${auth.user?.firstName} ${auth.user?.lastName}`" size="lg" />
-          <div class="min-w-0">
-            <p class="truncate font-medium text-fg">{{ auth.user?.firstName }} {{ auth.user?.lastName }}</p>
-            <p class="truncate text-sm text-fg-muted">{{ auth.user?.email }}</p>
-          </div>
+        <AvatarUploader />
+        <div class="mt-4 min-w-0 border-t border-line/70 pt-3">
+          <p class="truncate font-medium text-fg">{{ auth.user?.firstName }} {{ auth.user?.lastName }}</p>
+          <p class="truncate text-sm text-fg-muted">{{ auth.user?.email }}</p>
         </div>
         <dl class="mt-4 space-y-3 text-sm">
           <div class="flex justify-between gap-3"><dt class="text-fg-muted">Organization</dt><dd class="text-right text-fg">{{ auth.organization?.name ?? '—' }}</dd></div>

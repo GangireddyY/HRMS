@@ -107,6 +107,8 @@ export interface Employee {
   shift: NamedRef | null;
   manager: { id: string; name: string; employeeCode: string } | null;
   account: { membershipId: string; email: string | null; status: string } | null;
+  /** Profile photo of the linked user account. */
+  avatarUrl: string | null;
   hasBankAccount: boolean;
   createdAt: string;
   updatedAt: string;
@@ -227,6 +229,7 @@ export interface LinkableMember {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl: string | null;
   joinedAt: string | null;
   roles: string[];
 }

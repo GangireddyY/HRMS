@@ -92,6 +92,8 @@ export interface AuthUser {
   platformRole: PlatformRole | null;
   mfaEnabled: boolean;
   lastLoginAt: string | null;
+  /** API-relative URL of the profile photo. */
+  avatarUrl: string | null;
 }
 
 /** Effective access of the current user in the active organization. */
