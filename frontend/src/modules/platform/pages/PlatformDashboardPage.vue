@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Building2, CircleSlash, Laptop, Users } from '@lucide/vue';
 import { platformApi } from '@/modules/platform/api/platform.api';
-import { AppAvatar, AppBadge, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton, AppStatCard } from '@/shared/components';
+import { AppAvatar, AppBadge, AppButton, AppCard, AppErrorState, AppHero, AppSkeleton, AppStatCard } from '@/shared/components';
 import SignInActivityChart from '@/modules/audit/components/SignInActivityChart.vue';
 import { useAsync } from '@/shared/composables/use-async';
 import { formatDate } from '@/shared/utils/format';
 import { organizationTone, statusLabel } from '@/shared/utils/status';
 
 const dashboard = useAsync(() => platformApi.dashboard());
+const summary = computed(() => {
+  const d = dashboard.data.value;
+  if (!d) return null;
+  const top = [...d.plans].sort((a, b) => b.organizations - a.organizations)[0];
+  return `${d.organizations.active} active organization${d.organizations.active === 1 ? '' : 's'} · ${d.activeUsers} active users · ${d.activeSessions} live sessions${top ? ` · most on ${top.name}` : ''}.`;
+});
 
 /** Bar width relative to the largest plan (at least a sliver so empty plans stay visible). */
 function planShare(count: number): number {
@@ -18,9 +25,9 @@ function planShare(count: number): number {
 
 <template>
   <div class="space-y-4">
-    <AppPageHeader title="Platform overview" description="Tenants, subscriptions and platform-wide activity.">
+    <AppHero eyebrow="Platform" title="Platform overview" :summary="summary" :loading="dashboard.loading.value">
       <template #actions><AppButton to="/platform/organizations?create=1" :icon="Building2">New organization</AppButton></template>
-    </AppPageHeader>
+    </AppHero>
     <AppErrorState v-if="dashboard.error.value" :error="dashboard.error.value" @retry="dashboard.run" />
     <template v-else>
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

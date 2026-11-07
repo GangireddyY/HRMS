@@ -12,6 +12,7 @@
     "db:migrate:status": "ts-node --transpile-only src/database/migrate.ts status",
     "db:migrate:baseline": "ts-node --transpile-only src/database/migrate.ts baseline",
     "db:seed": "ts-node --transpile-only src/database/seed.ts",
+    "db:seed:demo": "ts-node --transpile-only src/database/demo-seed.ts",
     "migrate": "node dist/database/migrate.js up",
     "bootstrap": "node dist/cli/bootstrap.js",
     "test": "jest",

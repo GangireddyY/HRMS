@@ -345,6 +345,31 @@
       background: #fff !important;
     }
   }
+  /* Assistant / insight accents: a brand → violet → pink gradient used sparingly (titles, borders, washes). */
+  .text-gradient {
+    background-image: linear-gradient(90deg, var(--brand-600), #9333ea 55%, #db2777);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .dark .text-gradient {
+    background-image: linear-gradient(90deg, var(--brand-300), #c084fc 55%, #f472b6);
+  }
+  .bg-ai-wash {
+    background-image:
+      radial-gradient(60rem 14rem at 0% 0%, color-mix(in oklab, var(--brand-500) 11%, transparent), transparent 70%),
+      radial-gradient(40rem 12rem at 100% 0%, color-mix(in oklab, #a855f7 9%, transparent), transparent 70%);
+  }
+  .ai-ring {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--app-surface), var(--app-surface)) padding-box,
+      linear-gradient(120deg, color-mix(in oklab, var(--brand-500) 55%, transparent), color-mix(in oklab, #a855f7 40%, transparent), color-mix(in oklab, #ec4899 30%, transparent)) border-box;
+  }
+  .ai-chip {
+    background-image: linear-gradient(135deg, var(--brand-500), #9333ea 60%, #db2777);
+    color: #fff;
+  }
   /* Dotted background used on hero / empty areas. */
   .bg-dots {
     background-image: radial-gradient(color-mix(in oklab, var(--app-text) 10%, transparent) 1px, transparent 1px);

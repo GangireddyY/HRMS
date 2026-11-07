@@ -2,6 +2,7 @@
 import type { Component } from 'vue';
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from '@lucide/vue';
+import AppSparkline from '@/shared/components/data/AppSparkline.vue';
 
 type Tone = 'brand' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -15,6 +16,8 @@ withDefaults(
     tone?: Tone;
     /** Optional change indicator, e.g. { label: '+12%', direction: 'up' }. */
     trend?: { label: string; direction: 'up' | 'down' };
+    /** Recent values, oldest first, drawn as a sparkline under the figure. */
+    spark?: number[];
     to?: RouteLocationRaw;
   }>(),
   { tone: 'brand' },
@@ -60,5 +63,6 @@ const toneClasses: Record<Tone, { chip: string }> = {
         <ArrowRight v-if="to" :size="14" class="ml-auto text-fg-subtle transition group-hover:translate-x-0.5 group-hover:text-fg" aria-hidden="true" />
       </div>
     </div>
+    <AppSparkline v-if="spark && spark.length > 1 && !loading" :values="spark" :tone="tone" :height="28" class="mt-2 -mb-1" />
   </component>
 </template>

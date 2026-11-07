@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Building2, Check, ChevronsUpDown, PanelLeftClose, PanelLeftOpen, X } from '@lucide/vue';
+import { Building2, Check, ChevronDown, ChevronsUpDown, PanelLeftClose, PanelLeftOpen, X } from '@lucide/vue';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
 import { accessibleWorkspaces, homePath, visibleSections, type NavItem, type Workspace } from '@/core/navigation/workspaces';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -62,6 +62,23 @@ const brandBackdrop = computed<{ class: string; style?: Record<string, string> }
 
 function isActive(item: NavItem): boolean {
   return item.exact ? route.path === item.to : route.path === item.to || route.path.startsWith(`${item.to}/`);
+}
+
+// Titled sections fold away (remembered per workspace); the one holding the current page always stays open.
+const CLOSED_KEY = 'hrms.nav.closed';
+const closed = ref(new Set<string>(JSON.parse(localStorage.getItem(CLOSED_KEY) ?? '[]') as string[]));
+const sectionKey = (title: string) => `${props.workspace.key}:${title}`;
+function sectionOpen(section: { title?: string; items: NavItem[] }): boolean {
+  if (!section.title || !expanded.value) return true;
+  return section.items.some(isActive) || !closed.value.has(sectionKey(section.title));
+}
+function toggleSection(title: string) {
+  const key = sectionKey(title);
+  const next = new Set(closed.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  closed.value = next;
+  localStorage.setItem(CLOSED_KEY, JSON.stringify([...next]));
 }
 
 function workspaceHome(ws: Workspace): string {
@@ -218,11 +235,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
     <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 pt-1 pb-3" aria-label="Primary navigation">
       <div v-for="(section, si) in sections" :key="si">
-        <p v-if="section.title && expanded" class="mb-1 px-2.5 text-xs font-medium text-sidebar-section">
+        <button
+          v-if="section.title && expanded"
+          type="button"
+          class="group mb-1 flex w-full items-center justify-between rounded-sm px-2.5 text-xs font-medium text-sidebar-section transition hover:text-sidebar-fg-strong"
+          :aria-expanded="sectionOpen(section)"
+          @click="toggleSection(section.title)"
+        >
           {{ section.title }}
-        </p>
+          <ChevronDown :size="13" :class="['opacity-0 transition group-hover:opacity-100', !sectionOpen(section) && '-rotate-90 opacity-100']" aria-hidden="true" />
+        </button>
         <div v-else-if="section.title" class="mx-auto mb-2 h-px w-6 bg-sidebar-line" aria-hidden="true" />
-        <ul class="space-y-0.5">
+        <ul v-show="sectionOpen(section)" class="space-y-0.5">
           <li v-for="item in section.items" :key="item.to">
             <RouterLink
               :to="item.to"

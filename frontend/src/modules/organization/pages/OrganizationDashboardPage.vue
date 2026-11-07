@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Laptop, MailPlus, ShieldCheck, Users } from '@lucide/vue';
 import { organizationApi } from '@/modules/organization/api/organization.api';
-import { AppAvatar, AppButton, AppCard, AppEmptyState, AppErrorState, AppPageHeader, AppSkeleton, AppStatCard } from '@/shared/components';
+import { AppAvatar, AppButton, AppCard, AppEmptyState, AppErrorState, AppHero, AppSkeleton, AppStatCard } from '@/shared/components';
 import SignInActivityChart from '@/modules/audit/components/SignInActivityChart.vue';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -9,15 +10,24 @@ import { fullName, humanize, timeAgo } from '@/shared/utils/format';
 
 const auth = useAuthStore();
 const overview = useAsync(() => organizationApi.overview());
+const summary = computed(() => {
+  const o = overview.data.value;
+  if (!o) return null;
+  const parts = [`${o.members.active} active user${o.members.active === 1 ? '' : 's'}`, `${o.mfaAdoption}% use two-factor sign-in`];
+  if (o.members.invited) parts.push(`${o.members.invited} invitation${o.members.invited === 1 ? '' : 's'} pending`);
+  if (o.mfaAdoption < 80) parts.push('consider requiring 2FA in Settings → Security');
+  return `${parts.join(' · ')}.`;
+});
 </script>
 
 <template>
   <div class="space-y-4">
-    <AppPageHeader :title="auth.organization?.name ?? 'Administration'" description="Access, security posture and recent administrative activity.">
+    <AppHero eyebrow="Administration" :title="auth.organization?.name ?? 'Administration'" :summary="summary" :loading="overview.loading.value">
       <template #actions>
         <AppButton v-if="auth.can('user.invite')" :icon="MailPlus" to="/admin/users?invite=1">Invite user</AppButton>
+        <AppButton v-if="auth.can('role.view')" variant="secondary" :icon="ShieldCheck" to="/admin/roles">Roles &amp; permissions</AppButton>
       </template>
-    </AppPageHeader>
+    </AppHero>
 
     <AppErrorState v-if="overview.error.value" :error="overview.error.value" @retry="overview.run" />
     <template v-else>

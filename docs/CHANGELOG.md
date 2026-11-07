@@ -2,6 +2,21 @@
 
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow SemVer.
 
+## [1.11.0] – 2026-11-07 – Assistant and insight dashboards
+
+### Added
+- **HRMS Assistant**: a side panel (top bar → Ask AI, Ctrl/⌘+J, or "Ask AI" at the bottom of search results) that answers questions from live HR data, limited to what the user may see: pending approvals, leave balances, own requests, who is out, holidays, latest payslip, today's attendance, headcount, open jobs, policies to acknowledge, people lookup; otherwise it suggests matching pages. Questions are matched by rules in the browser (`modules/assistant/engine.ts`); no data leaves the application.
+- Reusable components: `AppHero` (greeting with live summary and actions), `AppInsights` (computed observations with a link to act), `AppActionQueue` (approvals waiting for you), `AppPersonList`, `AppQuickActions`, `AppSection`, `AppSparkline` (also on `AppStatCard` through `spark`). Approvals are gathered by `modules/insights/approvals.ts`, by permission and plan.
+
+### Changed
+- HR, employee, administration and platform dashboards are rebuilt around these: a hero summary, KPI trends, a "waiting for you" queue, insights, who's out this week and what's coming up.
+- Sidebar sections collapse (remembered per browser); pages have a soft gradient wash at the top.
+
+## [1.10.2] – 2026-11-07 – Demo data
+
+### Added
+- `npm run db:seed:demo` (`src/database/demo-seed.ts`): three organizations, one per plan — Acme Technologies (Enterprise, 21 people, data in every module), Brightleaf Retail (Growth) and Nimbus Labs (Starter) — with a user for every role (password `Demo@Hrms2026`). Records are created through the API from a local server the script starts (rate limits bypassed and email disabled in that process only); each part is reported and a failure doesn't stop the rest; existing organizations are never touched. Logins and a walkthrough in `docs/DEMO.md`.
+
 ## [1.10.1] – 2026-11-07 – Profile photos
 
 ### Added

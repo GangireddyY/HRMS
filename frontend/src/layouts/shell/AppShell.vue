@@ -6,6 +6,7 @@ import { WORKSPACES, type WorkspaceKey } from '@/core/navigation/workspaces';
 import { useAuthStore } from '@/core/auth/auth.store';
 import AppSidebar from '@/layouts/shell/AppSidebar.vue';
 import AppTopbar from '@/layouts/shell/AppTopbar.vue';
+import AssistantPanel from '@/modules/assistant/components/AssistantPanel.vue';
 const props = defineProps<{ workspace: WorkspaceKey }>();
 const auth = useAuthStore();
 const ws = computed(() => WORKSPACES.find((w) => w.key === props.workspace)!);
@@ -33,12 +34,13 @@ const fill = computed(() => !!route.meta.fill);
         <!-- Forms open as pages over the content area (AppModal teleports into #form-pages). -->
         <div id="form-pages" class="relative flex min-h-0 flex-1 flex-col">
           <main id="main" :class="['min-h-0 flex-1 overflow-y-auto', fill && 'lg:overflow-hidden']" tabindex="-1">
-            <div :class="['w-full animate-fade-in px-3 py-4 sm:px-4 lg:px-4 lg:py-4 2xl:px-8', fill && 'lg:h-full lg:py-4']">
+            <div :class="['bg-ai-wash min-h-full w-full animate-fade-in bg-no-repeat px-3 py-4 sm:px-4 lg:px-4 lg:py-4 2xl:px-8', fill && 'lg:h-full lg:py-4']">
               <slot />
             </div>
           </main>
         </div>
       </div>
     </div>
+    <AssistantPanel />
   </div>
 </template>

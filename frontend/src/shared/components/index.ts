@@ -22,6 +22,13 @@ export { default as AppBadge } from './data/AppBadge.vue';
 export { default as AppDataTable } from './data/AppDataTable.vue';
 export { default as AppPagination } from './data/AppPagination.vue';
 export { default as AppStatCard } from './data/AppStatCard.vue';
+export { default as AppSparkline } from './data/AppSparkline.vue';
+export { default as AppInsights } from './data/AppInsights.vue';
+export { default as AppActionQueue } from './data/AppActionQueue.vue';
+export { default as AppPersonList } from './data/AppPersonList.vue';
+export type { Insight } from './data/AppInsights.vue';
+export type { QueueItem } from './data/AppActionQueue.vue';
+export type { PersonRow } from './data/AppPersonList.vue';
 
 // Feedback
 export { default as AppAlert } from './feedback/AppAlert.vue';
@@ -39,5 +46,9 @@ export { default as AppLogo } from './layout/AppLogo.vue';
 export { default as AppMenuItem } from './layout/AppMenuItem.vue';
 export { default as AppPageHeader } from './layout/AppPageHeader.vue';
 export { default as AppTabs } from './layout/AppTabs.vue';
+export { default as AppHero } from './layout/AppHero.vue';
+export { default as AppQuickActions } from './layout/AppQuickActions.vue';
+export { default as AppSection } from './layout/AppSection.vue';
+export type { QuickAction } from './layout/AppQuickActions.vue';
 
 export type { SelectOption, TableColumn } from './types';

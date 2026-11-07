@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Building2, CornerDownLeft, Loader2, Search, User, X } from '@lucide/vue';
+import { Building2, CornerDownLeft, Loader2, Search, Sparkles, User, X } from '@lucide/vue';
+import { useAssistantStore } from '@/modules/assistant/assistant.store';
 import { platformApi } from '@/modules/platform/api/platform.api';
 import { usersApi } from '@/modules/users/api/users.api';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
@@ -24,6 +25,7 @@ interface Result {
 
 const ui = useUiStore();
 const auth = useAuthStore();
+const assistant = useAssistantStore();
 const router = useRouter();
 const route = useRoute();
 const subject = useAccessSubject();
@@ -48,7 +50,8 @@ const pages = computed<Result[]>(() =>
 const results = computed(() => {
   const q = query.value.trim().toLowerCase();
   const nav = q ? pages.value.filter((p) => p.label.toLowerCase().includes(q) || p.hint.toLowerCase().includes(q)) : pages.value.slice(0, 8);
-  return [...nav.slice(0, 8), ...remote.value];
+  const askAi: Result[] = q.length >= 3 ? [{ id: 'ask', label: `Ask AI: “${query.value.trim()}”`, hint: 'Assistant', to: '', icon: Sparkles, group: 'Assistant' }] : [];
+  return [...nav.slice(0, 8), ...remote.value, ...askAi];
 });
 /** `ui.searchOpen`: the dropdown is showing (and on small screens, the box is expanded). */
 const open = computed(() => ui.searchOpen);
@@ -106,10 +109,12 @@ function closeSearch() {
 
 function go(r: Result | undefined) {
   if (!r) return;
+  const question = query.value.trim();
   closeSearch();
   query.value = '';
   remote.value = [];
-  void router.push(r.to);
+  if (r.id === 'ask') assistant.ask(question);
+  else void router.push(r.to);
 }
 
 function onKey(e: KeyboardEvent) {

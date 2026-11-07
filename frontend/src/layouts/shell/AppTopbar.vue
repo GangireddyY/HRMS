@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronRight, KeyRound, LogOut, Menu, Moon, Palette, Sun, User } from '@lucide/vue';
+import { ChevronRight, KeyRound, LogOut, Menu, Moon, Palette, Sparkles, Sun, User } from '@lucide/vue';
+import { useAssistantStore } from '@/modules/assistant/assistant.store';
 import { AppAvatar, AppDropdown, AppMenuItem } from '@/shared/components';
 import { visibleSections, type Workspace } from '@/core/navigation/workspaces';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
@@ -16,6 +17,7 @@ const props = defineProps<{ workspace: Workspace }>();
 const auth = useAuthStore();
 const ui = useUiStore();
 const theme = useThemeStore();
+const assistant = useAssistantStore();
 const route = useRoute();
 const router = useRouter();
 const subject = useAccessSubject();
@@ -52,6 +54,17 @@ async function signOut() {
 
     <div class="ml-auto flex items-center gap-1">
       <GlobalSearch />
+      <button
+        type="button"
+        class="ai-ring group inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-fg transition hover:shadow-[0_0_0_3px_color-mix(in_oklab,var(--brand-500)_12%,transparent)] sm:px-2.5"
+        :aria-pressed="assistant.open"
+        aria-label="Ask the HRMS assistant"
+        title="Ask the HRMS assistant (Ctrl J)"
+        @click="assistant.open = !assistant.open"
+      >
+        <Sparkles :size="15" class="text-brand-500" aria-hidden="true" />
+        <span class="text-gradient hidden sm:inline">Ask AI</span>
+      </button>
 
       <button
         type="button"
