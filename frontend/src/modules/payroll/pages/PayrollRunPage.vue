@@ -203,7 +203,7 @@ const columns: TableColumn<PayslipSummary>[] = [
             <div class="border-b border-line p-4">
               <AppSearchInput v-model="table.search.value" placeholder="Search by name or employee code" aria-label="Search payslips" />
             </div>
-            <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Payslips" empty-title="No payslips" @page="table.setPage" @retry="table.load" @row-click="openSlip">
+            <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Payslips" empty-title="No payslips" @page="table.setPage" @retry="table.load" @row-click="openSlip" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
               <template #cell-employee="{ row }">
                 <div class="flex items-center gap-3">
                   <AppAvatar :name="row.employee.name" size="sm" />
@@ -215,11 +215,11 @@ const columns: TableColumn<PayslipSummary>[] = [
               </template>
               <template #cell-days="{ row }">
                 <span class="tabular-nums">{{ row.payableDays }}/{{ row.daysInMonth }}</span>
-                <p v-if="(row.lopOverride ?? row.lopDays) > 0" class="text-xs text-amber-700 dark:text-amber-300">{{ row.lopOverride ?? row.lopDays }} LOP</p>
+                <p v-if="(row.lopOverride ?? row.lopDays) > 0" class="text-xs text-warning-fg">{{ row.lopOverride ?? row.lopDays }} LOP</p>
               </template>
               <template #cell-gross="{ row }"><span class="tabular-nums text-fg-muted">{{ rupees(row.gross) }}</span></template>
               <template #cell-deductions="{ row }"><span class="tabular-nums text-fg-muted">{{ rupees(row.totalDeductions) }}</span></template>
-              <template #cell-net="{ row }"><span class="font-medium tabular-nums" :class="row.netPay < 0 && 'text-red-600'">{{ rupees(row.netPay) }}</span></template>
+              <template #cell-net="{ row }"><span class="font-medium tabular-nums" :class="row.netPay < 0 && 'text-danger-fg'">{{ rupees(row.netPay) }}</span></template>
               <template #cell-flags="{ row }">
                 <div class="flex justify-end gap-1">
                   <AppBadge v-if="row.excluded" tone="warning" size="sm">Held</AppBadge>
@@ -283,7 +283,7 @@ const columns: TableColumn<PayslipSummary>[] = [
         <div v-else-if="slip" class="grid gap-4 lg:grid-cols-[1fr_280px]">
           <div class="min-w-0">
             <ul v-if="slip.warnings.length" class="mb-4 space-y-1">
-              <li v-for="w in slip.warnings" :key="w" class="flex items-start gap-2 text-sm" :class="isBlocking(w) ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'">
+              <li v-for="w in slip.warnings" :key="w" class="flex items-start gap-2 text-sm" :class="isBlocking(w) ? 'text-danger-fg' : 'text-warning-fg'">
                 <AlertTriangle :size="14" class="mt-0.5 shrink-0" aria-hidden="true" />{{ warningText(w) }}
               </li>
             </ul>

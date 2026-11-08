@@ -32,7 +32,7 @@ function onKey(e: KeyboardEvent, tabs: { key: string }[], index: number) {
         :class="[
           '-mb-px border-b-2 px-0.5 pt-1 pb-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-sm focus-visible:outline-offset-0',
           model === t.key
-            ? 'border-brand-600 font-semibold text-brand-700 dark:border-brand-400 dark:text-brand-200'
+            ? 'border-brand-600 font-semibold text-accent-fg dark:border-brand-400'
             : 'border-transparent font-medium text-fg-muted hover:border-line-strong hover:text-fg',
         ]"
         @click="model = t.key"

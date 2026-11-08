@@ -27,7 +27,7 @@ defineExpose({ focus: () => input.value?.focus() });
 
 <template>
   <div class="relative">
-    <Search :size="size === 'sm' ? 14 : 16" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+    <Search :size="size === 'sm' ? 14 : 16" class="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
     <input
       ref="input"
       :value="model ?? ''"
@@ -43,7 +43,7 @@ defineExpose({ focus: () => input.value?.focus() });
     <button
       v-if="model"
       type="button"
-      class="absolute top-1/2 right-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-subtle transition hover:bg-surface-muted hover:text-fg"
+      class="absolute top-1/2 end-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-subtle transition hover:bg-surface-muted hover:text-fg"
       :aria-label="`Clear ${ariaLabel.toLowerCase()}`"
       @click="clear"
     >
@@ -51,7 +51,7 @@ defineExpose({ focus: () => input.value?.focus() });
     </button>
     <kbd
       v-else-if="shortcut"
-      class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-md border border-line bg-surface-muted px-2 py-px text-2xs font-medium text-fg-subtle"
+      class="pointer-events-none absolute top-1/2 end-2.5 -translate-y-1/2 rounded-md border border-line bg-surface-muted px-2 py-px text-2xs font-medium text-fg-subtle"
     >
       {{ shortcut }}
     </kbd>

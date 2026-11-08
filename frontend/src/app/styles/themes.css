@@ -20,18 +20,19 @@
   --brand-950: #1e1b4b;
 }
 
-[data-theme='ocean'] {
-  --brand-50: #eff6ff;
-  --brand-100: #dbeafe;
-  --brand-200: #bfdbfe;
-  --brand-300: #93c5fd;
-  --brand-400: #60a5fa;
-  --brand-500: #3b82f6;
-  --brand-600: #2563eb;
-  --brand-700: #1d4ed8;
-  --brand-800: #1e40af;
-  --brand-900: #1e3a8a;
-  --brand-950: #172554;
+/* Teal (lagoon): blue-green, about 57° of hue from Indigo and Emerald, so it never reads as either. */
+[data-theme='teal'] {
+  --brand-50: #ecfeff;
+  --brand-100: #cffafe;
+  --brand-200: #a5f3fc;
+  --brand-300: #67e8f9;
+  --brand-400: #22d3ee;
+  --brand-500: #0891b2;
+  --brand-600: #0e7490;
+  --brand-700: #155e75;
+  --brand-800: #164e63;
+  --brand-900: #123f50;
+  --brand-950: #083344;
 }
 
 [data-theme='emerald'] {
@@ -48,58 +49,62 @@
   --brand-950: #022c22;
 }
 
-[data-theme='violet'] {
-  --brand-50: #f5f3ff;
-  --brand-100: #ede9fe;
-  --brand-200: #ddd6fe;
-  --brand-300: #c4b5fd;
-  --brand-400: #a78bfa;
-  --brand-500: #8b5cf6;
-  --brand-600: #7c3aed;
-  --brand-700: #6d28d9;
-  --brand-800: #5b21b6;
-  --brand-900: #4c1d95;
-  --brand-950: #2e1065;
+/* Berry: magenta, half-way between Indigo and Rose on the hue wheel. */
+[data-theme='berry'] {
+  --brand-50: #fdf4ff;
+  --brand-100: #fae8ff;
+  --brand-200: #f5d0fe;
+  --brand-300: #f0abfc;
+  --brand-400: #e879f9;
+  --brand-500: #c026d3;
+  --brand-600: #a21caf;
+  --brand-700: #86198f;
+  --brand-800: #701a75;
+  --brand-900: #5b1460;
+  --brand-950: #3b0640;
 }
 
+/* Rose (raspberry): pink rather than red, so it never reads as the danger color (about 27° of hue away). */
 [data-theme='rose'] {
-  --brand-50: #fff1f2;
-  --brand-100: #ffe4e6;
-  --brand-200: #fecdd3;
-  --brand-300: #fda4af;
-  --brand-400: #fb7185;
-  --brand-500: #f43f5e;
-  --brand-600: #e11d48;
-  --brand-700: #be123c;
-  --brand-800: #9f1239;
-  --brand-900: #881337;
-  --brand-950: #4c0519;
+  --brand-50: #fdf2f8;
+  --brand-100: #fce7f3;
+  --brand-200: #fbcfe8;
+  --brand-300: #f9a8d4;
+  --brand-400: #f472b6;
+  --brand-500: #db2777;
+  --brand-600: #be185d;
+  --brand-700: #9d174d;
+  --brand-800: #831843;
+  --brand-900: #6b1238;
+  --brand-950: #500724;
 }
 
-[data-theme='amber'] {
-  --brand-50: #fffbeb;
-  --brand-100: #fef3c7;
-  --brand-200: #fde68a;
-  --brand-300: #fcd34d;
-  --brand-400: #f59e0b;
-  --brand-500: #d97706;
-  --brand-600: #b45309;
-  --brand-700: #92400e;
-  --brand-800: #78350f;
-  --brand-900: #5c2a0c;
-  --brand-950: #451a03;
+/* Bronze: a deep, low-chroma warm tone, clearly apart from the bright amber warning color. */
+[data-theme='bronze'] {
+  --brand-50: #faf6f1;
+  --brand-100: #f3eadf;
+  --brand-200: #e7d4bd;
+  --brand-300: #d6b792;
+  --brand-400: #c19566;
+  --brand-500: #a27443;
+  --brand-600: #855a2e;
+  --brand-700: #6d4926;
+  --brand-800: #573a20;
+  --brand-900: #432e1b;
+  --brand-950: #281a0e;
 }
 
-[data-theme='slate'] {
-  --brand-50: #f8fafc;
-  --brand-100: #f1f5f9;
-  --brand-200: #e2e8f0;
-  --brand-300: #cbd5e1;
-  --brand-400: #94a3b8;
-  --brand-500: #64748b;
-  --brand-600: #475569;
-  --brand-700: #334155;
-  --brand-800: #1e293b;
-  --brand-900: #0f172a;
-  --brand-950: #020617;
+/* Graphite: true neutral (no blue cast, unlike slate), for a monochrome, content-first look. */
+[data-theme='graphite'] {
+  --brand-50: #f6f6f7;
+  --brand-100: #ececee;
+  --brand-200: #dcdce0;
+  --brand-300: #c4c4ca;
+  --brand-400: #a1a1aa;
+  --brand-500: #6b6b74;
+  --brand-600: #3f3f46;
+  --brand-700: #2e2e33;
+  --brand-800: #232327;
+  --brand-900: #18181b;
+  --brand-950: #0c0c0e;
 }

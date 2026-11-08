@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useId, useSlots, watch } from
 import { ArrowLeft, X } from '@lucide/vue';
 import { openFormPage } from '@/shared/composables/use-form-page';
 import AppFormGuide from './AppFormGuide.vue';
+import { useFeedbackStore } from '@/shared/stores/feedback.store';
 
 /**
  * Forms open as a page over the content area (the sidebar and top bar stay), using its full width, with Back, the
@@ -11,8 +12,18 @@ import AppFormGuide from './AppFormGuide.vue';
  * shortcuts (`guide`), with anything form-specific from the `aside` slot above it.
  */
 const props = withDefaults(
-  defineProps<{ open: boolean; title: string; description?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; dismissible?: boolean; dialog?: boolean; guide?: boolean }>(),
-  { size: 'md', dismissible: true, dialog: false, guide: true },
+  defineProps<{
+    open: boolean;
+    title: string;
+    description?: string;
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+    dismissible?: boolean;
+    dialog?: boolean;
+    guide?: boolean;
+    /** Ask before discarding unsaved changes (off for the confirmation dialog itself). */
+    guardChanges?: boolean;
+  }>(),
+  { size: 'md', dismissible: true, dialog: false, guide: true, guardChanges: true },
 );
 const emit = defineEmits<{ close: [] }>();
 
@@ -42,8 +53,75 @@ let unregister: (() => void) | null = null;
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const FIELDS = 'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [role="combobox"]:not([disabled])';
-function close() {
-  if (props.dismissible) emit('close');
+
+/**
+ * Unsaved changes: a snapshot of the form (field values, ticks, selected options and picker labels) is taken when
+ * the user first interacts with it, so data loaded after opening is not counted as a change. Leaving with Esc, Back,
+ * the browser's Back button or by closing the tab asks first; an explicit Cancel or a successful save closes as usual.
+ */
+const feedback = useFeedbackStore();
+let baseline: Map<string, string> | null = null;
+/** Field state keyed by id (stable across re-renders), so rows added or removed later don't shift the comparison. */
+function snapshot(): Map<string, string> {
+  const out = new Map<string, string>();
+  const root = body.value;
+  if (!root) return out;
+  const key = (el: Element, i: number, kind: string) => el.id || el.getAttribute('name') || `${kind}${i}`;
+  root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select').forEach((el, i) => {
+    if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) out.set(key(el, i, 'c'), el.checked ? 'on' : 'off');
+    else if (el.type !== 'hidden' && el.type !== 'file') out.set(key(el, i, 'f'), el.value);
+  });
+  root.querySelectorAll('[role="combobox"], [aria-haspopup], [role="switch"], [role="radio"], [aria-pressed]').forEach((el, i) => {
+    out.set(key(el, i, 'w'), `${el.getAttribute('aria-checked') ?? ''}${el.getAttribute('aria-pressed') ?? ''}${el.textContent?.trim() ?? ''}`);
+  });
+  return out;
+}
+/** Changed fields that still hold something (an inline form that saved and cleared itself is not a pending change). */
+function hasChanges(): boolean {
+  if (!baseline) return false;
+  const now = snapshot();
+  for (const [k, before] of baseline) {
+    const value = now.get(k);
+    if (value !== undefined && value !== before && value !== '' && value !== 'off') return true;
+  }
+  return false;
+}
+let openedAt = 0;
+function markInteraction() {
+  if (baseline === null) baseline = snapshot();
+}
+/** Focus counts too, except the automatic focus right after opening (before an edit form's data may have loaded). */
+function onFocusIn() {
+  if (Date.now() - openedAt > 300) markInteraction();
+}
+const isDirty = () => props.guardChanges && hasChanges();
+
+let confirming = false;
+async function close() {
+  if (!props.dismissible || confirming) return;
+  if (isDirty()) {
+    confirming = true;
+    const discard = await feedback.confirm({
+      title: 'Discard changes?',
+      message: `You have unsaved changes in “${props.title}”. If you leave now, they will be lost.`,
+      confirmLabel: 'Discard changes',
+      cancelLabel: 'Keep editing',
+      danger: true,
+    });
+    confirming = false;
+    if (!discard) {
+      // The browser's Back already took our history entry off; put one back so Back keeps working.
+      if (unregister && props.open) {
+        unregister();
+        unregister = openFormPage(close);
+      }
+      return;
+    }
+  }
+  emit('close');
+}
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (isDirty()) e.preventDefault();
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -71,6 +149,8 @@ function onKeydown(e: KeyboardEvent) {
 function release() {
   unregister?.();
   unregister = null;
+  baseline = null;
+  window.removeEventListener('beforeunload', onBeforeUnload);
   if (props.dialog) document.body.style.overflow = '';
 }
 
@@ -81,6 +161,9 @@ watch(
       previouslyFocused = document.activeElement as HTMLElement | null;
       inShell.value = !props.dialog && !!document.getElementById('form-pages');
       host.value = inShell.value ? '#form-pages' : 'body';
+      baseline = null;
+      openedAt = Date.now();
+      window.addEventListener('beforeunload', onBeforeUnload);
       if (props.dialog) document.body.style.overflow = 'hidden';
       else if (props.dismissible) unregister = openFormPage(close);
       await nextTick();
@@ -110,8 +193,8 @@ onBeforeUnmount(release);
 <template>
   <Teleport v-if="open" :to="host">
     <!-- Confirmation pop-up -->
-    <div v-if="dialog" class="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" @keydown="onKeydown">
-      <div class="absolute inset-0 animate-fade-in bg-zinc-950/40 backdrop-blur-sm dark:bg-black/60" aria-hidden="true" @click="close" />
+    <div v-if="dialog" class="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" @keydown="onKeydown" @pointerdown.capture="markInteraction" @keydown.capture="markInteraction" @focusin="onFocusIn">
+      <div class="absolute inset-0 animate-fade-in bg-scrim/40 backdrop-blur-sm dark:bg-scrim/65" aria-hidden="true" @click="close" />
       <div
         ref="panel"
         role="dialog"
@@ -129,7 +212,7 @@ onBeforeUnmount(release);
             <X :size="17" />
           </button>
         </header>
-        <div class="overflow-y-auto px-4 py-4"><slot /></div>
+        <div ref="body" class="overflow-y-auto px-4 py-4"><slot /></div>
         <footer v-if="$slots.footer" class="flex flex-wrap justify-end gap-2 border-t border-line bg-surface-muted/40 px-4 py-3 sm:rounded-b-lg"><slot name="footer" /></footer>
       </div>
     </div>
@@ -144,6 +227,9 @@ onBeforeUnmount(release);
       tabindex="-1"
       :class="['z-30 flex animate-fade-in flex-col bg-canvas outline-none', inShell ? 'absolute inset-0' : 'fixed inset-0']"
       @keydown="onKeydown"
+      @pointerdown.capture="markInteraction"
+      @keydown.capture="markInteraction"
+      @focusin="onFocusIn"
     >
       <div class="min-h-0 flex-1 overflow-y-auto">
         <div class="w-full px-4 py-4 md:px-6 2xl:px-8">

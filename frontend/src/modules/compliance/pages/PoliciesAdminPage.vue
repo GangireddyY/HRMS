@@ -46,7 +46,8 @@ const pct = (p: PolicySummary) => (p.stats?.audience ? Math.round((p.stats.ackno
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         <AppSelect v-model="table.filters.category" :options="categoryOptions" placeholder="All categories" aria-label="Filter by category" />
       </div>
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Policies" empty-title="No policies yet" @page="table.setPage" @retry="table.load" @row-click="(p: PolicySummary) => router.push(`/hr/compliance/policies/${p.id}`)">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Policies" empty-title="No policies yet" @page="table.setPage" @retry="table.load" @row-click="(p: PolicySummary) => router.push(`/hr/compliance/policies/${p.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="formOpen = true">New policy</AppButton></template>
         <template #cell-title="{ row }">
           <p class="font-medium text-fg">{{ row.title }}</p>
           <p class="text-xs text-fg-muted">{{ POLICY_CATEGORY_LABELS[row.category] }}{{ row.currentVersion ? ` · v${row.currentVersion.version}` : '' }}{{ row.hasDraft && row.currentVersion ? ' · draft changes' : '' }}</p>
@@ -55,15 +56,15 @@ const pct = (p: PolicySummary) => (p.stats?.audience ? Math.round((p.stats.ackno
         <template #cell-acks="{ row }">
           <template v-if="row.stats">
             <div class="flex items-center gap-2">
-              <span class="h-1.5 w-20 rounded-full bg-surface-muted"><span class="block h-1.5 rounded-full bg-emerald-500" :style="{ width: `${pct(row)}%` }" /></span>
+              <span class="h-1.5 w-20 rounded-full bg-surface-muted"><span class="block h-1.5 rounded-full bg-success" :style="{ width: `${pct(row)}%` }" /></span>
               <span class="text-xs text-fg-muted tabular-nums">{{ row.stats.acknowledged }}/{{ row.stats.audience }}</span>
             </div>
-            <p v-if="row.stats.overdue" class="text-xs text-red-600 dark:text-red-400">{{ row.stats.overdue }} overdue</p>
+            <p v-if="row.stats.overdue" class="text-xs text-danger-fg">{{ row.stats.overdue }} overdue</p>
           </template>
           <span v-else class="text-xs text-fg-muted">{{ row.requiresAck ? '—' : 'Not required' }}</span>
         </template>
         <template #cell-review="{ row }">
-          <span v-if="row.nextReviewOn" :class="row.reviewDue ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-fg-muted'">{{ formatDate(row.nextReviewOn) }}{{ row.reviewDue ? ' · due' : '' }}</span>
+          <span v-if="row.nextReviewOn" :class="row.reviewDue ? 'font-medium text-warning-fg' : 'text-fg-muted'">{{ formatDate(row.nextReviewOn) }}{{ row.reviewDue ? ' · due' : '' }}</span>
           <span v-else class="text-fg-muted">—</span>
         </template>
       </AppDataTable>

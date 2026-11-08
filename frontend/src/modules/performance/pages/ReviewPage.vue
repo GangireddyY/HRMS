@@ -184,7 +184,7 @@ async function acknowledge() {
       </AppPageHeader>
 
       <ol class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Review stages">
-        <li v-for="(s, i) in STAGE_ORDER" :key="s" class="rounded-xl px-3 py-2 text-xs ring-1" :class="i < stageIndex ? 'bg-emerald-500/8 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300' : i === stageIndex ? 'bg-brand-500/10 font-semibold text-fg ring-brand-500/40' : 'text-fg-subtle ring-line'" :aria-current="i === stageIndex ? 'step' : undefined">
+        <li v-for="(s, i) in STAGE_ORDER" :key="s" class="rounded-xl px-3 py-2 text-xs ring-1" :class="i < stageIndex ? 'bg-success/8 text-success-fg ring-success/25' : i === stageIndex ? 'bg-brand-500/10 font-semibold text-fg ring-brand-500/40' : 'text-fg-subtle ring-line'" :aria-current="i === stageIndex ? 'step' : undefined">
           {{ i + 1 }}. {{ STAGE_LABELS[s] }}
         </li>
       </ol>
@@ -232,7 +232,7 @@ async function acknowledge() {
               </li>
             </ul>
             <div v-if="r.permissions.submitGoals || r.permissions.approveGoals" class="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-line/70 pt-4">
-              <span v-if="totalWeight !== 100 && r.goals.length" class="me-auto text-xs text-amber-700 dark:text-amber-300">Weights add up to {{ totalWeight }}% (must be 100%).</span>
+              <span v-if="totalWeight !== 100 && r.goals.length" class="me-auto text-xs text-warning-fg">Weights add up to {{ totalWeight }}% (must be 100%).</span>
               <AppButton v-if="r.permissions.returnGoals" variant="secondary" :icon="Undo2" @click="returnNote = ''; returnOpen = true">Send back</AppButton>
               <AppButton v-if="r.permissions.approveGoals" :icon="Check" :loading="busy === 'approve'" :disabled="totalWeight !== 100" @click="act('approve', () => performanceApi.approveGoals(id), 'Goals approved')">Approve goals</AppButton>
               <AppButton v-if="r.permissions.submitGoals" :icon="Send" :loading="busy === 'submit-goals'" :disabled="totalWeight !== 100" @click="act('submit-goals', () => performanceApi.submitGoals(id), 'Goals submitted', 'Your reviewer has been notified.')">Submit goals</AppButton>
@@ -323,7 +323,7 @@ async function acknowledge() {
           <AppCard title="People">
             <dl class="space-y-3 text-sm">
               <div><dt class="text-xs text-fg-muted">Employee</dt><dd class="text-fg">{{ r.employee.name }} ({{ r.employee.employeeCode }})</dd></div>
-              <div><dt class="text-xs text-fg-muted">Reviewer</dt><dd :class="r.reviewer ? 'text-fg' : 'text-amber-700 dark:text-amber-300'">{{ r.reviewer?.name ?? 'Not assigned' }}</dd></div>
+              <div><dt class="text-xs text-fg-muted">Reviewer</dt><dd :class="r.reviewer ? 'text-fg' : 'text-warning-fg'">{{ r.reviewer?.name ?? 'Not assigned' }}</dd></div>
             </dl>
           </AppCard>
           <AppCard title="360 feedback" :description="r.viewer.isSubject && !r.cycle.resultsReleased ? `${r.feedbackRequested} requested · shared anonymously with your results` : undefined">

@@ -5,7 +5,8 @@ import type { LeaveRequestStatus } from '@contracts';
 import { leaveApi } from '@/modules/leave/api/leave.api';
 import type { LeaveRequest } from '@/modules/leave/types';
 import { LEAVE_STATUS_LABELS, formatDays, formatLeaveRange, leaveStatusTone } from '@/modules/leave/utils/leave-format';
-import { AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppTabs, AppTextarea, type TableColumn } from '@/shared/components';
+import { AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppTabs, AppTextarea, type TableColumn } from '@/shared/components';
+import { runBulk } from '@/shared/utils/bulk';
 import { useTable } from '@/shared/composables/use-table';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -42,6 +43,21 @@ function open(request: LeaveRequest, action: Action) {
 }
 const noteRequired = computed(() => acting.value?.action !== 'approve');
 const TITLES: Record<Action, string> = { approve: 'Approve leave', reject: 'Reject leave', cancel: 'Cancel approved leave' };
+
+// Bulk review of pending requests in the "To approve" view.
+const selected = ref<string[]>([]);
+const bulkBusy = ref(false);
+async function bulk(action: 'approve' | 'reject', reason = '') {
+  bulkBusy.value = true;
+  const ids = [...selected.value];
+  const { done, failed } = await runBulk(ids, (id) => (action === 'approve' ? leaveApi.approve(id) : leaveApi.reject(id, reason)));
+  bulkBusy.value = false;
+  selected.value = failed;
+  const verb = action === 'approve' ? 'approved' : 'rejected';
+  if (done) feedback.success(`${done} ${done === 1 ? 'request' : 'requests'} ${verb}`, failed.length ? `${failed.length} could not be ${verb} and stay selected.` : 'Everyone has been notified.');
+  else feedback.error(`Could not ${action} the selected requests`);
+  await table.load();
+}
 
 async function submit() {
   const a = acting.value!;
@@ -80,7 +96,14 @@ async function submit() {
           :empty-description="table.filters.status === 'PENDING' ? 'New requests from your team appear here.' : undefined"
           @page="table.setPage"
           @retry="table.load"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
+          v-model:selected="selected"
+          :selectable="view === 'team'"
+          :can-select="(r: LeaveRequest) => r.status === 'PENDING'"
+          :select-label="(r: LeaveRequest) => `Select ${r.employee?.name ?? 'request'}, ${formatLeaveRange(r)}`"
         >
+          <template #bulk><AppBulkDecision :count="selected.length" noun="leave request" :busy="bulkBusy" @approve="bulk('approve')" @reject="(r) => bulk('reject', r)" /></template>
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee?.name ?? '?'" size="sm" />

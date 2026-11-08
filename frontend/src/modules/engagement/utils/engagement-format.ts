@@ -1,3 +1,4 @@
+import { appLocale } from '@/core/locale/locale';
 import type { AnnouncementCategory, AnnouncementStatus, RecognitionBadge, RsvpResponse, SuggestionCategory, SuggestionStatus, SurveyQuestionType, SurveyStatus } from '@contracts';
 
 export const CATEGORY_LABELS: Record<AnnouncementCategory, string> = { GENERAL: 'General', POLICY: 'Policy', EVENT: 'Event', CELEBRATION: 'Celebration', ALERT: 'Alert' };
@@ -15,6 +16,6 @@ export const SUGGESTION_CATEGORY_LABELS: Record<SuggestionCategory, string> = { 
 export const SUGGESTION_STATUS_LABELS: Record<SuggestionStatus, string> = { NEW: 'New', UNDER_REVIEW: 'Under review', ACCEPTED: 'Accepted', IMPLEMENTED: 'Implemented', DECLINED: 'Declined' };
 export const suggestionTone: Record<SuggestionStatus, 'neutral' | 'info' | 'success' | 'brand' | 'danger'> = { NEW: 'neutral', UNDER_REVIEW: 'info', ACCEPTED: 'success', IMPLEMENTED: 'brand', DECLINED: 'danger' };
 
-const when = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const when = new Intl.DateTimeFormat(appLocale(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 export const eventWhen = (a: { eventStartsAt: string | null; eventEndsAt: string | null }) =>
   a.eventStartsAt ? `${when.format(new Date(a.eventStartsAt))}${a.eventEndsAt ? ` – ${when.format(new Date(a.eventEndsAt))}` : ''}` : '';

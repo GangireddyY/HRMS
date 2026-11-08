@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed } from 'vue';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import AppButton from '@/shared/components/forms/AppButton.vue';
@@ -41,9 +42,9 @@ const addDays = (iso: string, n: number) => {
 const weekday = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay();
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
-const title = computed(() => new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(utc(`${props.month}-01`)));
-const weekdays = computed(() => Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' }).format(utc(addDays('2024-01-01', i)))));
-const shortMonth = (iso: string) => new Intl.DateTimeFormat(undefined, { month: 'short', timeZone: 'UTC' }).format(utc(iso));
+const title = computed(() => new Intl.DateTimeFormat(appLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(utc(`${props.month}-01`)));
+const weekdays = computed(() => Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(appLocale(), { weekday: 'short', timeZone: 'UTC' }).format(utc(addDays('2024-01-01', i)))));
+const shortMonth = (iso: string) => new Intl.DateTimeFormat(appLocale(), { month: 'short', timeZone: 'UTC' }).format(utc(iso));
 
 /** As many weeks as the month spans (4–6), from the Monday on or before the 1st. */
 const weeks = computed(() => {
@@ -61,7 +62,7 @@ const weeks = computed(() => {
   return out;
 });
 const muted = (iso: string) => (props.isMuted ? props.isMuted(iso) : [0, 6].includes(weekday(iso)));
-const fullLabel = (iso: string) => new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(utc(iso));
+const fullLabel = (iso: string) => new Intl.DateTimeFormat(appLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(utc(iso));
 const isCurrentMonth = computed(() => todayIso.value.slice(0, 7) === props.month);
 </script>
 
@@ -94,23 +95,25 @@ const isCurrentMonth = computed(() => todayIso.value.slice(0, 7) === props.month
           role="gridcell"
           :aria-selected="selectable ? c.iso === selected : undefined"
           :aria-current="c.iso === todayIso ? 'date' : undefined"
-          :aria-label="selectable ? fullLabel(c.iso) : undefined"
+          :aria-disabled="isDisabled?.(c.iso) || undefined"
           :class="[
             'group relative flex min-h-16 min-w-0 flex-col gap-0.5 p-1 text-start transition-colors sm:min-h-28 sm:p-1.5',
             ci < 6 && 'border-e border-line/70',
             wi < weeks.length - 1 && 'border-b border-line/70',
             !c.inMonth ? 'bg-surface-muted/40' : muted(c.iso) ? 'bg-surface-muted/50' : '',
-            c.iso === selected && 'bg-brand-50/70 ring-2 ring-brand-500/60 ring-inset dark:bg-brand-500/10',
-            selectable && !isDisabled?.(c.iso) && 'cursor-pointer hover:bg-brand-50/50 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:hover:bg-brand-500/5',
+            c.iso === selected && 'bg-accent-soft ring-2 ring-brand-500/60 ring-inset',
+            selectable && !isDisabled?.(c.iso) && 'cursor-pointer hover:bg-accent-soft focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none',
             isDisabled?.(c.iso) && 'opacity-60',
           ]"
           @click="selectable && !isDisabled?.(c.iso) && emit('select', c.iso)"
         >
           <span class="flex justify-center">
+            <span class="sr-only">{{ fullLabel(c.iso) }}</span>
             <span
+              aria-hidden="true"
               :class="[
                 'flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-medium tabular-nums transition',
-                c.iso === todayIso ? 'bg-brand-600 font-semibold text-white shadow-xs dark:bg-brand-500' : c.inMonth ? 'text-fg group-hover:bg-surface-muted' : 'text-fg-subtle',
+                c.iso === todayIso ? 'bg-brand-600 font-semibold text-white shadow-xs' : c.inMonth ? 'text-fg group-hover:bg-surface-muted' : 'text-fg-subtle',
               ]"
             >
               {{ Number(c.iso.slice(8)) === 1 && !c.inMonth ? `${shortMonth(c.iso)} 1` : Number(c.iso.slice(8)) }}

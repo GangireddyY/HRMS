@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { Save } from '@lucide/vue';
 import { organizationApi } from '@/modules/organization/api/organization.api';
 import type { SecurityPolicy } from '@/modules/organization/types';
+import OrganizationBrandColor from '@/modules/organization/components/OrganizationBrandColor.vue';
 import OrganizationLogoUploader from '@/modules/organization/components/OrganizationLogoUploader.vue';
 import OrganizationProfileForm from '@/modules/organization/components/OrganizationProfileForm.vue';
 import {
@@ -55,6 +56,11 @@ async function saveProfile() {
   } finally {
     savingProfile.value = false;
   }
+}
+
+async function onBrandColor(brandColor: string | null) {
+  if (org.data.value) org.data.value = { ...org.data.value, brandColor };
+  await auth.loadContext();
 }
 
 // Security policy
@@ -116,6 +122,13 @@ watch(tab, (t) => {
               :disabled="!canEditProfile"
             />
           </div>
+          <div class="mb-4 grid gap-x-10 gap-y-4 border-b border-line/70 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div>
+              <p class="text-sm font-semibold text-fg">Brand color</p>
+              <p class="mt-1 text-sm text-fg-muted">Becomes the Organization theme: a full, accessible palette generated from your color. It is the default for everyone who hasn’t picked a theme of their own.</p>
+            </div>
+            <OrganizationBrandColor :brand-color="org.data.value?.brandColor ?? null" :logo-url="org.data.value?.logoUrl ?? null" :disabled="!canEditProfile" @changed="onBrandColor" />
+          </div>
           <OrganizationProfileForm v-model="profile" :errors="profileErrors.fieldErrors.value" :disabled="!canEditProfile" />
           <div v-if="canEditProfile" class="mt-4 flex items-center justify-end gap-3 border-t border-line pt-4">
             <span class="text-xs text-fg-subtle">Last updated {{ formatDateTime(org.data.value?.updatedAt) }}</span>
@@ -172,7 +185,7 @@ watch(tab, (t) => {
         <AppErrorState v-else-if="subscription.error.value" :error="subscription.error.value" @retry="subscription.run" />
         <div v-else-if="subscription.data.value" class="space-y-4">
           <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-4 text-white shadow-card">
-            <div class="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+            <div class="pointer-events-none absolute -top-16 -end-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
             <div class="relative flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p class="text-sm font-medium text-white/70">Current plan</p>

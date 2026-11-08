@@ -81,6 +81,7 @@ const crossesMidnight = computed(() => form.endTime <= form.startTime);
     </AppAlert>
     <AppCard :padded="false">
       <AppDataTable :columns="columns" :rows="shifts.data.value ?? []" :loading="shifts.loading.value" :error="shifts.error.value" caption="Shifts" empty-title="No shifts" @retry="shifts.run">
+        <template #empty><AppButton :icon="Plus" @click="edit(null)">New shift</AppButton></template>
         <template #cell-name="{ row }">
           <p class="flex items-center gap-2 font-medium text-fg">{{ row.name }} <AppBadge v-if="row.isDefault" tone="brand"><Star :size="11" /> Default</AppBadge><AppBadge v-if="!row.isActive">Inactive</AppBadge></p>
         </template>

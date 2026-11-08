@@ -9,6 +9,7 @@ import AppTopbar from '@/layouts/shell/AppTopbar.vue';
 import MobileMoreMenu from '@/layouts/shell/MobileMoreMenu.vue';
 import MobileTabBar from '@/layouts/shell/MobileTabBar.vue';
 import MobileTopbar from '@/layouts/shell/MobileTopbar.vue';
+import SessionTimeoutDialog from '@/layouts/shell/SessionTimeoutDialog.vue';
 import AssistantPanel from '@/modules/assistant/components/AssistantPanel.vue';
 import { useDevice } from '@/shared/composables/use-device';
 import { openFormPages } from '@/shared/composables/use-form-page';
@@ -27,17 +28,17 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
 </script>
 
 <template>
-  <a href="#main" class="sr-only z-50 rounded-lg bg-brand-600 px-3 py-2 text-white focus:not-sr-only focus:fixed focus:top-2 focus:left-2">Skip to content</a>
+  <a href="#main" class="sr-only z-50 rounded-lg bg-brand-600 px-3 py-2 text-white focus:not-sr-only focus:fixed focus:top-2 focus:start-2">Skip to content</a>
   <!-- The page panel sits flush against the sidebar, separated by a hairline. -->
   <div class="flex h-dvh overflow-hidden bg-sidebar">
     <AppSidebar v-if="isDesktop" :workspace="ws" />
     <div class="flex min-w-0 flex-1 flex-col">
-      <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas lg:border-l lg:border-line">
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas lg:border-s lg:border-line">
         <AppTopbar v-if="isDesktop" :workspace="ws" />
         <MobileTopbar v-else :workspace="ws" />
         <div
           v-if="auth.isRestricted"
-          class="flex items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          class="flex items-center gap-3 border-b border-warning/35 bg-warning-soft px-4 py-2 text-sm text-warning-fg"
           role="status"
         >
           <AlertTriangle :size="16" class="shrink-0" aria-hidden="true" />
@@ -63,5 +64,6 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
     </div>
     <MobileTabBar v-if="showTabBar" :workspace="ws" />
     <AssistantPanel />
+    <SessionTimeoutDialog />
   </div>
 </template>

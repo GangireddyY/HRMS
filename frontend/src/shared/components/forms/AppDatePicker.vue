@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, nextTick, ref, useId } from 'vue';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from '@lucide/vue';
 import AppFormField from '@/shared/components/forms/AppFormField.vue';
@@ -42,11 +43,11 @@ const selected = computed(() => fromIso(model.value));
 const focusDate = ref<Date>(new Date());
 const view = computed(() => new Date(focusDate.value.getFullYear(), focusDate.value.getMonth(), 1));
 
-const display = computed(() => (selected.value ? selected.value.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''));
-const monthLabel = computed(() => view.value.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+const display = computed(() => (selected.value ? selected.value.toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) : ''));
+const monthLabel = computed(() => view.value.toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' }));
 const weekdays = computed(() => {
   const monday = new Date(2024, 0, 1); // A Monday.
-  return Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), 0, 1 + i).toLocaleDateString(undefined, { weekday: 'narrow' }));
+  return Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), 0, 1 + i).toLocaleDateString(appLocale(), { weekday: 'narrow' }));
 });
 
 /** 6 weeks starting on the Monday on/before the 1st, so the grid height never jumps. */
@@ -142,7 +143,7 @@ function onTriggerKey(e: KeyboardEvent) {
           aria-haspopup="dialog"
           :data-required="required || undefined"
           :aria-expanded="open"
-          :aria-label="label ? undefined : `${ariaLabel ?? 'Date'}${display ? `, ${display}` : ''}`"
+          :aria-label="label ? undefined : `${ariaLabel ?? 'Date'}, ${display || placeholder || 'Select date'}`"
           :aria-labelledby="label ? `${fieldId}-label ${fieldId}-value` : undefined"
           :aria-invalid="invalid || undefined"
           :aria-describedby="describedby"
@@ -158,11 +159,11 @@ function onTriggerKey(e: KeyboardEvent) {
         >
           <span :id="`${fieldId}-value`" :class="['min-w-0 flex-1 truncate', !display && 'text-fg-subtle']">{{ display || placeholder || 'Select date' }}</span>
         </button>
-        <CalendarDays :size="16" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+        <CalendarDays :size="16" class="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
         <button
           v-if="model && !disabled"
           type="button"
-          class="absolute top-1/2 right-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-subtle transition hover:bg-surface-muted hover:text-fg"
+          class="absolute top-1/2 end-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-subtle transition hover:bg-surface-muted hover:text-fg"
           :aria-label="`Clear ${label ?? ariaLabel ?? 'date'}`"
           @click="clear"
         >
@@ -204,7 +205,7 @@ function onTriggerKey(e: KeyboardEvent) {
                       :tabindex="cell.iso === toIso(focusDate) ? 0 : -1"
                       :aria-selected="cell.iso === model"
                       :aria-current="cell.iso === today ? 'date' : undefined"
-                      :aria-label="cell.date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"
+                      :aria-label="cell.date.toLocaleDateString(appLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"
                       :disabled="cell.disabled"
                       :class="[
                         'relative mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
@@ -213,7 +214,7 @@ function onTriggerKey(e: KeyboardEvent) {
                           : cell.inMonth
                             ? 'text-fg hover:bg-surface-muted'
                             : 'text-fg-subtle/70 hover:bg-surface-muted',
-                        cell.iso === today && cell.iso !== model && 'font-semibold text-brand-600 ring-1 ring-brand-500/70 ring-inset dark:text-brand-300',
+                        cell.iso === today && cell.iso !== model && 'font-semibold text-accent-fg ring-1 ring-brand-500/70 ring-inset',
                         cell.disabled && 'pointer-events-none opacity-30',
                       ]"
                       @click="pick(cell.iso, cell.disabled)"
@@ -227,7 +228,7 @@ function onTriggerKey(e: KeyboardEvent) {
             <div class="mt-2 flex items-center justify-between border-t border-line pt-2">
               <button
                 type="button"
-                class="rounded-md px-2 py-1 text-xs font-medium text-brand-600 transition hover:bg-brand-50 disabled:opacity-40 dark:text-brand-400 dark:hover:bg-brand-500/10"
+                class="rounded-md px-2 py-1 text-xs font-medium text-accent-fg transition hover:bg-accent-soft disabled:opacity-40"
                 :disabled="(!!min && today < min) || (!!max && today > max)"
                 @click="pick(today)"
               >

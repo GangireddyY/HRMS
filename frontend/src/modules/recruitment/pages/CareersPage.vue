@@ -25,7 +25,7 @@ const page = useAsync(() => careersApi.page(slug.value));
         <header class="mb-10 flex items-center gap-4">
           <img v-if="page.data.value.organization.logoUrl" :src="apiAssetUrl(page.data.value.organization.logoUrl)!" :alt="page.data.value.organization.name" class="h-14 w-14 rounded-xl object-contain ring-1 ring-line" />
           <div>
-            <p class="text-sm font-medium text-brand-600 dark:text-brand-400">Careers</p>
+            <p class="text-sm font-medium text-accent-fg">Careers</p>
             <h1 class="text-3xl font-semibold tracking-tight text-fg">Join {{ page.data.value.organization.name }}</h1>
           </div>
         </header>
@@ -34,7 +34,7 @@ const page = useAsync(() => careersApi.page(slug.value));
           <li v-for="j in page.data.value.jobs" :key="j.id">
             <RouterLink :to="`/careers/${slug}/jobs/${j.id}`" class="group flex items-center gap-4 card p-4 transition hover:ring-brand-400">
               <div class="min-w-0 flex-1">
-                <p class="text-lg font-semibold text-fg group-hover:text-brand-600 dark:group-hover:text-brand-400">{{ j.title }}</p>
+                <p class="text-lg font-semibold text-fg group-hover:text-accent-fg">{{ j.title }}</p>
                 <p class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
                   <span v-if="j.department">{{ j.department.name }}</span>
                   <span v-if="j.location" class="inline-flex items-center gap-1"><MapPin :size="14" aria-hidden="true" />{{ j.location.name }}</span>

@@ -72,7 +72,8 @@ const columns: TableColumn<Announcement>[] = [
         <AppSearchInput v-model="table.search.value" placeholder="Search announcements" aria-label="Search announcements" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Announcements" empty-title="No announcements yet" @page="table.setPage" @retry="table.load">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Announcements" empty-title="No announcements yet" @page="table.setPage" @retry="table.load" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="openForm(null)">New announcement</AppButton></template>
         <template #cell-title="{ row }">
           <p class="font-medium text-fg">{{ row.title }}</p>
           <p class="text-xs text-fg-muted">

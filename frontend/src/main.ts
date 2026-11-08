@@ -5,6 +5,8 @@ import { configureHttpAuth } from '@/core/http/http-client';
 import { router } from '@/app/router';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useThemeStore } from '@/core/theme/theme.store';
+import { applyLocale } from '@/core/locale/locale';
+import { syncAppearance } from '@/core/theme/appearance-sync';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import '@/app/styles/main.css';
 
@@ -14,7 +16,9 @@ app.use(pinia);
 
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
-useThemeStore();
+const theme = useThemeStore();
+applyLocale(document.documentElement);
+syncAppearance(auth, theme);
 
 configureHttpAuth({
   getToken: () => auth.accessToken,

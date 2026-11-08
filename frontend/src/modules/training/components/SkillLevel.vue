@@ -14,8 +14,8 @@ function key(e: KeyboardEvent) {
 }
 const tone = (n: number) => {
   const v = props.modelValue ?? 0;
-  if (n > v) return props.required && n <= props.required ? 'bg-amber-500/25 ring-1 ring-inset ring-amber-500/40' : 'bg-surface-muted';
-  return props.required && v < props.required ? 'bg-amber-500' : 'bg-brand-500';
+  if (n > v) return props.required && n <= props.required ? 'bg-warning/25 ring-1 ring-inset ring-warning/40' : 'bg-surface-muted';
+  return props.required && v < props.required ? 'bg-warning' : 'bg-brand-500';
 };
 </script>
 

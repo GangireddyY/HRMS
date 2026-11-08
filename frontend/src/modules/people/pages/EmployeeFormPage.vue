@@ -215,7 +215,7 @@ const today = new Date().toISOString().slice(0, 10);
           <AppSelect v-model="form.costCenterId" label="Cost center" placeholder="None" :options="costCenterOptions" searchable :error="fieldErrors.costCenterId" />
         </div>
         <p v-if="!isEdit && !departmentOptions.length && auth.can('organization.structure.manage')" class="mt-3 text-xs text-fg-muted">
-          No departments yet. <RouterLink to="/admin/structure" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Set up the organization structure</RouterLink>.
+          No departments yet. <RouterLink to="/admin/structure" class="font-medium text-accent-fg hover:underline">Set up the organization structure</RouterLink>.
         </p>
       </AppCard>
 

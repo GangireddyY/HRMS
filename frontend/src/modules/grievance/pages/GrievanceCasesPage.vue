@@ -80,6 +80,8 @@ const columns: TableColumn<CaseRow>[] = [
           @page="table.setPage"
           @retry="table.load"
           @row-click="(r: CaseRow) => router.push(`/hr/grievances/${r.id}`)"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
         >
           <template #cell-case="{ row }">
             <p class="font-medium text-fg">{{ row.subject }}</p>
@@ -97,7 +99,7 @@ const columns: TableColumn<CaseRow>[] = [
           </template>
           <template #cell-assignee="{ row }"><span :class="row.assignee ? 'text-fg' : 'text-fg-muted'">{{ row.assignee?.name ?? 'Unassigned' }}</span></template>
           <template #cell-due="{ row }">
-            <span :class="row.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">{{ row.resolvedOn ? `Resolved ${formatDate(row.resolvedOn)}` : formatDate(row.dueOn) }}{{ row.overdue ? ' · overdue' : '' }}</span>
+            <span :class="row.overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'">{{ row.resolvedOn ? `Resolved ${formatDate(row.resolvedOn)}` : formatDate(row.dueOn) }}{{ row.overdue ? ' · overdue' : '' }}</span>
           </template>
         </AppDataTable>
       </AppCard>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight, PartyPopper, Plane } from '@lucide/vue';
 import { leaveApi } from '@/modules/leave/api/leave.api';
@@ -36,6 +37,9 @@ const cells = computed(() => {
   const start = addDays(first, -((weekday(first) + 6) % 7));
   return Array.from({ length: 42 }, (_, i) => addDays(start, i));
 });
+const dayFormat = new Intl.DateTimeFormat(appLocale(), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+const dayLabel = (d: string) => dayFormat.format(new Date(`${d}T00:00:00Z`));
+const weeks = computed(() => Array.from({ length: 6 }, (_, i) => cells.value.slice(i * 7, i * 7 + 7)));
 const holidays = computed(() => new Map((calendar.data.value?.holidays ?? []).filter((h) => !h.isOptional).map((h) => [h.date, h.name])));
 const entries = computed(() => calendar.data.value?.entries ?? []);
 const onDay = (d: string) => entries.value.filter((e) => e.startDate <= d && e.endDate >= d);
@@ -48,11 +52,11 @@ const selectedDay = computed(() => {
     weekday:
       selected.value === today
         ? 'Today'
-        : new Intl.DateTimeFormat('en-GB', {
+        : new Intl.DateTimeFormat(appLocale(), {
             weekday: 'long',
             timeZone: 'UTC',
           }).format(d),
-    date: new Intl.DateTimeFormat('en-GB', {
+    date: new Intl.DateTimeFormat(appLocale(), {
       day: 'numeric',
       month: 'long',
       timeZone: 'UTC',
@@ -65,7 +69,7 @@ const session = (e: Entry, d: string) => {
   return null;
 };
 const until = (e: Entry) =>
-  e.endDate === selected.value ? null : `Until ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${e.endDate}T00:00:00Z`))}`;
+  e.endDate === selected.value ? null : `Until ${new Intl.DateTimeFormat(appLocale(), { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${e.endDate}T00:00:00Z`))}`;
 
 function pick(d: string) {
   selected.value = d;
@@ -105,8 +109,9 @@ function onKey(e: KeyboardEvent) {
         <span v-for="(w, i) in WEEK" :key="i" class="py-1.5">{{ w }}</span>
       </div>
       <div class="grid grid-cols-7 gap-y-0.5" role="grid" :aria-busy="calendar.loading.value" @keydown="onKey">
+        <div v-for="(w, wi) in weeks" :key="wi" role="row" class="contents">
         <button
-          v-for="d in cells"
+          v-for="d in w"
           :key="d"
           type="button"
           role="gridcell"
@@ -114,22 +119,23 @@ function onKey(e: KeyboardEvent) {
           :tabindex="d === selected ? 0 : -1"
           :aria-selected="d === selected"
           :aria-current="d === today ? 'date' : undefined"
-          :aria-label="`${d}${onDay(d).length ? `, ${onDay(d).length} on leave` : ''}${holidays.has(d) ? `, ${holidays.get(d)}` : ''}`"
           :title="holidays.get(d)"
           class="group relative flex h-10 flex-col items-center justify-start pt-1 focus-visible:outline-none"
           @click="pick(d)"
         >
+          <span class="sr-only">{{ dayLabel(d) }}{{ onDay(d).length ? `, ${onDay(d).length} on leave` : '' }}{{ holidays.has(d) ? `, ${holidays.get(d)}` : '' }}</span>
           <span
+            aria-hidden="true"
             :class="[
               'flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums transition',
               d === today
-                ? 'bg-brand-600 font-semibold text-white shadow-xs dark:bg-brand-500'
+                ? 'bg-brand-600 font-semibold text-white shadow-xs'
                 : d === selected
-                  ? 'bg-brand-100 font-semibold text-brand-700 dark:bg-brand-500/25 dark:text-brand-200'
+                  ? 'bg-brand-100 font-semibold text-accent-fg dark:bg-brand-500/25'
                   : d.slice(0, 7) !== month
-                    ? 'text-fg-subtle/60 group-hover:bg-surface-muted'
+                    ? 'text-fg-subtle group-hover:bg-surface-muted'
                     : holidays.has(d)
-                      ? 'font-medium text-rose-600 group-hover:bg-surface-muted dark:text-rose-400'
+                      ? 'font-medium text-special-fg group-hover:bg-surface-muted'
                       : [0, 6].includes(weekday(d))
                         ? 'text-fg-subtle group-hover:bg-surface-muted'
                         : 'text-fg group-hover:bg-surface-muted',
@@ -143,6 +149,7 @@ function onKey(e: KeyboardEvent) {
             <span v-for="c in dots(d)" :key="c" class="h-1 w-1 rounded-full" :style="{ backgroundColor: c }" />
           </span>
         </button>
+        </div>
       </div>
     </div>
 
@@ -158,7 +165,7 @@ function onKey(e: KeyboardEvent) {
       <div v-else class="max-h-72 space-y-1.5 overflow-y-auto px-3 pb-3">
         <div
           v-if="holidays.has(selected)"
-          class="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+          class="flex items-center gap-2 rounded-md border border-special/35 bg-special-soft px-2.5 py-2 text-xs font-medium text-special-fg"
         >
           <PartyPopper class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{{ holidays.get(selected) }}
         </div>
@@ -185,7 +192,7 @@ function onKey(e: KeyboardEvent) {
         </p>
       </div>
 
-      <RouterLink to="/hr/leave/calendar" class="flex items-center justify-between border-t border-line/70 px-4 py-2.5 text-xs font-medium text-brand-600 hover:bg-surface-muted dark:text-brand-300">
+      <RouterLink to="/hr/leave/calendar" class="flex items-center justify-between border-t border-line/70 px-4 py-2.5 text-xs font-medium text-accent-fg hover:bg-surface-muted">
         Open team calendar
         <ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
       </RouterLink>

@@ -38,7 +38,8 @@ const columns: TableColumn<PipRow>[] = [
       <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
         <AppSelect size="sm" v-model="table.filters.status" class="w-56" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Improvement plans" empty-title="No improvement plans" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/pips/${row.id}`)">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Improvement plans" empty-title="No improvement plans" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/pips/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="formOpen = true">New plan</AppButton></template>
         <template #cell-employee="{ row }">
           <div class="flex items-center gap-3">
             <AppAvatar :name="row.employee.name" size="sm" />
@@ -54,7 +55,7 @@ const columns: TableColumn<PipRow>[] = [
         </template>
         <template #cell-status="{ row }">
           <AppBadge :tone="pipTone[row.status]" dot>{{ PIP_STATUS_LABELS[row.status] }}</AppBadge>
-          <p v-if="row.overdue" class="mt-0.5 text-xs text-red-600 dark:text-red-400">Past its end date</p>
+          <p v-if="row.overdue" class="mt-0.5 text-xs text-danger-fg">Past its end date</p>
           <p v-else-if="!row.acknowledged && row.status === 'ACTIVE'" class="mt-0.5 text-xs text-fg-muted">Not acknowledged yet</p>
         </template>
       </AppDataTable>

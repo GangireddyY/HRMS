@@ -103,7 +103,7 @@ function downloadCodes() {
     <AppErrorState v-else-if="status.error.value" :error="status.error.value" @retry="status.run" />
     <div v-else-if="status.data.value" class="flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-start gap-3">
-        <div :class="['flex h-10 w-10 items-center justify-center rounded-lg', status.data.value.enabled ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10' : 'bg-surface-muted text-fg-subtle']">
+        <div :class="['flex h-10 w-10 items-center justify-center rounded-lg', status.data.value.enabled ? 'bg-success-soft text-success-fg' : 'bg-surface-muted text-fg-subtle']">
           <ShieldCheck v-if="status.data.value.enabled" :size="20" />
           <ShieldOff v-else :size="20" />
         </div>

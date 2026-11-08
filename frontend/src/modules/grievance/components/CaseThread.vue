@@ -70,7 +70,7 @@ async function download(f: CaseFile) {
           v-for="n in grievance.notes"
           :key="n.id"
           class="rounded-xl px-4 py-3 text-sm ring-1"
-          :class="n.visibility === 'INTERNAL' ? 'bg-amber-50 ring-amber-200 dark:bg-amber-500/10 dark:ring-amber-500/30' : n.fromComplainant ? 'bg-surface-muted/60 ring-line' : 'bg-brand-50/60 ring-brand-200/60 dark:bg-brand-500/10 dark:ring-brand-500/20'"
+          :class="n.visibility === 'INTERNAL' ? 'bg-warning-soft ring-warning/35' : n.fromComplainant ? 'bg-surface-muted/60 ring-line' : 'bg-accent-soft ring-brand-200/60 dark:ring-brand-500/20'"
         >
           <p class="mb-1 flex flex-wrap items-center gap-2 text-xs text-fg-muted">
             <span class="font-medium text-fg">{{ n.author }}</span>

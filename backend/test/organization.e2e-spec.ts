@@ -34,6 +34,40 @@ describe('Organization settings & registration (e2e)', () => {
     expect(audit.changes).toMatchObject({ timezone: { from: 'Asia/Kolkata', to: 'Asia/Dubai' } });
   });
 
+  it('saves a brand color, normalises it and shares it in the access context', async () => {
+    const { admin } = await createOrgWithAdmin(ctx);
+    const s = await login(ctx, admin.email);
+    const h = bearer(s.accessToken);
+
+    const invalid = await ctx.http().patch(`${API}/organizations/current`).set(h).send({ brandColor: 'teal' });
+    expect(invalid.status).toBe(422);
+    expect(invalid.body.error.details.map((d: { field: string }) => d.field)).toEqual(['brandColor']);
+
+    const ok = await ctx.http().patch(`${API}/organizations/current`).set(h).send({ brandColor: '#0E7490' });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.brandColor).toBe('#0e7490');
+    const me = await ctx.http().get(`${API}/auth/me`).set(h);
+    expect(me.body.data.activeOrganization.brandColor).toBe('#0e7490');
+
+    const cleared = await ctx.http().patch(`${API}/organizations/current`).set(h).send({ brandColor: '' });
+    expect(cleared.body.data.brandColor).toBeNull();
+  });
+
+  it('keeps appearance preferences on the account, merging and clearing choices', async () => {
+    const { admin } = await createOrgWithAdmin(ctx);
+    const s = await login(ctx, admin.email);
+    const h = bearer(s.accessToken);
+
+    const bad = await ctx.http().patch(`${API}/auth/me/preferences`).set(h).send({ color: '<script>' });
+    expect(bad.status).toBe(422);
+
+    expect((await ctx.http().patch(`${API}/auth/me/preferences`).set(h).send({ mode: 'dark', color: 'teal', region: 'en-IN' })).body.data).toEqual({ mode: 'dark', color: 'teal', region: 'en-IN' });
+    expect((await ctx.http().patch(`${API}/auth/me/preferences`).set(h).send({ unknown: 'x' })).status).toBe(422);
+    expect((await ctx.http().patch(`${API}/auth/me/preferences`).set(h).send({ color: null, sidebar: 'brand' })).body.data).toEqual({ mode: 'dark', region: 'en-IN', sidebar: 'brand' });
+    const me = await ctx.http().get(`${API}/auth/me`).set(h);
+    expect(me.body.data.user.preferences).toEqual({ mode: 'dark', region: 'en-IN', sidebar: 'brand' });
+  });
+
   it('restricts profile updates to permitted roles', async () => {
     const { organization } = await createOrgWithAdmin(ctx);
     const auditor = await createUser(ctx, { email: uniqueEmail('auditor') });

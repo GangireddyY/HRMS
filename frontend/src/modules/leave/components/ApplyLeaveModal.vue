@@ -141,7 +141,7 @@ async function submit() {
             {{ formatDays(quote.days) }} of leave
           </p>
           <p v-if="quote.available !== null" class="text-fg-muted">
-            {{ formatDays(quote.available) }} available → <span :class="(quote.remainingAfter ?? 0) < 0 ? 'font-medium text-red-600 dark:text-red-400' : 'font-medium text-fg'">{{ formatDays(quote.remainingAfter) }} left</span>
+            {{ formatDays(quote.available) }} available → <span :class="(quote.remainingAfter ?? 0) < 0 ? 'font-medium text-danger-fg' : 'font-medium text-fg'">{{ formatDays(quote.remainingAfter) }} left</span>
           </p>
           <p v-else class="text-fg-muted">No balance limit</p>
         </div>
@@ -150,7 +150,7 @@ async function submit() {
           Not counted: {{ [skipped.weeklyOffs && `${skipped.weeklyOffs} weekly off${skipped.weeklyOffs === 1 ? '' : 's'}`, skipped.holidays && `${skipped.holidays} holiday${skipped.holidays === 1 ? '' : 's'}`].filter(Boolean).join(' and ') }}.
         </p>
         <ul v-if="quote?.issues.length" class="mt-3 space-y-2">
-          <li v-for="(i, n) in quote.issues" :key="n" class="flex items-start gap-2 text-amber-700 dark:text-amber-300">
+          <li v-for="(i, n) in quote.issues" :key="n" class="flex items-start gap-2 text-warning-fg">
             <AlertTriangle :size="14" class="mt-0.5 shrink-0" aria-hidden="true" />{{ i.message }}
           </li>
         </ul>
@@ -165,7 +165,7 @@ async function submit() {
           <li v-for="b in pickable" :key="b.leaveType.id">
             <button
               type="button"
-              :class="['flex w-full items-center gap-3 rounded-md px-3 py-2 text-start text-sm transition', form.leaveTypeId === b.leaveType.id ? 'bg-brand-50 ring-1 ring-brand-300 dark:bg-brand-500/10 dark:ring-brand-500/40' : 'hover:bg-surface-muted']"
+              :class="['flex w-full items-center gap-3 rounded-md px-3 py-2 text-start text-sm transition', form.leaveTypeId === b.leaveType.id ? 'bg-accent-soft ring-1 ring-brand-300 dark:ring-brand-500/40' : 'hover:bg-surface-muted']"
               :aria-pressed="form.leaveTypeId === b.leaveType.id"
               @click="form.leaveTypeId = b.leaveType.id"
             >

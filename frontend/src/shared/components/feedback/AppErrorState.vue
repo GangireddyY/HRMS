@@ -13,7 +13,7 @@ const requestId = computed(() => (props.error instanceof ApiError ? props.error.
 
 <template>
   <div class="flex flex-col items-center justify-center px-4 py-8 text-center" role="alert">
-    <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-600/15 ring-inset dark:bg-red-500/10 dark:text-red-400">
+    <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-soft text-danger-fg ring-1 ring-danger/15 ring-inset">
       <CloudOff :size="20" aria-hidden="true" />
     </div>
     <p class="text-sm font-semibold text-fg">{{ title ?? 'Could not load data' }}</p>

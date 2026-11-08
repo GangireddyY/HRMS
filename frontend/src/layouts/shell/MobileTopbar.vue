@@ -47,8 +47,9 @@ function goBack() {
       </div>
       <GlobalSearch />
       <NotificationBell />
-      <RouterLink to="/me/profile" class="ms-0.5 rounded-full p-0.5" aria-label="Your profile">
+      <RouterLink to="/me/profile" class="ms-0.5 rounded-full p-0.5">
         <AppAvatar :name="displayName" :src="auth.user?.avatarUrl" size="sm" />
+        <span class="sr-only">Your profile</span>
       </RouterLink>
     </div>
   </header>

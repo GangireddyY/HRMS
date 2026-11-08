@@ -32,7 +32,7 @@ const feedback = useFeedbackStore();
 const id = computed(() => String(route.params.id));
 const member = useAsync(() => usersApi.get(id.value));
 const roles = useAsync(() => rolesApi.list());
-const history = auth.can('audit.login_history.view') ? useTable((q) => usersApi.loginHistory(id.value, q), { pageSize: 10 }) : null;
+const history = auth.can('audit.login_history.view') ? useTable((q) => usersApi.loginHistory(id.value, q), { pageSize: 10, url: false }) : null;
 
 const selectedRoles = ref<string[]>([]);
 const busy = ref<string | null>(null);
@@ -151,7 +151,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
             <div v-if="auth.hasFeature('employee')" class="flex items-center justify-between gap-3 border-t border-line/70 pt-3">
               <dt class="text-fg-muted">Employee record</dt>
               <dd>
-                <RouterLink v-if="member.data.value.employee && auth.can('employee.view')" :to="`/hr/employees/${member.data.value.employee.id}`" class="font-medium text-brand-600 hover:underline dark:text-brand-400">
+                <RouterLink v-if="member.data.value.employee && auth.can('employee.view')" :to="`/hr/employees/${member.data.value.employee.id}`" class="font-medium text-accent-fg hover:underline">
                   {{ member.data.value.employee.employeeCode }}
                 </RouterLink>
                 <span v-else-if="member.data.value.employee">{{ member.data.value.employee.employeeCode }}</span>
@@ -189,7 +189,8 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
           caption="User sign-in history"
           @page="history.setPage"
           @retry="history.load"
-        >
+          :filtered="history.isFiltered.value"
+          @clear="history.clearFilters()">
           <template #cell-createdAt="{ row }">{{ formatDateTime(row.createdAt) }}</template>
           <template #cell-outcome="{ row }"><AppBadge :tone="loginTone[row.outcome]">{{ statusLabel(row.outcome) }}</AppBadge></template>
           <template #cell-device="{ row }">{{ describeUserAgent(row.userAgent) }}</template>

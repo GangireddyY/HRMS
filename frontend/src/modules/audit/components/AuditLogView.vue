@@ -50,6 +50,8 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
       @page="table.setPage"
       @retry="table.load"
       @row-click="(row) => (selected = row)"
+      :filtered="table.isFiltered.value"
+      @clear="table.clearFilters()"
     >
       <template #cell-createdAt="{ row }"><span class="text-fg-muted">{{ formatDateTime(row.createdAt) }}</span></template>
       <template #cell-action="{ row }"><code class="rounded bg-surface-muted px-2 py-0.5 font-mono text-xs">{{ row.action }}</code></template>
@@ -73,8 +75,8 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
           <tbody class="divide-y divide-line">
             <tr v-for="(c, field) in selected.changes" :key="field">
               <td class="px-3 py-2 font-medium">{{ field }}</td>
-              <td class="px-3 py-2 break-all text-red-600 dark:text-red-400">{{ stringify(c.from) }}</td>
-              <td class="px-3 py-2 break-all text-emerald-600 dark:text-emerald-400">{{ stringify(c.to) }}</td>
+              <td class="px-3 py-2 break-all text-danger-fg">{{ stringify(c.from) }}</td>
+              <td class="px-3 py-2 break-all text-success-fg">{{ stringify(c.to) }}</td>
             </tr>
           </tbody>
         </table>

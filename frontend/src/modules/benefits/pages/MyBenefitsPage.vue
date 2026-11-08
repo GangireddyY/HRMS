@@ -93,7 +93,7 @@ const canChange = (p: MyPlan) => !p.ineligible && p.options.length > 0;
               <p v-else-if="p.waived" class="text-sm text-fg-muted">You waived this plan.</p>
               <p v-else class="text-sm text-fg-muted">Not enrolled.</p>
             </div>
-            <div v-if="p.pending" class="rounded-xl bg-amber-50/60 p-4 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:ring-amber-500/30">
+            <div v-if="p.pending" class="rounded-xl bg-warning-soft p-4 ring-1 ring-warning/35">
               <p class="mb-2 text-xs font-medium tracking-wide text-fg-muted uppercase">Waiting for HR</p>
               <p class="font-medium text-fg">{{ p.pending.option?.name }}</p>
               <p class="text-sm text-fg-muted">

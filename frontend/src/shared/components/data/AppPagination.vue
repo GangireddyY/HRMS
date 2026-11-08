@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed } from 'vue';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import type { PaginationMeta } from '@contracts';
@@ -16,9 +17,9 @@ const btn =
 
 <template>
   <nav class="flex min-h-10 flex-wrap items-center justify-between gap-2 px-4 py-1.5 text-xs text-fg-muted" aria-label="Pagination">
-    <p class="tabular-nums">
-      <template v-if="paged"><span class="font-medium text-fg">{{ from }}–{{ to }}</span> of {{ meta.total.toLocaleString() }}</template>
-      <template v-else>{{ meta.total.toLocaleString() }} {{ meta.total === 1 ? 'result' : 'results' }}</template>
+    <p class="tabular-nums" aria-live="polite" aria-atomic="true">
+      <template v-if="paged"><span class="font-medium text-fg">{{ from }}–{{ to }}</span> of {{ meta.total.toLocaleString(appLocale()) }}</template>
+      <template v-else>{{ meta.total.toLocaleString(appLocale()) }} {{ meta.total === 1 ? 'result' : 'results' }}</template>
     </p>
     <div v-if="paged" class="flex items-center gap-1.5">
       <span class="me-1 tabular-nums">Page {{ meta.page }} of {{ meta.totalPages }}</span>

@@ -17,7 +17,7 @@ const cls = 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start text
     type="button"
     role="menuitem"
     :disabled="disabled"
-    :class="[cls, danger ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10' : 'text-fg hover:bg-surface-muted']"
+    :class="[cls, danger ? 'text-danger-fg hover:bg-danger-soft' : 'text-fg hover:bg-surface-muted']"
     @click="$emit('select')"
   >
     <component :is="icon" v-if="icon" :size="16" :class="danger ? '' : 'text-fg-subtle'" aria-hidden="true" />

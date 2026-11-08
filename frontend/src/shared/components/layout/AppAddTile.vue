@@ -12,7 +12,7 @@ defineEmits<{ click: [] }>();
     :is="to ? 'RouterLink' : 'button'"
     :to="to"
     :type="to ? undefined : 'button'"
-    class="group flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line-strong p-4 text-center transition hover:border-brand-400 hover:bg-brand-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-brand-500/5"
+    class="group flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line-strong p-4 text-center transition hover:border-brand-400 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2"
     @click="!to && $emit('click')"
   >
     <span class="flex h-8 w-8 items-center justify-center rounded-md bg-surface-muted text-fg-muted transition group-hover:bg-brand-600 group-hover:text-white"><Plus :size="16" aria-hidden="true" /></span>

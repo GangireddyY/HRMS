@@ -23,7 +23,7 @@ const STATUS_TONE: Partial<Record<DayStatus, Tone>> = {
   ON_LEAVE: 'cyan',
   HOLIDAY: 'violet',
 };
-const TONE_COLOR: Record<Tone, string> = { success: '#10b981', warning: '#f59e0b', danger: '#ef4444', info: '#0ea5e9', violet: '#8b5cf6', orange: '#f97316', cyan: '#06b6d4', neutral: '#94a3b8' };
+const TONE_COLOR: Record<Tone, string> = { success: 'var(--status-success)', warning: 'var(--status-warning)', danger: 'var(--status-danger)', info: 'var(--status-info)', violet: 'var(--status-special)', orange: 'var(--status-caution)', cyan: 'var(--status-away)', neutral: 'var(--status-neutral)' };
 
 const muted = (iso: string) => {
   const s = dayOf(iso)?.status;
@@ -116,8 +116,8 @@ const legend: { label: string; color: string }[] = [
         <li v-for="l in legend" :key="l.label" class="inline-flex items-center gap-1.5">
           <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: l.color }" aria-hidden="true" />{{ l.label }}
         </li>
-        <li class="inline-flex items-center gap-1.5"><Timer :size="12" class="text-violet-600 dark:text-violet-400" aria-hidden="true" />Overtime</li>
-        <li class="inline-flex items-center gap-1.5"><Hourglass :size="12" class="text-amber-600 dark:text-amber-400" aria-hidden="true" />Correction pending</li>
+        <li class="inline-flex items-center gap-1.5"><Timer :size="12" class="text-special-fg" aria-hidden="true" />Overtime</li>
+        <li class="inline-flex items-center gap-1.5"><Hourglass :size="12" class="text-warning-fg" aria-hidden="true" />Correction pending</li>
       </ul>
     </template>
   </AppMonthCalendar>

@@ -5,17 +5,17 @@ import { useFeedbackStore } from '@/shared/stores/feedback.store';
 const feedback = useFeedbackStore();
 const icons = { success: CheckCircle2, error: XCircle, info: Info, warning: AlertTriangle };
 const tones = {
-  success: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
-  error: 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400',
-  info: 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400',
-  warning: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
+  success: 'bg-success-soft text-success-fg',
+  error: 'bg-danger-soft text-danger-fg',
+  info: 'bg-accent-soft text-accent-fg',
+  warning: 'bg-warning-soft text-warning-fg',
 };
 </script>
 
 <template>
   <!-- Phones and tablets: at the top, clear of the tab bar and the thumb; desktop: bottom right. -->
   <div
-    class="pointer-events-none fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-[60] flex flex-col items-center gap-2 px-3 lg:inset-x-auto lg:top-auto lg:right-5 lg:bottom-5 lg:items-end"
+    class="pointer-events-none fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-[60] flex flex-col items-center gap-2 px-3 lg:inset-x-auto lg:top-auto lg:end-5 lg:bottom-5 lg:items-end"
     aria-live="polite"
     aria-relevant="additions"
   >

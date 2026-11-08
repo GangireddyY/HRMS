@@ -83,6 +83,8 @@ const pct = (c: CaseSummary) => (c.progress.total ? Math.round((c.progress.done 
           @page="table.setPage"
           @retry="table.load"
           @row-click="(row) => router.push(`/hr/onboarding/${row.id}`)"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
         >
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
@@ -97,7 +99,7 @@ const pct = (c: CaseSummary) => (c.progress.total ? Math.round((c.progress.done 
           <template #cell-progress="{ row }">
             <div class="flex min-w-40 items-center gap-3">
               <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
-                <div class="h-full rounded-full bg-emerald-500" :style="{ width: `${pct(row)}%` }" />
+                <div class="h-full rounded-full bg-success" :style="{ width: `${pct(row)}%` }" />
               </div>
               <span class="text-xs text-fg-muted tabular-nums">{{ row.progress.done }}/{{ row.progress.total }}</span>
             </div>

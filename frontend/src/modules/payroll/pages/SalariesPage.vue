@@ -82,7 +82,7 @@ const columns: TableColumn<SalaryRow>[] = [
         <div class="border-b border-line p-4">
           <AppSearchInput v-model="table.search.value" placeholder="Search by name or employee code" aria-label="Search employees" />
         </div>
-        <AppDataTable :columns="columns" :rows="table.rows.value" :row-key="(r) => r.employee.id" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Salaries" :empty-title="view === 'missing' ? 'Everyone has a salary' : 'No employees'" @page="table.setPage" @retry="table.load">
+        <AppDataTable :columns="columns" :rows="table.rows.value" :row-key="(r) => r.employee.id" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Salaries" :empty-title="view === 'missing' ? 'Everyone has a salary' : 'No employees'" @page="table.setPage" @retry="table.load" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee.name" size="sm" />

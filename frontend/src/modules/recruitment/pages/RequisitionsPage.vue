@@ -116,7 +116,10 @@ const pipelineText = (r: Requisition) =>
           @page="table.setPage"
           @retry="table.load"
           @row-click="(row) => (selected = row)"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
         >
+          <template #empty><AppButton :icon="Plus" @click="openForm()">New requisition</AppButton></template>
           <template #cell-title="{ row }">
             <p class="font-medium text-fg">{{ row.title }}</p>
             <p class="text-xs text-fg-muted">{{ row.code }} · {{ row.requestedBy }} · {{ timeAgo(row.createdAt) }}</p>

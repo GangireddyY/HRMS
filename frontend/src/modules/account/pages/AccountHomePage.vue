@@ -136,7 +136,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
           <p class="text-xs text-fg-muted">{{ latestSlip.period }}{{ latestSlip.paidAt ? ` · paid ${formatDate(latestSlip.paidAt)}` : '' }}</p>
           <p class="mt-0.5 text-2xl font-semibold tracking-tight text-fg tabular-nums">{{ formatMoney(latestSlip.netPay) }}</p>
           <p class="text-xs text-fg-muted">Net pay · gross {{ formatMoney(latestSlip.gross) }} · deductions {{ formatMoney(latestSlip.totalDeductions) }}</p>
-          <p class="mt-2 flex items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-400">Open payslip <ArrowRight :size="13" class="transition group-hover:translate-x-0.5" aria-hidden="true" /></p>
+          <p class="mt-2 flex items-center gap-1 text-xs font-medium text-accent-fg">Open payslip <ArrowRight :size="13" class="transition group-hover:translate-x-0.5" aria-hidden="true" /></p>
         </RouterLink>
       </AppCard>
 
@@ -144,7 +144,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
         <p v-if="!holidays.loading.value && !holidays.data.value?.length" class="text-sm text-fg-muted">No upcoming holidays on the calendar.</p>
         <ul v-else class="-my-2 divide-y divide-line/60">
           <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-3 py-2">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-300"><PartyPopper :size="15" aria-hidden="true" /></span>
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-soft text-success-fg"><PartyPopper :size="15" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium text-fg">{{ h.name }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ formatDate(h.date) }} · in {{ daysUntil(h.date) }} days</span>
@@ -173,8 +173,8 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
     <AppCard v-if="workspaces.length" title="Your workspaces" description="Other areas you can work in with your roles">
       <ul class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <li v-for="ws in workspaces" :key="ws.key">
-          <RouterLink :to="visibleSections(ws, subject)[0]!.items[0]!.to" class="group flex items-center gap-3 rounded-md border border-line p-3 transition hover:border-brand-500/40 hover:bg-brand-50/40 dark:hover:bg-brand-500/5">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600 dark:bg-brand-500/12 dark:text-brand-300"><component :is="ws.icon" :size="16" aria-hidden="true" /></span>
+          <RouterLink :to="visibleSections(ws, subject)[0]!.items[0]!.to" class="group flex items-center gap-3 rounded-md border border-line p-3 transition hover:border-brand-500/40 hover:bg-accent-soft">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-fg"><component :is="ws.icon" :size="16" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-medium text-fg">{{ ws.label }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ ws.description }}</span>

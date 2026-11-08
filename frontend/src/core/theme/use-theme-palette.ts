@@ -8,6 +8,7 @@ export function useThemePalette() {
   return computed(() => {
     // Dependencies: re-read the CSS variables whenever the theme changes.
     void theme.color;
+    void theme.surface;
     const dark = theme.isDark;
     return {
       brand: readCssVar('--brand-500', '#6366f1'),

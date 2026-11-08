@@ -226,7 +226,7 @@ const stats = computed(() => counts.value ?? p.value?.stats ?? null);
               <AppButton :icon="BellRing" :loading="busy === 'remind'" :disabled="!stats || stats.pending + stats.overdue === 0" @click="remind">Remind</AppButton>
             </div>
             <p v-if="p.lastRemindedAt" class="border-b border-line px-4 py-2 text-xs text-fg-muted">Last reminder {{ timeAgo(p.lastRemindedAt) }}.</p>
-            <AppDataTable :columns="ackColumns" :rows="tracking.rows.value" :loading="tracking.loading.value" :error="tracking.error.value" :meta="tracking.meta.value" caption="Acknowledgements" empty-title="Nobody here" @page="tracking.setPage" @retry="tracking.load">
+            <AppDataTable :columns="ackColumns" :rows="tracking.rows.value" :loading="tracking.loading.value" :error="tracking.error.value" :meta="tracking.meta.value" caption="Acknowledgements" empty-title="Nobody here" @page="tracking.setPage" @retry="tracking.load" :filtered="tracking.isFiltered.value" @clear="tracking.clearFilters()">
               <template #cell-employee="{ row }">
                 <p class="font-medium text-fg">{{ row.employee.name }}</p>
                 <p class="text-xs text-fg-muted">{{ row.employee.employeeCode }}{{ row.employee.department ? ` · ${row.employee.department}` : '' }}</p>
@@ -234,7 +234,7 @@ const stats = computed(() => counts.value ?? p.value?.stats ?? null);
               <template #cell-state="{ row }"><AppBadge :tone="ackTone[row.state]" dot>{{ ACK_LABELS[row.state] }}</AppBadge></template>
               <template #cell-when="{ row }">
                 <span v-if="row.state === 'ACKNOWLEDGED'" class="text-fg-muted">Version {{ row.acknowledgedVersion }} · {{ formatDateTime(row.acknowledgedAt!) }}</span>
-                <span v-else :class="row.state === 'OVERDUE' ? 'text-red-600 dark:text-red-400' : 'text-fg-muted'">Due {{ formatDate(row.dueOn) }}</span>
+                <span v-else :class="row.state === 'OVERDUE' ? 'text-danger-fg' : 'text-fg-muted'">Due {{ formatDate(row.dueOn) }}</span>
               </template>
             </AppDataTable>
           </AppCard>

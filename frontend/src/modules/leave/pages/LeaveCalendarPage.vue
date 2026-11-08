@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, reactive, ref, watch } from 'vue';
 import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink, Plane, Tags, UserRound, Users, X } from '@lucide/vue';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -72,7 +73,7 @@ function shift(step: -1 | 1) {
 }
 const title = computed(() => {
   if (view.value !== 'week') return monthLabel(anchorMonth.value);
-  const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const fmt = new Intl.DateTimeFormat(appLocale(), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   return fmt.formatRange(new Date(`${range.value.from}T00:00:00Z`), new Date(`${range.value.to}T00:00:00Z`));
 });
 const showsToday = computed(() => (view.value === 'week' ? range.value.from <= today && today <= range.value.to : anchorMonth.value === today.slice(0, 7)));
@@ -166,7 +167,7 @@ function open(e: Entry, el: HTMLElement) {
             <AppButton size="sm" variant="ghost" :icon="ChevronLeft" :aria-label="view === 'week' ? 'Previous week' : 'Previous month'" @click="shift(-1)" />
             <AppButton size="sm" variant="ghost" :icon="ChevronRight" :aria-label="view === 'week' ? 'Next week' : 'Next month'" @click="shift(1)" />
           </div>
-          <h2 class="me-auto text-lg font-normal text-fg sm:text-[22px]" aria-live="polite">{{ title }}</h2>
+          <h2 class="me-auto text-lg font-normal text-fg sm:text-xl" aria-live="polite">{{ title }}</h2>
           <AppSegmented v-model="view" :options="VIEWS" label="Calendar view" size="sm" />
           <AppButton size="sm" :icon="CalendarClock" to="/hr/leave/requests">
             Leave requests
@@ -191,13 +192,13 @@ function open(e: Entry, el: HTMLElement) {
                   <input type="checkbox" class="h-4 w-4 shrink-0 rounded accent-brand-600" :checked="!hidden.people.has(p.id)" :aria-label="`Show ${p.name}`" @change="toggle(hidden.people, p.id)" />
                   <span class="relative shrink-0">
                     <AppAvatar :name="p.name" :src="p.avatarUrl" size="xs" />
-                    <span v-if="p.outToday" class="absolute -end-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-surface-raised" title="Out today" />
+                    <span v-if="p.outToday" class="absolute -end-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-surface-raised" title="Out today" />
                   </span>
                   <span class="min-w-0 flex-1">
                     <span :class="['block truncate text-sm', p.count ? 'font-medium text-fg' : 'text-fg-muted']">{{ p.name }}</span>
                     <span v-if="p.department" class="block truncate text-2xs text-fg-subtle">{{ p.department }}</span>
                   </span>
-                  <span v-if="p.count" class="shrink-0 rounded-full bg-brand-50 px-1.5 text-2xs font-semibold text-brand-700 tabular-nums dark:bg-brand-500/15 dark:text-brand-200">{{ p.count }}</span>
+                  <span v-if="p.count" class="shrink-0 rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent-fg tabular-nums">{{ p.count }}</span>
                 </label>
               </li>
               <li v-if="!people.length" class="px-3 py-3 text-xs text-fg-muted">{{ peopleSearch ? 'No one matches.' : 'No one in view.' }}</li>
@@ -218,13 +219,13 @@ function open(e: Entry, el: HTMLElement) {
             </ul>
           </LeaveFilterMenu>
 
-          <button v-if="hidden.people.size || hidden.types.size || departmentId" type="button" class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-300" @click="clearFilters">Clear filters</button>
+          <button v-if="hidden.people.size || hidden.types.size || departmentId" type="button" class="text-xs font-medium text-accent-fg hover:underline" @click="clearFilters">Clear filters</button>
 
           <ul class="ms-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-fg-muted max-md:hidden" aria-label="Legend">
             <li v-for="t in types.filter((x) => !hidden.types.has(x.id))" :key="t.id" class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" :style="{ backgroundColor: t.color }" aria-hidden="true" />{{ t.name }}</li>
             <li class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full ring-[1.5px] ring-fg-muted ring-inset" aria-hidden="true" />Pending</li>
             <li class="inline-flex items-center gap-1.5"><span class="text-fg-subtle">AM / PM</span>Half day</li>
-            <li v-if="holidays.size" class="inline-flex items-center gap-1.5"><span class="h-2 w-3 rounded-sm bg-violet-500/25" aria-hidden="true" />Holiday</li>
+            <li v-if="holidays.size" class="inline-flex items-center gap-1.5"><span class="h-2 w-3 rounded-sm bg-special/25" aria-hidden="true" />Holiday</li>
           </ul>
         </div>
       </div>
@@ -258,14 +259,14 @@ function open(e: Entry, el: HTMLElement) {
           <ol v-else class="divide-y divide-line/70 overflow-hidden rounded-md border border-line">
             <li v-for="[d, list] in schedule" :key="d" class="flex gap-3 px-3 py-3 sm:gap-6 sm:px-4">
               <button type="button" class="flex w-16 shrink-0 items-start gap-2 text-start sm:w-28" :aria-label="`Week of ${formatIso(d, { day: 'numeric', month: 'long' })}`" @click="goTo(d, true)">
-                <span :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg font-medium tabular-nums', d === today ? 'bg-brand-600 text-white dark:bg-brand-500' : 'text-fg']">{{ Number(d.slice(8)) }}</span>
+                <span :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg font-medium tabular-nums', d === today ? 'bg-brand-600 text-white' : 'text-fg']">{{ Number(d.slice(8)) }}</span>
                 <span class="mt-1 text-2xs font-semibold text-fg-muted uppercase max-sm:hidden">{{ formatIso(d, { month: 'short', weekday: 'short' }) }}</span>
               </button>
               <ul class="min-w-0 flex-1 space-y-1">
                 <li v-if="holidays.get(d)" class="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm">
-                  <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-violet-500" aria-hidden="true" />
+                  <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-special" aria-hidden="true" />
                   <span class="w-28 shrink-0 text-xs text-fg-muted max-sm:hidden">All day</span>
-                  <span class="font-medium text-violet-700 dark:text-violet-300">{{ holidays.get(d) }}</span>
+                  <span class="font-medium text-special-fg">{{ holidays.get(d) }}</span>
                 </li>
                 <li v-for="e in list" :key="e.id">
                   <button type="button" class="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-start text-sm transition hover:bg-surface-muted" @click="(ev: MouseEvent) => open(e, ev.currentTarget as HTMLElement)">

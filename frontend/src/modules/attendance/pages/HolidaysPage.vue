@@ -75,8 +75,8 @@ const viewOptions = [
 const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = localIso(new Date());
 const months = computed(() => Array.from({ length: 12 }, (_, i) => `${year.value}-${String(i + 1).padStart(2, '0')}`));
-const PUBLIC = '#8b5cf6';
-const OPTIONAL = '#94a3b8';
+const PUBLIC = 'var(--status-special)';
+const OPTIONAL = 'var(--status-neutral)';
 const marks = computed(() => new Map((holidays.data.value ?? []).map((h) => [h.date, { color: h.isOptional ? OPTIONAL : PUBLIC, title: `${h.name}${h.isOptional ? ' (optional)' : ''}` }])));
 /** In the year view a holiday opens for editing and, for planners, any other day starts a new holiday on it. */
 function onDay(iso: string) {
@@ -122,6 +122,7 @@ function onDay(iso: string) {
     </AppCard>
     <AppCard v-else :padded="false">
       <AppDataTable :columns="columns" :rows="holidays.data.value ?? []" :loading="holidays.loading.value" :error="holidays.error.value" caption="Holidays" :empty-title="`No holidays in ${year}`" @retry="holidays.run">
+        <template #empty><AppButton v-if="canManage" :icon="Plus" @click="edit(null)">Add holiday</AppButton></template>
         <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span> <span class="text-xs text-fg-muted">{{ weekdayOf(row.date) }}</span></template>
         <template #cell-name="{ row }"><span class="font-medium text-fg">{{ row.name }}</span></template>
         <template #cell-type="{ row }"><AppBadge :tone="row.isOptional ? 'neutral' : 'violet'">{{ row.isOptional ? 'Optional' : 'Public holiday' }}</AppBadge></template>

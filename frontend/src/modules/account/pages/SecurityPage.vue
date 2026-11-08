@@ -30,7 +30,7 @@ const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const policy = useAsync(() => authApi.passwordPolicy());
 const sessions = useAsync(() => authApi.sessions());
-const history = useTable((q) => authApi.loginHistory(q), { pageSize: 10 });
+const history = useTable((q) => authApi.loginHistory(q), { pageSize: 10, url: false });
 
 const pw = reactive({ current: '', next: '', confirm: '' });
 const changing = ref(false);
@@ -121,7 +121,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
             <span
               :class="[
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
-                s.current ? 'bg-emerald-50 text-emerald-600 ring-emerald-600/15 dark:bg-emerald-500/12 dark:text-emerald-400' : 'bg-surface-muted text-fg-muted ring-line',
+                s.current ? 'bg-success-soft text-success-fg ring-success/15' : 'bg-surface-muted text-fg-muted ring-line',
               ]"
             >
               <Laptop :size="16" aria-hidden="true" />
@@ -151,7 +151,8 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
         caption="Sign-in history"
         @page="history.setPage"
         @retry="history.load"
-      >
+        :filtered="history.isFiltered.value"
+        @clear="history.clearFilters()">
         <template #cell-createdAt="{ row }">{{ formatDateTime(row.createdAt) }}</template>
         <template #cell-outcome="{ row }">
           <AppBadge :tone="loginTone[row.outcome]">{{ statusLabel(row.outcome) }}</AppBadge>

@@ -91,7 +91,7 @@ function onDrop(e: DragEvent) {
         'group relative flex h-24 w-52 shrink-0 items-center justify-center overflow-hidden rounded-2xl transition',
         src ? 'ring-1 ring-line' : 'border-2 border-dashed border-line-strong bg-surface-muted/60',
         src && !appearance?.opaque && 'bg-surface-muted',
-        dragging && 'border-brand-500 bg-brand-50 ring-4 ring-brand-500/15 dark:bg-brand-500/10',
+        dragging && 'border-brand-500 bg-accent-soft ring-4 ring-brand-500/15',
         !disabled && 'hover:border-brand-400',
       ]"
       @click="pick"
@@ -103,7 +103,7 @@ function onDrop(e: DragEvent) {
       <span v-else class="flex flex-col items-center gap-1 text-fg-subtle">
         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-semibold text-white">{{ initial }}</span>
       </span>
-      <span v-if="!disabled && !busy" class="absolute inset-0 flex items-center justify-center bg-zinc-950/45 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span v-if="!disabled && !busy" class="absolute inset-0 flex items-center justify-center bg-scrim/55 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
         <ImageUp :size="22" aria-hidden="true" />
       </span>
       <span v-if="busy" class="absolute inset-0 flex items-center justify-center bg-surface/70">
@@ -119,10 +119,10 @@ function onDrop(e: DragEvent) {
       <p class="mt-2 max-w-md text-xs text-fg-muted">
         PNG, JPG or WebP, up to 5 MB. Empty borders are trimmed and the image is optimized automatically; square and wide logos both work{{ disabled ? '' : '. You can also drop a file on the preview' }}.
       </p>
-      <p v-if="src && appearance?.opaque && !disabled" class="mt-2 max-w-md text-xs text-amber-700 dark:text-amber-300">
+      <p v-if="src && appearance?.opaque && !disabled" class="mt-2 max-w-md text-xs text-warning-fg">
         This logo has a solid background, so it appears as a badge on dark themes. For the most seamless look, upload a PNG with a transparent background.
       </p>
-      <p v-if="error" class="mt-2 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
+      <p v-if="error" class="mt-2 text-xs font-medium text-danger-fg" role="alert">{{ error }}</p>
     </div>
 
     <input ref="input" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" tabindex="-1" aria-label="Logo file" @change="upload(($event.target as HTMLInputElement).files?.[0])" />

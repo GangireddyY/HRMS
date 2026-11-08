@@ -85,7 +85,7 @@ const row = 'flex w-full items-center gap-3 border-b border-line/70 px-4 py-3 te
             :key="ws.key"
             :to="wsHome(ws)"
             :aria-current="ws.key === workspace.key ? 'true' : undefined"
-            :class="['card flex flex-col gap-2 p-3 text-sm font-medium', ws.key === workspace.key ? 'border-brand-400 bg-brand-50/60 text-brand-700 dark:bg-brand-500/10 dark:text-brand-200' : 'text-fg']"
+            :class="['card flex flex-col gap-2 p-3 text-sm font-medium', ws.key === workspace.key ? 'border-brand-400 bg-accent-soft text-accent-fg' : 'text-fg']"
           >
             <component :is="ws.icon" :size="18" aria-hidden="true" />
             {{ ws.label }}
@@ -98,7 +98,7 @@ const row = 'flex w-full items-center gap-3 border-b border-line/70 px-4 py-3 te
           <h2 v-if="section.title" class="px-1 text-xs font-semibold tracking-wider text-fg-subtle uppercase">{{ section.title }}</h2>
           <ul class="card overflow-hidden">
             <li v-for="item in section.items" :key="item.to">
-              <RouterLink :to="item.to" :class="[row, isActive(item) && 'bg-brand-50/60 font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-200']" :aria-current="isActive(item) ? 'page' : undefined">
+              <RouterLink :to="item.to" :class="[row, isActive(item) && 'bg-accent-soft font-medium text-accent-fg']" :aria-current="isActive(item) ? 'page' : undefined">
                 <component :is="item.icon" :size="18" class="shrink-0 text-fg-muted" aria-hidden="true" />
                 <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
                 <ChevronRight :size="15" class="text-fg-subtle" aria-hidden="true" />
@@ -124,7 +124,7 @@ const row = 'flex w-full items-center gap-3 border-b border-line/70 px-4 py-3 te
           <component :is="theme.isDark ? Sun : Moon" :size="18" class="shrink-0 text-fg-muted" aria-hidden="true" />
           <span class="flex-1">{{ theme.isDark ? 'Light mode' : 'Dark mode' }}</span>
         </button>
-        <button type="button" :class="[row, 'justify-center font-medium text-red-600 dark:text-red-400']" @click="signOut">
+        <button type="button" :class="[row, 'justify-center font-medium text-danger-fg']" @click="signOut">
           <LogOut :size="18" aria-hidden="true" />Sign out
         </button>
       </div>

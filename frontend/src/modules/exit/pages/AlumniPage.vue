@@ -56,6 +56,8 @@ const rehireBadge = (v: boolean | null | undefined) => (v === true ? { tone: 'su
         @page="table.setPage"
         @retry="table.load"
         @row-click="(r: AlumniRow) => r.exit && router.push(`/hr/exits/${r.exit.id}`)"
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()"
       >
         <template #cell-person="{ row }">
           <p class="font-medium text-fg">{{ row.name }}</p>
@@ -81,9 +83,9 @@ const rehireBadge = (v: boolean | null | undefined) => (v === true ? { tone: 'su
         </template>
         <template #cell-contact="{ row }">
           <div v-if="row.alumni" class="flex flex-wrap gap-3 text-xs" @click.stop>
-            <a v-if="row.alumni.personalEmail" :href="`mailto:${row.alumni.personalEmail}`" class="inline-flex items-center gap-1 text-brand-600 hover:underline dark:text-brand-400"><Mail :size="13" aria-hidden="true" />{{ row.alumni.personalEmail }}</a>
-            <a v-if="row.alumni.phone" :href="`tel:${row.alumni.phone}`" class="inline-flex items-center gap-1 text-brand-600 hover:underline dark:text-brand-400"><Phone :size="13" aria-hidden="true" />{{ row.alumni.phone }}</a>
-            <a v-if="row.alumni.linkedinUrl" :href="row.alumni.linkedinUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="13" aria-hidden="true" />LinkedIn</a>
+            <a v-if="row.alumni.personalEmail" :href="`mailto:${row.alumni.personalEmail}`" class="inline-flex items-center gap-1 text-accent-fg hover:underline"><Mail :size="13" aria-hidden="true" />{{ row.alumni.personalEmail }}</a>
+            <a v-if="row.alumni.phone" :href="`tel:${row.alumni.phone}`" class="inline-flex items-center gap-1 text-accent-fg hover:underline"><Phone :size="13" aria-hidden="true" />{{ row.alumni.phone }}</a>
+            <a v-if="row.alumni.linkedinUrl" :href="row.alumni.linkedinUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-accent-fg hover:underline"><ExternalLink :size="13" aria-hidden="true" />LinkedIn</a>
           </div>
           <span v-else class="text-xs text-fg-muted">—</span>
         </template>

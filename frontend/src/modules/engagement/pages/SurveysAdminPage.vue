@@ -60,7 +60,8 @@ const columns: TableColumn<SurveySummary>[] = [
       <template #actions><AppButton :icon="Plus" @click="openForm(null)">New survey</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Surveys" empty-title="No surveys yet" @page="table.setPage" @retry="table.load">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Surveys" empty-title="No surveys yet" @page="table.setPage" @retry="table.load" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="openForm(null)">New survey</AppButton></template>
         <template #cell-title="{ row }">
           <p class="font-medium text-fg">{{ row.title }}</p>
           <p class="text-xs text-fg-muted">{{ row.questions }} question{{ row.questions === 1 ? '' : 's' }} · {{ row.anonymous ? 'anonymous' : 'named' }}{{ row.departmentIds?.length ? ' · targeted' : '' }}{{ row.closesAt ? ` · closes ${formatDateTime(row.closesAt)}` : '' }}{{ row.openedAt ? ` · opened ${timeAgo(row.openedAt)}` : '' }}</p>

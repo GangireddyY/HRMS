@@ -43,7 +43,7 @@ const close = () => (open.value = false);
         :class="[
           'absolute z-40 mt-2 rounded-xl border border-line bg-surface-raised p-2 shadow-pop',
           width,
-          align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+          align === 'right' ? 'end-0 origin-top-right' : 'start-0 origin-top-left',
         ]"
         @click="close"
       >

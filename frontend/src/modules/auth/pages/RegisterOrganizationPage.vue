@@ -96,7 +96,7 @@ async function submit() {
 
 <template>
   <div class="auth-page-tall">
-    <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px] short:text-2xl">Create your organization</h1>
+    <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-title short:text-2xl">Create your organization</h1>
     <p class="mt-2 text-sm text-fg-muted short:mt-1 lg:tiny:hidden">Set up your workspace and become its admin.</p>
 
     <!-- Steps -->
@@ -116,11 +116,11 @@ async function submit() {
               :class="[
                 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition',
                 stepHasErrors(s.key)
-                  ? 'bg-red-500/10 text-red-600 ring-1 ring-red-500/30 dark:text-red-400'
+                  ? 'bg-danger/10 text-danger-fg ring-1 ring-danger/30'
                   : step === s.key
                     ? 'bg-brand-600 text-white shadow-[0_4px_12px_-4px_var(--brand-600)]'
                     : i < stepIndex || (s.key === 'organization' && organizationDone)
-                      ? 'bg-brand-500/15 text-brand-600 dark:text-brand-300'
+                      ? 'bg-brand-500/15 text-accent-fg'
                       : 'bg-surface text-fg-subtle ring-1 ring-line',
               ]"
             >
@@ -195,7 +195,7 @@ async function submit() {
     </form>
 
     <p class="mt-auto pt-4 text-center text-sm text-fg-muted short:pt-3">
-      Already have an account? <RouterLink to="/login" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Sign in</RouterLink>
+      Already have an account? <RouterLink to="/login" class="font-medium text-accent-fg hover:underline">Sign in</RouterLink>
     </p>
   </div>
 </template>

@@ -25,6 +25,35 @@ export async function signOut(page: Page): Promise<void> {
 
 export const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}`;
 
+/**
+ * Appearance normally follows the (shared) account. For tests that need a particular look, the choices are set in
+ * the browser and account preferences are hidden from the app; preference saves are answered locally.
+ */
+export async function isolateAppearance(page: Page, prefs: { mode?: string; sidebar?: string; color?: string }): Promise<void> {
+  await page.addInitScript((p) => {
+    if (p.mode) localStorage.setItem('hrms.theme', p.mode);
+    if (p.sidebar) localStorage.setItem('hrms.sidebar', p.sidebar);
+    if (p.color) localStorage.setItem('hrms.colorTheme', p.color);
+  }, prefs);
+  await page.route('**/api/v1/auth/me/preferences', (route) => route.fulfill({ json: { success: true, data: {} } }));
+  await page.route(/\/api\/v1\/auth\/(me|login|mfa\/verify|switch-organization)$/, async (route) => {
+    if (route.request().method() === 'PATCH') return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    const ctx = body?.data?.context ?? body?.data;
+    if (ctx?.user) ctx.user.preferences = {};
+    await route.fulfill({ response, json: body });
+  });
+}
+
+/** Appearance is saved on the account; resets it and waits for the save so later tests start from the defaults. */
+export async function resetAppearance(page: Page): Promise<void> {
+  if (!page.url().includes('/me/appearance')) await page.goto('/me/appearance');
+  const saved = page.waitForResponse((r) => r.url().includes('/auth/me/preferences') && r.request().method() === 'PATCH');
+  await page.getByRole('button', { name: 'Reset to default' }).click();
+  await saved;
+}
+
 /** Primary navigation; on screens narrower than `lg` it is in the "More" menu of the tab bar, opened first. */
 export async function primaryNav(page: Page): Promise<Locator> {
   const more = page.getByRole('navigation', { name: 'Tabs' }).getByRole('button', { name: 'More' });

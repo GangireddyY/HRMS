@@ -88,7 +88,7 @@ async function save() {
             v-for="o in plan.options"
             :key="o.id"
             class="flex cursor-pointer gap-3 rounded-xl p-4 ring-1 transition"
-            :class="optionId === o.id ? 'bg-brand-50/60 ring-2 ring-brand-500 dark:bg-brand-500/10' : 'ring-line hover:ring-line-strong'"
+            :class="optionId === o.id ? 'bg-accent-soft ring-2 ring-brand-500' : 'ring-line hover:ring-line-strong'"
           >
             <input v-model="optionId" type="radio" name="option" :value="o.id" class="mt-1 accent-brand-600" />
             <span class="min-w-0">
@@ -107,7 +107,7 @@ async function save() {
         <legend class="label">Who to cover <span class="font-normal text-fg-muted">(up to {{ option.maxDependents }})</span></legend>
         <p v-if="!coverable.length" class="text-sm text-fg-muted">
           No family members who can be covered yet.
-          <RouterLink to="/me/employment" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Add them under My employment → Family &amp; background</RouterLink>.
+          <RouterLink to="/me/employment" class="font-medium text-accent-fg hover:underline">Add them under My employment → Family &amp; background</RouterLink>.
         </p>
         <div v-else class="space-y-2">
           <AppCheckbox

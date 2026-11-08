@@ -46,7 +46,7 @@ async function respond(a: Announcement, fn: () => Promise<Announcement>, success
 const ack = (a: Announcement) => respond(a, () => engagementApi.acknowledge(a.id), 'Thanks for confirming');
 const rsvp = (a: Announcement, r: RsvpResponse) => respond(a, () => engagementApi.rsvp(a.id, r), 'RSVP saved');
 
-const wall = useTable((q) => engagementApi.recognitions(q), { pageSize: 10, immediate: false });
+const wall = useTable((q) => engagementApi.recognitions(q), { pageSize: 10, immediate: false, url: 'wall' });
 const stats = useAsync(() => engagementApi.recognitionStats());
 watch(tab, (t) => {
   if (t === 'wall' && !wall.rows.value.length) void wall.load();
@@ -137,7 +137,7 @@ async function removeRecognition(id: string) {
               <p class="text-sm text-fg">
                 <span class="font-semibold">{{ r.giver?.name ?? 'Someone' }}</span> recognised
                 <span class="font-semibold">{{ r.recipients.map((x) => x.name).join(', ') }}</span>
-                for <span class="font-medium text-amber-700 dark:text-amber-400">{{ BADGE_LABELS[r.badge] }}</span>
+                for <span class="font-medium text-warning-fg">{{ BADGE_LABELS[r.badge] }}</span>
               </p>
               <p class="mt-1 text-sm whitespace-pre-line text-fg-muted">{{ r.message }}</p>
               <p class="mt-2 text-xs text-fg-subtle" :title="formatDateTime(r.createdAt)">{{ timeAgo(r.createdAt) }}</p>
@@ -174,7 +174,7 @@ async function removeRecognition(id: string) {
                 <p class="font-medium text-fg">{{ s.title }}</p>
                 <p class="text-xs text-fg-muted">{{ s.questions }} question{{ s.questions === 1 ? '' : 's' }} · {{ s.anonymous ? 'anonymous' : 'your name is recorded' }}{{ s.closesAt ? ` · closes ${formatDateTime(s.closesAt)}` : '' }}</p>
               </div>
-              <span v-if="s.responded" class="text-sm text-emerald-600 dark:text-emerald-400">Answered — thank you</span>
+              <span v-if="s.responded" class="text-sm text-success-fg">Answered — thank you</span>
               <AppButton v-else size="sm" :to="`/me/engagement/surveys/${s.id}`">Answer</AppButton>
             </li>
           </ul>

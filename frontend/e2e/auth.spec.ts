@@ -87,7 +87,7 @@ test.describe('authentication', () => {
     await page.getByRole('button', { name: 'Create organization' }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole('heading', { name: organization })).toBeVisible();
+    await expect(page.getByRole('heading', { name: organization, exact: true })).toBeVisible();
     const nav = await primaryNav(page);
     await expect(nav.getByRole('link', { name: 'Users' })).toBeVisible();
     await nav.getByRole('link', { name: 'Roles & permissions' }).click();

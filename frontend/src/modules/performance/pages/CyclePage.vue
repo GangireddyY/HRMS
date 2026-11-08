@@ -158,7 +158,8 @@ const columns: TableColumn<ReviewRow>[] = [
           <AppSearchInput v-model="table.search.value" placeholder="Search employees" aria-label="Search reviews" />
           <AppSelect v-model="table.filters.stage" :options="stageOptions" placeholder="All stages" aria-label="Filter by stage" />
         </div>
-        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Reviews" empty-title="No reviews" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/reviews/${row.id}`)">
+        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Reviews" empty-title="No reviews" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/reviews/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+          <template #empty><AppButton variant="secondary" :icon="UserPlus" @click="addOpen = true">Add people</AppButton></template>
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee.name" size="sm" />
@@ -168,7 +169,7 @@ const columns: TableColumn<ReviewRow>[] = [
               </div>
             </div>
           </template>
-          <template #cell-reviewer="{ row }"><span :class="row.reviewer ? 'text-fg-muted' : 'text-amber-700 dark:text-amber-300'">{{ row.reviewer?.name ?? 'Not assigned' }}</span></template>
+          <template #cell-reviewer="{ row }"><span :class="row.reviewer ? 'text-fg-muted' : 'text-warning-fg'">{{ row.reviewer?.name ?? 'Not assigned' }}</span></template>
           <template #cell-stage="{ row }"><AppBadge :tone="stageTone[row.stage]" dot>{{ STAGE_LABELS[row.stage] }}</AppBadge></template>
           <template #cell-rating="{ row }">
             <span v-if="row.finalRating" class="font-medium tabular-nums">{{ row.finalRating }}<span v-if="row.calibrated" class="ms-1 text-xs text-fg-muted">(calibrated)</span></span>

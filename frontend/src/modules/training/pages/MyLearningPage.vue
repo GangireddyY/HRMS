@@ -33,7 +33,7 @@ const line = (e: Enrollment) => [DELIVERY_LABELS[e.course.delivery], e.session ?
                 <p class="font-medium text-fg">{{ e.course.title }}</p>
                 <p class="text-xs text-fg-muted">{{ line(e) }}</p>
               </div>
-              <span v-if="e.dueDate" class="text-xs" :class="e.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">{{ e.overdue ? 'Overdue since' : 'Due' }} {{ formatDate(e.dueDate) }}</span>
+              <span v-if="e.dueDate" class="text-xs" :class="e.overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'">{{ e.overdue ? 'Overdue since' : 'Due' }} {{ formatDate(e.dueDate) }}</span>
               <AppBadge :tone="enrollmentTone[e.status]" dot>{{ ENROLLMENT_STATUS_LABELS[e.status] }}</AppBadge>
               <ChevronRight :size="16" class="text-fg-subtle" aria-hidden="true" />
             </RouterLink>

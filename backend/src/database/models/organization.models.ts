@@ -134,6 +134,8 @@ export class Organization extends Model<InferAttributes<Organization>, InferCrea
   /** First month of the leave year (1 = January). */
   @Column(DataType.SMALLINT) leaveYearStartMonth: CreationOptional<number>;
   @Column(DataType.STRING(500)) logoUrl: CreationOptional<string | null>;
+  /** Lowercase `#rrggbb`; the web app derives an accessible palette from it. */
+  @Column(DataType.STRING(7)) brandColor: CreationOptional<string | null>;
   @Column(DataType.DATE) activatedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) suspendedAt: CreationOptional<Date | null>;
   @Column(DataType.STRING(500)) suspensionReason: CreationOptional<string | null>;

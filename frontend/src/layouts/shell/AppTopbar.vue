@@ -58,7 +58,8 @@ async function signOut() {
         type="button"
         class="ai-ring group inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-fg transition hover:shadow-[0_0_0_3px_color-mix(in_oklab,var(--brand-500)_12%,transparent)] sm:px-3"
         :aria-pressed="assistant.open"
-        aria-label="Ask the HRMS assistant"
+        aria-label="Ask AI"
+        aria-keyshortcuts="Control+J"
         title="Ask the HRMS assistant (Ctrl J)"
         @click="assistant.open = !assistant.open"
       >
@@ -83,8 +84,9 @@ async function signOut() {
 
       <AppDropdown width="w-72" label="Account menu">
         <template #trigger="{ toggle }">
-          <button type="button" class="flex items-center gap-2 rounded-full p-0.5 transition hover:ring-4 hover:ring-surface-muted" aria-label="Account menu" @click="toggle">
+          <button type="button" class="flex items-center gap-2 rounded-full p-0.5 transition hover:ring-4 hover:ring-surface-muted" @click="toggle">
             <AppAvatar :name="displayName || 'User'" :src="auth.user?.avatarUrl" size="sm" />
+            <span class="sr-only">Account menu</span>
           </button>
         </template>
         <div class="flex items-center gap-3 px-3 pt-2 pb-3">

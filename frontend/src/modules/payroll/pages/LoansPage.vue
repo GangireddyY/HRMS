@@ -60,7 +60,10 @@ const columns: TableColumn<Loan>[] = [
           @page="table.setPage"
           @retry="table.load"
           @row-click="(l: Loan) => router.push(`/hr/payroll/loans/${l.id}`)"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
         >
+          <template #empty><AppButton :icon="Plus" @click="raising = true">Raise for an employee</AppButton></template>
           <template #cell-employee="{ row }">
             <p class="font-medium text-fg">{{ row.employee?.name }}</p>
             <p class="text-xs text-fg-muted">{{ row.employee?.employeeCode }}{{ row.employee?.department ? ` · ${row.employee.department}` : '' }}</p>

@@ -5,7 +5,8 @@ import { REIMBURSEMENT_STATUSES, type ReimbursementStatus } from '@contracts';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
-import { AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppTabs, AppTextarea, type TableColumn } from '@/shared/components';
+import { AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppTabs, AppTextarea, type TableColumn } from '@/shared/components';
+import { runBulk } from '@/shared/utils/bulk';
 import { useTable } from '@/shared/composables/use-table';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate, timeAgo } from '@/shared/utils/format';
@@ -44,6 +45,19 @@ async function decide() {
     busy.value = false;
   }
 }
+const selected = ref<string[]>([]);
+const bulkBusy = ref(false);
+async function bulk(action: 'approve' | 'reject', reason = '') {
+  bulkBusy.value = true;
+  const { done, failed } = await runBulk([...selected.value], (id) => (action === 'approve' ? payrollApi.approveClaim(id, null) : payrollApi.rejectClaim(id, reason)));
+  bulkBusy.value = false;
+  selected.value = failed;
+  const verb = action === 'approve' ? 'approved' : 'rejected';
+  if (done) feedback.success(`${done} ${done === 1 ? 'claim' : 'claims'} ${verb}`, failed.length ? `${failed.length} could not be ${verb} and stay selected.` : 'Everyone has been notified.');
+  else feedback.error(`Could not ${action} the selected claims`);
+  await table.load();
+}
+
 async function receipt(c: Claim) {
   try {
     await payrollApi.downloadReceipt(c.id, c.receipt!.fileName);
@@ -68,7 +82,8 @@ const columns = computed<TableColumn<Claim>[]>(() => [
         <div v-if="view === 'all'" class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
           <AppSelect size="sm" v-model="table.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
-        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Reimbursement claims" :empty-title="view === 'approve' ? 'Nothing to approve' : 'No claims'" @page="table.setPage" @retry="table.load">
+        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Reimbursement claims" :empty-title="view === 'approve' ? 'Nothing to approve' : 'No claims'" @page="table.setPage" @retry="table.load" :filtered="table.isFiltered.value" @clear="table.clearFilters()" v-model:selected="selected" selectable :can-select="(r: Claim) => r.permissions.review" :select-label="(r: Claim) => `Select ${r.title} for ${r.employee?.name ?? 'employee'}`">
+          <template #bulk><AppBulkDecision :count="selected.length" noun="claim" :busy="bulkBusy" @approve="bulk('approve')" @reject="(r) => bulk('reject', r)" /></template>
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee?.name ?? '?'" size="sm" />

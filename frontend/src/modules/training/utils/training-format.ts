@@ -1,3 +1,4 @@
+import { appLocale } from '@/core/locale/locale';
 import type { CourseCategory, CourseDelivery, CourseStatus, EnrollmentStatus } from '@contracts';
 import type { CertificationState } from '../types';
 
@@ -36,8 +37,8 @@ export const certificationTone: Record<CertificationState, 'success' | 'warning'
 export const isSessionBasedDelivery = (d: CourseDelivery) => d !== 'SELF_PACED';
 export const hours = (h: number | null) => (h === null ? null : `${h} h`);
 
-const time = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-const timeOnly = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+const time = new Intl.DateTimeFormat(appLocale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+const timeOnly = new Intl.DateTimeFormat(appLocale(), { hour: 'numeric', minute: '2-digit' });
 /** "Fri, 13 Nov 2026, 10:00 – 13:00". */
 export function sessionWhen(s: { startsAt: string; endsAt: string }): string {
   const a = new Date(s.startsAt);

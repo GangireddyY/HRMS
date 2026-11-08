@@ -43,7 +43,7 @@ const columns = computed<TableColumn<Enrollment>[]>(() => [
         <div v-if="view === 'all'" class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
           <AppSelect size="sm" v-model="table.filters.status" class="w-56" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         </div>
-        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Team training" :empty-title="view === 'overdue' ? 'Nothing overdue' : certView ? 'No certifications to renew' : 'No training yet'" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/training/enrollments/${row.id}`)">
+        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Team training" :empty-title="view === 'overdue' ? 'Nothing overdue' : certView ? 'No certifications to renew' : 'No training yet'" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/training/enrollments/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee.name" size="sm" />
@@ -57,7 +57,7 @@ const columns = computed<TableColumn<Enrollment>[]>(() => [
             <p class="text-fg">{{ row.course.title }}</p>
             <p class="text-xs text-fg-muted">{{ row.course.code }} · {{ row.source === 'ASSIGNED' ? 'assigned' : 'self-enrolled' }}</p>
           </template>
-          <template #cell-due="{ row }"><span :class="row.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">{{ row.dueDate ? formatDate(row.dueDate) : '—' }}</span></template>
+          <template #cell-due="{ row }"><span :class="row.overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'">{{ row.dueDate ? formatDate(row.dueDate) : '—' }}</span></template>
           <template #cell-status="{ row }"><AppBadge :tone="enrollmentTone[row.status]" dot>{{ ENROLLMENT_STATUS_LABELS[row.status] }}</AppBadge></template>
           <template #cell-expires="{ row }">
             <span class="text-fg-muted">{{ row.expiresOn ? formatDate(row.expiresOn) : '—' }}</span>

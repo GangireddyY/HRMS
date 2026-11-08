@@ -178,7 +178,7 @@ onBeforeUnmount(() => clearInterval(timer));
             :x="leaf.x + 11"
             :y="leaf.y - 7"
             :size="14"
-            :class="leaf.key === current.leaf.key ? 'text-hero-on-solid' : branch.kind === 'platform' ? 'text-emerald-600 dark:text-emerald-300' : 'text-hero-accent'"
+            :class="leaf.key === current.leaf.key ? 'text-hero-on-solid' : branch.kind === 'platform' ? 'text-success-fg' : 'text-hero-accent'"
           />
           <text
             :x="leaf.x + 31"
@@ -267,13 +267,13 @@ onBeforeUnmount(() => clearInterval(timer));
           </span>
           <div class="min-w-0">
             <p class="text-base font-semibold">
-              {{ current.leaf.label }} <span class="font-medium text-hero-ink/50">· {{ current.branch.label }}</span>
+              {{ current.leaf.label }} <span class="font-medium text-hero-ink/70">· {{ current.branch.label }}</span>
             </p>
             <p class="text-sm text-hero-ink/70">{{ current.leaf.description }}</p>
           </div>
         </div>
       </Transition>
-      <span class="ms-auto shrink-0 pt-1 text-xs font-medium text-hero-ink/50 tabular-nums">{{ String(active + 1).padStart(2, '0') }} / {{ items.length }}</span>
+      <span class="ms-auto shrink-0 pt-1 text-xs font-medium text-hero-ink/70 tabular-nums">{{ String(active + 1).padStart(2, '0') }} / {{ items.length }}</span>
     </div>
   </div>
 </template>

@@ -72,13 +72,13 @@ const stats = computed(() => {
   const s = calendar.data.value?.summary;
   if (!s) return [];
   return [
-    { label: 'Present', value: s.present, tone: 'text-emerald-600 dark:text-emerald-400' },
-    { label: 'Half days', value: s.halfDay, tone: 'text-amber-600 dark:text-amber-400' },
-    { label: 'Absent', value: s.absent, tone: 'text-red-600 dark:text-red-400' },
-    { label: 'Late days', value: s.lateDays, tone: 'text-orange-600 dark:text-orange-400' },
+    { label: 'Present', value: s.present, tone: 'text-success-fg' },
+    { label: 'Half days', value: s.halfDay, tone: 'text-warning-fg' },
+    { label: 'Absent', value: s.absent, tone: 'text-danger-fg' },
+    { label: 'Late days', value: s.lateDays, tone: 'text-caution-fg' },
     { label: 'Worked', value: formatMinutes(s.workedMinutes), tone: 'text-fg' },
-    ...(s.workFromHomeDays ? [{ label: 'From home', value: s.workFromHomeDays, tone: 'text-sky-600 dark:text-sky-400' }] : []),
-    ...(s.overtimeMinutes ? [{ label: 'Overtime approved', value: formatMinutes(s.overtimeMinutes), tone: 'text-violet-600 dark:text-violet-400' }] : []),
+    ...(s.workFromHomeDays ? [{ label: 'From home', value: s.workFromHomeDays, tone: 'text-info-fg' }] : []),
+    ...(s.overtimeMinutes ? [{ label: 'Overtime approved', value: formatMinutes(s.overtimeMinutes), tone: 'text-special-fg' }] : []),
   ];
 });
 </script>

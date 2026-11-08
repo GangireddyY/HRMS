@@ -63,7 +63,7 @@ const C = 2 * Math.PI * R;
       <dl class="mt-4 grid grid-cols-3 gap-2 border-t border-line/70 pt-3 text-xs">
         <div><dt class="text-fg-subtle">Credited</dt><dd class="font-semibold text-fg tabular-nums">{{ b.available === null ? '—' : entitled(b) }}</dd></div>
         <div><dt class="text-fg-subtle">Taken</dt><dd class="font-semibold text-fg tabular-nums">{{ b.taken }}</dd></div>
-        <div><dt class="text-fg-subtle">Pending</dt><dd class="font-semibold tabular-nums" :class="b.pending ? 'text-amber-600 dark:text-amber-400' : 'text-fg'">{{ b.pending }}</dd></div>
+        <div><dt class="text-fg-subtle">Pending</dt><dd class="font-semibold tabular-nums" :class="b.pending ? 'text-warning-fg' : 'text-fg'">{{ b.pending }}</dd></div>
       </dl>
       <p v-if="b.opening || b.encashed || b.lapsed" class="mt-2 text-2xs text-fg-subtle">
         <template v-if="b.opening">{{ formatDays(b.opening) }} carried forward. </template>

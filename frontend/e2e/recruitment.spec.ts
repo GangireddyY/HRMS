@@ -30,7 +30,7 @@ test.describe('recruitment', () => {
     const title = unique('Backend Engineer');
     await page.goto('/hr/recruitment/requisitions');
     await expect(page.getByRole('heading', { name: 'Requisitions' })).toBeVisible();
-    await page.getByRole('button', { name: 'New requisition' }).click();
+    await page.getByRole('button', { name: 'New requisition' }).first().click();
     let dialog = page.getByRole('dialog', { name: 'New requisition' });
     await dialog.getByLabel('Position').fill(title);
     await dialog.getByLabel('Business justification').fill('The platform team needs another engineer for the payments roadmap.');
@@ -101,7 +101,7 @@ test.describe('recruitment', () => {
     // An open, public job to apply to.
     const title = unique('Data Analyst');
     await page.goto('/hr/recruitment/requisitions');
-    await page.getByRole('button', { name: 'New requisition' }).click();
+    await page.getByRole('button', { name: 'New requisition' }).first().click();
     let dialog = page.getByRole('dialog', { name: 'New requisition' });
     await dialog.getByLabel('Position').fill(title);
     await dialog.getByLabel('Business justification').fill('Reporting demand from finance has doubled this year.');

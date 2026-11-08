@@ -93,6 +93,7 @@ async function copy(text: string) {
     </AppPageHeader>
     <AppCard :padded="false">
       <AppDataTable :columns="columns" :rows="devices.data.value ?? []" :loading="devices.loading.value" :error="devices.error.value" caption="Attendance devices" empty-title="No devices yet" empty-description="Add a device to receive its punches." @retry="devices.run">
+        <template #empty><AppButton :icon="Plus" @click="edit(null)">Add device</AppButton></template>
         <template #cell-name="{ row }">
           <p class="flex items-center gap-2 font-medium text-fg"><Fingerprint :size="14" class="text-fg-subtle" aria-hidden="true" />{{ row.name }} <AppBadge v-if="!row.isActive" size="sm">Inactive</AppBadge></p>
           <p class="text-xs text-fg-muted">{{ [row.location?.name, row.serialNumber].filter(Boolean).join(' · ') || '—' }}</p>
@@ -116,7 +117,7 @@ async function copy(text: string) {
         <li>Put the device key in the <code class="text-xs">X-Device-Key</code> header.</li>
         <li>Send up to 500 punches at a time; repeats are ignored, so it is safe to resend.</li>
       </ol>
-      <pre class="mt-3 overflow-x-auto rounded-xl bg-surface-muted p-3 text-xs text-fg">{{ sample }}</pre>
+      <pre class="mt-3 overflow-x-auto rounded-xl bg-surface-muted p-3 text-xs text-fg focus-visible:outline-2 focus-visible:outline-brand-500" tabindex="0" aria-label="Example device request">{{ sample }}</pre>
     </AppCard>
 
     <AppModal :open="!!editing" :title="editing === 'new' ? 'Add device' : 'Edit device'" size="sm" @close="editing = null">

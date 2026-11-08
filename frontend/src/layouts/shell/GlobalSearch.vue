@@ -181,7 +181,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
     ]"
   >
     <div class="relative">
-      <Search :size="15" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+      <Search :size="15" class="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
       <input
         ref="input"
         v-model="query"
@@ -199,7 +199,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
         @blur="focused = false"
         @keydown="onKey"
       />
-      <span class="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
+      <span class="absolute top-1/2 end-2 flex -translate-y-1/2 items-center gap-1">
         <Loader2 v-if="searching" :size="13" class="animate-spin text-fg-subtle" aria-hidden="true" />
         <button v-if="query" type="button" class="rounded-sm p-0.5 text-fg-subtle hover:text-fg" aria-label="Clear search" @mousedown.prevent @click="query = ''; input?.focus()">
           <X :size="13" />
@@ -211,7 +211,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
       </span>
     </div>
 
-    <div v-if="open" class="absolute top-full right-0 z-40 mt-1 w-full min-w-[20rem] overflow-hidden rounded-md border border-line bg-surface shadow-pop max-md:left-0 max-md:min-w-0 md:w-[26rem]">
+    <div v-if="open" class="absolute top-full end-0 z-40 mt-1 w-full min-w-[20rem] overflow-hidden rounded-md border border-line bg-surface shadow-pop max-md:start-0 max-md:min-w-0 md:w-[26rem]">
       <ul id="global-search-results" role="listbox" aria-label="Search results" class="max-h-[60vh] overflow-y-auto p-1">
         <li v-if="!results.length" class="px-3 py-6 text-center text-sm text-fg-muted" role="presentation">{{ searching ? 'Searching…' : 'No results' }}</li>
         <template v-for="(r, i) in results" :key="r.id">
@@ -226,7 +226,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
             @mousedown.prevent
             @click="go(r)"
           >
-            <span :class="['flex h-7 w-7 shrink-0 items-center justify-center rounded-md', i === active ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300' : 'bg-surface-muted text-fg-muted']">
+            <span :class="['flex h-7 w-7 shrink-0 items-center justify-center rounded-md', i === active ? 'bg-accent-soft text-accent-fg' : 'bg-surface-muted text-fg-muted']">
               <component :is="r.icon" :size="14" aria-hidden="true" />
             </span>
             <div class="min-w-0 flex-1">

@@ -122,6 +122,36 @@ export class UpdateProfileDto {
   phone?: string | null;
 }
 
+const PREFERENCE_VALUE = /^[A-Za-z0-9-]{1,20}$/;
+const nullablePreference = ValidateIf((_o, v) => v !== null && v !== undefined);
+
+/** Appearance choices; each is a short catalog key (e.g. `dark`, `teal`, `en-IN`). Null removes a choice. */
+export class UpdatePreferencesDto {
+  @ApiPropertyOptional({ nullable: true, example: 'dark' })
+  @nullablePreference @IsString() @Matches(PREFERENCE_VALUE)
+  mode?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'teal' })
+  @nullablePreference @IsString() @Matches(PREFERENCE_VALUE)
+  color?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'light' })
+  @nullablePreference @IsString() @Matches(PREFERENCE_VALUE)
+  sidebar?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'en-IN' })
+  @nullablePreference @IsString() @Matches(PREFERENCE_VALUE)
+  region?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'h23' })
+  @nullablePreference @IsString() @Matches(PREFERENCE_VALUE)
+  hourCycle?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 'ltr' })
+  @nullablePreference @IsString() @Matches(PREFERENCE_VALUE)
+  direction?: string | null;
+}
+
 export class MfaCodeDto {
   @ApiProperty()
   @IsString() @Matches(/^\d{6}$/, { message: 'code must be 6 digits' })

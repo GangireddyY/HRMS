@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { fillForWhiteText } from '@/shared/utils/color-contrast';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { LeaveCalendar } from '@/modules/leave/types';
 import { addDays, formatIso, isWeekend } from '@/modules/leave/utils/calendar-dates';
@@ -77,7 +78,7 @@ function pack(monday: string): { segments: Segment[]; lanes: number } {
 }
 
 const weekdays = computed(() => Array.from({ length: 7 }, (_, i) => formatIso(addDays('2024-01-01', i), { weekday: 'short' })));
-const LANE = computed(() => (props.mode === 'week' ? 26 : 22));
+const LANE = computed(() => (props.mode === 'week' ? 26 : 24));
 /** Where the event lanes start in a row: under the day number (and the weekday labels on the first month row). */
 const top = (ri: number) => (props.mode === 'week' ? 8 : ri === 0 ? 48 : 32);
 
@@ -111,12 +112,12 @@ const rows = computed(() =>
 const outside = (d: string) => !!props.month && d.slice(0, 7) !== props.month;
 
 function style(s: Segment) {
-  if (s.kind === 'holiday') return { backgroundColor: 'color-mix(in oklab, #8b5cf6 16%, var(--app-surface))', color: 'color-mix(in oklab, #8b5cf6 72%, var(--app-text))' };
+  if (s.kind === 'holiday') return { backgroundColor: 'color-mix(in oklab, var(--status-special) 16%, var(--app-surface))', color: 'var(--status-special-fg)' };
   const c = s.entry!.leaveType.color;
-  if (s.kind === 'bar') return { backgroundColor: c, color: '#fff' };
+  if (s.kind === 'bar') return { backgroundColor: fillForWhiteText(c), color: '#fff' };
   if (s.kind === 'pending-bar')
     return {
-      color: `color-mix(in oklab, ${c} 72%, var(--app-text))`,
+      color: `color-mix(in oklab, ${c} 55%, var(--app-text))`,
       backgroundColor: `color-mix(in oklab, ${c} 10%, var(--app-surface))`,
       border: `1px dashed color-mix(in oklab, ${c} 70%, transparent)`,
     };
@@ -129,23 +130,29 @@ const initials = (name: string) =>
     .join('')
     .slice(0, 2)
     .toUpperCase();
-const label = (s: Segment) =>
-  s.holiday ? `Holiday: ${s.holiday}` : `${s.entry!.employee.name}, ${s.entry!.leaveType.name}, ${formatLeaveRange(s.entry!)}, ${LEAVE_STATUS_LABELS[s.entry!.status].toLowerCase()}`;
+/** Starts with the visible text (name, then the type as shown) so speech and voice control match what is on screen. */
+const label = (s: Segment) => {
+  if (s.holiday) return s.holiday;
+  const e = s.entry!;
+  const range = `${formatLeaveRange(e)}, ${LEAVE_STATUS_LABELS[e.status].toLowerCase()}`;
+  if (s.kind === 'dot') return `${halfOf(e) ? `${halfOf(e)} ` : ''}${e.employee.name}, ${e.leaveType.name}, ${range}`;
+  return `${e.employee.name} · ${s.end > s.start || props.mode === 'week' ? e.leaveType.name : e.leaveType.code}, ${e.leaveType.name}, ${range}`;
+};
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col bg-surface" role="grid" :aria-label="mode === 'month' ? 'Month' : 'Week'">
+  <div dir="ltr" class="flex h-full min-h-0 flex-col bg-surface" role="group" :aria-label="mode === 'month' ? 'Month' : 'Week'">
     <!-- Week view: weekday and a large date, like a calendar app's week header -->
-    <div v-if="mode === 'week'" class="grid shrink-0 grid-cols-7 border-b border-line" role="row">
-      <div v-for="(d, i) in rows[0]?.days ?? []" :key="d" role="columnheader" :class="['pt-2 pb-2 text-center', d === today ? 'text-brand-600 dark:text-brand-300' : 'text-fg-muted']">
+    <div v-if="mode === 'week'" class="grid shrink-0 grid-cols-7 border-b border-line">
+      <div v-for="(d, i) in rows[0]?.days ?? []" :key="d" :class="['pt-2 pb-2 text-center', d === today ? 'text-accent-fg' : 'text-fg-muted']">
         <span class="block text-2xs font-semibold tracking-wide uppercase">{{ weekdays[i] }}</span>
         <button
           type="button"
-          :class="['mx-auto mt-1 flex h-11 w-11 items-center justify-center rounded-full text-2xl tabular-nums transition', d === today ? 'bg-brand-600 text-white shadow-xs dark:bg-brand-500' : 'text-fg hover:bg-surface-muted']"
-          :aria-label="formatIso(d, { weekday: 'long', day: 'numeric', month: 'long' })"
+          :class="['mx-auto mt-1 flex h-11 w-11 items-center justify-center rounded-full text-2xl tabular-nums transition', d === today ? 'bg-brand-600 text-white shadow-xs' : 'text-fg hover:bg-surface-muted']"
           @click="emit('day', d)"
         >
-          {{ Number(d.slice(8)) }}
+          <span aria-hidden="true">{{ Number(d.slice(8)) }}</span>
+          <span class="sr-only">{{ formatIso(d, { weekday: 'long', day: 'numeric', month: 'long' }) }}</span>
         </button>
       </div>
     </div>
@@ -155,7 +162,6 @@ const label = (s: Segment) =>
         v-for="(r, ri) in rows"
         :key="r.monday"
         :class="['relative', ri < rows.length - 1 && 'border-b border-line/80', fit && mode === 'month' ? 'min-h-0 flex-1 basis-0 overflow-hidden' : 'flex-1']"
-        role="row"
         :style="
           fit && mode === 'month'
             ? undefined
@@ -167,7 +173,6 @@ const label = (s: Segment) =>
           <div
             v-for="(d, i) in r.days"
             :key="d"
-            role="gridcell"
             :aria-current="d === today ? 'date' : undefined"
             :class="['flex flex-col items-center pt-1.5', i < 6 && 'border-e border-line/80', outside(d) ? 'bg-surface-muted/30' : isWeekend(d) && 'bg-surface-muted/20']"
           >
@@ -177,12 +182,12 @@ const label = (s: Segment) =>
                 type="button"
                 :class="[
                   'mt-0.5 flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-medium tabular-nums transition',
-                  d === today ? 'bg-brand-600 font-semibold text-white shadow-xs dark:bg-brand-500' : outside(d) ? 'text-fg-subtle hover:bg-surface-muted' : 'text-fg hover:bg-surface-muted',
+                  d === today ? 'bg-brand-600 font-semibold text-white shadow-xs' : outside(d) ? 'text-fg-subtle hover:bg-surface-muted' : 'text-fg hover:bg-surface-muted',
                 ]"
-                :aria-label="`Week of ${formatIso(d, { day: 'numeric', month: 'long' })}`"
                 @click="emit('day', d)"
               >
-                {{ Number(d.slice(8)) === 1 ? formatIso(d, { day: 'numeric', month: 'short' }) : Number(d.slice(8)) }}
+                <span aria-hidden="true">{{ Number(d.slice(8)) === 1 ? formatIso(d, { day: 'numeric', month: 'short' }) : Number(d.slice(8)) }}</span>
+                <span class="sr-only">Week of {{ formatIso(d, { day: 'numeric', month: 'long' }) }}</span>
               </button>
             </template>
           </div>
@@ -197,7 +202,7 @@ const label = (s: Segment) =>
             :disabled="s.kind === 'holiday'"
             :class="[
               'pointer-events-auto flex min-w-0 items-center gap-1.5 px-1.5 text-start font-medium transition focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none',
-              mode === 'week' ? 'text-xs' : 'text-2xs sm:text-[12px]',
+              mode === 'week' ? 'text-xs' : 'text-2xs sm:text-xs',
               s.kind === 'dot' ? 'mx-1 rounded-[4px] text-fg hover:bg-surface-muted' : 'shadow-xs enabled:hover:shadow-card enabled:hover:brightness-95',
               s.kind !== 'dot' && (s.continuesBefore ? 'rounded-s-none' : 'ms-1 rounded-s-[4px]'),
               s.kind !== 'dot' && (s.continuesAfter ? 'rounded-e-none' : 'me-1 rounded-e-[4px]'),
@@ -205,31 +210,32 @@ const label = (s: Segment) =>
             ]"
             :style="{ gridColumn: `${s.start + 1} / ${s.end + 2}`, gridRow: `${s.lane + 1}`, ...style(s) }"
             :title="s.holiday ?? `${s.entry!.employee.name} · ${s.entry!.leaveType.name} · ${formatLeaveRange(s.entry!)} · ${LEAVE_STATUS_LABELS[s.entry!.status]}`"
-            :aria-label="label(s)"
             @click="(ev: MouseEvent) => s.entry && emit('open', s.entry, ev.currentTarget as HTMLElement)"
           >
-            <template v-if="s.kind === 'holiday'"><span class="truncate">{{ s.holiday }}</span></template>
+            <!-- Screen readers get the full description; the visible text (initials on phones) stays decorative. -->
+            <span class="sr-only">{{ label(s) }}</span>
+            <template v-if="s.kind === 'holiday'"><span class="truncate" aria-hidden="true">{{ s.holiday }}</span></template>
             <template v-else-if="s.kind === 'dot'">
               <span
                 class="h-2 w-2 shrink-0 rounded-full"
                 :style="s.entry!.status === 'PENDING' ? { boxShadow: `inset 0 0 0 1.5px ${s.entry!.leaveType.color}` } : { backgroundColor: s.entry!.leaveType.color }"
                 aria-hidden="true"
               />
-              <span v-if="halfOf(s.entry!)" class="shrink-0 text-fg-muted tabular-nums max-sm:hidden">{{ halfOf(s.entry!) }}</span>
-              <span class="truncate sm:hidden">{{ initials(s.entry!.employee.name) }}</span>
-              <span class="truncate max-sm:hidden">{{ s.entry!.employee.name }}</span>
+              <span v-if="halfOf(s.entry!)" class="shrink-0 text-fg-muted tabular-nums max-sm:hidden" aria-hidden="true">{{ halfOf(s.entry!) }}</span>
+              <span class="truncate sm:hidden" aria-hidden="true">{{ initials(s.entry!.employee.name) }}</span>
+              <span class="truncate max-sm:hidden" aria-hidden="true">{{ s.entry!.employee.name }}</span>
             </template>
             <template v-else>
-              <span class="truncate sm:hidden">{{ initials(s.entry!.employee.name) }}</span>
-              <span class="max-w-full shrink-0 truncate max-sm:hidden">{{ s.entry!.employee.name }}</span>
-              <span class="min-w-0 truncate opacity-80 max-sm:hidden">· {{ s.end > s.start || mode === 'week' ? s.entry!.leaveType.name : s.entry!.leaveType.code }}</span>
+              <span class="truncate sm:hidden" aria-hidden="true">{{ initials(s.entry!.employee.name) }}</span>
+              <span class="max-w-full shrink-0 truncate max-sm:hidden" aria-hidden="true">{{ s.entry!.employee.name }}</span>
+              <span class="min-w-0 truncate font-normal max-sm:hidden" aria-hidden="true">· {{ s.end > s.start || mode === 'week' ? s.entry!.leaveType.name : s.entry!.leaveType.code }}</span>
             </template>
           </button>
           <template v-for="(n, i) in r.hidden" :key="`more-${i}`">
             <button
               v-if="n"
               type="button"
-              class="pointer-events-auto mx-1 truncate rounded-[4px] px-1.5 text-start text-2xs font-semibold text-fg-muted hover:bg-surface-muted sm:text-[12px]"
+              class="pointer-events-auto mx-1 truncate rounded-[4px] px-1.5 text-start text-2xs font-semibold text-fg-muted hover:bg-surface-muted sm:text-xs"
               :style="{ gridColumn: `${i + 1}`, gridRow: `${r.moreRow}` }"
               @click="emit('day', r.days[i]!)"
             >

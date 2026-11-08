@@ -19,6 +19,7 @@ import {
   RegisterOrganizationDto,
   ResetPasswordDto,
   SwitchOrganizationDto,
+  UpdatePreferencesDto,
   UpdateProfileDto,
 } from './dto/auth.dto';
 import { MfaService } from './mfa.service';
@@ -167,6 +168,14 @@ export class AuthController {
   @Patch('me')
   updateProfile(@CurrentAuth() auth: AuthContext, @Body() dto: UpdateProfileDto) {
     return this.auth.updateProfile(auth, dto);
+  }
+
+  @ApiBearerAuth()
+  @AllowRestrictedSession()
+  @Patch('me/preferences')
+  @ApiOperation({ summary: 'Save appearance choices (theme, mode, sidebar, region formats) on the account' })
+  updatePreferences(@CurrentAuth() auth: AuthContext, @Body() dto: UpdatePreferencesDto) {
+    return this.auth.updatePreferences(auth, dto);
   }
 
   @ApiBearerAuth()

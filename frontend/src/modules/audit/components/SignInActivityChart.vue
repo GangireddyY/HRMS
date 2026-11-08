@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Tooltip, type ChartOptions } from 'chart.js';
@@ -18,7 +19,7 @@ const series = computed(() => {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86_400_000);
     keys.push(d.toISOString().slice(0, 10));
-    labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+    labels.push(d.toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' }));
   }
   const pick = (outcomes: string[]) => keys.map((k) => props.stats.filter((s) => s.day === k && outcomes.includes(s.outcome)).reduce((a, s) => a + s.count, 0));
   return { labels, success: pick(['SUCCESS']), failure: pick(['FAILURE', 'LOCKED']) };
@@ -89,7 +90,7 @@ const options = computed<ChartOptions<'bar'>>(() => {
 </script>
 
 <template>
-  <div class="h-64" role="img" :aria-label="`Sign-in activity for the last ${days ?? 14} days`">
-    <Bar :data="data" :options="options" />
+  <div class="h-64">
+    <Bar :data="data" :options="options" :aria-label="`Sign-in activity for the last ${days ?? 14} days`" />
   </div>
 </template>

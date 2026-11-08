@@ -84,7 +84,7 @@ onMounted(() => props.autofocus && void focusBox(0));
         :class="[
           'h-12 w-full min-w-0 rounded-xl border bg-surface text-center text-lg font-semibold tabular-nums text-fg shadow-xs transition',
           'focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:opacity-50',
-          error ? 'border-red-500' : d ? 'border-line-strong' : 'border-line',
+          error ? 'border-danger' : d ? 'border-fg-muted' : 'border-line-control',
         ]"
         @input="onInput(i, $event)"
         @keydown="onKeydown(i, $event)"

@@ -99,9 +99,9 @@ const ackComment = ref('');
           </AppCard>
           <AppCard title="Check-ins">
             <p v-if="!p.checkIns.length" class="text-sm text-fg-muted">No check-ins yet.</p>
-            <ol v-else class="relative space-y-4 border-l border-line ps-6">
+            <ol v-else class="relative space-y-4 border-s border-line ps-6">
               <li v-for="c in p.checkIns" :key="c.id" class="relative">
-                <span class="absolute top-1 -left-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500" aria-hidden="true" />
+                <span class="absolute top-1 -start-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500" aria-hidden="true" />
                 <p class="flex flex-wrap items-center gap-2 text-sm"><span class="font-medium text-fg">{{ formatDate(c.checkInDate) }}</span><AppBadge size="sm" :tone="pipProgressTone[c.progress]">{{ PIP_PROGRESS_LABELS[c.progress] }}</AppBadge></p>
                 <p class="mt-1 text-sm whitespace-pre-line text-fg-muted">{{ c.note }}</p>
                 <p class="text-xs text-fg-subtle">{{ c.createdBy }}</p>

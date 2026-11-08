@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, ref, watch } from 'vue';
 import { CheckCircle2, ChevronLeft, ChevronRight, Download, ListPlus, Pencil, Plus, Trash2, Undo2 } from '@lucide/vue';
 import { complianceApi } from '@/modules/compliance/api/compliance.api';
@@ -31,7 +32,7 @@ const span = computed(() => (view.value === 'month' ? 1 : 3));
 const range = computed(() => ({ from: localIso(start.value), to: localIso(new Date(start.value.getFullYear(), start.value.getMonth() + span.value, 0)) }));
 const monthKey = computed(() => range.value.from.slice(0, 7));
 const rangeLabel = computed(() => {
-  const f = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' });
+  const f = new Intl.DateTimeFormat(appLocale(), { month: 'short', year: 'numeric' });
   return `${f.format(start.value)} – ${f.format(new Date(start.value.getFullYear(), start.value.getMonth() + 2, 1))}`;
 });
 const calendar = useAsync(() => complianceApi.calendar({ ...range.value, overdue: true }));
@@ -44,14 +45,14 @@ const byDay = computed(() => {
   for (const i of calendar.data.value?.items ?? []) if (i.dueOn >= range.value.from) m.set(i.dueOn, [...(m.get(i.dueOn) ?? []), i]);
   return m;
 });
-const STATE_DOT: Record<FilingState, string> = { OVERDUE: 'bg-red-500', DUE_SOON: 'bg-amber-500', UPCOMING: 'bg-brand-500', DONE: 'bg-emerald-500' };
+const STATE_DOT: Record<FilingState, string> = { OVERDUE: 'bg-danger', DUE_SOON: 'bg-warning', UPCOMING: 'bg-brand-500', DONE: 'bg-success' };
 const overdueEarlier = computed(() => (calendar.data.value?.items ?? []).filter((i) => i.dueOn < range.value.from));
 const groups = computed(() => {
   const items = calendar.data.value?.items ?? [];
   const overdue = items.filter((i) => i.dueOn < range.value.from);
   const byMonth = new Map<string, CalendarItem[]>();
   for (const i of items.filter((x) => x.dueOn >= range.value.from)) byMonth.set(i.dueOn.slice(0, 7), [...(byMonth.get(i.dueOn.slice(0, 7)) ?? []), i]);
-  const f = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+  const f = new Intl.DateTimeFormat(appLocale(), { month: 'long', year: 'numeric' });
   return [
     ...(overdue.length ? [{ key: 'overdue', title: 'Overdue from earlier months', items: overdue }] : []),
     ...[...byMonth.entries()].map(([k, v]) => ({ key: k, title: f.format(new Date(Number(k.slice(0, 4)), Number(k.slice(5)) - 1, 1)), items: v })),
@@ -169,7 +170,7 @@ async function recommended() {
                   v-for="i in byDay.get(date) ?? []"
                   :key="i.obligation.id"
                   type="button"
-                  class="min-w-0 rounded-[4px] text-start focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none max-sm:sr-only"
+                  class="min-h-6 min-w-0 rounded-[4px] text-start focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none max-sm:sr-only"
                   :aria-label="`${i.obligation.title}, due ${formatDate(i.dueOn)}, ${FILING_STATE_LABELS[i.state]}${i.filing ? '' : '. Mark filed'}`"
                   @click="!i.filing && (filing = i)"
                 >

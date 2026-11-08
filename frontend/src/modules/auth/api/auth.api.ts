@@ -1,4 +1,4 @@
-import type { AccessContext, AuthUser, LoginResult, PasswordPolicy, TokenRefreshResult } from '@contracts';
+import type { AccessContext, AppearancePreferences, AuthUser, LoginResult, PasswordPolicy, TokenRefreshResult } from '@contracts';
 import { http, type ListQuery } from '@/core/http/http-client';
 import type { LoginEventRow } from '@/modules/audit/types';
 import type { MfaSetup, MfaStatus, SessionRow, TokenInspection } from '../types';
@@ -15,6 +15,7 @@ export const authApi = {
   registerOrganization: (body: unknown) => http.post<LoginResult>('/auth/register-organization', body, { anonymous: true }),
   me: () => http.get<AccessContext>('/auth/me'),
   updateProfile: (body: { firstName?: string; lastName?: string; phone?: string | null }) => http.patch<AuthUser>('/auth/me', body),
+  updatePreferences: (body: Partial<Record<keyof AppearancePreferences, string | null>>) => http.patch<AppearancePreferences>('/auth/me/preferences', body),
   uploadAvatar: (file: File) => http.upload<{ avatarUrl: string }>('/auth/me/avatar', file, { fileName: file.name }),
   removeAvatar: () => http.delete<{ removed: boolean }>('/auth/me/avatar'),
   passwordPolicy: () => http.get<PasswordPolicy>('/auth/password-policy'),

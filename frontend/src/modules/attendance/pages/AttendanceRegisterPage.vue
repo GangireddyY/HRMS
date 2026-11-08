@@ -101,6 +101,8 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
         @page="table.setPage"
         @retry="table.load"
         @row-click="(row: DailyRow) => router.push({ path: `/hr/attendance/employees/${row.employee.id}`, query: { month: monthOf(resolvedDate) } })"
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()"
       >
         <template #cell-employee="{ row }">
           <div class="flex items-center gap-3">
@@ -123,7 +125,7 @@ const monthOf = (d: string | null) => (d ?? today).slice(0, 7);
         <template #cell-out="{ row }">{{ formatTime(row.record?.checkOutAt) }}</template>
         <template #cell-worked="{ row }"><span class="tabular-nums">{{ formatMinutes(row.record?.workedMinutes) }}</span></template>
         <template #cell-late="{ row }">
-          <span :class="['tabular-nums', row.record?.lateMinutes ? 'font-medium text-orange-600 dark:text-orange-400' : 'text-fg-subtle']">{{ row.record?.lateMinutes ? formatMinutes(row.record.lateMinutes) : '—' }}</span>
+          <span :class="['tabular-nums', row.record?.lateMinutes ? 'font-medium text-caution-fg' : 'text-fg-subtle']">{{ row.record?.lateMinutes ? formatMinutes(row.record.lateMinutes) : '—' }}</span>
         </template>
       </AppDataTable>
     </AppCard>

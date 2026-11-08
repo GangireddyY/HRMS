@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Scopes, DefaultScope, Table, UpdatedAt } from 'sequelize-typescript';
-import type { PlatformRole, UserStatus } from '../../contracts';
+import type { AppearancePreferences, PlatformRole, UserStatus } from '../../contracts';
 import { Organization, OrganizationMembership } from './organization.models';
 
 export type ActionTokenPurpose = 'PASSWORD_RESET' | 'INVITATION';
@@ -70,6 +70,10 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
   /** Versioned, API-relative URL of the profile photo (see UserAvatar). */
   @Column(DataType.STRING(200))
   avatarUrl: CreationOptional<string | null>;
+
+  /** Appearance choices that follow the user across devices. */
+  @Column(DataType.JSONB)
+  preferences: CreationOptional<AppearancePreferences>;
 
   @ForeignKey(() => Organization) @Column(DataType.UUID)
   lastOrganizationId: CreationOptional<string | null>;

@@ -68,7 +68,7 @@ const lastStep = (r: PayrollRun) =>
       <template v-if="canProcess" #actions><AppButton :icon="Play" @click="openCreate">Run payroll</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Payroll runs" empty-title="No payroll runs yet" empty-description="Set everyone's salary, then run payroll for a month." @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/payroll/runs/${row.id}`)">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Payroll runs" empty-title="No payroll runs yet" empty-description="Set everyone's salary, then run payroll for a month." @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/payroll/runs/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
         <template #cell-period="{ row }"><span class="font-medium text-fg">{{ row.period }}</span></template>
         <template #cell-status="{ row }"><AppBadge :tone="runTone[row.status]" dot>{{ RUN_STATUS_LABELS[row.status] }}</AppBadge></template>
         <template #cell-employees="{ row }"><span class="tabular-nums">{{ row.employeeCount }}</span></template>

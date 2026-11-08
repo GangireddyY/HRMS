@@ -4,6 +4,7 @@ import { Laptop, MailPlus, ShieldCheck, Users } from '@lucide/vue';
 import { organizationApi } from '@/modules/organization/api/organization.api';
 import { AppAvatar, AppButton, AppCard, AppEmptyState, AppErrorState, AppHero, AppSkeleton, AppStatCard } from '@/shared/components';
 import SignInActivityChart from '@/modules/audit/components/SignInActivityChart.vue';
+import SetupChecklist from '@/modules/organization/components/SetupChecklist.vue';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { fullName, humanize, timeAgo } from '@/shared/utils/format';
@@ -28,6 +29,8 @@ const summary = computed(() => {
         <AppButton v-if="auth.can('role.view')" variant="secondary" :icon="ShieldCheck" to="/admin/roles">Roles &amp; permissions</AppButton>
       </template>
     </AppHero>
+
+    <SetupChecklist />
 
     <AppErrorState v-if="overview.error.value" :error="overview.error.value" @retry="overview.run" />
     <template v-else>
@@ -58,7 +61,7 @@ const summary = computed(() => {
             <li v-for="(a, i) in overview.data.value.recentActivity" :key="a.id" class="relative flex gap-3 pb-4 last:pb-0">
               <span
                 v-if="i < overview.data.value.recentActivity.length - 1"
-                class="absolute top-8 bottom-0 left-[13px] w-px bg-line"
+                class="absolute top-8 bottom-0 start-[13px] w-px bg-line"
                 aria-hidden="true"
               />
               <AppAvatar :name="a.actor ? fullName(a.actor) : 'System'" size="sm" class="relative" />

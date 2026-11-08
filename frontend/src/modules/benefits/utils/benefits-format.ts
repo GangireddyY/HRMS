@@ -1,3 +1,4 @@
+import { INR_LOCALE } from '@/core/locale/locale';
 import type { BenefitEnrollmentReason, BenefitEnrollmentStatus, BenefitPlanStatus, BenefitType, DependentRelation, LifeEvent } from '@contracts';
 
 export const TYPE_LABELS: Record<BenefitType, string> = {
@@ -34,4 +35,4 @@ export const LIFE_EVENT_LABELS: Record<LifeEvent, string> = {
 };
 export const RELATION_LABELS: Record<DependentRelation, string> = { SPOUSE: 'Spouse', CHILD: 'Child', FATHER: 'Father', MOTHER: 'Mother' };
 
-export const inr = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`);
+export const inr = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `₹${n.toLocaleString(INR_LOCALE, { maximumFractionDigits: 2 })}`);

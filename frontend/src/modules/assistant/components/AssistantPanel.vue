@@ -101,7 +101,7 @@ watch(() => route.fullPath, () => {
   <Transition enter-from-class="translate-x-full opacity-0" leave-to-class="translate-x-full opacity-0" enter-active-class="transition duration-200 ease-out" leave-active-class="transition duration-150 ease-in">
     <aside
       v-if="store.open"
-      class="pt-safe pb-safe fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line bg-surface shadow-pop sm:w-[420px]"
+      class="pt-safe pb-safe fixed inset-y-0 end-0 z-40 flex w-full flex-col border-s border-line bg-surface shadow-pop sm:w-[420px]"
       role="dialog"
       aria-modal="false"
       aria-labelledby="assistant-title"
@@ -129,14 +129,14 @@ watch(() => route.fullPath, () => {
           <div>
             <p class="mb-2 text-xs font-medium text-fg-subtle">Try asking</p>
             <div class="flex flex-wrap gap-2">
-              <button v-for="p in prompts" :key="p" type="button" class="rounded-full border border-line bg-surface px-3 py-2 text-sm text-fg transition hover:border-brand-500/50 hover:bg-brand-50/50 dark:hover:bg-brand-500/10" @click="ask(p)">{{ p }}</button>
+              <button v-for="p in prompts" :key="p" type="button" class="rounded-full border border-line bg-surface px-3 py-2 text-sm text-fg transition hover:border-brand-500/50 hover:bg-accent-soft" @click="ask(p)">{{ p }}</button>
             </div>
           </div>
         </div>
 
         <template v-for="m in store.messages" :key="m.id">
           <div v-if="m.role === 'user'" class="flex justify-end">
-            <p class="max-w-[85%] rounded-lg rounded-br-sm bg-brand-600 px-3 py-2 text-sm text-white dark:bg-brand-500">{{ m.text }}</p>
+            <p class="max-w-[85%] rounded-lg rounded-ee-sm bg-brand-600 px-3 py-2 text-sm text-white">{{ m.text }}</p>
           </div>
           <div v-else class="flex gap-3">
             <span class="ai-chip mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md"><Sparkles :size="12" aria-hidden="true" /></span>
@@ -170,7 +170,7 @@ watch(() => route.fullPath, () => {
                   </li>
                 </ul>
                 <div v-if="m.reply?.actions?.length" class="flex flex-wrap gap-2">
-                  <RouterLink v-for="a in m.reply.actions" :key="a.to" :to="a.to" class="inline-flex items-center gap-1 rounded-md border border-brand-500/40 px-3 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10">
+                  <RouterLink v-for="a in m.reply.actions" :key="a.to" :to="a.to" class="inline-flex items-center gap-1 rounded-md border border-brand-500/40 px-3 py-1 text-xs font-medium text-accent-fg transition hover:bg-accent-soft">
                     {{ a.label }}<ArrowRight :size="12" aria-hidden="true" />
                   </RouterLink>
                 </div>

@@ -74,7 +74,7 @@ const rows = computed(() => {
               <p v-if="e.note" class="text-xs text-fg-muted">{{ e.note }}</p>
               <p v-if="e.createdBy" class="text-xs text-fg-subtle">{{ e.createdBy }}</p>
             </td>
-            <td class="px-3 py-2 text-end font-medium tabular-nums" :class="e.days < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'">{{ e.days > 0 ? '+' : '' }}{{ e.days }}</td>
+            <td class="px-3 py-2 text-end font-medium tabular-nums" :class="e.days < 0 ? 'text-danger-fg' : 'text-success-fg'">{{ e.days > 0 ? '+' : '' }}{{ e.days }}</td>
             <td class="px-3 py-2 text-end text-fg-muted tabular-nums">{{ e.running }}</td>
           </tr>
         </tbody>

@@ -44,7 +44,8 @@ const columns: TableColumn<Plan>[] = [
         <AppSearchInput v-model="table.search.value" placeholder="Search plans" aria-label="Search plans" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Benefit plans" empty-title="No plans yet" @page="table.setPage" @retry="table.load" @row-click="(p: Plan) => router.push(`/hr/benefits/plans/${p.id}`)">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Benefit plans" empty-title="No plans yet" @page="table.setPage" @retry="table.load" @row-click="(p: Plan) => router.push(`/hr/benefits/plans/${p.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="formOpen = true">New plan</AppButton></template>
         <template #cell-name="{ row }">
           <p class="font-medium text-fg">{{ row.name }}</p>
           <p class="text-xs text-fg-muted">{{ TYPE_LABELS[row.type] }}{{ row.provider ? ` · ${row.provider}` : '' }}{{ row.mandatory ? ' · mandatory' : '' }}</p>
@@ -53,7 +54,7 @@ const columns: TableColumn<Plan>[] = [
         <template #cell-status="{ row }"><AppBadge :tone="planTone[row.status]" dot>{{ PLAN_STATUS_LABELS[row.status] }}</AppBadge></template>
         <template #cell-enrolled="{ row }">
           <span class="tabular-nums">{{ row.stats?.enrolled ?? 0 }}</span>
-          <span v-if="row.stats?.pending" class="ms-1 text-xs text-amber-600 dark:text-amber-400">+{{ row.stats.pending }} pending</span>
+          <span v-if="row.stats?.pending" class="ms-1 text-xs text-warning-fg">+{{ row.stats.pending }} pending</span>
         </template>
         <template #cell-cost="{ row }">
           <p class="tabular-nums text-fg">{{ inr((row.stats?.employerMonthly ?? 0) + (row.stats?.employeeMonthly ?? 0)) }}</p>

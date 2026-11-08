@@ -16,7 +16,7 @@ const eventOver = () => !!props.announcement.eventStartsAt && new Date(props.ann
   <article class="card p-4" :class="announcement.pinned && 'border-brand-400/60'">
     <div class="mb-2 flex flex-wrap items-center gap-2">
       <AppBadge :tone="categoryTone[announcement.category]" size="sm">{{ CATEGORY_LABELS[announcement.category] }}</AppBadge>
-      <span v-if="announcement.pinned" class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-400"><Pin :size="12" aria-hidden="true" />Pinned</span>
+      <span v-if="announcement.pinned" class="inline-flex items-center gap-1 text-xs font-medium text-accent-fg"><Pin :size="12" aria-hidden="true" />Pinned</span>
       <span class="text-xs text-fg-subtle">{{ announcement.publishedAt ? timeAgo(announcement.publishedAt) : 'Draft' }}</span>
     </div>
     <RouterLink v-if="clamp" :to="`/me/engagement/announcements/${announcement.id}`" class="text-lg font-semibold text-fg hover:underline">{{ announcement.title }}</RouterLink>
@@ -29,7 +29,7 @@ const eventOver = () => !!props.announcement.eventStartsAt && new Date(props.ann
     <p v-if="announcement.expiresAt" class="mt-2 text-xs text-fg-subtle">Until {{ formatDate(announcement.expiresAt) }}</p>
     <div v-if="canRespond !== false && (announcement.requiresAck || (announcement.category === 'EVENT' && !eventOver()))" class="mt-4 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3">
       <template v-if="announcement.requiresAck">
-        <span v-if="announcement.mine.acknowledgedAt" class="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400"><Check :size="14" aria-hidden="true" />Acknowledged {{ timeAgo(announcement.mine.acknowledgedAt) }}</span>
+        <span v-if="announcement.mine.acknowledgedAt" class="inline-flex items-center gap-1 text-sm text-success-fg"><Check :size="14" aria-hidden="true" />Acknowledged {{ timeAgo(announcement.mine.acknowledgedAt) }}</span>
         <AppButton v-else size="sm" :icon="Check" :loading="busy" @click="emit('acknowledge')">I've read this</AppButton>
       </template>
       <template v-if="announcement.category === 'EVENT' && !eventOver()">

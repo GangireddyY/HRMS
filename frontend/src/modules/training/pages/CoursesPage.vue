@@ -46,7 +46,8 @@ const columns: TableColumn<CourseRow>[] = [
         <AppSelect v-model="table.filters.category" :options="categoryOptions" placeholder="All categories" aria-label="Filter by category" />
         <AppSelect v-if="canManage" v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Courses" empty-title="No courses yet" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/training/courses/${row.id}`)">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Courses" empty-title="No courses yet" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/training/courses/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="formOpen = true">New course</AppButton></template>
         <template #cell-title="{ row }">
           <p class="font-medium text-fg">{{ row.title }} <AppBadge v-if="row.mandatory" tone="warning" size="sm" class="ms-1">Mandatory</AppBadge></p>
           <p class="text-xs text-fg-muted">{{ row.code }} · {{ CATEGORY_LABELS[row.category] }}{{ row.durationHours ? ` · ${hours(row.durationHours)}` : '' }}</p>

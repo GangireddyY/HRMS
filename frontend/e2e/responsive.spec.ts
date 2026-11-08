@@ -1,6 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { credentials } from './env';
-import { expectNoHorizontalOverflow, primaryNav, signIn } from './helpers';
+import { expectNoHorizontalOverflow, primaryNav, signIn, isolateAppearance } from './helpers';
 
 const { orgAdmin, superAdmin } = credentials();
 
@@ -195,7 +195,7 @@ test.describe('responsive layout', () => {
     await expect(page.getByRole('dialog', { name: 'Merit guidelines' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await capture(page, testInfo, 'performance-hike-guidelines');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).first().click();
     await page.goto(cycleUrl);
     const review = page.locator('#main table tbody tr').first();
     if (await review.isVisible()) {
@@ -222,7 +222,7 @@ test.describe('responsive layout', () => {
     test.skip(!(await course.isVisible().catch(() => false)), 'needs a classroom course (created by training.spec.ts)');
     await course.click();
     await expect(page).toHaveURL(/\/hr\/training\/courses\/[0-9a-f-]+$/);
-    await expect(page.getByText('Roster')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Roster' })).toBeVisible();
     await checkCurrent(page, testInfo, 'training-course');
   });
 
@@ -232,7 +232,7 @@ test.describe('responsive layout', () => {
     await page.getByRole('button', { name: 'New survey' }).click();
     await expect(page.getByRole('dialog', { name: 'New survey' }).getByLabel('Question 1', { exact: true })).toBeVisible();
     await checkCurrent(page, testInfo, 'survey-builder');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).first().click();
     await page.waitForLoadState('networkidle');
     const results = page.getByRole('button', { name: 'Results' }).first();
     test.skip(!(await results.isVisible().catch(() => false)), 'needs an opened survey (created by engagement.spec.ts)');
@@ -248,7 +248,7 @@ test.describe('responsive layout', () => {
     await page.getByRole('button', { name: 'Raise a grievance' }).click();
     await expect(page.getByRole('dialog', { name: 'Raise a grievance' }).getByLabel('What happened?')).toBeVisible();
     await checkCurrent(page, testInfo, 'grievance-form');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).first().click();
     await page.goto('/hr/grievances');
     await page.getByRole('combobox', { name: /^Filter by status/ }).click();
     await page.getByRole('option', { name: 'Closed', exact: true }).click();
@@ -270,7 +270,7 @@ test.describe('responsive layout', () => {
     await page.getByRole('button', { name: 'New plan' }).click();
     await expect(page.getByRole('dialog', { name: 'New benefit plan' }).getByLabel('Plan name')).toBeVisible();
     await checkCurrent(page, testInfo, 'benefit-plan-form');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).first().click();
     const row = page.getByRole('row').filter({ hasText: 'Group health' }).first();
     const found = await row.waitFor({ state: 'visible', timeout: 8000 }).then(
       () => true,
@@ -328,10 +328,7 @@ test.describe('responsive layout', () => {
 
   test('dark mode with the dark sidebar fits the screen', async ({ page }, testInfo) => {
     test.setTimeout(60_000);
-    await page.addInitScript(() => {
-      localStorage.setItem('hrms.theme', 'dark');
-      localStorage.setItem('hrms.sidebar', 'dark');
-    });
+    await isolateAppearance(page, { mode: 'dark', sidebar: 'dark' });
     await signIn(page, orgAdmin.email, orgAdmin.password);
     await expect(page.locator('html')).toHaveClass(/dark/);
     await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'dark');

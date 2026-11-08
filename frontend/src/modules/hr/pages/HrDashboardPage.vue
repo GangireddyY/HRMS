@@ -161,14 +161,14 @@ const moduleAccess = computed(() =>
         />
         <ul v-else class="-my-2 divide-y divide-line/60">
           <li v-for="e in upcomingEvents" :key="e.id" class="flex items-center gap-3 py-2">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-50 text-violet-600 dark:bg-violet-500/12 dark:text-violet-300"><Megaphone :size="15" aria-hidden="true" /></span>
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-special-soft text-special-fg"><Megaphone :size="15" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium text-fg">{{ e.title }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ formatDate(e.eventStartsAt) }}{{ e.eventLocation ? ` · ${e.eventLocation}` : '' }}</span>
             </span>
           </li>
           <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-3 py-2">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-300"><PartyPopper :size="15" aria-hidden="true" /></span>
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-soft text-success-fg"><PartyPopper :size="15" aria-hidden="true" /></span>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium text-fg">{{ h.name }}</span>
               <span class="block truncate text-xs text-fg-muted">{{ formatDate(h.date) }} · in {{ daysUntil(h.date) }} days</span>
@@ -183,7 +183,7 @@ const moduleAccess = computed(() =>
       <template #actions><AppButton size="sm" variant="ghost" to="/hr/recruitment/jobs">All jobs</AppButton></template>
       <ul class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         <li v-for="j in jobs.data.value.items" :key="j.id">
-          <RouterLink :to="`/hr/recruitment/jobs/${j.id}`" class="block rounded-md border border-line p-3 transition hover:border-brand-500/40 hover:bg-brand-50/30 dark:hover:bg-brand-500/5">
+          <RouterLink :to="`/hr/recruitment/jobs/${j.id}`" class="block rounded-md border border-line p-3 transition hover:border-brand-500/40 hover:bg-accent-soft">
             <p class="truncate text-sm font-medium text-fg">{{ j.title }}</p>
             <p class="truncate text-xs text-fg-muted">{{ [j.requisition.department?.name, j.requisition.location?.name].filter(Boolean).join(' · ') || j.requisition.code }}</p>
             <div class="mt-2 flex flex-wrap gap-1">
@@ -198,7 +198,7 @@ const moduleAccess = computed(() =>
     <details class="card group">
       <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2">
         <span class="flex min-w-0 items-center gap-3">
-          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-gradient-to-b from-surface to-surface-muted text-brand-600 shadow-xs dark:text-brand-300">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-gradient-to-b from-surface to-surface-muted text-accent-fg shadow-xs">
             <ShieldCheck :size="16" aria-hidden="true" />
           </span>
           <span class="min-w-0">

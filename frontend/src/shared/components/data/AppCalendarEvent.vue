@@ -22,19 +22,19 @@ const props = withDefaults(
 
 const TONES: Record<Tone, string> = {
   brand: 'var(--brand-500)',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  info: '#0ea5e9',
-  violet: '#8b5cf6',
-  orange: '#f97316',
-  cyan: '#06b6d4',
-  neutral: '#94a3b8',
+  success: 'var(--status-success)',
+  warning: 'var(--status-warning)',
+  danger: 'var(--status-danger)',
+  info: 'var(--status-info)',
+  violet: 'var(--status-special)',
+  orange: 'var(--status-caution)',
+  cyan: 'var(--status-away)',
+  neutral: 'var(--status-neutral)',
 };
 const c = computed(() => props.color ?? TONES[props.tone]);
 const style = computed(() => {
   if (props.variant === 'dot') return {};
-  const text = `color-mix(in oklab, ${c.value} 62%, var(--app-text))`;
+  const text = `color-mix(in oklab, ${c.value} 50%, var(--app-text))`;
   if (props.variant === 'outline') return { color: text, border: `1px dashed color-mix(in oklab, ${c.value} 60%, transparent)` };
   return { color: text, backgroundColor: `color-mix(in oklab, ${c.value} 15%, var(--app-surface))`, boxShadow: `inset 2px 0 0 ${c.value}` };
 });

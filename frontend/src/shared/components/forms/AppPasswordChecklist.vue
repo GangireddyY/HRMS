@@ -18,7 +18,7 @@ const rules = computed(() => {
 });
 const met = computed(() => rules.value.filter((r) => r.ok).length);
 const strength = computed(() => (props.password ? met.value / rules.value.length : 0));
-const barColor = computed(() => (strength.value === 1 ? 'bg-emerald-500' : strength.value >= 0.6 ? 'bg-amber-500' : 'bg-red-500'));
+const barColor = computed(() => (strength.value === 1 ? 'bg-success' : strength.value >= 0.6 ? 'bg-warning' : 'bg-danger'));
 </script>
 
 <template>
@@ -31,11 +31,11 @@ const barColor = computed(() => (strength.value === 1 ? 'bg-emerald-500' : stren
       />
     </div>
     <ul :class="['grid grid-cols-1 gap-x-4 gap-y-2 text-xs sm:grid-cols-2', compact && 'lg:short:grid-cols-3 lg:short:gap-x-3 lg:short:gap-y-1']" aria-label="Password requirements">
-      <li v-for="r in rules" :key="r.label" :class="['flex items-center gap-2 transition-colors', r.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-fg-muted']">
+      <li v-for="r in rules" :key="r.label" :class="['flex items-center gap-2 transition-colors', r.ok ? 'text-success-fg' : 'text-fg-muted']">
         <span
           :class="[
             'flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition',
-            r.ok ? 'bg-emerald-500 text-white' : 'border border-line-strong',
+            r.ok ? 'bg-success text-white' : 'border border-line-strong',
           ]"
           aria-hidden="true"
         >

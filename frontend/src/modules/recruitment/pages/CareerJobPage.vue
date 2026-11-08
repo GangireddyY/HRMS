@@ -53,7 +53,7 @@ async function apply() {
 <template>
   <div class="min-h-dvh bg-canvas">
     <div class="mx-auto max-w-3xl px-4 py-10 sm:py-16">
-      <RouterLink :to="`/careers/${slug}`" class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">← All open positions</RouterLink>
+      <RouterLink :to="`/careers/${slug}`" class="text-sm font-medium text-accent-fg hover:underline">← All open positions</RouterLink>
       <AppSkeleton v-if="data.loading.value && !data.data.value" class="mt-4" :lines="8" />
       <AppErrorState v-else-if="data.error.value" class="mt-4" :error="data.error.value" title="This position isn't open" />
       <template v-else-if="data.data.value">
@@ -78,7 +78,7 @@ async function apply() {
 
         <section class="mt-4 card p-4">
           <div v-if="done" class="flex flex-col items-center py-4 text-center">
-            <CheckCircle2 :size="40" class="text-emerald-500" aria-hidden="true" />
+            <CheckCircle2 :size="40" class="text-success" aria-hidden="true" />
             <p class="mt-3 text-lg font-semibold text-fg">Application sent</p>
             <p class="mt-1 max-w-md text-sm text-fg-muted">{{ done }}</p>
           </div>
@@ -93,7 +93,7 @@ async function apply() {
             </div>
             <AppInput v-model="form.linkedinUrl" label="LinkedIn profile" placeholder="linkedin.com/in/name" :error="fieldErrors.linkedinUrl" />
             <div>
-              <p class="mb-2 text-sm font-medium text-fg">Resume <span class="text-red-500" aria-hidden="true">*</span></p>
+              <p class="mb-2 text-sm font-medium text-fg">Resume <span class="text-danger" aria-hidden="true">*</span></p>
               <button type="button" class="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-line px-4 py-4 text-start transition hover:border-brand-400" @click="input?.click()">
                 <FileUp :size="20" class="text-fg-subtle" aria-hidden="true" />
                 <span class="text-sm" :class="resume ? 'font-medium text-fg' : 'text-fg-muted'">{{ resume ? resume.name : 'PDF or Word (.docx), up to 5 MB' }}</span>

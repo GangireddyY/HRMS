@@ -55,7 +55,10 @@ const columns: TableColumn<Candidate>[] = [
         @page="table.setPage"
         @retry="table.load"
         @row-click="(row) => router.push(`/hr/recruitment/candidates/${row.id}`)"
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()"
       >
+        <template #empty><AppButton :icon="Plus" @click="formOpen = true">Add candidate</AppButton></template>
         <template #cell-name="{ row }">
           <div class="flex items-center gap-3">
             <AppAvatar :name="row.name" size="sm" />

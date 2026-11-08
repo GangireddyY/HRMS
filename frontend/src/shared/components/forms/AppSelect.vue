@@ -233,7 +233,7 @@ function onSearchKey(e: KeyboardEvent) {
           >
             <div v-if="isSearchable" class="border-b border-line p-2">
               <div class="relative">
-                <Search :size="15" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+                <Search :size="15" class="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
                 <input
                   ref="searchInput"
                   v-model="query"
@@ -279,7 +279,7 @@ function onSearchKey(e: KeyboardEvent) {
                   <span class="block truncate">{{ item.label }}</span>
                   <span v-if="item.description" class="block truncate text-xs font-normal text-fg-subtle">{{ item.description }}</span>
                 </span>
-                <Check v-if="isSelected(item)" :size="15" class="shrink-0 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                <Check v-if="isSelected(item)" :size="15" class="shrink-0 text-accent-fg" aria-hidden="true" />
               </li>
               <li v-if="!filtered.length" class="px-3 py-6 text-center text-sm text-fg-muted" role="presentation">No matches</li>
             </ul>

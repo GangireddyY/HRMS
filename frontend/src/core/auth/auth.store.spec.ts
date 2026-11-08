@@ -4,8 +4,8 @@ import type { AccessContext } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 
 const context: AccessContext = {
-  user: { id: 'u1', email: 'a@b.test', firstName: 'A', lastName: 'B', phone: null, platformRole: null, mfaEnabled: false, lastLoginAt: null },
-  activeOrganization: { id: 'o1', name: 'Org', slug: 'org', status: 'ACTIVE', logoUrl: null },
+  user: { id: 'u1', email: 'a@b.test', firstName: 'A', lastName: 'B', phone: null, platformRole: null, mfaEnabled: false, lastLoginAt: null, avatarUrl: null, preferences: {} },
+  activeOrganization: { id: 'o1', name: 'Org', slug: 'org', status: 'ACTIVE', logoUrl: null, brandColor: null },
   organizations: [],
   roles: [{ id: 'r1', key: 'team_lead', name: 'Team Lead' }],
   permissions: { 'leave.approve': 'TEAM', 'leave.apply': 'ORGANIZATION' },
@@ -13,6 +13,7 @@ const context: AccessContext = {
   features: ['core', 'leave'],
   mfaSetupRequired: false,
   passwordExpired: false,
+  idleTimeoutMinutes: 120,
 };
 
 function json(body: unknown, status = 200) {

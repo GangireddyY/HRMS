@@ -36,7 +36,7 @@ const filing = { ON_TIME: null, LATE: 'Made more than 3 months after the inciden
       </div>
       <div>
         <dt class="text-fg-muted">{{ grievance.posh ? 'Inquiry due by' : 'Response due by' }}</dt>
-        <dd :class="grievance.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg'">{{ formatDate(grievance.dueOn) }}{{ grievance.overdue ? ' · overdue' : '' }}</dd>
+        <dd :class="grievance.overdue ? 'font-medium text-danger-fg' : 'text-fg'">{{ formatDate(grievance.dueOn) }}{{ grievance.overdue ? ' · overdue' : '' }}</dd>
       </div>
     </dl>
     <h3 class="mb-1 text-sm font-medium text-fg">What happened</h3>

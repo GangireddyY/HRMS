@@ -86,7 +86,8 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
           :empty-title="reviews.filters.status === 'PENDING' ? 'Nothing to decide' : 'No reviews'"
           @page="reviews.setPage"
           @retry="reviews.load"
-        >
+          :filtered="reviews.isFiltered.value"
+          @clear="reviews.clearFilters()">
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee?.name ?? '?'" size="sm" />
@@ -133,7 +134,7 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
           </template>
           <template #cell-end="{ row }">
             <span>{{ formatDate(row.probationEndDate) }}</span>
-            <p class="text-xs" :class="row.daysLeft < 0 ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">{{ row.daysLeft < 0 ? `${-row.daysLeft} days overdue` : row.daysLeft === 0 ? 'Today' : `in ${row.daysLeft} days` }}</p>
+            <p class="text-xs" :class="row.daysLeft < 0 ? 'font-medium text-danger-fg' : 'text-fg-muted'">{{ row.daysLeft < 0 ? `${-row.daysLeft} days overdue` : row.daysLeft === 0 ? 'Today' : `in ${row.daysLeft} days` }}</p>
           </template>
           <template #cell-review="{ row }">
             <AppBadge v-if="row.pendingReview" tone="warning" size="sm">{{ RECOMMENDATION_LABELS[row.pendingReview.recommendation] }} · awaiting decision</AppBadge>

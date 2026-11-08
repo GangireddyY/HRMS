@@ -76,7 +76,10 @@ function onInvited(member: Member) {
         @page="table.setPage"
         @retry="table.load"
         @row-click="(row) => router.push(`/admin/users/${row.id}`)"
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()"
       >
+        <template #empty><AppButton v-if="auth.can('user.invite')" :icon="UserPlus" :disabled="!roles.data.value" @click="inviteOpen = true">Invite user</AppButton></template>
         <template #cell-name="{ row }">
           <div class="flex items-center gap-3">
             <AppAvatar :name="`${row.firstName} ${row.lastName}`" :src="row.avatarUrl" size="sm" />

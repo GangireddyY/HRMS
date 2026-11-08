@@ -170,7 +170,7 @@ async function hire() {
                       <span v-if="p.employee?.designation" class="text-xs text-fg-muted">{{ p.employee.designation }}</span>
                       <template v-if="p.submittedAt">
                         <AppBadge v-if="p.recommendation" :tone="recommendationTone[p.recommendation]" size="sm">{{ RECOMMENDATION_LABELS[p.recommendation] }}</AppBadge>
-                        <span class="text-xs text-amber-600 dark:text-amber-400">{{ '★'.repeat(p.rating ?? 0) }}<span class="text-fg-subtle">{{ '★'.repeat(5 - (p.rating ?? 0)) }}</span></span>
+                        <span class="text-xs text-warning-fg">{{ '★'.repeat(p.rating ?? 0) }}<span class="text-fg-subtle">{{ '★'.repeat(5 - (p.rating ?? 0)) }}</span></span>
                       </template>
                       <span v-else class="text-xs text-fg-subtle">Feedback pending</span>
                     </div>
@@ -182,9 +182,9 @@ async function hire() {
           </AppCard>
 
           <AppCard title="Timeline">
-            <ol class="relative space-y-4 border-l border-line ps-6">
+            <ol class="relative space-y-4 border-s border-line ps-6">
               <li v-for="e in [...a.events].reverse()" :key="e.id" class="relative">
-                <span class="absolute top-1 -left-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500" aria-hidden="true" />
+                <span class="absolute top-1 -start-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500" aria-hidden="true" />
                 <p class="text-sm text-fg">{{ e.fromStage ? `${STAGE_LABELS[e.fromStage]} → ` : '' }}<span class="font-medium">{{ STAGE_LABELS[e.toStage] }}</span></p>
                 <p v-if="e.note" class="text-sm text-fg-muted">{{ e.note }}</p>
                 <p class="text-xs text-fg-subtle">{{ e.createdBy ?? 'Careers page' }} · {{ formatDateTime(e.createdAt) }}</p>
@@ -205,7 +205,7 @@ async function hire() {
                 <div><dt class="text-xs text-fg-muted">Current CTC</dt><dd class="text-fg">{{ money(a.candidate.currentCtc) }}</dd></div>
                 <div><dt class="text-xs text-fg-muted">Expected CTC</dt><dd class="text-fg">{{ money(a.candidate.expectedCtc) }}</dd></div>
               </div>
-              <div v-if="a.candidate.linkedinUrl"><a :href="a.candidate.linkedinUrl" target="_blank" rel="noopener noreferrer nofollow" class="text-brand-600 hover:underline dark:text-brand-400">LinkedIn profile</a></div>
+              <div v-if="a.candidate.linkedinUrl"><a :href="a.candidate.linkedinUrl" target="_blank" rel="noopener noreferrer nofollow" class="text-accent-fg hover:underline">LinkedIn profile</a></div>
               <div v-if="a.candidate.notes"><dt class="text-xs text-fg-muted">Notes</dt><dd class="whitespace-pre-line text-fg-muted">{{ a.candidate.notes }}</dd></div>
             </dl>
             <div class="mt-4 flex flex-wrap gap-2 border-t border-line/70 pt-4">

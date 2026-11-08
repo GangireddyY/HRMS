@@ -25,15 +25,21 @@ test.describe('attendance', () => {
     }
 
     await expect(page.getByRole('heading', { name: 'My attendance' })).toBeVisible();
-    const punchIn = page.getByRole('button', { name: 'Punch in' });
+    const card = page.getByRole('region', { name: "Today's attendance" });
+    const punchIn = card.getByRole('button', { name: 'Punch in' });
+    const punchOut = card.getByRole('button', { name: 'Punch out' });
+    await expect(punchIn.or(punchOut).or(card.getByText('Day complete'))).toBeVisible();
     if (await punchIn.isVisible()) {
       await punchIn.click();
       await expect(page.getByText('Punched in', { exact: true })).toBeVisible();
-      await page.getByRole('button', { name: 'Punch out' }).click();
+    }
+    if (await punchOut.isVisible()) {
+      await punchOut.click();
       await expect(page.getByText('Punched out', { exact: true })).toBeVisible();
     }
     // Today's record is complete (in, out and worked time).
-    await expect(page.getByText('Worked', { exact: true }).first()).toBeVisible();
+    await expect(card.getByText('Day complete')).toBeVisible();
+    await expect(card.getByText('Worked today')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Punch in' })).toHaveCount(0);
     await expect(page.getByRole('grid', { name: /Attendance for/ })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('my-attendance.png'), fullPage: true });

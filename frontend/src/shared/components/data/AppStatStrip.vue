@@ -17,14 +17,14 @@ const emit = defineEmits<{ select: [key: string | null] }>();
 
 const TONES: Record<string, string> = {
   brand: 'var(--brand-500)',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  info: '#0ea5e9',
-  violet: '#8b5cf6',
-  orange: '#f97316',
-  cyan: '#06b6d4',
-  neutral: '#a1a1aa',
+  success: 'var(--status-success)',
+  warning: 'var(--status-warning)',
+  danger: 'var(--status-danger)',
+  info: 'var(--status-info)',
+  violet: 'var(--status-special)',
+  orange: 'var(--status-caution)',
+  cyan: 'var(--status-away)',
+  neutral: 'var(--status-neutral)',
 };
 const dot = (t?: string) => (t ? (TONES[t] ?? t) : undefined);
 const toggle = (key: string) => emit('select', props.selected === key ? null : key);
@@ -41,7 +41,7 @@ const toggle = (key: string) => emit('select', props.selected === key ? null : k
           :class="[
             'relative flex h-full w-full flex-col gap-1 px-4 py-3 text-start transition-colors',
             selectable && 'cursor-pointer hover:bg-surface-muted/60 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none focus-visible:ring-inset',
-            selected === it.key && 'bg-brand-50/70 dark:bg-brand-500/10',
+            selected === it.key && 'bg-accent-soft',
           ]"
           @click="selectable && toggle(it.key)"
         >

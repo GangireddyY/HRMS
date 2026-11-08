@@ -48,7 +48,7 @@ const columns: TableColumn<SuggestionItem>[] = [
       <div class="flex items-center justify-end gap-2 border-b border-line/70 px-4 py-2">
         <AppSelect size="sm" v-model="table.filters.status" class="w-52" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
       </div>
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Suggestions" empty-title="No suggestions" @page="table.setPage" @retry="table.load" @row-click="open">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Suggestions" empty-title="No suggestions" @page="table.setPage" @retry="table.load" @row-click="open" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
         <template #cell-title="{ row }">
           <p class="font-medium text-fg">{{ row.title }}</p>
           <p class="line-clamp-2 text-xs text-fg-muted">{{ SUGGESTION_CATEGORY_LABELS[row.category] }} · {{ timeAgo(row.createdAt) }} · {{ row.body }}</p>

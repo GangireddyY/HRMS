@@ -118,7 +118,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
           :aria-current="!query && m.key === selected ? 'true' : undefined"
           :class="[
             'group flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-start ring-1 ring-line transition @3xl/matrix:w-full @3xl/matrix:ring-0',
-            !query && m.key === selected ? 'bg-brand-50 ring-1 ring-brand-600/15 dark:bg-brand-500/12' : 'hover:bg-surface-muted',
+            !query && m.key === selected ? 'bg-accent-soft ring-1 ring-brand-600/15' : 'hover:bg-surface-muted',
             query && !matchCount(m) && 'opacity-40',
           ]"
           @click="choose(m.key)"
@@ -133,7 +133,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
           </span>
           <span class="min-w-0 flex-1">
             <span class="flex items-center gap-2">
-              <span :class="['truncate text-sm font-medium', !query && m.key === selected ? 'text-brand-700 dark:text-brand-300' : 'text-fg']">{{ m.name }}</span>
+              <span :class="['truncate text-sm font-medium', !query && m.key === selected ? 'text-accent-fg' : 'text-fg']">{{ m.name }}</span>
             </span>
             <span class="mt-1 hidden items-center gap-2 @3xl/matrix:flex">
               <span class="h-1 flex-1 overflow-hidden rounded-full bg-surface-muted">
@@ -160,7 +160,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
       <section v-for="m in shown" :key="m.key" :aria-label="`${m.name} permissions`" class="border-line [&+&]:border-t">
         <header class="flex flex-wrap items-center gap-x-4 gap-y-3 bg-surface px-4 py-4 sm:px-4 lg:sticky lg:top-0 lg:z-10 lg:mb-1 lg:border-b lg:border-line/70">
 
-          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-fg ring-1 ring-brand-600/15 ring-inset">
             <component :is="MODULE_ICONS[m.key]" :size="18" aria-hidden="true" />
           </span>
           <div class="min-w-0 flex-1">
@@ -196,8 +196,8 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
                     :disabled="!editable(m) || p.restricted"
                     @change="setGrant(p, ($event.target as HTMLInputElement).checked)"
                   />
-                  <span class="absolute inset-0 rounded-full bg-zinc-300 transition-colors peer-checked:bg-brand-600 peer-focus-visible:ring-4 peer-focus-visible:ring-brand-500/25 peer-disabled:opacity-50 dark:bg-zinc-700" />
-                  <span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] peer-checked:translate-x-4" />
+                  <span class="absolute inset-0 rounded-full bg-line-control transition-colors peer-checked:bg-brand-600 peer-focus-visible:ring-4 peer-focus-visible:ring-brand-500/25 peer-disabled:opacity-50" />
+                  <span class="absolute top-0.5 start-0.5 h-4 w-4 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] peer-checked:translate-x-4 rtl:peer-checked:-translate-x-4" />
                 </span>
                 <span class="min-w-0">
                   <span class="block text-sm font-medium text-fg">{{ p.description }}</span>
@@ -225,7 +225,7 @@ const editable = (m: CatalogModule) => !props.readonly && m.entitled;
                     :disabled="!editable(m)"
                     :class="[
                       'rounded-md px-3 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none disabled:cursor-not-allowed',
-                      model[p.key] === s ? 'bg-surface text-brand-700 shadow-card ring-1 ring-line dark:text-brand-300' : 'text-fg-muted enabled:hover:text-fg',
+                      model[p.key] === s ? 'bg-surface text-accent-fg shadow-card ring-1 ring-line' : 'text-fg-muted enabled:hover:text-fg',
                     ]"
                     @click="setScope(p, s)"
                     @keydown="onScopeKey($event, p, i)"

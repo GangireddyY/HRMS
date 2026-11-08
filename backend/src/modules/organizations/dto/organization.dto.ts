@@ -92,6 +92,11 @@ export class OrganizationProfileDto {
   @ApiPropertyOptional({ minimum: 1, maximum: 12 })
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(12)
   fiscalYearStartMonth?: number;
+
+  @ApiPropertyOptional({ example: '#0e7490', nullable: true, description: 'Brand color; the app derives an accessible palette from it.' })
+  @Transform(({ value }) => (typeof value === 'string' ? (value.trim() === '' ? null : value.trim().toLowerCase()) : value))
+  @optionalNullable @Matches(/^#[0-9a-f]{6}$/, { message: 'brandColor must be a hex color like #0e7490' })
+  brandColor?: string | null;
 }
 
 export class UpdateSecurityPolicyDto {

@@ -13,7 +13,7 @@ withDefaults(defineProps<{ title?: string; description?: string; padded?: boolea
   <section :class="['card flex flex-col overflow-hidden', fill && 'h-full']">
     <header v-if="title || $slots.actions" class="flex min-h-12 shrink-0 items-center justify-between gap-2 border-b border-line/70 px-4 py-2 max-sm:flex-wrap">
       <div class="flex min-w-0 flex-1 items-center gap-3">
-        <span v-if="icon" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-gradient-to-b from-surface to-surface-muted text-brand-600 shadow-xs dark:text-brand-300">
+        <span v-if="icon" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-gradient-to-b from-surface to-surface-muted text-accent-fg shadow-xs">
           <component :is="icon" :size="16" aria-hidden="true" />
         </span>
         <div class="min-w-0">

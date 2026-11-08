@@ -1,6 +1,7 @@
-const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-const dateOnly = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+import { appLocale } from '@/core/locale/locale';
+const dateTime = new Intl.DateTimeFormat(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+const dateOnly = new Intl.DateTimeFormat(appLocale(), { dateStyle: 'medium' });
+const relative = new Intl.RelativeTimeFormat(appLocale(), { numeric: 'auto' });
 
 export function formatDateTime(value: string | Date | null | undefined): string {
   return value ? dateTime.format(new Date(value)) : '—';
@@ -45,5 +46,5 @@ export function humanize(value: string): string {
 
 export function formatMoney(amount: number | null | undefined, currency = 'INR'): string {
   if (amount === null || amount === undefined) return 'Custom';
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat(appLocale(), { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 }

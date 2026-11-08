@@ -14,7 +14,7 @@ test.describe('reports', () => {
   test('headcount reflects a new employee and exports as CSV', async ({ page }) => {
     await page.goto('/hr/reports/headcount');
     await page.waitForLoadState('networkidle');
-    const before = Number(await page.locator('section, div').filter({ has: page.getByText('Headcount', { exact: true }) }).getByText(/^\d+$/).first().textContent());
+    const before = Number(await page.getByRole('main').locator('.card').filter({ has: page.getByText('Headcount', { exact: true }) }).getByText(/^\d+$/).first().textContent());
     const employee = await newEmployee(page, 'Ishita');
     expect(employee.name).toContain('Ishita');
 
@@ -26,11 +26,12 @@ test.describe('reports', () => {
     await expect(page.getByRole('table', { name: 'By department' })).toBeVisible();
     await expect(page.getByRole('table', { name: 'Last 12 months' })).toBeVisible();
     await expect(page.locator('section, div').filter({ has: page.getByText('Joined in the last 30 days', { exact: true }) }).getByText(/^\d+$/).first()).not.toHaveText('0');
-    const after = Number(await page.locator('section, div').filter({ has: page.getByText('Headcount', { exact: true }) }).getByText(/^\d+$/).first().textContent());
+    const after = Number(await page.getByRole('main').locator('.card').filter({ has: page.getByText('Headcount', { exact: true }) }).getByText(/^\d+$/).first().textContent());
     expect(after).toBe(before + 1);
 
     const download = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export CSV' }).click();
+    await page.getByRole('button', { name: 'Export' }).click();
+    await page.getByRole('menuitem', { name: /CSV/ }).click();
     expect((await download).suggestedFilename()).toMatch(/^headcount report .*\.csv$/);
   });
 
@@ -46,7 +47,6 @@ test.describe('reports', () => {
       if (tableName) await expect(page.getByText(tableName, { exact: true }).first()).toBeVisible();
     }
     await page.goto('/hr');
-    await expect(page.getByRole('heading', { name: 'At a glance' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'All reports' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Headcount/ }).first()).toBeVisible();
   });
 });

@@ -266,7 +266,7 @@ async function remove() {
         <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="translate-y-3 opacity-0" leave-active-class="transition duration-150" leave-to-class="translate-y-3 opacity-0">
           <div v-if="!readonly && grantsDirty" class="pointer-events-none sticky bottom-4 z-20 mt-4 lg:absolute lg:inset-x-0 lg:bottom-4 lg:mt-0">
             <div class="pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center gap-3 rounded-2xl bg-surface-raised px-4 py-3 shadow-pop ring-1 ring-line">
-              <span class="flex h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+              <span class="flex h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
               <p class="min-w-0 flex-1 text-sm font-medium text-fg">{{ changeCount }} unsaved {{ changeCount === 1 ? 'change' : 'changes' }}</p>
               <AppButton variant="ghost" size="sm" :disabled="savingGrants" @click="discardGrants">Discard</AppButton>
               <AppButton size="sm" :icon="Save" :loading="savingGrants" @click="saveGrants">Save permissions</AppButton>

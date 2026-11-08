@@ -41,7 +41,7 @@ const nothing = computed(() => !mine.loading.value && !mine.data.value && !team.
       <template #actions>
         <span class="text-sm text-fg-muted tabular-nums">{{ mine.data.value.progress.done }} of {{ mine.data.value.progress.total }} done</span>
       </template>
-      <div class="mb-4 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${pct}%` }" /></div>
+      <div class="mb-4 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-success transition-all" :style="{ width: `${pct}%` }" /></div>
       <p v-if="mine.data.value.buddy" class="mb-4 text-sm text-fg-muted">Your buddy is <span class="font-medium text-fg">{{ mine.data.value.buddy.name }}</span> — reach out with any questions.</p>
       <ChecklistTasks :detail="mine.data.value" @updated="onUpdated" />
     </AppCard>
@@ -66,7 +66,7 @@ const nothing = computed(() => !mine.loading.value && !mine.data.value && !team.
           <AppAvatar :name="p.employee.name" size="sm" />
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium text-fg">{{ p.employee.name }}</p>
-            <p class="text-xs" :class="p.daysLeft < 0 ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">Probation ends {{ formatDate(p.probationEndDate) }}{{ p.daysLeft < 0 ? ` · ${-p.daysLeft} days overdue` : '' }}</p>
+            <p class="text-xs" :class="p.daysLeft < 0 ? 'font-medium text-danger-fg' : 'text-fg-muted'">Probation ends {{ formatDate(p.probationEndDate) }}{{ p.daysLeft < 0 ? ` · ${-p.daysLeft} days overdue` : '' }}</p>
           </div>
           <AppBadge v-if="p.pendingReview" tone="warning" size="sm">{{ RECOMMENDATION_LABELS[p.pendingReview.recommendation] }} · awaiting decision</AppBadge>
           <AppButton v-else size="sm" variant="secondary" @click="recommendFor = p">Review</AppButton>

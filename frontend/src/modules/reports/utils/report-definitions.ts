@@ -1,3 +1,4 @@
+import { appLocale, INR_LOCALE } from '@/core/locale/locale';
 import type { Component } from 'vue';
 import { Banknote, ClipboardList, LogOut, Plane, Users } from '@lucide/vue';
 import { REPORT_META, type ReportKey, type ReportValueFormat } from '@contracts';
@@ -97,14 +98,14 @@ export function formatValue(v: number | string | null | undefined, format: Value
   if (typeof v === 'string') return v;
   switch (format) {
     case 'percent':
-      return `${v.toLocaleString('en-IN', { maximumFractionDigits: 1 })}%`;
+      return `${v.toLocaleString(appLocale(), { maximumFractionDigits: 1 })}%`;
     case 'money':
-      return `₹${v.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+      return `₹${v.toLocaleString(INR_LOCALE, { maximumFractionDigits: 0 })}`;
     case 'years':
-      return `${v.toLocaleString('en-IN', { maximumFractionDigits: 1 })} years`;
+      return `${v.toLocaleString(appLocale(), { maximumFractionDigits: 1 })} years`;
     case 'days':
-      return `${v.toLocaleString('en-IN', { maximumFractionDigits: 1 })} days`;
+      return `${v.toLocaleString(appLocale(), { maximumFractionDigits: 1 })} days`;
     default:
-      return v.toLocaleString('en-IN', { maximumFractionDigits: 1 });
+      return v.toLocaleString(appLocale(), { maximumFractionDigits: 1 });
   }
 }

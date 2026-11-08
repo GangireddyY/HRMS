@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Loader2, Maximize2, Minus, Network, Plus, ScanSearch, Users } from '@lucide/vue';
@@ -282,7 +283,7 @@ onMounted(async () => {
         @pointercancel="onPointerUp"
         @keydown="onKey"
       >
-        <div ref="content" class="absolute top-0 left-0 w-max origin-top-left pb-16" :style="{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }">
+        <div ref="content" class="absolute top-0 start-0 w-max origin-top-left pb-16" :style="{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }">
           <OrgChartTree root :nodes="children.get('') ?? []" :children-of="children" :expanded="expanded" :loading="loadingIds" :focused="focused" @toggle="toggleInChart" />
         </div>
       </div>
@@ -313,7 +314,7 @@ onMounted(async () => {
         <div class="flex items-center gap-2 border-b border-line px-4 py-3 text-xs text-fg-muted">
           <AppButton class="ms-auto" size="xs" variant="ghost" :icon="ChevronsDownUp" :disabled="!expanded.size" @click="collapseAll">Collapse all</AppButton>
           <Users class="order-first h-3.5 w-3.5" aria-hidden="true" />
-          {{ (children.get('') ?? []).length.toLocaleString() }} {{ (children.get('') ?? []).length === 1 ? 'person' : 'people' }} at the top · {{ topReports.toLocaleString() }} direct report{{ topReports === 1 ? '' : 's' }} below them
+          {{ (children.get('') ?? []).length.toLocaleString(appLocale()) }} {{ (children.get('') ?? []).length === 1 ? 'person' : 'people' }} at the top · {{ topReports.toLocaleString(appLocale()) }} direct report{{ topReports === 1 ? '' : 's' }} below them
         </div>
         <ul class="py-2" role="tree" aria-label="Org chart">
           <li
@@ -330,7 +331,7 @@ onMounted(async () => {
               <span
                 v-for="d in r.depth"
                 :key="d"
-                class="pointer-events-none absolute top-0 bottom-0 border-l border-line"
+                class="pointer-events-none absolute top-0 bottom-0 border-s border-line"
                 :class="d === r.depth && r.last[d] ? 'h-1/2' : ''"
                 :style="{ left: `${12 + (d - 1) * 28 + 13}px`, ...(d < r.depth && r.last[d] ? { display: 'none' } : {}) }"
                 aria-hidden="true"

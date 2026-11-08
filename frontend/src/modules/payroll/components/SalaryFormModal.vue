@@ -123,7 +123,7 @@ async function save() {
       <div class="rounded-xl bg-surface-muted/40 p-4 ring-1 ring-line">
         <p class="mb-2 text-sm font-medium text-fg">Breakdown</p>
         <AppSkeleton v-if="previewing && !preview" :lines="4" />
-        <p v-else-if="previewError" class="text-sm text-red-600 dark:text-red-400" role="alert">{{ previewError }}</p>
+        <p v-else-if="previewError" class="text-sm text-danger-fg" role="alert">{{ previewError }}</p>
         <SalaryBreakdownTable v-else-if="preview" v-bind="preview" />
         <p v-else class="text-sm text-fg-muted">Choose a structure and enter the CTC to see the monthly split.</p>
       </div>

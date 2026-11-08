@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Bell, LayoutDashboard, RotateCcw, Search, Users } from '@lucide/vue';
 import ThemeSwitcher from '@/core/theme/components/ThemeSwitcher.vue';
+import LocaleSettings from '@/core/locale/components/LocaleSettings.vue';
 import { useThemeStore } from '@/core/theme/theme.store';
 import { AppBadge, AppButton, AppCard, AppPageHeader } from '@/shared/components';
 
@@ -9,21 +10,26 @@ const theme = useThemeStore();
 
 <template>
   <div>
-    <AppPageHeader title="Appearance" description="Choose how the application looks on this device.">
+    <AppPageHeader title="Appearance" description="Choose how the application looks for you, on every device.">
       <template #actions>
         <AppButton variant="secondary" :icon="RotateCcw" @click="theme.reset()">Reset to default</AppButton>
       </template>
     </AppPageHeader>
 
     <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <AppCard title="Theme" description="Saved in this browser. Other devices keep their own setting.">
-        <ThemeSwitcher variant="full" />
-      </AppCard>
+      <div class="space-y-4">
+        <AppCard title="Theme" description="Saved to your account, so every device you sign in on looks the same.">
+          <ThemeSwitcher variant="full" />
+        </AppCard>
+        <AppCard title="Language and region" description="How dates, times and numbers are written, and which way the layout reads.">
+          <LocaleSettings />
+        </AppCard>
+      </div>
 
       <div class="space-y-3 xl:sticky xl:top-4 xl:self-start">
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-fg">Live preview</p>
-          <AppBadge tone="brand" dot>{{ theme.current.label }} · {{ theme.isDark ? 'Dark' : 'Light' }}</AppBadge>
+          <AppBadge tone="brand" dot>{{ theme.current.label }} · {{ theme.mode === 'system' ? `System (${theme.isDark ? 'dark' : 'light'})` : theme.modeInfo.label }}</AppBadge>
         </div>
         <!-- Rendered with the real tokens, so it follows every setting. -->
         <div class="overflow-hidden rounded-2xl border border-line bg-sidebar shadow-card" data-testid="theme-preview" aria-hidden="true">

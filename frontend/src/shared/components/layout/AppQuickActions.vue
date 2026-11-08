@@ -25,7 +25,7 @@ defineProps<{ actions: QuickAction[]; columns?: 2 | 3 | 4 }>();
         class="card card-interactive group flex h-full w-full items-center gap-3 px-3 py-3 text-start hover:border-brand-500/40"
         @click="a.onClick?.()"
       >
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-600 ring-1 ring-brand-600/10 transition group-hover:bg-brand-600 group-hover:text-white dark:bg-brand-500/12 dark:text-brand-300">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-fg ring-1 ring-brand-600/10 transition group-hover:bg-brand-600 group-hover:text-white">
           <component :is="a.icon" :size="16" aria-hidden="true" />
         </span>
         <span class="min-w-0">

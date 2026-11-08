@@ -19,11 +19,25 @@
           var root = document.documentElement;
           var mode = localStorage.getItem('hrms.theme');
           var color = localStorage.getItem('hrms.colorTheme');
+          // Mirrors LEGACY_COLOR_THEMES in src/core/theme/themes.ts.
+          color = { ocean: 'teal', violet: 'berry', slate: 'graphite', amber: 'bronze' }[color] || color;
           var sidebar = localStorage.getItem('hrms.sidebar');
-          var dark = mode === 'dark' || (mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var dark = mode === 'dark' || mode === 'dim' || mode === 'black' || (mode !== 'light' && mode !== 'paper' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (dark) root.classList.add('dark');
+          if (mode === 'dim' || mode === 'black' || mode === 'paper') root.setAttribute('data-surface', mode);
+          // Organization brand palette (generated in the app and cached), when the user follows the organization.
+          var palette = localStorage.getItem('hrms.brandPalette');
+          if (palette && (!color || color === 'organization')) {
+            var vars = JSON.parse(palette);
+            for (var k in vars) if (/^--brand-\d+$/.test(k) && /^#[0-9a-f]{6}$/.test(vars[k])) root.style.setProperty(k, vars[k]);
+            color = 'organization';
+          }
           if (color && /^[a-z]+$/.test(color)) root.setAttribute('data-theme', color);
           root.setAttribute('data-sidebar', sidebar && /^[a-z]+$/.test(sidebar) ? sidebar : 'light');
+          // Mirrors applyLocale in src/core/locale/locale.ts.
+          var region = localStorage.getItem('hrms.region');
+          var direction = localStorage.getItem('hrms.direction');
+          root.setAttribute('dir', direction === 'rtl' || direction === 'ltr' ? direction : region && /^(ar|he|fa|ur)-/.test(region) ? 'rtl' : 'ltr');
         } catch (e) {}
       })();
     </script>

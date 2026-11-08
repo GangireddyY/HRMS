@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { AccessContext, LoginResult, OrganizationSummary, PasswordPolicy } from '../../contracts';
+import { APPEARANCE_PREFERENCE_KEYS, type AccessContext, type AppearancePreferences, type LoginResult, type OrganizationSummary, type PasswordPolicy } from '../../contracts';
 import { literal, type Transaction } from 'sequelize';
 import { AppConfig } from '../../config/app-config.service';
 import type { AuthContext } from '../../common/auth/auth-context';
@@ -36,6 +36,7 @@ import {
   LoginDto,
   MfaVerifyDto,
   RegisterOrganizationDto,
+  UpdatePreferencesDto,
   UpdateProfileDto,
 } from './dto/auth.dto';
 import { MfaService } from './mfa.service';
@@ -344,6 +345,19 @@ export class AuthService {
     return this.toAuthUser(user);
   }
 
+  /** Merges appearance choices into the account; a null value removes that choice. */
+  async updatePreferences(auth: AuthContext, dto: UpdatePreferencesDto): Promise<AppearancePreferences> {
+    const user = await User.findByPk(auth.userId, { rejectOnEmpty: true });
+    const next: AppearancePreferences = { ...(user.preferences ?? {}) };
+    for (const key of APPEARANCE_PREFERENCE_KEYS) {
+      const value = dto[key];
+      if (value === null) delete next[key];
+      else if (value !== undefined) next[key] = value;
+    }
+    await user.update({ preferences: next });
+    return next;
+  }
+
   async changePassword(auth: AuthContext, dto: ChangePasswordDto): Promise<void> {
     const user = await withSecrets().findByPk(auth.userId, { rejectOnEmpty: true });
     if (!(await this.hasher.verify(user.passwordHash, dto.currentPassword))) {
@@ -559,6 +573,7 @@ export class AuthService {
       mfaEnabled: user.mfaEnabled,
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       avatarUrl: user.avatarUrl,
+      preferences: user.preferences ?? {},
     };
   }
 
@@ -567,13 +582,13 @@ export class AuthService {
     const memberships = await OrganizationMembership.findAll({
       where: { userId, status: 'ACTIVE' },
       attributes: ['id'],
-      include: [{ model: Organization, where: { status: 'ACTIVE' }, attributes: ['id', 'name', 'slug', 'status', 'logoUrl'] }],
+      include: [{ model: Organization, where: { status: 'ACTIVE' }, attributes: ['id', 'name', 'slug', 'status', 'logoUrl', 'brandColor'] }],
       order: [['organization', 'name', 'ASC']],
       ...CROSS_TENANT,
     });
     const organizations: OrganizationSummary[] = memberships.map((m) => {
       const o = m.organization!;
-      return { id: o.id, name: o.name, slug: o.slug, status: o.status, logoUrl: o.logoUrl };
+      return { id: o.id, name: o.name, slug: o.slug, status: o.status, logoUrl: o.logoUrl, brandColor: o.brandColor };
     });
 
     let resolved: Awaited<ReturnType<AccessService['resolve']>> | null = null;
@@ -596,6 +611,7 @@ export class AuthService {
       features: [...(resolved?.features ?? [])],
       mfaSetupRequired: policy.mfaRequired && !user.mfaEnabled,
       passwordExpired: isPasswordExpired(user.passwordChangedAt, policy.password.maxAgeDays),
+      idleTimeoutMinutes: policy.session.idleTimeoutMinutes,
     };
   }
 }

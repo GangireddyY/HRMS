@@ -105,7 +105,7 @@ test.describe('grievances', () => {
     await page.goto('/hr/grievances');
     await expect(page.getByRole('tab', { name: 'POSH complaints' })).toHaveCount(0);
     await page.getByLabel('Search cases').fill(subject);
-    await expect(page.getByText('No cases')).toBeVisible();
+    await expect(page.getByText('No matches')).toBeVisible();
     await page.goto(`/hr/grievances/${id}`);
     await expect(page.getByRole('heading', { name: subject })).toHaveCount(0);
     await expect(page.getByText(/not found/i).first()).toBeVisible();

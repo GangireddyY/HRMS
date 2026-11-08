@@ -121,9 +121,9 @@ const print = () => window.print();
           </AppCard>
           <template #aside>
             <AppCard title="What happens next">
-              <ol class="relative space-y-3 border-l border-line ps-4 text-sm">
+              <ol class="relative space-y-3 border-s border-line ps-4 text-sm">
                 <li v-for="(step, i) in RESIGN_STEPS" :key="step.title" class="relative">
-                  <span class="absolute top-0 -left-[25px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-600 text-2xs font-semibold text-white">{{ i + 1 }}</span>
+                  <span class="absolute top-0 -start-[25px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand-600 text-2xs font-semibold text-white">{{ i + 1 }}</span>
                   <p class="font-medium text-fg">{{ step.title }}</p>
                   <p class="text-xs text-fg-muted">{{ step.text }}</p>
                 </li>

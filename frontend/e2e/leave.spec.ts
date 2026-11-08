@@ -49,7 +49,7 @@ test.describe('leave', () => {
     const tuesday = new Date(`${monday}T00:00:00`);
     tuesday.setDate(tuesday.getDate() + 1);
     const tuesdayIso = `${tuesday.getFullYear()}-${String(tuesday.getMonth() + 1).padStart(2, '0')}-${String(tuesday.getDate()).padStart(2, '0')}`;
-    await page.getByRole('button', { name: 'Apply for leave', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply for leave', exact: true }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Apply for leave' });
     await dialog.getByRole('combobox', { name: 'Leave type' }).click();
     await page.getByRole('option', { name: /Casual leave/ }).click();

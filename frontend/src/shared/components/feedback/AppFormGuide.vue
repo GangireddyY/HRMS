@@ -83,11 +83,11 @@ onBeforeUnmount(() => {
     <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100" aria-label="Required fields completed">
       <div class="h-full bg-brand-500 transition-[width] duration-300" :style="{ width: `${percent}%` }" />
     </div>
-    <p v-if="errors" class="mt-3 flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-400"><AlertCircle :size="13" aria-hidden="true" />{{ errors }} field{{ errors === 1 ? ' needs' : 's need' }} attention</p>
+    <p v-if="errors" class="mt-3 flex items-center gap-2 text-xs font-medium text-danger-fg"><AlertCircle :size="13" aria-hidden="true" />{{ errors }} field{{ errors === 1 ? ' needs' : 's need' }} attention</p>
     <ul v-if="fields.length" class="mt-3 space-y-0.5">
       <li v-for="f in fields" :key="f.id">
         <button type="button" class="flex w-full items-center gap-2 rounded-sm px-1 py-1 text-start text-sm transition hover:bg-surface-muted/70" @click="focusField(f.id)">
-          <CheckCircle2 v-if="f.filled" :size="14" class="shrink-0 text-emerald-500" aria-hidden="true" />
+          <CheckCircle2 v-if="f.filled" :size="14" class="shrink-0 text-success" aria-hidden="true" />
           <Circle v-else :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" />
           <span :class="['truncate', f.filled ? 'text-fg-muted' : 'text-fg']">{{ f.label }}</span>
           <span class="sr-only">{{ f.filled ? '(filled)' : '(empty)' }}</span>

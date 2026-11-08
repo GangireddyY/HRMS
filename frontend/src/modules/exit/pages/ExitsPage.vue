@@ -61,6 +61,8 @@ const columns: TableColumn<ExitSummary>[] = [
           @page="table.setPage"
           @retry="table.load"
           @row-click="(e: ExitSummary) => router.push(`/hr/exits/${e.id}`)"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
         >
           <template #cell-employee="{ row }">
             <p class="font-medium text-fg">{{ row.employee?.name }}</p>
@@ -83,7 +85,7 @@ const columns: TableColumn<ExitSummary>[] = [
           <template #cell-settlement="{ row }">
             <template v-if="row.settlement">
               <AppBadge :tone="settlementTone[row.settlement.status]" size="sm">{{ SETTLEMENT_LABELS[row.settlement.status] }}</AppBadge>
-              <p class="text-xs" :class="row.settlement.overdue ? 'text-red-600 dark:text-red-400' : 'text-fg-muted'">{{ inr(row.settlement.netPayable) }}{{ row.settlement.overdue ? ' · overdue' : '' }}</p>
+              <p class="text-xs" :class="row.settlement.overdue ? 'text-danger-fg' : 'text-fg-muted'">{{ inr(row.settlement.netPayable) }}{{ row.settlement.overdue ? ' · overdue' : '' }}</p>
             </template>
             <span v-else class="text-xs text-fg-muted">—</span>
           </template>

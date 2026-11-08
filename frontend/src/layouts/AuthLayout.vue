@@ -16,7 +16,7 @@ const year = new Date().getFullYear();
     <div class="pointer-events-none fixed inset-0 -z-10" aria-hidden="true">
       <div class="absolute -top-1/4 -left-1/4 h-[75%] w-[75%] animate-aurora rounded-full bg-brand-300/45 blur-[120px] dark:bg-brand-500/55" />
       <div class="absolute -right-1/4 -bottom-1/4 h-[70%] w-[70%] animate-aurora rounded-full bg-brand-200/60 blur-[130px] [animation-delay:-6s] dark:bg-brand-400/35" />
-      <div class="absolute top-1/3 left-1/3 h-1/3 w-1/3 animate-aurora rounded-full bg-fuchsia-300/25 blur-[100px] [animation-delay:-11s] dark:bg-fuchsia-400/20" />
+      <div class="absolute top-1/3 left-1/3 h-1/3 w-1/3 animate-aurora rounded-full bg-brand-300/25 blur-[100px] [animation-delay:-11s] dark:bg-brand-400/20" />
       <div
         class="absolute inset-0 [background-image:linear-gradient(color-mix(in_oklab,var(--hero-ink)_6%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--hero-ink)_6%,transparent)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black_25%,transparent_80%)]"
       />
@@ -54,10 +54,10 @@ const year = new Date().getFullYear();
         <section class="order-last mx-auto w-full max-w-[560px] min-w-0 text-center sm:order-first lg:hidden short:hidden" aria-label="What HRMS covers">
           <h2 class="text-2xl leading-tight font-semibold tracking-tight sm:text-4xl">
             The whole employee journey,
-            <span class="bg-gradient-to-r from-brand-600 via-brand-500 to-fuchsia-500 bg-clip-text text-transparent dark:from-white dark:via-brand-200 dark:to-brand-300">in one workspace.</span>
+            <span class="bg-gradient-to-r from-brand-700 via-brand-500 to-brand-400 bg-clip-text text-transparent dark:from-white dark:via-brand-200 dark:to-brand-300">in one workspace.</span>
           </h2>
           <p class="mx-auto mt-2 hidden max-w-md text-base text-hero-ink/70 sm:block">Hire, onboard, pay, grow and offboard your people — with security built into every step.</p>
-          <ul class="scrollbar-none -mx-4 mt-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0" aria-label="Modules">
+          <ul class="scrollbar-none -mx-4 mt-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 focus-visible:outline-2 focus-visible:outline-brand-500" aria-label="Modules" tabindex="0">
             <li
               v-for="b in BRANCHES"
               :key="b.key"
@@ -69,9 +69,9 @@ const year = new Date().getFullYear();
         </section>
         <!-- What the platform covers (large screens) -->
         <section class="hidden min-w-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-center" aria-label="What HRMS covers">
-          <h2 class="max-w-3xl shrink-0 text-[44px] leading-[1.05] font-semibold tracking-tight xl:text-[54px] 2xl:max-w-4xl min-[1800px]:text-[64px] short:text-[36px] short:xl:text-[42px]">
+          <h2 class="max-w-3xl shrink-0 text-display leading-[1.05] font-semibold tracking-tight xl:text-display-lg 2xl:max-w-4xl min-[1800px]:text-display-xl short:text-display-sm short:xl:text-display">
             The whole employee journey,
-            <span class="bg-gradient-to-r from-brand-600 via-brand-500 to-fuchsia-500 bg-clip-text text-transparent dark:from-white dark:via-brand-200 dark:to-brand-300">in one workspace.</span>
+            <span class="bg-gradient-to-r from-brand-700 via-brand-500 to-brand-400 bg-clip-text text-transparent dark:from-white dark:via-brand-200 dark:to-brand-300">in one workspace.</span>
           </h2>
           <p class="mt-4 max-w-xl shrink-0 text-base text-hero-ink/70 xl:text-lg 2xl:max-w-2xl 2xl:text-xl short:mt-2 short:text-base">Hire, onboard, pay, grow and offboard your people — with security built into every step.</p>
           <ProductMindMap class="mt-4 min-h-0 flex-1 short:mt-2" />
@@ -88,7 +88,7 @@ const year = new Date().getFullYear();
         </main>
       </div>
 
-      <footer class="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-hero-ink/60 lg:justify-between tiny:hidden">
+      <footer class="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-hero-ink/75 lg:justify-between tiny:hidden">
         <span>© {{ year }} {{ appName }}</span>
         <span class="inline-flex items-center gap-2"><ShieldCheck :size="13" aria-hidden="true" /> Your data is isolated per organization</span>
       </footer>

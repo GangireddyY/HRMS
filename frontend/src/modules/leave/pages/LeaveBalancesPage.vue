@@ -107,8 +107,8 @@ async function runAccruals() {
           <template v-for="b in [cell(row, t.id)]" :key="t.id">
             <span v-if="!b" class="text-fg-subtle">—</span>
             <span v-else-if="b.available === null" class="text-fg-muted tabular-nums" :title="`${b.taken} taken`">{{ b.taken }} taken</span>
-            <span v-else class="tabular-nums" :class="b.available < 0 ? 'text-red-600 dark:text-red-400' : 'text-fg'" :title="b.pending ? `${b.pending} pending` : undefined">
-              {{ b.available }}<span v-if="b.pending" class="ms-1 text-xs text-amber-600 dark:text-amber-400">({{ b.pending }})</span>
+            <span v-else class="tabular-nums" :class="b.available < 0 ? 'text-danger-fg' : 'text-fg'" :title="b.pending ? `${b.pending} pending` : undefined">
+              {{ b.available }}<span v-if="b.pending" class="ms-1 text-xs text-warning-fg">({{ b.pending }})</span>
             </span>
           </template>
         </template>

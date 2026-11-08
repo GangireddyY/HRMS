@@ -48,10 +48,10 @@ watch(pick, (id) => {
 const skillName = (id: string) => catalog.data.value?.find((s) => s.id === id)?.name ?? matrix.data.value?.skills.find((s) => s.id === id)?.name ?? '…';
 
 function cellClass(c: MatrixCell) {
-  if (!c.level) return c.required ? 'bg-red-500/10 text-red-700 ring-red-500/25 dark:text-red-300' : 'bg-surface text-fg-subtle ring-line';
-  if (c.required === null) return 'bg-brand-500/10 text-brand-800 ring-brand-500/25 dark:text-brand-200';
-  if (c.gap === 0) return 'bg-emerald-500/15 text-emerald-800 ring-emerald-500/30 dark:text-emerald-200';
-  return c.gap === 1 ? 'bg-amber-500/15 text-amber-800 ring-amber-500/30 dark:text-amber-200' : 'bg-red-500/10 text-red-700 ring-red-500/25 dark:text-red-300';
+  if (!c.level) return c.required ? 'bg-danger/10 text-danger-fg ring-danger/25' : 'bg-surface text-fg-subtle ring-line';
+  if (c.required === null) return 'bg-brand-500/10 text-accent-fg ring-brand-500/25';
+  if (c.gap === 0) return 'bg-success/15 text-success-fg ring-success/30';
+  return c.gap === 1 ? 'bg-warning/15 text-warning-fg ring-warning/30' : 'bg-danger/10 text-danger-fg ring-danger/25';
 }
 
 // Verifying a level.
@@ -104,7 +104,7 @@ async function verify() {
             <table class="w-full border-separate border-spacing-1 text-xs">
               <thead>
                 <tr>
-                  <th class="sticky left-0 z-10 bg-surface text-start font-medium text-fg-muted">Person</th>
+                  <th class="sticky start-0 z-10 bg-surface text-start font-medium text-fg-muted">Person</th>
                   <th v-for="s in matrix.data.value.skills" :key="s.id" class="min-w-24 align-bottom font-medium text-fg-muted">
                     <span class="block">{{ s.name }}</span>
                     <span class="block font-normal text-fg-subtle">{{ matrix.data.value.summary.find((x) => x.skillId === s.id)?.people ?? 0 }} people</span>
@@ -113,7 +113,7 @@ async function verify() {
               </thead>
               <tbody>
                 <tr v-for="r in matrix.data.value.page.items" :key="r.employee.id">
-                  <th scope="row" class="sticky left-0 z-10 max-w-36 min-w-32 bg-surface pe-2 text-start font-normal sm:max-w-none sm:min-w-48">
+                  <th scope="row" class="sticky start-0 z-10 max-w-36 min-w-32 bg-surface pe-2 text-start font-normal sm:max-w-none sm:min-w-48">
                     <span class="block truncate text-sm font-medium text-fg">{{ r.employee.name }}</span>
                     <span class="block truncate text-fg-muted">{{ [r.employee.designation, r.employee.department].filter(Boolean).join(' · ') || r.employee.employeeCode }}</span>
                   </th>
@@ -121,19 +121,19 @@ async function verify() {
                     <button
                       type="button"
                       :class="['flex h-full w-full cursor-pointer flex-col items-center rounded-md px-2 py-2 ring-1 ring-inset transition hover:ring-brand-400', cellClass(c)]"
-                      :aria-label="`${r.employee.name}, ${skillName(c.skillId)}: ${c.level ? SKILL_LEVEL_LABELS[c.level] : 'none'}${c.required ? `, needs ${SKILL_LEVEL_LABELS[c.required]}` : ''}${c.verifiedLevel ? ', verified' : ''}`"
                       @click="openCell(r, c)"
                     >
-                      <span class="flex items-center gap-1 font-semibold tabular-nums">{{ c.level || '–' }}<span v-if="c.required" class="font-normal opacity-70">/{{ c.required }}</span><BadgeCheck v-if="c.verifiedLevel" :size="11" aria-hidden="true" /></span>
+                      <span class="flex items-center gap-1 font-semibold tabular-nums" aria-hidden="true">{{ c.level || '–' }}<span v-if="c.required" class="font-normal">/{{ c.required }}</span><BadgeCheck v-if="c.verifiedLevel" :size="11" /></span>
+                      <span class="sr-only">{{ r.employee.name }}, {{ skillName(c.skillId) }}: {{ c.level ? SKILL_LEVEL_LABELS[c.level] : 'none' }}{{ c.required ? `, needs ${SKILL_LEVEL_LABELS[c.required]}` : '' }}{{ c.verifiedLevel ? ', verified' : '' }}</span>
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
             <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
-              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-emerald-500/40" aria-hidden="true" />Meets the role</li>
-              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-amber-500/40" aria-hidden="true" />One level short</li>
-              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-red-500/30" aria-hidden="true" />Further short</li>
+              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-success/40" aria-hidden="true" />Meets the role</li>
+              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-warning/40" aria-hidden="true" />One level short</li>
+              <li class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-danger/30" aria-hidden="true" />Further short</li>
               <li class="inline-flex items-center gap-2"><BadgeCheck :size="12" aria-hidden="true" />Verified</li>
               <li>“3/4” = level 3, the role needs 4</li>
             </ul>

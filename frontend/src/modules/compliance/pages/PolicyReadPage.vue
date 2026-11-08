@@ -64,7 +64,7 @@ async function download() {
             <AppCheckbox v-model="confirmed" :label="`I have read and understood ${p.title} (version ${p.version.version})`" :description="p.mine.state === 'OVERDUE' ? `This was due on ${formatDate(p.mine.dueOn)}.` : `Please confirm by ${formatDate(p.mine.dueOn)}.`" />
             <AppButton :icon="CheckCircle2" :disabled="!confirmed" :loading="busy" @click="acknowledge">Acknowledge</AppButton>
           </div>
-          <p v-else class="inline-flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+          <p v-else class="inline-flex items-center gap-2 text-sm text-success-fg">
             <CheckCircle2 :size="16" aria-hidden="true" />You acknowledged version {{ p.mine.acknowledgedVersion }} on {{ formatDateTime(p.mine.acknowledgedAt!) }}.
           </p>
         </template>

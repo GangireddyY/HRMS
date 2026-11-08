@@ -91,7 +91,7 @@ function inWords(amount: number): string {
       </table>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-50 px-4 py-3 dark:bg-brand-500/10 print:bg-transparent print:px-0">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-3 print:bg-transparent print:px-0">
       <div>
         <p class="text-xs text-fg-muted">Net pay</p>
         <p class="text-xs text-fg-muted">Rupees {{ inWords(p.netPay) }} only</p>

@@ -120,12 +120,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 <template>
   <!-- Mobile backdrop -->
-  <div v-if="ui.mobileNavOpen" class="fixed inset-0 z-30 animate-fade-in bg-zinc-950/40 backdrop-blur-sm lg:hidden" aria-hidden="true" @click="ui.mobileNavOpen = false" />
+  <div v-if="ui.mobileNavOpen" class="fixed inset-0 z-30 animate-fade-in bg-scrim/40 backdrop-blur-sm lg:hidden" aria-hidden="true" @click="ui.mobileNavOpen = false" />
   <aside
     ref="aside"
     :class="[
-      'fixed inset-y-0 left-0 z-40 flex max-w-[85vw] flex-col bg-sidebar text-sidebar-fg transition-[width,transform] duration-200',
-      'max-lg:border-r max-lg:border-sidebar-line max-lg:shadow-pop lg:static lg:visible lg:max-w-none lg:translate-x-0',
+      'fixed inset-y-0 start-0 z-40 flex max-w-[85vw] flex-col bg-sidebar text-sidebar-fg transition-[width,transform] duration-200',
+      'max-lg:border-e max-lg:border-sidebar-line max-lg:shadow-pop lg:static lg:visible lg:max-w-none lg:translate-x-0',
       ui.sidebarCollapsed ? 'lg:w-16' : 'lg:w-60',
       // A closed drawer is also invisible so its links are not reachable by keyboard or screen readers.
       ui.mobileNavOpen ? 'visible w-72 translate-x-0' : 'invisible w-72 -translate-x-full',
@@ -155,9 +155,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
               open && 'bg-sidebar-hover',
               !expanded && 'justify-center',
             ]"
-            :aria-label="`${orgName} – ${workspace.label}. Switch workspace`"
+            :aria-label="expanded ? undefined : `${orgName}, ${workspace.label}. Switch workspace`"
             @click="toggle"
           >
+            <span v-if="expanded" class="sr-only">Switch workspace:</span>
             <AppLogo v-if="!auth.organization" :size="32" />
             <!-- The brand area above already shows the logo, so the switcher shows the workspace. -->
             <span
@@ -173,6 +174,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             <span
               v-else
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.2)]"
+              aria-hidden="true"
             >
               {{ orgInitial }}
             </span>
@@ -202,7 +204,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             <span class="block text-sm font-medium text-fg">{{ ws.label }}</span>
             <span class="block text-xs text-fg-muted">{{ ws.description }}</span>
           </span>
-          <Check v-if="ws.key === workspace.key" :size="15" class="mt-1 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+          <Check v-if="ws.key === workspace.key" :size="15" class="mt-1 text-accent-fg" aria-hidden="true" />
         </RouterLink>
         <template v-if="organizations.length > 1">
           <div class="my-2 border-t border-line" />
@@ -218,7 +220,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
           >
             <Building2 :size="15" class="text-fg-subtle" aria-hidden="true" />
             <span class="flex-1 truncate">{{ org.name }}</span>
-            <Check v-if="org.id === auth.organization?.id" :size="14" class="text-brand-600 dark:text-brand-400" aria-hidden="true" />
+            <Check v-if="org.id === auth.organization?.id" :size="14" class="text-accent-fg" aria-hidden="true" />
           </button>
         </template>
       </AppDropdown>

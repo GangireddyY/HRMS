@@ -125,7 +125,7 @@ async function addExisting(candidateId: string) {
                 </span>
                 <span class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-subtle">
                   <span v-if="a.candidate.experienceYears !== null">{{ a.candidate.experienceYears }} yrs</span>
-                  <span v-if="a.averageRating !== null" class="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400"><Star :size="12" aria-hidden="true" />{{ a.averageRating }}</span>
+                  <span v-if="a.averageRating !== null" class="inline-flex items-center gap-0.5 text-warning-fg"><Star :size="12" aria-hidden="true" />{{ a.averageRating }}</span>
                   <span v-if="a.nextInterviewAt" class="inline-flex items-center gap-1"><CalendarClock :size="12" aria-hidden="true" />{{ formatDateTime(a.nextInterviewAt) }}</span>
                   <span v-if="a.candidate.hasResume" class="inline-flex items-center gap-0.5"><FileText :size="12" aria-hidden="true" />CV</span>
                   <span>{{ timeAgo(a.stageChangedAt) }}</span>

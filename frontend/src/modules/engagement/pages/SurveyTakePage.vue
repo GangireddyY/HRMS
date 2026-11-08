@@ -42,7 +42,7 @@ async function submit() {
       <AppSplit>
       <AppCard v-if="s.responded">
         <div class="flex flex-col items-center py-8 text-center">
-          <CheckCircle2 :size="40" class="text-emerald-500" aria-hidden="true" />
+          <CheckCircle2 :size="40" class="text-success" aria-hidden="true" />
           <p class="mt-3 text-lg font-semibold text-fg">Thanks for your answers</p>
           <p class="mt-1 text-sm text-fg-muted">You can only answer once.</p>
         </div>
@@ -52,7 +52,7 @@ async function submit() {
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppCard v-for="(q, i) in s.questions" :key="q.id">
           <fieldset>
-            <legend class="mb-3 text-sm font-medium text-fg">{{ i + 1 }}. {{ q.prompt }}<span v-if="q.required" class="ms-0.5 text-red-500" aria-hidden="true">*</span></legend>
+            <legend class="mb-3 text-sm font-medium text-fg">{{ i + 1 }}. {{ q.prompt }}<span v-if="q.required" class="ms-0.5 text-danger" aria-hidden="true">*</span></legend>
             <div v-if="q.type === 'RATING' || q.type === 'NPS'" class="flex flex-wrap gap-2" role="radiogroup" :aria-label="q.prompt">
               <button
                 v-for="n in q.type === 'RATING' ? [1, 2, 3, 4, 5] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"

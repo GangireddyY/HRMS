@@ -34,7 +34,7 @@ const classes = computed(() => [
   {
     // Solid buttons: a faint top sheen and inner highlight over the brand color, with a crisp drop shadow.
     primary:
-      'bg-brand-600 bg-gradient-to-b from-white/12 to-transparent text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(16_24_40/0.14),0_0_0_1px_color-mix(in_oklab,var(--brand-700)_60%,transparent)] hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600',
+      'bg-brand-600 bg-gradient-to-b from-white/12 to-transparent text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(16_24_40/0.14),0_0_0_1px_color-mix(in_oklab,var(--brand-700)_60%,transparent)] hover:bg-brand-700',
     secondary: 'border border-line-strong bg-surface text-fg shadow-xs hover:bg-surface-muted',
     outline: 'border border-brand-500/40 text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10',
     ghost: 'text-fg-muted hover:bg-surface-muted hover:text-fg',

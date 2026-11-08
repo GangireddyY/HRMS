@@ -37,7 +37,7 @@ const columns: TableColumn<ReviewRow>[] = [
           <AppSearchInput v-model="table.search.value" placeholder="Search employees" aria-label="Search reviews" />
           <AppSelect v-model="table.filters.stage" :options="stageOptions" placeholder="All stages" aria-label="Filter by stage" />
         </div>
-        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Reviews" :empty-title="view === 'team' ? 'Nobody to review' : 'No reviews'" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/reviews/${row.id}`)">
+        <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Reviews" :empty-title="view === 'team' ? 'Nobody to review' : 'No reviews'" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/reviews/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee.name" size="sm" />
@@ -53,7 +53,7 @@ const columns: TableColumn<ReviewRow>[] = [
           </template>
           <template #cell-stage="{ row }">
             <AppBadge :tone="stageTone[row.stage]" dot>{{ STAGE_LABELS[row.stage] }}</AppBadge>
-            <p v-if="row.due" class="mt-0.5 text-xs" :class="row.due < today ? 'text-red-600 dark:text-red-400' : 'text-fg-muted'">{{ row.due < today ? 'Overdue since' : 'Due' }} {{ formatDate(row.due) }}</p>
+            <p v-if="row.due" class="mt-0.5 text-xs" :class="row.due < today ? 'text-danger-fg' : 'text-fg-muted'">{{ row.due < today ? 'Overdue since' : 'Due' }} {{ formatDate(row.due) }}</p>
           </template>
           <template #cell-rating="{ row }"><span class="tabular-nums">{{ row.finalRating ?? '—' }}</span></template>
         </AppDataTable>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Download, Network, Upload, UserPlus } from '@lucide/vue';
@@ -43,7 +44,7 @@ async function onCreated(count: number) {
 const importOpen = ref(false);
 async function onImported(count: number) {
   importOpen.value = false;
-  feedback.success(`${count.toLocaleString()} employee${count === 1 ? '' : 's'} imported`);
+  feedback.success(`${count.toLocaleString(appLocale())} employee${count === 1 ? '' : 's'} imported`);
   await table.load();
 }
 
@@ -113,12 +114,15 @@ async function exportCsv() {
           :meta="table.meta.value"
           clickable
           caption="Employees"
-          empty-title="No employees found"
-          :empty-description="auth.can('employee.create') ? 'Add your first employee or change the filters.' : 'Try a different search or filter.'"
+          empty-title="No employees yet"
+          :empty-description="auth.can('employee.create') ? 'Add your first employee, or import them from a spreadsheet.' : 'Employees you can see will appear here.'"
           @page="table.setPage"
           @retry="table.load"
           @row-click="(row) => router.push(`/hr/employees/${row.id}`)"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
         >
+          <template #empty><AppButton v-if="auth.can('employee.create')" :icon="UserPlus" to="/hr/employees/new">Add employee</AppButton></template>
           <template #cell-name="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.fullName" :src="row.avatarUrl" size="sm" />

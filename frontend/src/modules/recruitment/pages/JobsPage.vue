@@ -62,6 +62,8 @@ const total = (j: Job) => Object.values(j.pipeline).reduce((n, v) => n + (v ?? 0
         @page="table.setPage"
         @retry="table.load"
         @row-click="(row) => router.push(`/hr/recruitment/jobs/${row.id}`)"
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()"
       >
         <template #cell-title="{ row }">
           <p class="font-medium text-fg">{{ row.title }} <AppBadge v-if="row.isPublic" size="sm" tone="info" class="ms-1">Public</AppBadge></p>

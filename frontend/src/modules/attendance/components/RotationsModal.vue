@@ -67,7 +67,7 @@ const setStep = (s: { shiftId: string | null }, v: string | null) => (s.shiftId 
           <div class="min-w-0">
             <p class="font-medium text-fg">{{ r.name }} <AppBadge v-if="!r.isActive" size="sm">Inactive</AppBadge></p>
             <p class="mt-1 flex flex-wrap gap-1 text-xs">
-              <span v-for="(s, i) in r.pattern" :key="i" :class="['rounded-md px-2 py-0.5 ring-1 ring-inset', s.shiftId ? 'bg-brand-500/10 text-brand-700 ring-brand-500/25 dark:text-brand-300' : 'bg-surface-muted text-fg-muted ring-line']">{{ s.days }} × {{ s.shiftName ?? 'off' }}</span>
+              <span v-for="(s, i) in r.pattern" :key="i" :class="['rounded-md px-2 py-0.5 ring-1 ring-inset', s.shiftId ? 'bg-brand-500/10 text-accent-fg ring-brand-500/25' : 'bg-surface-muted text-fg-muted ring-line']">{{ s.days }} × {{ s.shiftName ?? 'off' }}</span>
               <span class="text-fg-subtle">· {{ r.cycleDays }}-day cycle</span>
             </p>
           </div>

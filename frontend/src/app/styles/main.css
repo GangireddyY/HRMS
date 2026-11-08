@@ -9,48 +9,154 @@
 @custom-variant tiny (@media (max-height: 640px));
 
 /*
- * Design tokens. Surfaces/text switch with the light/dark mode, brand colors with the color theme
- * (themes.css) and the sidebar palette with `data-sidebar` (light | dark | brand).
- * Components only use the semantic names below, never raw colors.
+ * Design tokens. Surfaces/text switch with the mode, brand colors with the color theme (themes.css) and the
+ * sidebar palette with `data-sidebar` (light | dark | brand). Components only use the semantic names below.
+ * Tinted neutrals: every grey (page, cards, borders, text, shadows) carries a little of the theme's hue, so the
+ * whole interface takes on the color theme, not just the accents. The percentages stay low enough that text
+ * keeps WCAG AA contrast with every theme.
  */
 :root {
-  --app-bg: #f4f4f5;
-  --app-canvas: #fafafa;
-  --app-surface: #ffffff;
-  --app-surface-muted: #f4f4f5;
-  --app-surface-raised: #ffffff;
-  --app-border: #e4e4e7;
-  --app-border-strong: #d4d4d8;
-  --app-text: #18181b;
-  --app-text-muted: #52525b;
-  --app-text-subtle: #a1a1aa;
+  --app-bg: color-mix(in oklab, var(--brand-500) 5%, #f4f4f5);
+  --app-canvas: color-mix(in oklab, var(--brand-500) 3%, #fafafa);
+  --app-surface: color-mix(in oklab, var(--brand-500) 0.8%, #ffffff);
+  --app-surface-muted: color-mix(in oklab, var(--brand-500) 5.5%, #f4f4f5);
+  --app-surface-raised: var(--app-surface);
+  --app-border: color-mix(in oklab, var(--brand-500) 10%, #e4e4e7);
+  --app-border-strong: color-mix(in oklab, var(--brand-500) 12%, #d4d4d8);
+  /* Control edges (inputs, checkboxes) need 3:1 against the surface (WCAG 1.4.11); subtle text needs 4.5:1. */
+  --app-border-control: color-mix(in oklab, var(--brand-700) 10%, #8b8b94);
+  --app-text: color-mix(in oklab, var(--brand-950) 32%, #18181b);
+  --app-text-muted: color-mix(in oklab, var(--brand-900) 22%, #4a4a52);
+  --app-text-subtle: color-mix(in oklab, var(--brand-800) 14%, #696972);
   --app-ring: var(--brand-500);
+  --app-shadow-tint: var(--brand-950);
   /* Elevation: xs for controls, card for resting surfaces, lift for hovered cards, pop for menus and dialogs. */
-  --app-shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
-  --app-shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.05);
-  --app-shadow-lift: 0 12px 24px -6px rgb(16 24 40 / 0.1), 0 4px 8px -4px rgb(16 24 40 / 0.06);
-  --app-shadow-pop: 0 8px 24px -6px rgb(24 24 27 / 0.16), 0 2px 6px -2px rgb(24 24 27 / 0.08);
+  --app-shadow-xs: 0 1px 2px 0 color-mix(in oklab, var(--app-shadow-tint) 6%, transparent);
+  --app-shadow-card: 0 1px 2px 0 color-mix(in oklab, var(--app-shadow-tint) 5%, transparent), 0 1px 3px 0 color-mix(in oklab, var(--app-shadow-tint) 6%, transparent);
+  --app-shadow-lift: 0 12px 24px -6px color-mix(in oklab, var(--app-shadow-tint) 13%, transparent), 0 4px 8px -4px color-mix(in oklab, var(--app-shadow-tint) 8%, transparent);
+  --app-shadow-pop: 0 8px 24px -6px color-mix(in oklab, var(--app-shadow-tint) 20%, transparent), 0 2px 6px -2px color-mix(in oklab, var(--app-shadow-tint) 10%, transparent);
   color-scheme: light;
 }
 
 .dark {
-  --app-bg: #09090b;
-  --app-canvas: #0e0e11;
-  --app-surface: #141417;
-  --app-surface-muted: #1b1b1f;
-  --app-surface-raised: #1c1c20;
-  --app-border: #27272a;
-  --app-border-strong: #3a3a40;
-  --app-text: #fafafa;
-  --app-text-muted: #a1a1aa;
-  --app-text-subtle: #71717a;
+  --app-bg: color-mix(in oklab, var(--brand-950) 20%, #09090b);
+  --app-canvas: color-mix(in oklab, var(--brand-950) 20%, #0e0e11);
+  --app-surface: color-mix(in oklab, var(--brand-900) 11%, #141417);
+  --app-surface-muted: color-mix(in oklab, var(--brand-900) 13%, #1b1b1f);
+  --app-surface-raised: color-mix(in oklab, var(--brand-900) 13%, #1c1c20);
+  --app-border: color-mix(in oklab, var(--brand-700) 16%, #27272a);
+  --app-border-strong: color-mix(in oklab, var(--brand-600) 18%, #3a3a40);
+  --app-border-control: color-mix(in oklab, var(--brand-400) 12%, #6c6c76);
+  --app-text: color-mix(in oklab, var(--brand-50) 25%, #fafafa);
+  --app-text-muted: color-mix(in oklab, var(--brand-200) 18%, #b4b4bc);
+  --app-text-subtle: color-mix(in oklab, var(--brand-300) 14%, #8d8d96);
   --app-ring: var(--brand-400);
   /* Dark surfaces read as raised through a faint top highlight rather than a shadow. */
   --app-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --app-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 1px 2px 0 rgb(0 0 0 / 0.35);
-  --app-shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 14px 30px -10px rgb(0 0 0 / 0.65);
-  --app-shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --app-shadow-card: inset 0 1px 0 color-mix(in oklab, var(--brand-200) 5%, transparent), 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --app-shadow-lift: inset 0 1px 0 color-mix(in oklab, var(--brand-200) 7%, transparent), 0 14px 30px -10px rgb(0 0 0 / 0.65);
+  --app-shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px color-mix(in oklab, var(--brand-200) 7%, transparent);
   color-scheme: dark;
+}
+
+/* Extra modes (`data-surface`): Dim is a soft slate dark, Black is true black for OLED, Paper a warm low-glare light. */
+.dark[data-surface='dim'] {
+  --app-bg: color-mix(in oklab, var(--brand-900) 8%, #1c2128);
+  --app-canvas: color-mix(in oklab, var(--brand-900) 8%, #22272e);
+  --app-surface: color-mix(in oklab, var(--brand-800) 8%, #2a3039);
+  --app-surface-muted: color-mix(in oklab, var(--brand-800) 9%, #323a44);
+  --app-surface-raised: color-mix(in oklab, var(--brand-800) 9%, #2d343e);
+  --app-border: color-mix(in oklab, var(--brand-600) 12%, #3b434e);
+  --app-border-strong: color-mix(in oklab, var(--brand-500) 14%, #4a5360);
+  --app-border-control: color-mix(in oklab, var(--brand-400) 12%, #7c8693);
+  --app-text: color-mix(in oklab, var(--brand-50) 20%, #e9edf2);
+  --app-text-muted: color-mix(in oklab, var(--brand-200) 14%, #c0c8d2);
+  --app-text-subtle: color-mix(in oklab, var(--brand-300) 12%, #a3adb9);
+  --app-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.25);
+  /* Dim surfaces are lighter, so brand text (400) and status text are nudged up to keep 4.5:1. */
+  --brand-400: color-mix(in oklab, var(--brand-300) 65%, var(--brand-500));
+  --accent-fg: var(--brand-200);
+  --status-success-fg: #6ee7b7;
+  --status-warning-fg: #fcd34d;
+  --status-danger-fg: #fca5a5;
+  --status-info-fg: #7dd3fc;
+  --status-special-fg: #c4b5fd;
+  --status-caution-fg: #fed7aa;
+  --status-away-fg: #a5f3fc;
+}
+
+.dark[data-surface='black'] {
+  --app-bg: #000000;
+  --app-canvas: #000000;
+  --app-surface: color-mix(in oklab, var(--brand-950) 18%, #0a0a0a);
+  --app-surface-muted: color-mix(in oklab, var(--brand-900) 14%, #151515);
+  --app-surface-raised: color-mix(in oklab, var(--brand-900) 14%, #121212);
+  --app-border: color-mix(in oklab, var(--brand-800) 18%, #212121);
+  --app-border-strong: color-mix(in oklab, var(--brand-700) 18%, #303030);
+  --app-border-control: color-mix(in oklab, var(--brand-400) 12%, #646464);
+  --app-text: color-mix(in oklab, var(--brand-50) 20%, #f5f5f5);
+  --app-text-muted: color-mix(in oklab, var(--brand-200) 14%, #b0b0b0);
+  --app-text-subtle: color-mix(in oklab, var(--brand-300) 12%, #8a8a8a);
+  --app-shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.03);
+  --app-shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px color-mix(in oklab, var(--brand-300) 12%, transparent);
+}
+
+/* Paper keeps its warm identity; the theme hue only reaches the borders and text faintly. */
+[data-surface='paper']:not(.dark) {
+  --app-bg: #efeadf;
+  --app-canvas: #f7f3ea;
+  --app-surface: #fffcf6;
+  --app-surface-muted: #f2ede2;
+  --app-surface-raised: #fffcf6;
+  --app-border: color-mix(in oklab, var(--brand-500) 5%, #e4dccb);
+  --app-border-strong: color-mix(in oklab, var(--brand-500) 6%, #d3c8b2);
+  --app-border-control: color-mix(in oklab, var(--brand-700) 6%, #938a79);
+  --app-text: color-mix(in oklab, var(--brand-950) 15%, #2a251e);
+  --app-text-muted: color-mix(in oklab, var(--brand-900) 10%, #4c463c);
+  --app-text-subtle: color-mix(in oklab, var(--brand-900) 6%, #6b6252);
+  --app-shadow-tint: #3c2d14;
+}
+
+/*
+ * Status tones: success, warning, danger, info and special (holidays, overtime, highlights). Each has a solid color
+ * (dots, bars, fills; add /N for tints), `-fg` text that keeps 4.5:1 on surfaces and on its own soft tint, and a
+ * `-soft` background. Components use these instead of raw emerald/amber/red/sky/violet classes.
+ */
+:root {
+  --status-success: #10b981;
+  --status-success-fg: #047857;
+  --status-warning: #f59e0b;
+  --status-warning-fg: #9a4a07;
+  --status-danger: #ef4444;
+  --status-danger-fg: #c01f1f;
+  --status-info: #0ea5e9;
+  --status-info-fg: #0369a1;
+  --status-special: #8b5cf6;
+  --status-special-fg: #6d28d9;
+  /* Categories: caution (late, missed punch) and away (on leave). */
+  --status-caution: #f97316;
+  --status-caution-fg: #b13d0b;
+  --status-away: #06b6d4;
+  --status-away-fg: #0e6a83;
+  --status-neutral: #94a3b8;
+  --status-soft-mix: 10%;
+  /* Brand text and tint that read correctly in every mode (replaces brand-700 / dark:brand-300 pairs). */
+  --accent-fg: var(--brand-700);
+  --accent-soft: var(--brand-50);
+}
+
+.dark {
+  --status-success-fg: #34d399;
+  --status-warning-fg: #fbbf24;
+  --status-danger-fg: #f87171;
+  --status-info-fg: #38bdf8;
+  --status-special-fg: #b29bfb;
+  --status-caution-fg: #fdba74;
+  --status-away-fg: #67e8f9;
+  --status-neutral: #71717a;
+  --status-soft-mix: 14%;
+  --accent-fg: var(--brand-300);
+  --accent-soft: color-mix(in oklab, var(--brand-500) 12%, transparent);
 }
 
 /* Sidebar palettes. The shell background uses the sidebar color, so the page panel floats on it. */
@@ -74,10 +180,10 @@
 }
 
 [data-sidebar='dark'] {
-  --app-sidebar: #0c0c0e;
-  --app-sidebar-text: #a1a1aa;
+  --app-sidebar: color-mix(in oklab, var(--brand-950) 22%, #0c0c0e);
+  --app-sidebar-text: color-mix(in oklab, var(--brand-200) 15%, #a1a1aa);
   --app-sidebar-text-strong: #fafafa;
-  --app-sidebar-section: #71717a;
+  --app-sidebar-section: color-mix(in oklab, var(--brand-300) 12%, #71717a);
   --app-sidebar-hover: rgb(255 255 255 / 0.05);
   --app-sidebar-active: rgb(255 255 255 / 0.09);
   --app-sidebar-active-text: #ffffff;
@@ -151,6 +257,31 @@
   --color-surface-raised: var(--app-surface-raised);
   --color-line: var(--app-border);
   --color-line-strong: var(--app-border-strong);
+  --color-line-control: var(--app-border-control);
+  --color-scrim: color-mix(in oklab, var(--brand-950) 40%, #050507);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--status-success);
+  --color-success-fg: var(--status-success-fg);
+  --color-success-soft: color-mix(in oklab, var(--status-success) var(--status-soft-mix), transparent);
+  --color-warning: var(--status-warning);
+  --color-warning-fg: var(--status-warning-fg);
+  --color-warning-soft: color-mix(in oklab, var(--status-warning) var(--status-soft-mix), transparent);
+  --color-danger: var(--status-danger);
+  --color-danger-fg: var(--status-danger-fg);
+  --color-danger-soft: color-mix(in oklab, var(--status-danger) var(--status-soft-mix), transparent);
+  --color-info: var(--status-info);
+  --color-info-fg: var(--status-info-fg);
+  --color-info-soft: color-mix(in oklab, var(--status-info) var(--status-soft-mix), transparent);
+  --color-special: var(--status-special);
+  --color-special-fg: var(--status-special-fg);
+  --color-special-soft: color-mix(in oklab, var(--status-special) var(--status-soft-mix), transparent);
+  --color-caution: var(--status-caution);
+  --color-caution-fg: var(--status-caution-fg);
+  --color-caution-soft: color-mix(in oklab, var(--status-caution) var(--status-soft-mix), transparent);
+  --color-away: var(--status-away);
+  --color-away-fg: var(--status-away-fg);
+  --color-away-soft: color-mix(in oklab, var(--status-away) var(--status-soft-mix), transparent);
   --color-fg: var(--app-text);
   --color-fg-muted: var(--app-text-muted);
   --color-fg-subtle: var(--app-text-subtle);
@@ -235,6 +366,17 @@
   --text-2xl--line-height: 2rem;
   --text-3xl: 1.875rem;
   --text-3xl--line-height: 2.25rem;
+  /* Display steps: page heroes and sign-in headlines only. */
+  --text-title: 2rem;
+  --text-title--line-height: 2.5rem;
+  --text-display-sm: 2.25rem;
+  --text-display-sm--line-height: 1.1;
+  --text-display: 2.75rem;
+  --text-display--line-height: 1.05;
+  --text-display-lg: 3.375rem;
+  --text-display-lg--line-height: 1.05;
+  --text-display-xl: 4rem;
+  --text-display-xl--line-height: 1.05;
 }
 
 @theme {
@@ -380,6 +522,13 @@
     scrollbar-width: thin;
     scrollbar-color: var(--app-border-strong) transparent;
   }
+  /* Right-to-left: directional icons (back / forward, previous / next) point the other way. */
+  [dir='rtl'] :is([class*='lucide-chevron-left'], [class*='lucide-chevron-right'], [class*='lucide-arrow-left'], [class*='lucide-arrow-right'], [class*='lucide-chevrons-left'], [class*='lucide-chevrons-right']) {
+    transform: scaleX(-1);
+  }
+  [dir='rtl'] [dir='ltr'] :is([class*='lucide-chevron-left'], [class*='lucide-chevron-right'], [class*='lucide-arrow-left'], [class*='lucide-arrow-right']) {
+    transform: none;
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -395,12 +544,12 @@
   }
   /* Cards that open something: lift on hover. */
   .card-interactive {
-    @apply transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lift motion-reduce:hover:translate-y-0;
+    @apply transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-brand-500/35 hover:shadow-lift motion-reduce:hover:translate-y-0;
   }
   .input-base {
-    @apply block min-h-9 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-fg shadow-xs
+    @apply block min-h-9 w-full rounded-md border border-line-control bg-surface px-3 py-2 text-sm text-fg shadow-xs
       transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle
-      hover:border-fg-subtle/60 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none
+      hover:border-fg-muted focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none
       disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-fg-muted;
   }
   select.input-base {

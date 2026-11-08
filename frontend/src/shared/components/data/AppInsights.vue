@@ -20,10 +20,10 @@ withDefaults(defineProps<{ items: Insight[]; loading?: boolean; title?: string; 
 
 const ICON = { info: Info, warning: AlertTriangle, success: CheckCircle2, danger: TrendingDown } as const;
 const TONE = {
-  info: 'text-sky-600 dark:text-sky-300',
-  warning: 'text-amber-600 dark:text-amber-300',
-  success: 'text-emerald-600 dark:text-emerald-300',
-  danger: 'text-red-600 dark:text-red-300',
+  info: 'text-info-fg',
+  warning: 'text-warning-fg',
+  success: 'text-success-fg',
+  danger: 'text-danger-fg',
 } as const;
 </script>
 
@@ -45,7 +45,7 @@ const TONE = {
         <component :is="i.to ? 'RouterLink' : 'div'" :to="i.to" :class="['group flex items-start gap-3 px-4 py-3', i.to && 'transition hover:bg-surface-muted/50']">
           <component :is="ICON[i.tone ?? 'info']" :size="16" :class="['mt-0.5 shrink-0', TONE[i.tone ?? 'info']]" aria-hidden="true" />
           <span class="min-w-0 flex-1 text-sm text-fg">{{ i.text }}</span>
-          <span v-if="i.to" class="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-400">
+          <span v-if="i.to" class="flex shrink-0 items-center gap-1 text-xs font-medium text-accent-fg">
             {{ i.action ?? 'Open' }}<ArrowRight :size="14" class="transition group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </component>

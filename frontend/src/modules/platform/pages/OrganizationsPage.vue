@@ -67,7 +67,10 @@ async function onCreated(org: PlatformOrgDetail) {
         @page="table.setPage"
         @retry="table.load"
         @row-click="(row) => router.push(`/platform/organizations/${row.id}`)"
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()"
       >
+        <template #empty><AppButton v-if="canManage" :icon="Plus" :disabled="!plans.data.value" @click="createOpen = true">New organization</AppButton></template>
         <template #cell-name="{ row }">
           <p class="font-medium">{{ row.name }}</p>
           <p class="font-mono text-xs text-fg-subtle">{{ row.slug }}</p>

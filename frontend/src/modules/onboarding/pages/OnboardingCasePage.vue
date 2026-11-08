@@ -99,11 +99,11 @@ async function cancel() {
         <div class="space-y-4">
           <AppCard title="Progress">
             <p class="text-3xl font-semibold text-fg tabular-nums">{{ pct }}%</p>
-            <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${pct}%` }" /></div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true"><div class="h-full rounded-full bg-success transition-all" :style="{ width: `${pct}%` }" /></div>
             <dl class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
               <div class="rounded-lg bg-surface-muted/60 p-2"><dt class="text-fg-muted">Done</dt><dd class="text-base font-semibold text-fg">{{ d.progress.done }}/{{ d.progress.total }}</dd></div>
-              <div class="rounded-lg bg-surface-muted/60 p-2"><dt class="text-fg-muted">Overdue</dt><dd class="text-base font-semibold" :class="d.progress.overdue ? 'text-red-600 dark:text-red-400' : 'text-fg'">{{ d.progress.overdue }}</dd></div>
-              <div class="rounded-lg bg-surface-muted/60 p-2"><dt class="text-fg-muted">To verify</dt><dd class="text-base font-semibold" :class="d.progress.awaitingVerification ? 'text-amber-600 dark:text-amber-400' : 'text-fg'">{{ d.progress.awaitingVerification }}</dd></div>
+              <div class="rounded-lg bg-surface-muted/60 p-2"><dt class="text-fg-muted">Overdue</dt><dd class="text-base font-semibold" :class="d.progress.overdue ? 'text-danger-fg' : 'text-fg'">{{ d.progress.overdue }}</dd></div>
+              <div class="rounded-lg bg-surface-muted/60 p-2"><dt class="text-fg-muted">To verify</dt><dd class="text-base font-semibold" :class="d.progress.awaitingVerification ? 'text-warning-fg' : 'text-fg'">{{ d.progress.awaitingVerification }}</dd></div>
             </dl>
           </AppCard>
 
@@ -125,7 +125,7 @@ async function cancel() {
                 <dd class="mt-0.5 whitespace-pre-line text-fg">{{ d.notes }}</dd>
               </div>
             </dl>
-            <RouterLink v-if="d.permissions.manage" :to="`/hr/employees/${d.employee.id}`" class="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Open employee record</RouterLink>
+            <RouterLink v-if="d.permissions.manage" :to="`/hr/employees/${d.employee.id}`" class="mt-4 inline-block text-sm font-medium text-accent-fg hover:underline">Open employee record</RouterLink>
           </AppCard>
         </div>
       </div>

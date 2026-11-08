@@ -73,7 +73,7 @@ function openAdd(skillId: string | null = null) {
               <p class="text-xs text-fg-muted">
                 {{ s.category ? SKILL_CATEGORY_LABELS[s.category] : '' }}
                 <template v-if="s.verifiedLevel">
-                  · <BadgeCheck :size="12" class="inline text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> verified {{ SKILL_LEVEL_LABELS[s.verifiedLevel].toLowerCase() }}
+                  · <BadgeCheck :size="12" class="inline text-success-fg" aria-hidden="true" /> verified {{ SKILL_LEVEL_LABELS[s.verifiedLevel].toLowerCase() }}
                   {{ s.verifiedSource === 'TRAINING' ? 'by a course' : `by ${s.verifiedBy}` }}<template v-if="s.verifiedAt">, {{ formatDate(s.verifiedAt) }}</template>
                 </template>
                 <template v-if="s.notes"> · {{ s.notes }}</template>
@@ -99,7 +99,7 @@ function openAdd(skillId: string | null = null) {
             </div>
             <ul class="space-y-3 text-sm">
               <li v-for="r in p.requirements" :key="r.skillId" class="flex items-center justify-between gap-3">
-                <span :class="r.current >= r.requiredLevel ? 'text-fg' : 'font-medium text-amber-700 dark:text-amber-300'">{{ r.name }}</span>
+                <span :class="r.current >= r.requiredLevel ? 'text-fg' : 'font-medium text-warning-fg'">{{ r.name }}</span>
                 <SkillLevel :model-value="r.current" :required="r.requiredLevel" size="sm" :label="r.name" />
               </li>
             </ul>
@@ -113,7 +113,7 @@ function openAdd(skillId: string | null = null) {
               <p class="font-medium text-fg">{{ g.name }} <span class="font-normal text-fg-muted">— {{ g.current ? SKILL_LEVEL_LABELS[g.current].toLowerCase() : 'not rated' }}, needs {{ SKILL_LEVEL_LABELS[g.required].toLowerCase() }}</span></p>
               <ul v-if="g.courses.length" class="mt-1 space-y-1">
                 <li v-for="c in g.courses" :key="c.id">
-                  <RouterLink :to="`/me/training/courses/${c.id}`" class="text-brand-600 hover:underline dark:text-brand-400">{{ c.title }}</RouterLink>
+                  <RouterLink :to="`/me/training/courses/${c.id}`" class="text-accent-fg hover:underline">{{ c.title }}</RouterLink>
                   <span class="text-xs text-fg-muted"> · up to {{ SKILL_LEVEL_LABELS[c.teachesLevel].toLowerCase() }}{{ c.durationHours ? ` · ${c.durationHours} h` : '' }}</span>
                 </li>
               </ul>

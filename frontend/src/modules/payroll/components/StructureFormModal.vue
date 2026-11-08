@@ -118,7 +118,7 @@ async function save() {
           </li>
         </ul>
         <AppButton class="mt-2" size="sm" variant="secondary" :icon="Plus" :disabled="form.lines.length >= 30" @click="add">Add line</AppButton>
-        <ul v-if="problems.length" class="mt-3 space-y-0.5 text-xs text-amber-700 dark:text-amber-300">
+        <ul v-if="problems.length" class="mt-3 space-y-0.5 text-xs text-warning-fg">
           <li v-for="p in problems" :key="p">{{ p }}</li>
         </ul>
         <p v-if="fieldErrors.lines" class="error-text" role="alert">{{ fieldErrors.lines }}</p>

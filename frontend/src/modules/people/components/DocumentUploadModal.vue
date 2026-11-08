@@ -71,7 +71,7 @@ async function save() {
         <button
           type="button"
           class="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors"
-          :class="dragging ? 'border-brand-500 bg-brand-500/5' : fieldErrors.file ? 'border-red-500/60' : 'border-line hover:border-brand-400 hover:bg-surface-muted/50'"
+          :class="dragging ? 'border-brand-500 bg-brand-500/5' : fieldErrors.file ? 'border-danger/60' : 'border-line hover:border-brand-400 hover:bg-surface-muted/50'"
           @click="input?.click()"
           @dragover.prevent="dragging = true"
           @dragleave.prevent="dragging = false"
@@ -79,7 +79,7 @@ async function save() {
         >
           <FileUp class="h-6 w-6 text-fg-subtle" aria-hidden="true" />
           <span v-if="file" class="text-sm font-medium text-fg">{{ file.name }} <span class="font-normal text-fg-muted">· {{ formatBytes(file.size) }}</span></span>
-          <span v-else class="text-sm text-fg-muted"><span class="font-medium text-brand-600 dark:text-brand-400">Choose a file</span> or drag it here</span>
+          <span v-else class="text-sm text-fg-muted"><span class="font-medium text-accent-fg">Choose a file</span> or drag it here</span>
         </button>
         <input ref="input" type="file" class="sr-only" :accept="ACCEPT" aria-label="Document file" @change="pick(($event.target as HTMLInputElement).files?.[0]); ($event.target as HTMLInputElement).value = ''" />
         <p v-if="fieldErrors.file" class="error-text" role="alert">{{ fieldErrors.file }}</p>

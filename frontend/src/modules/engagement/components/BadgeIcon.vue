@@ -8,7 +8,7 @@ const icon = computed(() => ({ TEAMWORK: Users, INNOVATION: Lightbulb, CUSTOMER_
 </script>
 
 <template>
-  <span class="inline-flex shrink-0 items-center justify-center rounded-xl bg-amber-500/12 text-amber-600 ring-1 ring-amber-500/25 dark:text-amber-400" :style="{ width: `${(size ?? 18) + 18}px`, height: `${(size ?? 18) + 18}px` }" aria-hidden="true">
+  <span class="inline-flex shrink-0 items-center justify-center rounded-xl bg-warning/12 text-warning-fg ring-1 ring-warning/25" :style="{ width: `${(size ?? 18) + 18}px`, height: `${(size ?? 18) + 18}px` }" aria-hidden="true">
     <component :is="icon" :size="size ?? 18" />
   </span>
 </template>

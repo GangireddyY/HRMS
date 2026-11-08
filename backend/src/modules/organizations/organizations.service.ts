@@ -11,7 +11,7 @@ import { OrganizationProfileDto, UpdateSecurityPolicyDto } from './dto/organizat
 const PROFILE_ATTRIBUTES = [
   'id', 'name', 'legalName', 'slug', 'status', 'industry', 'companySize', 'email', 'phone', 'website',
   'registrationNumber', 'taxId', 'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country',
-  'timezone', 'currency', 'locale', 'dateFormat', 'fiscalYearStartMonth', 'logoUrl', 'activatedAt',
+  'timezone', 'currency', 'locale', 'dateFormat', 'fiscalYearStartMonth', 'logoUrl', 'brandColor', 'activatedAt',
   'suspendedAt', 'suspensionReason', 'createdAt', 'updatedAt',
 ];
 
@@ -24,7 +24,7 @@ export const ORGANIZATION_PROFILE_QUERY: FindOptions<Organization> = {
 const PROFILE_FIELDS = [
   'name', 'legalName', 'industry', 'companySize', 'email', 'phone', 'website', 'registrationNumber', 'taxId',
   'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country', 'timezone', 'currency', 'locale',
-  'dateFormat', 'fiscalYearStartMonth',
+  'dateFormat', 'fiscalYearStartMonth', 'brandColor',
 ] as const;
 
 export type ProfileUpdate = Partial<Pick<InferAttributes<Organization>, (typeof PROFILE_FIELDS)[number]>>;

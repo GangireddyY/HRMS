@@ -21,6 +21,7 @@ export { default as AppTextarea } from './forms/AppTextarea.vue';
 export { default as AppAvatar } from './data/AppAvatar.vue';
 export { default as AppBadge } from './data/AppBadge.vue';
 export { default as AppDataTable } from './data/AppDataTable.vue';
+export { default as AppBulkDecision } from './data/AppBulkDecision.vue';
 export { default as AppPagination } from './data/AppPagination.vue';
 export { default as AppStatCard } from './data/AppStatCard.vue';
 export { default as AppSparkline } from './data/AppSparkline.vue';

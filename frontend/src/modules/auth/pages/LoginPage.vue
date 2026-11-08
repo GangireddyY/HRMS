@@ -87,11 +87,14 @@ function backToCredentials() {
       <span class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br short:hidden from-brand-500 to-brand-700 text-white shadow-[0_8px_24px_-6px_var(--brand-500),inset_0_1px_0_rgb(255_255_255/0.25)]">
         <LogIn :size="22" aria-hidden="true" />
       </span>
-      <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px] short:text-2xl">Welcome back</h1>
+      <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-title short:text-2xl">Welcome back</h1>
       <p class="mt-2 text-base text-fg-muted short:mt-1 short:text-sm">Sign in to continue to your workspace.</p>
 
       <form class="mt-4 space-y-5 short:space-y-3" novalidate @submit.prevent="submitCredentials">
         <AppAlert v-if="formError" title="Couldn't sign you in">{{ formError }}</AppAlert>
+        <AppAlert v-else-if="route.query.reason === 'idle'" tone="info" title="You were signed out">
+          For your security, you were signed out after {{ route.query.minutes ? `${route.query.minutes} minutes` : 'a while' }} without activity. Sign in to pick up where you left off.
+        </AppAlert>
         <AppInput
           v-model="email"
           label="Work email"
@@ -105,7 +108,7 @@ function backToCredentials() {
         />
         <AppInput v-model="password" label="Password" type="password" autocomplete="current-password" size="lg" :icon="Lock" placeholder="Enter your password" :error="fieldErrors.password">
           <template #label-action>
-            <RouterLink to="/forgot-password" class="rounded text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">Forgot password?</RouterLink>
+            <RouterLink to="/forgot-password" class="rounded text-sm font-medium text-accent-fg transition hover:text-accent-fg">Forgot password?</RouterLink>
           </template>
         </AppInput>
         <AppButton type="submit" block size="lg" :loading="submitting" :icon-right="ArrowRight" class="group">Sign in</AppButton>
@@ -123,10 +126,10 @@ function backToCredentials() {
       <button type="button" class="mb-4 inline-flex items-center gap-1 rounded-md text-sm font-medium text-fg-muted transition hover:text-fg" @click="backToCredentials">
         <ArrowLeft :size="14" /> Back
       </button>
-      <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
+      <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-fg ring-1 ring-brand-600/15 ring-inset">
         <ShieldCheck :size="22" aria-hidden="true" />
       </span>
-      <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px]">Two-factor verification</h1>
+      <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-title">Two-factor verification</h1>
       <p class="mt-2 text-base text-fg-muted">
         {{ useRecovery ? 'Enter one of your one-time recovery codes.' : 'Enter the 6-digit code from your authenticator app.' }}
       </p>
@@ -135,7 +138,7 @@ function backToCredentials() {
         <AppOtpInput v-if="!useRecovery" v-model="code" label="Authentication code" :error="fieldErrors.code" autofocus />
         <AppInput v-else v-model="recoveryCode" label="Recovery code" autocomplete="off" placeholder="XXXX-XXXX-XXXX" size="lg" :icon="KeyRound" required :error="fieldErrors.recoveryCode" />
         <AppButton type="submit" block size="lg" :loading="submitting" :disabled="useRecovery ? recoveryCode.length < 12 : code.length !== 6">Verify</AppButton>
-        <button type="button" class="w-full text-center text-xs font-medium text-brand-600 hover:underline dark:text-brand-400" @click="useRecovery = !useRecovery; reset()">
+        <button type="button" class="w-full text-center text-xs font-medium text-accent-fg hover:underline" @click="useRecovery = !useRecovery; reset()">
           {{ useRecovery ? 'Use authenticator code instead' : 'Use a recovery code' }}
         </button>
       </form>

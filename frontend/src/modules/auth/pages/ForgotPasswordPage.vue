@@ -29,10 +29,10 @@ async function submit() {
     <RouterLink to="/login" class="group mb-4 inline-flex items-center gap-2 rounded-md text-sm font-medium text-fg-muted transition hover:text-fg">
       <ArrowLeft :size="14" class="transition group-hover:-translate-x-0.5" /> Back to sign in
     </RouterLink>
-    <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-600/15 ring-inset dark:bg-brand-500/12 dark:text-brand-300">
+    <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-fg ring-1 ring-brand-600/15 ring-inset">
       <KeyRound :size="22" aria-hidden="true" />
     </span>
-    <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-[32px]">Reset your password</h1>
+    <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-title">Reset your password</h1>
     <p class="mt-2 text-base text-fg-muted">We'll email you a secure link to choose a new password.</p>
     <AppAlert v-if="sent" tone="success" title="Check your inbox" class="mt-4">
       If an account exists for <strong>{{ email }}</strong>, a reset link is on its way. The link expires in 30 minutes.

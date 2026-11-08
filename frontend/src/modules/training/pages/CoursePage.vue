@@ -147,7 +147,7 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
           <AppCard title="About this course">
             <p v-if="c.description" class="text-sm whitespace-pre-line text-fg">{{ c.description }}</p>
             <p v-else class="text-sm text-fg-muted">No description.</p>
-            <a v-if="c.contentUrl" :href="c.contentUrl" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />{{ c.delivery === 'SELF_PACED' ? 'Course content' : 'Pre-reading' }}</a>
+            <a v-if="c.contentUrl" :href="c.contentUrl" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-accent-fg hover:underline"><ExternalLink :size="14" aria-hidden="true" />{{ c.delivery === 'SELF_PACED' ? 'Course content' : 'Pre-reading' }}</a>
           </AppCard>
 
           <AppCard v-if="sessionBased" title="Sessions">
@@ -181,7 +181,7 @@ const rosterRows = computed<RosterRow[]>(() => roster.data.value ?? []);
                   <RouterLink :to="`/hr/training/enrollments/${r.id}`" class="font-medium text-fg hover:underline">{{ r.employee.name }}</RouterLink>
                   <p class="text-xs text-fg-muted">{{ r.employee.department ?? r.employee.employeeCode }} · {{ r.source === 'ASSIGNED' ? 'assigned' : 'self-enrolled' }}{{ r.dueDate ? ` · due ${formatDate(r.dueDate)}` : '' }}{{ r.bestScore !== null ? ` · best score ${r.bestScore}%` : '' }}</p>
                 </div>
-                <span v-if="r.feedbackRating" class="text-xs text-amber-600 dark:text-amber-400">{{ '★'.repeat(r.feedbackRating) }}</span>
+                <span v-if="r.feedbackRating" class="text-xs text-warning-fg">{{ '★'.repeat(r.feedbackRating) }}</span>
                 <AppBadge :tone="enrollmentTone[r.status]" size="sm">{{ ENROLLMENT_STATUS_LABELS[r.status] }}</AppBadge>
               </li>
             </ul>

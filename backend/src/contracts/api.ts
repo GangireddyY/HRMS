@@ -81,7 +81,13 @@ export interface OrganizationSummary {
   slug: string;
   status: OrganizationStatus;
   logoUrl: string | null;
+  /** Lowercase `#rrggbb` chosen by the organization, or null. */
+  brandColor: string | null;
 }
+
+/** Appearance choices saved on the account (keys and values are validated by the web app's catalogs). */
+export const APPEARANCE_PREFERENCE_KEYS = ['mode', 'color', 'sidebar', 'region', 'hourCycle', 'direction'] as const;
+export type AppearancePreferences = Partial<Record<(typeof APPEARANCE_PREFERENCE_KEYS)[number], string>>;
 
 export interface AuthUser {
   id: string;
@@ -94,6 +100,7 @@ export interface AuthUser {
   lastLoginAt: string | null;
   /** API-relative URL of the profile photo. */
   avatarUrl: string | null;
+  preferences: AppearancePreferences;
 }
 
 /** Effective access of the current user in the active organization. */
@@ -109,6 +116,8 @@ export interface AccessContext {
   features: ModuleKey[];
   mfaSetupRequired: boolean;
   passwordExpired: boolean;
+  /** Sign-out after this many minutes without activity (the active organization's security policy). */
+  idleTimeoutMinutes: number;
 }
 
 export type LoginResult =

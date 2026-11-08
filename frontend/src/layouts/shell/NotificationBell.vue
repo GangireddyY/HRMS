@@ -79,7 +79,7 @@ onBeforeUnmount(() => clearInterval(timer));
         <Bell :size="18" />
         <span
           v-if="unread"
-          class="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-b from-red-500 to-red-600 px-1 text-2xs font-semibold text-white ring-2 ring-canvas"
+          class="absolute top-1 end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-b from-red-500 to-red-600 px-1 text-2xs font-semibold text-white ring-2 ring-canvas"
         >
           {{ unread > 9 ? '9+' : unread }}
         </span>
@@ -87,13 +87,13 @@ onBeforeUnmount(() => clearInterval(timer));
     </template>
     <div class="flex items-center justify-between px-3 pt-1 pb-2" @click.stop>
       <p class="text-sm font-semibold text-fg">Notifications</p>
-      <button v-if="unread" type="button" class="rounded-md px-2 py-0.5 text-xs font-medium text-brand-600 transition hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10" @click="markAll">
+      <button v-if="unread" type="button" class="rounded-md px-2 py-0.5 text-xs font-medium text-accent-fg transition hover:bg-accent-soft" @click="markAll">
         Mark all read
       </button>
     </div>
     <div class="max-h-80 overflow-y-auto">
       <div v-if="loading" class="space-y-2 p-3"><div v-for="i in 3" :key="i" class="h-11 animate-pulse rounded-lg bg-surface-muted" /></div>
-      <p v-else-if="loadError" class="px-3 py-8 text-center text-sm text-red-600 dark:text-red-400">Could not load notifications.</p>
+      <p v-else-if="loadError" class="px-3 py-8 text-center text-sm text-danger-fg">Could not load notifications.</p>
       <div v-else-if="!items.length" class="flex flex-col items-center px-3 py-8 text-center">
         <span class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-muted text-fg-subtle"><Bell :size="18" aria-hidden="true" /></span>
         <p class="text-sm font-medium text-fg">You're all caught up</p>
@@ -117,7 +117,7 @@ onBeforeUnmount(() => clearInterval(timer));
     </div>
     <RouterLink
       to="/me/notifications"
-      class="mt-1 block rounded-lg border-t border-line px-3 pt-3 pb-2 text-center text-xs font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400"
+      class="mt-1 block rounded-lg border-t border-line px-3 pt-3 pb-2 text-center text-xs font-medium text-accent-fg transition hover:text-brand-700"
     >
       View all notifications
     </RouterLink>

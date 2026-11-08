@@ -65,7 +65,7 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
     <template v-if="$slots['label-action']" #label-action><slot name="label-action" /></template>
     <template #default="{ describedby, invalid }">
       <div class="relative">
-        <component :is="icon" v-if="icon" :size="15" class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+        <component :is="icon" v-if="icon" :size="15" class="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
         <input
           :id="inputId"
           :type="effectiveType"
@@ -99,23 +99,23 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
         />
         <span
           v-if="suffix"
-          :class="['pointer-events-none absolute top-1/2 -translate-y-1/2 text-sm text-fg-subtle', isNumber ? 'right-17' : 'right-3']"
+          :class="['pointer-events-none absolute top-1/2 -translate-y-1/2 text-sm text-fg-subtle', isNumber ? 'end-17' : 'end-3']"
           aria-hidden="true"
         >
           {{ suffix }}
         </span>
-        <div v-if="isNumber && !disabled" class="absolute inset-y-px right-px flex overflow-hidden rounded-r-[3px] border-l border-line">
+        <div v-if="isNumber && !disabled" class="absolute inset-y-px end-px flex overflow-hidden rounded-e-[3px] border-s border-line">
           <button type="button" :class="stepper" tabindex="-1" :disabled="atMin" :aria-label="`Decrease ${label ?? ariaLabel ?? 'value'}`" @click="stepBy(-1)">
             <Minus :size="14" />
           </button>
-          <button type="button" :class="[stepper, 'border-l border-line']" tabindex="-1" :disabled="atMax" :aria-label="`Increase ${label ?? ariaLabel ?? 'value'}`" @click="stepBy(1)">
+          <button type="button" :class="[stepper, 'border-s border-line']" tabindex="-1" :disabled="atMax" :aria-label="`Increase ${label ?? ariaLabel ?? 'value'}`" @click="stepBy(1)">
             <Plus :size="14" />
           </button>
         </div>
         <button
           v-if="type === 'password'"
           type="button"
-          class="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-fg-subtle transition hover:text-fg"
+          class="absolute inset-y-0 end-0 flex w-10 items-center justify-center rounded-e-lg text-fg-subtle transition hover:text-fg"
           :aria-label="reveal ? 'Hide password' : 'Show password'"
           @click="reveal = !reveal"
         >
@@ -123,7 +123,7 @@ const stepper = 'flex h-full w-7 items-center justify-center text-fg-subtle tran
           <Eye v-else :size="16" />
         </button>
       </div>
-      <p v-if="capsLock" class="mt-2 flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400" role="status">
+      <p v-if="capsLock" class="mt-2 flex items-center gap-2 text-xs font-medium text-warning-fg" role="status">
         <ArrowBigUp :size="14" aria-hidden="true" /> Caps Lock is on
       </p>
     </template>

@@ -24,7 +24,7 @@ function close() {
     :aria-expanded="open"
     :class="[
       'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-sm font-medium whitespace-nowrap shadow-xs transition focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none',
-      active ? 'border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-200' : 'border-line bg-surface text-fg hover:bg-surface-muted',
+      active ? 'border-brand-300 bg-accent-soft text-accent-fg dark:border-brand-500/40' : 'border-line bg-surface text-fg hover:bg-surface-muted',
     ]"
     @click="open = !open"
   >

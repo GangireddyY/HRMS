@@ -69,11 +69,11 @@ async function act(p: AttendancePeriod, fn: () => Promise<AttendancePeriod>, mes
           <div class="rounded-lg bg-surface-muted p-2"><dt class="text-fg-muted">Half day</dt><dd class="text-base font-semibold text-fg">{{ p.summary.halfDay }}</dd></div>
           <div class="rounded-lg bg-surface-muted p-2"><dt class="text-fg-muted">Late</dt><dd class="text-base font-semibold text-fg">{{ p.summary.late }}</dd></div>
         </dl>
-        <p v-if="p.pendingRegularizations" class="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
+        <p v-if="p.pendingRegularizations" class="mt-3 text-xs font-medium text-warning-fg">
           {{ p.pendingRegularizations }} pending regularization{{ p.pendingRegularizations === 1 ? '' : 's' }} –
           <RouterLink to="/hr/attendance/regularizations" class="underline">review</RouterLink>
         </p>
-        <p v-if="p.pendingOvertime" class="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+        <p v-if="p.pendingOvertime" class="mt-1 text-xs font-medium text-warning-fg">
           {{ p.pendingOvertime }} overtime entr{{ p.pendingOvertime === 1 ? 'y' : 'ies' }} to approve –
           <RouterLink to="/hr/attendance/regularizations?tab=overtime" class="underline">review</RouterLink>
         </p>

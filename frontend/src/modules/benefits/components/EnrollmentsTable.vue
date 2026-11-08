@@ -6,7 +6,8 @@ import { useAuthStore } from '@/core/auth/auth.store';
 import { benefitsApi } from '@/modules/benefits/api/benefits.api';
 import type { Enrollment } from '@/modules/benefits/types';
 import { ENROLLMENT_STATUS_LABELS, LIFE_EVENT_LABELS, REASON_LABELS, RELATION_LABELS, enrollmentTone, inr } from '@/modules/benefits/utils/benefits-format';
-import { AppBadge, AppButton, AppCard, AppDataTable, AppDatePicker, AppModal, AppSearchInput, AppSelect, AppTextarea, type TableColumn } from '@/shared/components';
+import { AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppDatePicker, AppModal, AppSearchInput, AppSelect, AppTextarea, type TableColumn } from '@/shared/components';
+import { runBulk } from '@/shared/utils/bulk';
 import { useTable } from '@/shared/composables/use-table';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -50,6 +51,20 @@ function openEnd(e: Enrollment) {
   endOn.value = undefined;
   ending.value = e;
 }
+const selected = ref<string[]>([]);
+const bulkBusy = ref(false);
+async function bulk(action: 'approve' | 'reject', reason = '') {
+  bulkBusy.value = true;
+  const { done, failed } = await runBulk([...selected.value], (id) => (action === 'approve' ? benefitsApi.approve(id, null) : benefitsApi.reject(id, reason)));
+  bulkBusy.value = false;
+  selected.value = failed;
+  const verb = action === 'approve' ? 'approved' : 'rejected';
+  if (done) feedback.success(`${done} ${done === 1 ? 'enrolment' : 'enrolments'} ${verb}`, failed.length ? `${failed.length} could not be ${verb} and stay selected.` : undefined);
+  else feedback.error(`Could not ${action} the selected enrolments`);
+  await table.load();
+  emit('changed');
+}
+
 async function act(fn: () => Promise<unknown>, success: string) {
   busy.value = true;
   try {
@@ -73,7 +88,8 @@ async function act(fn: () => Promise<unknown>, success: string) {
       <AppSearchInput v-model="table.search.value" placeholder="Search by name or code" aria-label="Search enrolments" />
       <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
     </div>
-    <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Benefit enrolments" empty-title="No enrolments" @page="table.setPage" @retry="table.load">
+    <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" caption="Benefit enrolments" empty-title="No enrolments" @page="table.setPage" @retry="table.load" :filtered="table.isFiltered.value" @clear="table.clearFilters()" v-model:selected="selected" :selectable="manage" :can-select="(r: Enrollment) => r.status === 'PENDING'" :select-label="(r: Enrollment) => `Select ${r.employee?.name ?? 'enrolment'}`">
+      <template #bulk><AppBulkDecision :count="selected.length" noun="enrolment" :busy="bulkBusy" @approve="bulk('approve')" @reject="(r) => bulk('reject', r)" /></template>
       <template #cell-employee="{ row }">
         <p class="font-medium text-fg">{{ row.employee?.name }}</p>
         <p class="text-xs text-fg-muted">{{ row.employee?.employeeCode }}{{ row.employee?.department ? ` · ${row.employee.department}` : '' }}</p>

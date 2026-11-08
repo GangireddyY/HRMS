@@ -67,7 +67,6 @@ function onDrop(e: DragEvent) {
     <button
       type="button"
       :disabled="!!busy"
-      :aria-label="photo ? 'Change photo' : 'Upload a photo'"
       :class="['group relative shrink-0 rounded-full transition', dragging && 'ring-4 ring-brand-500/30']"
       @click="pick"
       @dragover.prevent="dragging = true"
@@ -75,7 +74,8 @@ function onDrop(e: DragEvent) {
       @drop.prevent="onDrop"
     >
       <AppAvatar :name="name" :src="photo" size="xl" />
-      <span v-if="!busy" class="absolute inset-0 flex items-center justify-center rounded-full bg-zinc-950/45 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span class="sr-only">{{ photo ? 'Change photo' : 'Upload a photo' }}</span>
+      <span v-if="!busy" class="absolute inset-0 flex items-center justify-center rounded-full bg-scrim/55 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
         <Camera :size="18" aria-hidden="true" />
       </span>
       <span v-else class="absolute inset-0 flex items-center justify-center rounded-full bg-surface/70">
@@ -88,7 +88,7 @@ function onDrop(e: DragEvent) {
         <AppButton v-if="photo" size="sm" variant="ghost" :icon="Trash2" :loading="busy === 'remove'" :disabled="!!busy" @click="remove">Remove</AppButton>
       </div>
       <p class="mt-2 text-xs text-fg-muted">PNG, JPG or WebP, up to 5 MB. Cropped to a square around your face.</p>
-      <p v-if="error" class="mt-1 text-xs font-medium text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
+      <p v-if="error" class="mt-1 text-xs font-medium text-danger-fg" role="alert">{{ error }}</p>
     </div>
     <input ref="input" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" tabindex="-1" aria-label="Photo file" @change="upload(($event.target as HTMLInputElement).files?.[0])" />
   </div>

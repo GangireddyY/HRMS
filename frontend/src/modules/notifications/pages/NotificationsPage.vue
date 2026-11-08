@@ -49,12 +49,12 @@ async function markAll() {
         <li v-for="n in table.rows.value" :key="n.id">
           <button
             type="button"
-            :class="['flex w-full items-start gap-4 px-4 py-4 text-start transition-colors hover:bg-surface-muted/60', !n.readAt && 'bg-brand-50/40 dark:bg-brand-500/5']"
+            :class="['flex w-full items-start gap-4 px-4 py-4 text-start transition-colors hover:bg-surface-muted/60', !n.readAt && 'bg-accent-soft']"
             @click="open(n)"
           >
             <span class="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-fg-muted ring-1 ring-line ring-inset">
               <Bell :size="16" aria-hidden="true" />
-              <span v-if="!n.readAt" class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-brand-500 ring-2 ring-surface" aria-hidden="true" />
+              <span v-if="!n.readAt" class="absolute -top-0.5 -end-0.5 h-2.5 w-2.5 rounded-full bg-brand-500 ring-2 ring-surface" aria-hidden="true" />
             </span>
             <span class="min-w-0 flex-1">
               <span :class="['block text-sm', n.readAt ? 'text-fg-muted' : 'font-semibold text-fg']">{{ n.title }}</span>

@@ -1,3 +1,4 @@
+import { appLocale, INR_LOCALE } from '@/core/locale/locale';
 import type { ApplicationStage, CandidateSource, FeedbackRecommendation, InterviewMode, JobStatus, OfferStatus, RequisitionReason, RequisitionStatus } from '@contracts';
 
 export const REQUISITION_STATUS_LABELS: Record<RequisitionStatus, string> = {
@@ -33,12 +34,12 @@ export const stageTone: Record<ApplicationStage, 'neutral' | 'info' | 'violet' |
 };
 export const stageAccent: Record<ApplicationStage, string> = {
   APPLIED: 'bg-slate-400',
-  SCREENING: 'bg-sky-500',
-  INTERVIEW: 'bg-violet-500',
+  SCREENING: 'bg-info',
+  INTERVIEW: 'bg-special',
   OFFER: 'bg-brand-500',
-  HIRED: 'bg-emerald-500',
-  REJECTED: 'bg-red-500',
-  WITHDRAWN: 'bg-amber-500',
+  HIRED: 'bg-success',
+  REJECTED: 'bg-danger',
+  WITHDRAWN: 'bg-warning',
 };
 
 /** Stages in pipeline order, including the closed outcomes. */
@@ -51,11 +52,11 @@ export const recommendationTone: Record<FeedbackRecommendation, 'success' | 'dan
 export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = { DRAFT: 'Draft', RELEASED: 'Released – awaiting answer', ACCEPTED: 'Accepted', DECLINED: 'Declined', WITHDRAWN: 'Withdrawn' };
 export const offerTone: Record<OfferStatus, 'neutral' | 'warning' | 'success' | 'danger'> = { DRAFT: 'neutral', RELEASED: 'warning', ACCEPTED: 'success', DECLINED: 'danger', WITHDRAWN: 'neutral' };
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+const inr = new Intl.NumberFormat(INR_LOCALE, { maximumFractionDigits: 0 });
 /** "₹12,00,000" in the organization currency (INR formatting). */
 export function money(n: number | null | undefined, currency = 'INR'): string {
   if (n === null || n === undefined) return '—';
-  return currency === 'INR' ? `₹${inr.format(n)}` : new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+  return currency === 'INR' ? `₹${inr.format(n)}` : new Intl.NumberFormat(appLocale(), { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
 }
 export function experience(min: number | null, max: number | null): string | null {
   if (min === null && max === null) return null;

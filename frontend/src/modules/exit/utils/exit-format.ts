@@ -1,3 +1,4 @@
+import { INR_LOCALE } from '@/core/locale/locale';
 import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
 
 export const TYPE_LABELS: Record<ExitType, string> = { RESIGNATION: 'Resignation', TERMINATION: 'Termination', RETIREMENT: 'Retirement', CONTRACT_END: 'End of contract', DEATH: 'Death', OTHER: 'Other' };
@@ -30,7 +31,7 @@ export const SETTLEMENT_LABELS: Record<SettlementStatus, string> = { DRAFT: 'Dra
 export const settlementTone: Record<SettlementStatus, 'neutral' | 'warning' | 'info' | 'success'> = { DRAFT: 'neutral', SUBMITTED: 'warning', APPROVED: 'info', PAID: 'success' };
 export const BASIS_LABELS: Record<DailyRateBasis, string> = { BASIC_26: 'Monthly Basic ÷ 26', BASIC_30: 'Monthly Basic ÷ 30', GROSS_30: 'Monthly gross ÷ 30' };
 
-export const inr = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`);
+export const inr = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `₹${n.toLocaleString(INR_LOCALE, { maximumFractionDigits: 2 })}`);
 export const serviceLabel = (s: { years: number; months: number; days: number }) =>
   [s.years ? `${s.years} year${s.years === 1 ? '' : 's'}` : null, s.months ? `${s.months} month${s.months === 1 ? '' : 's'}` : null, `${s.days} day${s.days === 1 ? '' : 's'}`].filter(Boolean).join(', ');
 export const LETTER_LABELS: Record<ExitLetterType, string> = { RELIEVING: 'Relieving letter', EXPERIENCE: 'Experience certificate' };

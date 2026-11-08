@@ -1,3 +1,4 @@
+import { appLocale } from '@/core/locale/locale';
 /** Calendar arithmetic on ISO dates (`YYYY-MM-DD`, no time zone). Weeks start on Monday. */
 
 export const addDays = (iso: string, n: number): string => {
@@ -24,4 +25,4 @@ export function monthGrid(month: string): { from: string; to: string } {
 }
 
 export const formatIso = (iso: string, options: Intl.DateTimeFormatOptions): string =>
-  new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+  new Intl.DateTimeFormat(appLocale(), { ...options, timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));

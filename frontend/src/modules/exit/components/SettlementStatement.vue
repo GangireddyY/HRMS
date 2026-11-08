@@ -26,7 +26,7 @@ const deductions = computed(() => props.settlement.lines.filter((l) => l.kind ==
       </div>
       <div class="text-end">
         <AppBadge :tone="settlementTone[settlement.status]" dot>{{ SETTLEMENT_LABELS[settlement.status] }}</AppBadge>
-        <p class="mt-1 text-xs" :class="settlement.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted'">
+        <p class="mt-1 text-xs" :class="settlement.overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'">
           <template v-if="settlement.paidOn">Paid {{ formatDate(settlement.paidOn) }}{{ settlement.paymentReference ? ` · ref ${settlement.paymentReference}` : '' }}</template>
           <template v-else>Due by {{ formatDate(settlement.dueOn) }}{{ settlement.overdue ? ' · overdue' : '' }}</template>
         </p>

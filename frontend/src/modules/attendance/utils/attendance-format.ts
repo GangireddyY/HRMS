@@ -1,3 +1,4 @@
+import { appLocale } from '@/core/locale/locale';
 import type { DayStatus, OvertimeStatus, RegularizationStatus } from '@contracts';
 
 export const DAY_STATUS_LABELS: Record<DayStatus, string> = {
@@ -28,13 +29,13 @@ export const dayStatusTone: Record<DayStatus, 'success' | 'warning' | 'danger' |
 
 /** Calendar cell accents (background + dot), tuned for light and dark mode. */
 export const dayStatusCell: Record<DayStatus, string> = {
-  PRESENT: 'bg-emerald-500/10 ring-emerald-500/25 text-emerald-700 dark:text-emerald-300',
-  HALF_DAY: 'bg-amber-500/10 ring-amber-500/25 text-amber-700 dark:text-amber-300',
-  ABSENT: 'bg-red-500/10 ring-red-500/25 text-red-700 dark:text-red-300',
-  IN_PROGRESS: 'bg-sky-500/10 ring-sky-500/30 text-sky-700 dark:text-sky-300',
-  MISSED_PUNCH: 'bg-orange-500/10 ring-orange-500/30 text-orange-700 dark:text-orange-300',
-  ON_LEAVE: 'bg-cyan-500/10 ring-cyan-500/30 text-cyan-700 dark:text-cyan-300',
-  HOLIDAY: 'bg-violet-500/10 ring-violet-500/25 text-violet-700 dark:text-violet-300',
+  PRESENT: 'bg-success/10 ring-success/25 text-success-fg',
+  HALF_DAY: 'bg-warning/10 ring-warning/25 text-warning-fg',
+  ABSENT: 'bg-danger/10 ring-danger/25 text-danger-fg',
+  IN_PROGRESS: 'bg-info/10 ring-info/30 text-info-fg',
+  MISSED_PUNCH: 'bg-caution/10 ring-caution/30 text-caution-fg',
+  ON_LEAVE: 'bg-away/10 ring-away/30 text-away-fg',
+  HOLIDAY: 'bg-special/10 ring-special/25 text-special-fg',
   WEEKLY_OFF: 'bg-surface-muted ring-line text-fg-subtle',
   UPCOMING: 'bg-surface ring-line text-fg-muted',
   NOT_EMPLOYED: 'bg-surface-muted/40 ring-line/60 text-fg-subtle opacity-60',
@@ -48,7 +49,7 @@ export const overtimeTone: Record<OvertimeStatus, 'warning' | 'success' | 'dange
 
 /** "12 Nov" or "12–14 Nov". */
 export function dateRange(start: string, end: string): string {
-  const f = (d: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { ...opts, timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
+  const f = (d: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(appLocale(), { ...opts, timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
   if (start === end) return f(start, { day: 'numeric', month: 'short' });
   return start.slice(0, 7) === end.slice(0, 7) ? `${f(start, { day: 'numeric' })}–${f(end, { day: 'numeric', month: 'short' })}` : `${f(start, { day: 'numeric', month: 'short' })} – ${f(end, { day: 'numeric', month: 'short' })}`;
 }
@@ -72,12 +73,12 @@ export function formatMinutes(minutes: number | null | undefined): string {
 /** Local time of an instant in the employee's time zone, e.g. "09:05". */
 export function formatTime(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) return '—';
-  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(iso));
+  return new Intl.DateTimeFormat(appLocale(), { hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(iso));
 }
 
 export function monthLabel(month: string): string {
   const [y, m] = month.split('-').map(Number) as [number, number];
-  return new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 1)));
+  return new Intl.DateTimeFormat(appLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 1)));
 }
 
 export function shiftMonth(month: string, delta: number): string {

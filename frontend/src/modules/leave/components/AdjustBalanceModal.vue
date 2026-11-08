@@ -80,7 +80,7 @@ async function save() {
         <AppInput v-model="form.days" label="Days" type="number" :min="0.5" :max="366" :step="0.5" required :error="fieldErrors.days" />
       </div>
       <p v-if="after !== null && Number(form.days) > 0" class="text-sm text-fg-muted">
-        Available: {{ formatDays(selected!.available) }} → <span class="font-medium" :class="after < 0 ? 'text-red-600 dark:text-red-400' : 'text-fg'">{{ formatDays(after) }}</span>
+        Available: {{ formatDays(selected!.available) }} → <span class="font-medium" :class="after < 0 ? 'text-danger-fg' : 'text-fg'">{{ formatDays(after) }}</span>
       </p>
       <AppTextarea v-model="form.note" label="Reason" required :rows="2" :maxlength="500" placeholder="Shown to the employee and kept in the audit log" :error="fieldErrors.note" />
     </form>

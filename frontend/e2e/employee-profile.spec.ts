@@ -81,7 +81,7 @@ test.describe('employee profile, documents, import and org chart', () => {
     await dialog.getByRole('button', { name: 'Import 2 employees' }).click();
     await expect(page.getByText('2 employees imported')).toBeVisible();
     await page.getByLabel('Search employees').fill(code);
-    await expect(page.getByRole('cell', { name: /Kavya Imported/ })).toBeVisible();
+    await expect(page.getByRole('cell', { name: new RegExp(`Kavya Imported ${code}`) })).toBeVisible();
   });
 
   test('My employment page is available in My Workspace', async ({ page }) => {

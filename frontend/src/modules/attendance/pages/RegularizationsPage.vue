@@ -6,10 +6,11 @@ import type { OvertimeStatus, RegularizationStatus } from '@contracts';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import type { Overtime, Regularization, WorkFromHome } from '@/modules/attendance/types';
 import { OVERTIME_LABELS, REGULARIZATION_LABELS, dateRange, formatMinutes, formatTime, overtimeTone, regularizationTone } from '@/modules/attendance/utils/attendance-format';
-import { AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppInput, AppModal, AppPageHeader, AppSelect, AppTabs, type TableColumn } from '@/shared/components';
+import { AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppInput, AppModal, AppPageHeader, AppSelect, AppTabs, type TableColumn } from '@/shared/components';
 import { useTable } from '@/shared/composables/use-table';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate, timeAgo } from '@/shared/utils/format';
+import { runBulk } from '@/shared/utils/bulk';
 
 /** Attendance approvals for people in scope: regularizations, work from home and overtime. */
 const route = useRoute();
@@ -26,8 +27,8 @@ const tab = computed({
 });
 
 const table = useTable((q) => attendanceApi.regularizations({ ...q, view: 'team' }), { filters: { status: 'PENDING' as RegularizationStatus | undefined } });
-const wfhTable = useTable((q) => attendanceApi.workFromHome({ ...q, view: 'team' }), { filters: { status: 'PENDING' as RegularizationStatus | undefined } });
-const otTable = useTable((q) => attendanceApi.overtime({ ...q, view: 'team' }), { filters: { status: 'PENDING' as OvertimeStatus | undefined } });
+const wfhTable = useTable((q) => attendanceApi.workFromHome({ ...q, view: 'team' }), { filters: { status: 'PENDING' as RegularizationStatus | undefined }, url: 'wfh' });
+const otTable = useTable((q) => attendanceApi.overtime({ ...q, view: 'team' }), { filters: { status: 'PENDING' as OvertimeStatus | undefined }, url: 'ot' });
 watch(tab, (t) => void (t === 'wfh' ? wfhTable.load() : t === 'overtime' ? otTable.load() : table.load()));
 
 const columns: TableColumn<Regularization>[] = [
@@ -86,6 +87,27 @@ const description = computed(() => {
 });
 const needsNote = computed(() => reviewing.value?.action === 'reject' && reviewing.value.kind !== 'regularization');
 
+// Bulk review: one selection per tab; rejecting work from home or overtime needs the shared reason.
+type Kind = 'regularization' | 'wfh' | 'overtime';
+const selected = ref<Record<Kind, string[]>>({ regularization: [], wfh: [], overtime: [] });
+const bulkBusy = ref(false);
+const BULK: Record<Kind, { approve: (id: string) => Promise<unknown>; reject: (id: string, reason: string) => Promise<unknown>; reload: () => Promise<void> }> = {
+  regularization: { approve: (id) => attendanceApi.approve(id), reject: (id, r) => attendanceApi.reject(id, r || undefined), reload: () => table.load() },
+  wfh: { approve: (id) => attendanceApi.approveWorkFromHome(id, null), reject: (id, r) => attendanceApi.rejectWorkFromHome(id, r), reload: () => wfhTable.load() },
+  overtime: { approve: (id) => attendanceApi.approveOvertime(id, {}), reject: (id, r) => attendanceApi.rejectOvertime(id, r), reload: () => otTable.load() },
+};
+async function bulk(kind: Kind, action: 'approve' | 'reject', reason = '') {
+  bulkBusy.value = true;
+  const ops = BULK[kind];
+  const { done, failed } = await runBulk([...selected.value[kind]], (id) => (action === 'approve' ? ops.approve(id) : ops.reject(id, reason)));
+  bulkBusy.value = false;
+  selected.value[kind] = failed;
+  const verb = action === 'approve' ? 'approved' : 'rejected';
+  if (done) feedback.success(`${done} ${verb}`, failed.length ? `${failed.length} could not be ${verb} and stay selected.` : 'Everyone has been notified.');
+  else feedback.error(`Could not ${action} the selection`);
+  await ops.reload();
+}
+
 async function submit() {
   const r = reviewing.value!;
   busy.value = true;
@@ -132,7 +154,14 @@ async function submit() {
           :empty-description="table.filters.status === 'PENDING' ? 'New requests from your team will appear here.' : undefined"
           @page="table.setPage"
           @retry="table.load"
+          :filtered="table.isFiltered.value"
+          @clear="table.clearFilters()"
+          v-model:selected="selected.regularization"
+          selectable
+          :can-select="(r: Regularization) => r.status === 'PENDING'"
+          :select-label="(r: Regularization) => `Select `+ (r.employee?.name ?? 'request')"
         >
+          <template #bulk><AppBulkDecision :count="selected.regularization.length" noun="correction" :busy="bulkBusy" :reason-required="false" @approve="bulk('regularization', 'approve')" @reject="(r) => bulk('regularization', 'reject', r)" /></template>
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee?.name ?? '?'" size="sm" />
@@ -172,7 +201,14 @@ async function submit() {
           :empty-title="wfhTable.filters.status === 'PENDING' ? 'Nothing to review' : 'No requests'"
           @page="wfhTable.setPage"
           @retry="wfhTable.load"
+          :filtered="wfhTable.isFiltered.value"
+          @clear="wfhTable.clearFilters()"
+          v-model:selected="selected.wfh"
+          selectable
+          :can-select="(r: WorkFromHome) => r.status === 'PENDING'"
+          :select-label="(r: WorkFromHome) => `Select `+ (r.employee?.name ?? 'request')"
         >
+          <template #bulk><AppBulkDecision :count="selected.wfh.length" noun="request" :busy="bulkBusy" @approve="bulk('wfh', 'approve')" @reject="(r) => bulk('wfh', 'reject', r)" /></template>
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee?.name ?? '?'" size="sm" />
@@ -212,7 +248,14 @@ async function submit() {
           empty-description="Overtime is counted on shifts that have it switched on."
           @page="otTable.setPage"
           @retry="otTable.load"
+          :filtered="otTable.isFiltered.value"
+          @clear="otTable.clearFilters()"
+          v-model:selected="selected.overtime"
+          selectable
+          :can-select="(r: Overtime) => r.status === 'PENDING'"
+          :select-label="(r: Overtime) => `Select `+ (r.employee?.name ?? 'overtime')"
         >
+          <template #bulk><AppBulkDecision :count="selected.overtime.length" noun="overtime claim" :busy="bulkBusy" @approve="bulk('overtime', 'approve')" @reject="(r) => bulk('overtime', 'reject', r)" /></template>
           <template #cell-employee="{ row }">
             <div class="flex items-center gap-3">
               <AppAvatar :name="row.employee?.name ?? '?'" size="sm" />

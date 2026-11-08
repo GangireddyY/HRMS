@@ -9,10 +9,10 @@ const id = useId();
 const WIDTH = 120;
 const TONE: Record<Tone, string> = {
   brand: 'text-brand-500',
-  success: 'text-emerald-500',
-  warning: 'text-amber-500',
-  danger: 'text-red-500',
-  info: 'text-sky-500',
+  success: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-danger',
+  info: 'text-info',
 };
 
 const paths = computed(() => {

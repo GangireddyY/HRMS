@@ -46,7 +46,8 @@ const outcomeOptions = [
         empty-title="No sign-in events"
         @page="table.setPage"
         @retry="table.load"
-      >
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()">
         <template #cell-createdAt="{ row }"><span class="text-fg-muted">{{ formatDateTime(row.createdAt) }}</span></template>
         <template #cell-user="{ row }">
           <p class="font-medium">{{ row.user ? fullName(row.user) : '—' }}</p>

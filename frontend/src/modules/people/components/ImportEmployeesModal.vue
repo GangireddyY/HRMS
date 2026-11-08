@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { appLocale } from '@/core/locale/locale';
 import { CheckCircle2, Download, FileSpreadsheet } from '@lucide/vue';
 import { EMPLOYEE_IMPORT_MAX_ROWS } from '@contracts';
 import { employeesApi } from '@/modules/people/api/people.api';
@@ -75,7 +76,7 @@ const groupedErrors = computed(() => result.value?.errors ?? []);
 </script>
 
 <template>
-  <AppModal :open="open" title="Import employees" :description="`Add up to ${EMPLOYEE_IMPORT_MAX_ROWS.toLocaleString()} employees from a CSV file. The file is checked first; nothing is saved until every row is valid.`" size="lg" @close="emit('close')">
+  <AppModal :open="open" title="Import employees" :description="`Add up to ${EMPLOYEE_IMPORT_MAX_ROWS.toLocaleString(appLocale())} employees from a CSV file. The file is checked first; nothing is saved until every row is valid.`" size="lg" @close="emit('close')">
     <div class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-muted/60 px-4 py-3 text-sm">
         <p class="text-fg-muted">
@@ -95,19 +96,19 @@ const groupedErrors = computed(() => result.value?.errors ?? []);
           <span class="block truncate font-medium text-fg">{{ file.name }}</span>
           <span class="text-fg-muted">{{ formatBytes(file.size) }} · {{ checking ? 'Checking…' : 'Choose another file' }}</span>
         </span>
-        <span v-else class="text-sm text-fg-muted"><span class="font-medium text-brand-600 dark:text-brand-400">Choose a CSV file</span> exported from a spreadsheet (UTF-8)</span>
+        <span v-else class="text-sm text-fg-muted"><span class="font-medium text-accent-fg">Choose a CSV file</span> exported from a spreadsheet (UTF-8)</span>
       </button>
       <input ref="input" type="file" class="sr-only" accept=".csv,text/csv" aria-label="CSV file" @change="pick(($event.target as HTMLInputElement).files?.[0]); ($event.target as HTMLInputElement).value = ''" />
 
       <AppAlert v-if="error">{{ error }}</AppAlert>
 
       <template v-if="result">
-        <AppAlert v-if="ready" tone="success" :title="`${result.total.toLocaleString()} employee${result.total === 1 ? '' : 's'} ready to import`">
+        <AppAlert v-if="ready" tone="success" :title="`${result.total.toLocaleString(appLocale())} employee${result.total === 1 ? '' : 's'} ready to import`">
           <span class="inline-flex items-center gap-2"><CheckCircle2 class="h-4 w-4" aria-hidden="true" /> Every row is valid.</span>
           <span v-if="result.ignoredColumns.length"> Ignored columns: {{ result.ignoredColumns.join(', ') }}.</span>
         </AppAlert>
         <template v-else-if="result.errorCount">
-          <AppAlert tone="warning" :title="`${result.errorCount.toLocaleString()} problem${result.errorCount === 1 ? '' : 's'} in ${(result.total - result.valid).toLocaleString()} of ${result.total.toLocaleString()} rows`">
+          <AppAlert tone="warning" :title="`${result.errorCount.toLocaleString(appLocale())} problem${result.errorCount === 1 ? '' : 's'} in ${(result.total - result.valid).toLocaleString(appLocale())} of ${result.total.toLocaleString(appLocale())} rows`">
             Fix these in your spreadsheet and choose the file again. Nothing has been imported.
           </AppAlert>
           <div class="max-h-64 overflow-y-auto rounded-xl ring-1 ring-line">
@@ -130,7 +131,7 @@ const groupedErrors = computed(() => result.value?.errors ?? []);
     </div>
     <template #footer>
       <AppButton variant="secondary" @click="emit('close')">Cancel</AppButton>
-      <AppButton :loading="importing" :disabled="!ready || checking" @click="runImport">Import {{ result && ready ? result.total.toLocaleString() : '' }} employees</AppButton>
+      <AppButton :loading="importing" :disabled="!ready || checking" @click="runImport">Import {{ result && ready ? result.total.toLocaleString(appLocale()) : '' }} employees</AppButton>
     </template>
   </AppModal>
 </template>

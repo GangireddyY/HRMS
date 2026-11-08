@@ -223,9 +223,9 @@ const country = (code: string | null) => (code ? (COUNTRY_OPTIONS.find((c) => c.
         <AppCard v-else title="History" description="Joining and every lifecycle change, newest first.">
           <AppSkeleton v-if="history.loading.value && !history.data.value" :lines="4" />
           <AppErrorState v-else-if="history.error.value" :error="history.error.value" @retry="history.run" />
-          <ol v-else class="relative space-y-5 border-l border-line ps-6">
+          <ol v-else class="relative space-y-5 border-s border-line ps-6">
             <li v-for="e in history.data.value ?? []" :key="e.id" class="relative">
-              <span class="absolute top-1 -left-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500 ring-1 ring-brand-500/30" aria-hidden="true" />
+              <span class="absolute top-1 -start-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500 ring-1 ring-brand-500/30" aria-hidden="true" />
               <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <p class="text-sm font-medium text-fg">{{ LIFECYCLE_LABELS[e.type] }}</p>
                 <p class="text-xs text-fg-subtle">Effective {{ formatDate(e.effectiveDate) }}</p>

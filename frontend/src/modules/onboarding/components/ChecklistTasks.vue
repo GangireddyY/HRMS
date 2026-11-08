@@ -102,10 +102,10 @@ async function remove(task: OnboardingTask) {
       <ul class="divide-y divide-line overflow-hidden rounded-xl ring-1 ring-line">
         <li v-for="t in g.tasks" :key="t.id" class="flex flex-wrap items-start gap-3 bg-surface px-4 py-3" :class="finished(t) && 'bg-surface-muted/30'">
           <span class="mt-0.5 shrink-0" aria-hidden="true">
-            <CircleCheck v-if="t.state === 'DONE'" :size="18" class="text-emerald-500" />
+            <CircleCheck v-if="t.state === 'DONE'" :size="18" class="text-success" />
             <SkipForward v-else-if="t.state === 'SKIPPED'" :size="18" class="text-fg-subtle" />
-            <Clock v-else-if="t.state === 'SUBMITTED'" :size="18" class="text-amber-500" />
-            <XCircle v-else-if="t.state === 'REJECTED'" :size="18" class="text-red-500" />
+            <Clock v-else-if="t.state === 'SUBMITTED'" :size="18" class="text-warning" />
+            <XCircle v-else-if="t.state === 'REJECTED'" :size="18" class="text-danger" />
             <Circle v-else :size="18" class="text-fg-subtle" />
           </span>
           <div class="min-w-0 flex-1">
@@ -116,11 +116,11 @@ async function remove(task: OnboardingTask) {
             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <AppBadge :tone="assigneeTone[t.assignee]" size="sm">{{ ASSIGNEE_LABELS[t.assignee] }}</AppBadge>
               <AppBadge v-if="t.state !== 'PENDING'" :tone="taskStateTone[t.state]" size="sm" dot>{{ TASK_STATE_LABELS[t.state] }}</AppBadge>
-              <span :class="t.overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-subtle'">{{ t.overdue ? 'Overdue · ' : 'Due ' }}{{ formatDate(t.dueDate) }}</span>
+              <span :class="t.overdue ? 'font-medium text-danger-fg' : 'text-fg-subtle'">{{ t.overdue ? 'Overdue · ' : 'Due ' }}{{ formatDate(t.dueDate) }}</span>
               <span v-if="t.completedBy && finished(t)" class="text-fg-subtle">· {{ t.state === 'SKIPPED' ? 'Skipped' : 'Done' }} by {{ t.completedBy }}</span>
             </div>
             <p v-if="t.document" class="mt-1 text-xs text-fg-muted">
-              {{ t.document.fileName }}<template v-if="t.document.status === 'REJECTED' && t.document.reviewNote"> · <span class="text-red-600 dark:text-red-400">“{{ t.document.reviewNote }}”</span></template>
+              {{ t.document.fileName }}<template v-if="t.document.status === 'REJECTED' && t.document.reviewNote"> · <span class="text-danger-fg">“{{ t.document.reviewNote }}”</span></template>
             </p>
             <p v-if="t.note && finished(t)" class="mt-1 text-xs text-fg-muted italic">“{{ t.note }}”</p>
           </div>

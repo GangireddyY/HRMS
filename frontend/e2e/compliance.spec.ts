@@ -50,6 +50,7 @@ test.describe('compliance', () => {
     await unlinkAdmin();
     await page.goto(policyUrl);
     await page.getByRole('tab', { name: 'Acknowledgements' }).click();
+    await page.getByPlaceholder('Search by name or code').fill(employee.name);
     await expect(page.getByRole('row').filter({ hasText: employee.name })).toContainText('Acknowledged');
   });
 
@@ -58,6 +59,7 @@ test.describe('compliance', () => {
     await page.getByRole('button', { name: 'Add recommended' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Add', exact: true }).click();
     await expect(page.getByText(/obligations? added|already in the calendar/)).toBeVisible();
+    await page.getByRole('radiogroup', { name: 'Calendar view' }).getByRole('radio', { name: 'List' }).click();
     await expect(page.getByText('PF contributions and ECR').first()).toBeVisible();
 
     const reference = unique('CH');

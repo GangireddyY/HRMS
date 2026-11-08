@@ -26,6 +26,8 @@ export interface OrganizationProfile {
   dateFormat: string;
   fiscalYearStartMonth: number;
   logoUrl: string | null;
+  /** Lowercase `#rrggbb`; the app derives the Organization brand theme from it. */
+  brandColor: string | null;
   activatedAt: string | null;
   suspendedAt: string | null;
   suspensionReason: string | null;

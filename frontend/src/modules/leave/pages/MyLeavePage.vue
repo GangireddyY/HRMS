@@ -100,7 +100,9 @@ const statusOptions = (['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const
         :empty-description="canApply ? 'Requests you submit appear here with their status.' : undefined"
         @page="table.setPage"
         @retry="table.load"
-      >
+        :filtered="table.isFiltered.value"
+        @clear="table.clearFilters()">
+        <template #empty><AppButton v-if="canApply" :icon="CalendarPlus" :disabled="!balances.data.value?.balances.length" @click="openApply()">Apply for leave</AppButton></template>
         <template #cell-type="{ row }">
           <span class="inline-flex items-center gap-2">
             <span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: row.leaveType?.color }" aria-hidden="true" />
@@ -115,7 +117,7 @@ const statusOptions = (['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const
         <template #cell-days="{ row }"><span class="tabular-nums">{{ formatDays(row.days) }}</span></template>
         <template #cell-status="{ row }">
           <AppBadge :tone="leaveStatusTone[row.status]" dot>{{ LEAVE_STATUS_LABELS[row.status] }}</AppBadge>
-          <p v-if="row.status === 'REJECTED' && row.reviewNote" class="mt-0.5 max-w-xs text-xs text-red-600 dark:text-red-400">“{{ row.reviewNote }}”</p>
+          <p v-if="row.status === 'REJECTED' && row.reviewNote" class="mt-0.5 max-w-xs text-xs text-danger-fg">“{{ row.reviewNote }}”</p>
           <p v-else-if="row.reviewedBy && row.status === 'APPROVED'" class="mt-0.5 text-xs text-fg-subtle">by {{ row.reviewedBy }}</p>
           <p v-else-if="row.status === 'CANCELLED' && row.cancelledBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.cancelledBy }}</p>
         </template>

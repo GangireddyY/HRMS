@@ -105,7 +105,7 @@ const print = () => window.print();
         <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div class="space-y-4">
             <AppCard v-if="e.course.contentUrl || e.permissions.markDone" title="Course content">
-              <a v-if="e.course.contentUrl" :href="e.course.contentUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"><ExternalLink :size="14" aria-hidden="true" />Open the course</a>
+              <a v-if="e.course.contentUrl" :href="e.course.contentUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-medium text-accent-fg hover:underline"><ExternalLink :size="14" aria-hidden="true" />Open the course</a>
               <div v-if="e.permissions.markDone" class="mt-4 border-t border-line/70 pt-4">
                 <AppButton :icon="CheckCircle2" :loading="busy === 'done'" @click="act('done', () => trainingApi.markDone(id), 'Course completed')">I've finished this course</AppButton>
               </div>
@@ -115,7 +115,7 @@ const print = () => window.print();
               <template v-if="e.session">
                 <p class="font-medium text-fg">{{ sessionWhen(e.session) }}</p>
                 <p class="text-sm text-fg-muted">{{ [e.session.location, e.session.trainer ? `Trainer: ${e.session.trainer}` : null].filter(Boolean).join(' · ') }}</p>
-                <p class="mt-1 text-xs" :class="e.attended ? 'text-emerald-600 dark:text-emerald-400' : 'text-fg-subtle'">{{ e.attended ? 'Attendance recorded' : 'Attendance not recorded yet' }}</p>
+                <p class="mt-1 text-xs" :class="e.attended ? 'text-success-fg' : 'text-fg-subtle'">{{ e.attended ? 'Attendance recorded' : 'Attendance not recorded yet' }}</p>
               </template>
               <p v-else class="text-sm text-fg-muted">No session chosen yet.</p>
               <div v-if="e.permissions.changeSession && sessionOptions.length" class="mt-4 flex flex-wrap items-end gap-2 border-t border-line/70 pt-4">
@@ -147,10 +147,10 @@ const print = () => window.print();
               <template v-else>
                 <AppAlert v-if="result" :tone="result.passed ? 'success' : 'warning'" class="mb-4" :title="result.passed ? 'Passed' : 'Not passed'">You scored {{ result.score }}% ({{ result.correct }} of {{ result.total }}).</AppAlert>
                 <ul v-if="e.attemptHistory.length" class="mb-4 space-y-1 text-sm">
-                  <li v-for="(a, i) in e.attemptHistory" :key="a.id" class="flex justify-between gap-3"><span class="text-fg-muted">Attempt {{ i + 1 }} · {{ formatDateTime(a.createdAt) }}</span><span :class="a.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-fg'">{{ a.score }}%</span></li>
+                  <li v-for="(a, i) in e.attemptHistory" :key="a.id" class="flex justify-between gap-3"><span class="text-fg-muted">Attempt {{ i + 1 }} · {{ formatDateTime(a.createdAt) }}</span><span :class="a.passed ? 'text-success-fg' : 'text-fg'">{{ a.score }}%</span></li>
                 </ul>
                 <AppButton v-if="e.permissions.attempt" :loading="busy === 'quiz'" @click="openQuiz">{{ e.attempts ? 'Try again' : 'Take the assessment' }}</AppButton>
-                <p v-else-if="e.passed" class="text-sm text-emerald-600 dark:text-emerald-400">Assessment passed.</p>
+                <p v-else-if="e.passed" class="text-sm text-success-fg">Assessment passed.</p>
               </template>
             </AppCard>
           </div>
@@ -162,7 +162,7 @@ const print = () => window.print();
               <AppBadge v-if="e.certification" class="mt-2" :tone="certificationTone[e.certification]" size="sm">{{ CERTIFICATION_LABELS[e.certification] }}</AppBadge>
             </AppCard>
             <AppCard v-if="e.status === 'COMPLETED'" title="Your feedback">
-              <p v-if="e.feedback" class="text-sm"><span class="text-amber-500">{{ '★'.repeat(e.feedback.rating) }}</span><span class="text-fg-subtle">{{ '★'.repeat(5 - e.feedback.rating) }}</span> <span class="block text-fg-muted">{{ e.feedback.comment }}</span></p>
+              <p v-if="e.feedback" class="text-sm"><span class="text-warning">{{ '★'.repeat(e.feedback.rating) }}</span><span class="text-fg-subtle">{{ '★'.repeat(5 - e.feedback.rating) }}</span> <span class="block text-fg-muted">{{ e.feedback.comment }}</span></p>
               <AppButton v-else-if="e.permissions.feedback" size="sm" variant="secondary" :icon="Star" @click="rating = 0; comment = ''; feedbackOpen = true">Rate this course</AppButton>
               <p v-else class="text-sm text-fg-muted">No feedback.</p>
             </AppCard>
@@ -170,7 +170,7 @@ const print = () => window.print();
               <dl class="space-y-2 text-sm">
                 <div class="flex justify-between gap-3"><dt class="text-fg-muted">Learner</dt><dd>{{ e.employee.name }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-fg-muted">How</dt><dd>{{ e.source === 'ASSIGNED' ? 'Assigned' : 'Self-enrolled' }}</dd></div>
-                <div v-if="e.dueDate" class="flex justify-between gap-3"><dt class="text-fg-muted">Due</dt><dd :class="e.overdue && 'text-red-600 dark:text-red-400'">{{ formatDate(e.dueDate) }}</dd></div>
+                <div v-if="e.dueDate" class="flex justify-between gap-3"><dt class="text-fg-muted">Due</dt><dd :class="e.overdue && 'text-danger-fg'">{{ formatDate(e.dueDate) }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-fg-muted">Enrolled</dt><dd>{{ formatDate(e.createdAt) }}</dd></div>
               </dl>
             </AppCard>
@@ -195,7 +195,7 @@ const print = () => window.print();
       <AppModal :open="feedbackOpen" title="Rate this course" size="sm" @close="feedbackOpen = false">
         <div class="space-y-4">
           <div class="flex gap-1" role="radiogroup" aria-label="Rating">
-            <button v-for="n in 5" :key="n" type="button" role="radio" :aria-checked="rating === n" :aria-label="`${n} of 5`" class="text-3xl" :class="n <= rating ? 'text-amber-500' : 'text-fg-subtle/40 hover:text-amber-300'" @click="rating = n">★</button>
+            <button v-for="n in 5" :key="n" type="button" role="radio" :aria-checked="rating === n" :aria-label="`${n} of 5`" class="text-3xl" :class="n <= rating ? 'text-warning' : 'text-fg-subtle/40 hover:text-warning'" @click="rating = n">★</button>
           </div>
           <AppTextarea v-model="comment" label="Comments" :rows="3" :maxlength="2000" placeholder="What worked, what could be better" />
         </div>

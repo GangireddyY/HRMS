@@ -67,7 +67,7 @@ async function decline(r: FeedbackRequest) {
           <RouterLink :to="`/me/performance/reviews/${r.id}`" class="flex flex-wrap items-center gap-3 px-4 py-4 hover:bg-surface-muted/50">
             <div class="min-w-0 flex-1">
               <p class="font-medium text-fg">{{ r.cycle.name }}</p>
-              <p class="text-xs text-fg-muted">{{ r.goals }} goal{{ r.goals === 1 ? '' : 's' }} · reviewer {{ r.reviewer?.name ?? 'not assigned yet' }}<template v-if="r.due"> · <span :class="r.due < today && 'text-red-600 dark:text-red-400'">due {{ formatDate(r.due) }}</span></template></p>
+              <p class="text-xs text-fg-muted">{{ r.goals }} goal{{ r.goals === 1 ? '' : 's' }} · reviewer {{ r.reviewer?.name ?? 'not assigned yet' }}<template v-if="r.due"> · <span :class="r.due < today && 'text-danger-fg'">due {{ formatDate(r.due) }}</span></template></p>
             </div>
             <span v-if="r.finalRating" class="text-sm font-semibold text-fg">Rating {{ r.finalRating }}</span>
             <AppBadge :tone="stageTone[r.stage]" dot>{{ STAGE_LABELS[r.stage] }}</AppBadge>

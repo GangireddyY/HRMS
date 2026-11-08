@@ -39,7 +39,8 @@ const columns: TableColumn<Cycle>[] = [
       <template v-if="canConfigure" #actions><AppButton :icon="Plus" @click="formOpen = true">New cycle</AppButton></template>
     </AppPageHeader>
     <AppCard :padded="false">
-      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Review cycles" empty-title="No review cycles yet" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/cycles/${row.id}`)">
+      <AppDataTable :columns="columns" :rows="table.rows.value" :loading="table.loading.value" :error="table.error.value" :meta="table.meta.value" clickable caption="Review cycles" empty-title="No review cycles yet" @page="table.setPage" @retry="table.load" @row-click="(row) => router.push(`/hr/performance/cycles/${row.id}`)" :filtered="table.isFiltered.value" @clear="table.clearFilters()">
+        <template #empty><AppButton :icon="Plus" @click="formOpen = true">New cycle</AppButton></template>
         <template #cell-name="{ row }">
           <p class="font-medium text-fg">{{ row.name }}</p>
           <p v-if="row.resultsReleasedAt" class="text-xs text-fg-muted">Results released {{ formatDate(row.resultsReleasedAt) }}</p>

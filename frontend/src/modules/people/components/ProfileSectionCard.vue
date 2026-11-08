@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appLocale } from '@/core/locale/locale';
 import { computed, ref, watch } from 'vue';
 import { Briefcase, GraduationCap, Pencil, Plus, Trash2, Users } from '@lucide/vue';
 import { profileApi } from '@/modules/people/api/people.api';
@@ -49,7 +50,7 @@ async function remove(item: Item) {
 }
 
 const years = (start: number | null, end: number | null) => (start && end ? `${start} – ${end}` : end ? `Completed ${end}` : start ? `Since ${start}` : null);
-const monthYearFormat = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const monthYearFormat = new Intl.DateTimeFormat(appLocale(), { month: 'short', year: 'numeric', timeZone: 'UTC' });
 const monthYear = (d: string) => monthYearFormat.format(new Date(`${d}T00:00:00Z`));
 function duration(e: Experience) {
   const months = Math.max(0, (Number(e.endDate.slice(0, 4)) - Number(e.startDate.slice(0, 4))) * 12 + Number(e.endDate.slice(5, 7)) - Number(e.startDate.slice(5, 7)) + 1);

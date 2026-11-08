@@ -42,7 +42,6 @@ const kids = (id: string) => props.childrenOf.get(id) ?? [];
       :key="n.id"
       role="treeitem"
       :aria-expanded="n.reportCount ? expanded.has(n.id) : undefined"
-      :aria-label="n.name"
       :class="[
         'relative flex flex-col items-center px-2.5',
         !root && [
@@ -65,7 +64,7 @@ const kids = (id: string) => props.childrenOf.get(id) ?? [];
         <div class="flex items-center gap-3 px-3 pt-4 pb-3">
           <AppAvatar :name="n.name" size="md" />
           <div class="min-w-0 flex-1">
-            <RouterLink :to="`/hr/employees/${n.id}`" class="block truncate text-sm font-semibold text-fg hover:text-brand-600 dark:hover:text-brand-300" @pointerdown.stop>{{ n.name }}</RouterLink>
+            <RouterLink :to="`/hr/employees/${n.id}`" class="block truncate text-sm font-semibold text-fg hover:text-accent-fg" @pointerdown.stop>{{ n.name }}</RouterLink>
             <p class="truncate text-xs text-fg-muted">{{ n.designation?.name ?? n.employeeCode }}</p>
           </div>
         </div>
@@ -81,9 +80,9 @@ const kids = (id: string) => props.childrenOf.get(id) ?? [];
           type="button"
           :class="[
             'absolute -bottom-3 left-1/2 z-10 flex h-6 -translate-x-1/2 items-center gap-1 rounded-full border px-2 text-2xs font-semibold whitespace-nowrap shadow-xs transition focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none',
-            expanded.has(n.id) ? 'border-brand-300 bg-brand-600 text-white dark:border-brand-500' : 'border-line bg-surface text-fg-muted hover:border-brand-300 hover:text-brand-700 dark:hover:text-brand-200',
+            expanded.has(n.id) ? 'border-brand-300 bg-brand-600 text-white dark:border-brand-500' : 'border-line bg-surface text-fg-muted hover:border-brand-300 hover:text-accent-fg',
           ]"
-          :aria-label="expanded.has(n.id) ? `Hide ${n.name}'s team` : `Show ${n.name}'s team (${n.reportCount})`"
+          :aria-label="`${n.reportCount} ${n.reportCount === 1 ? 'report' : 'reports'}: ${expanded.has(n.id) ? 'Hide' : 'Show'} ${n.name}'s team`"
           @pointerdown.stop
           @click="emit('toggle', n)"
         >

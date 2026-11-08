@@ -1,3 +1,4 @@
+import { INR_LOCALE } from '@/core/locale/locale';
 import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '@contracts';
 
 export const RUN_STATUS_LABELS: Record<PayrollRunStatus, string> = { DRAFT: 'Draft', SUBMITTED: 'Awaiting approval', APPROVED: 'Approved', PAID: 'Paid', CANCELLED: 'Cancelled' };
@@ -37,8 +38,8 @@ export function loanEmi(principal: number, annualRate: number, months: number): 
   return Math.ceil((principal * r * f) / (f - 1));
 }
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-const inr2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const inr = new Intl.NumberFormat(INR_LOCALE, { maximumFractionDigits: 0 });
+const inr2 = new Intl.NumberFormat(INR_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** "₹1,23,456" (Indian digit grouping). */
 export function rupees(n: number | null | undefined, decimals = false): string {
   if (n === null || n === undefined) return '—';

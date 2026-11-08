@@ -25,11 +25,11 @@ withDefaults(
 
 /** Featured-icon chips: a tinted tile inside a softer halo. */
 const toneClasses: Record<Tone, { chip: string }> = {
-  brand: { chip: 'bg-brand-100 text-brand-700 ring-4 ring-brand-50 dark:bg-brand-500/20 dark:text-brand-200 dark:ring-brand-500/8' },
-  success: { chip: 'bg-emerald-100 text-emerald-700 ring-4 ring-emerald-50 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-500/8' },
-  warning: { chip: 'bg-amber-100 text-amber-700 ring-4 ring-amber-50 dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-500/8' },
-  danger: { chip: 'bg-red-100 text-red-700 ring-4 ring-red-50 dark:bg-red-500/20 dark:text-red-200 dark:ring-red-500/8' },
-  info: { chip: 'bg-sky-100 text-sky-700 ring-4 ring-sky-50 dark:bg-sky-500/20 dark:text-sky-200 dark:ring-sky-500/8' },
+  brand: { chip: 'bg-brand-100 text-accent-fg ring-4 ring-brand-50 dark:bg-brand-500/20 dark:ring-brand-500/8' },
+  success: { chip: 'bg-success-soft text-success-fg ring-4 ring-success/20' },
+  warning: { chip: 'bg-warning-soft text-warning-fg ring-4 ring-warning/20' },
+  danger: { chip: 'bg-danger-soft text-danger-fg ring-4 ring-danger/20' },
+  info: { chip: 'bg-info-soft text-info-fg ring-4 ring-info/20' },
 };
 </script>
 
@@ -53,7 +53,7 @@ const toneClasses: Record<Tone, { chip: string }> = {
           v-if="trend"
           :class="[
             'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-medium',
-            trend.direction === 'up' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-300' : 'bg-red-50 text-red-700 dark:bg-red-500/12 dark:text-red-300',
+            trend.direction === 'up' ? 'bg-success-soft text-success-fg' : 'bg-danger-soft text-danger-fg',
           ]"
         >
           <ArrowUpRight v-if="trend.direction === 'up'" :size="12" aria-hidden="true" />
