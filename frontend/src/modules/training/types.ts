@@ -174,5 +174,31 @@ export interface MatrixCell {
 
 export interface MatrixRow {
   employee: { id: string; name: string; employeeCode: string; department: string | null; designation: string | null };
+  /** Share of the shown skills' role requirements met (0–100); null when the role needs none of them. */
+  readiness: number | null;
+  gaps: number;
+  /** Gaps of two levels or more. */
+  critical: number;
   cells: MatrixCell[];
+}
+
+export interface MatrixSkillSummary {
+  skillId: string;
+  /** People in scope who have the skill. */
+  people: number;
+  advanced: number;
+  average: number | null;
+  /** People whose role needs the skill, and how many of them meet the level. */
+  required: number;
+  meeting: number;
+}
+
+export interface MatrixTotals {
+  people: number;
+  requirements: number;
+  met: number;
+  gaps: number;
+  critical: number;
+  ratings: number;
+  verified: number;
 }

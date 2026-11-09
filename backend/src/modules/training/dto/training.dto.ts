@@ -183,4 +183,7 @@ export class MatrixQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ type: [String], description: `Up to ${MATRIX_MAX_SKILLS} skills (comma-separated); defaults to the most common ones` })
   @IsOptional() @Transform(({ value }) => (Array.isArray(value) ? value : typeof value === 'string' && value ? value.split(',') : undefined)) @IsArray() @ArrayMaxSize(MATRIX_MAX_SKILLS) @IsUUID('all', { each: true })
   skillIds?: string[];
+  @ApiPropertyOptional({ description: 'Only people below a level their role needs (among the skills shown)' })
+  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean()
+  gapsOnly?: boolean;
 }

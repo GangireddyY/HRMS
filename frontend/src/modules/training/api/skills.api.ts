@@ -1,6 +1,6 @@
 import type { SkillCategory } from '@contracts';
 import { http, type ListQuery, type Page } from '@/core/http/http-client';
-import type { MatrixRow, RoleRequirements, Skill, SkillLevelRow, SkillProfile } from '../types';
+import type { MatrixRow, MatrixSkillSummary, MatrixTotals, RoleRequirements, Skill, SkillLevelRow, SkillProfile } from '../types';
 
 type Levels = { skillId: string; level: number }[];
 
@@ -20,8 +20,8 @@ export const skillsApi = {
   removeMine: (skillId: string) => http.delete<SkillProfile>(`/skills/me/profile/${skillId}`),
   employee: (employeeId: string) => http.get<SkillProfile>(`/skills/employees/${employeeId}`),
   verify: (employeeId: string, skillId: string, level: number) => http.post<SkillProfile>(`/skills/employees/${employeeId}/${skillId}/verify`, { level }),
-  matrix: (q: ListQuery & { departmentId?: string; designationId?: string }, skillIds: string[] = []) =>
-    http.get<{ skills: { id: string; name: string; category: SkillCategory }[]; summary: { skillId: string; people: number; advanced: number; average: number | null }[]; page: Page<MatrixRow> }>('/skills/matrix/view', {
+  matrix: (q: ListQuery & { departmentId?: string; designationId?: string; gapsOnly?: boolean }, skillIds: string[] = []) =>
+    http.get<{ skills: { id: string; name: string; category: SkillCategory }[]; summary: MatrixSkillSummary[]; totals: MatrixTotals; page: Page<MatrixRow> }>('/skills/matrix/view', {
       ...q,
       skillIds: skillIds.length ? skillIds.join(',') : undefined,
     }),

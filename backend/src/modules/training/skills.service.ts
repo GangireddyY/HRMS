@@ -188,7 +188,8 @@ export class SkillsService {
       conditions.push({ [Op.or]: [{ firstName: { [Op.iLike]: like } }, { lastName: { [Op.iLike]: like } }, { employeeCode: { [Op.iLike]: like } }] });
     }
     const where = { [Op.and]: conditions };
-    const allIds = (await Employee.findAll({ where, attributes: ['id'], raw: true })).map((e) => e.id);
+    const inScope = (await Employee.findAll({ where, attributes: ['id', 'designationId'], order: [['firstName', 'ASC'], ['lastName', 'ASC'], ['id', 'ASC']], raw: true })) as { id: string; designationId: string | null }[];
+    const allIds = inScope.map((e) => e.id);
     if (!skillIds.length && allIds.length) {
       const counts = new Map<string, number>();
       for (const r of await EmployeeSkill.findAll({ where: { employeeId: allIds }, attributes: ['skillId'], raw: true })) counts.set(r.skillId, (counts.get(r.skillId) ?? 0) + 1);
@@ -197,35 +198,94 @@ export class SkillsService {
     skillIds = skillIds.slice(0, MATRIX_MAX_SKILLS);
     const skills = skillIds.length ? await Skill.findAll({ where: { id: skillIds }, attributes: ['id', 'name', 'category'] }) : [];
     const ordered = skillIds.map((id) => skills.find((s) => s.id === id)).filter((s): s is Skill => !!s);
-    const employees = await Employee.findAll({
-      where,
-      attributes: PERSON,
-      include: [{ model: Department, attributes: ['id', 'name'] }, { model: Designation, attributes: ['id', 'name'] }],
-      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
-      limit: query.pageSize,
-      offset: (query.page - 1) * query.pageSize,
-    });
-    const ids = employees.map((e) => e.id);
-    const designationIds = [...new Set(employees.map((e) => e.designationId).filter((x): x is string => !!x))];
-    const [levels, needs, allLevels] = await Promise.all([
-      ids.length && skillIds.length ? EmployeeSkill.findAll({ where: { employeeId: ids, skillId: skillIds } }) : [],
-      designationIds.length && skillIds.length ? DesignationSkill.findAll({ where: { designationId: designationIds, skillId: skillIds } }) : [],
-      allIds.length && skillIds.length ? EmployeeSkill.findAll({ where: { employeeId: allIds, skillId: skillIds }, attributes: ['skillId', 'level', 'verifiedLevel'] }) : [],
+
+    // Levels and role needs for everyone in scope, so totals, "gaps only" and readiness order cover all pages.
+    const designationIds = [...new Set(inScope.map((e) => e.designationId).filter((x): x is string => !!x))];
+    const [allLevels, needs] = await Promise.all([
+      allIds.length && skillIds.length ? EmployeeSkill.findAll({ where: { employeeId: allIds, skillId: skillIds }, attributes: ['employeeId', 'skillId', 'level', 'verifiedLevel'] }) : [],
+      designationIds.length && skillIds.length ? DesignationSkill.findAll({ where: { designationId: designationIds, skillId: skillIds }, attributes: ['designationId', 'skillId', 'requiredLevel'] }) : [],
     ]);
-    const rows = employees.map((e) => ({
-      employee: { id: e.id, name: fullName(e), employeeCode: e.employeeCode, department: e.department?.name ?? null, designation: e.designation?.name ?? null },
-      cells: ordered.map((s) => {
-        const mine = levels.find((l) => l.employeeId === e.id && l.skillId === s.id);
-        const need = needs.find((n) => n.designationId === e.designationId && n.skillId === s.id);
+    const levelOf = new Map(allLevels.map((l) => [`${l.employeeId}|${l.skillId}`, l]));
+    const needOf = new Map(needs.map((n) => [`${n.designationId}|${n.skillId}`, n.requiredLevel]));
+    const totals = { people: allIds.length, requirements: 0, met: 0, gaps: 0, critical: 0, ratings: 0, verified: 0 };
+    const perSkill = new Map(ordered.map((s) => [s.id, { held: [] as number[], required: 0, meeting: 0 }]));
+    const standing = new Map<string, { readiness: number | null; gaps: number; critical: number }>();
+    for (const e of inScope) {
+      let required = 0;
+      let met = 0;
+      let gaps = 0;
+      let critical = 0;
+      for (const s of ordered) {
+        const mine = levelOf.get(`${e.id}|${s.id}`);
         const level = effectiveLevel(mine);
-        return { skillId: s.id, level, selfLevel: mine?.level ?? null, verifiedLevel: mine?.verifiedLevel ?? null, required: need?.requiredLevel ?? null, gap: need ? Math.max(0, need.requiredLevel - level) : 0 };
-      }),
-    }));
+        const need = e.designationId ? needOf.get(`${e.designationId}|${s.id}`) : undefined;
+        const stat = perSkill.get(s.id)!;
+        if (level > 0) {
+          stat.held.push(level);
+          totals.ratings++;
+          if (mine?.verifiedLevel) totals.verified++;
+        }
+        if (need) {
+          required++;
+          stat.required++;
+          if (level >= need) {
+            met++;
+            stat.meeting++;
+          } else {
+            gaps++;
+            if (need - level >= 2) critical++;
+          }
+        }
+      }
+      totals.requirements += required;
+      totals.met += met;
+      totals.gaps += gaps;
+      totals.critical += critical;
+      standing.set(e.id, { readiness: required ? Math.round((met / required) * 100) : null, gaps, critical });
+    }
+
+    let listed = query.gapsOnly ? inScope.filter((e) => standing.get(e.id)!.gaps > 0) : inScope;
+    const [sortField, sortDir] = (query.sort ?? '').split(':');
+    if (sortField === 'readiness') {
+      const dir = sortDir === 'desc' ? -1 : 1;
+      // People whose role needs none of the shown skills come last either way.
+      listed = [...listed].sort((a, b) => {
+        const ra = standing.get(a.id)!.readiness;
+        const rb = standing.get(b.id)!.readiness;
+        if (ra === null || rb === null) return ra === rb ? 0 : ra === null ? 1 : -1;
+        return (ra - rb) * dir;
+      });
+    }
+    const pageIds = listed.slice((query.page - 1) * query.pageSize, query.page * query.pageSize).map((e) => e.id);
+    const found = pageIds.length
+      ? await Employee.findAll({ where: { id: pageIds }, attributes: PERSON, include: [{ model: Department, attributes: ['id', 'name'] }, { model: Designation, attributes: ['id', 'name'] }] })
+      : [];
+    const byId = new Map(found.map((e) => [e.id, e]));
+    const rows = pageIds
+      .map((id) => byId.get(id))
+      .filter((e): e is Employee => !!e)
+      .map((e) => ({
+        employee: { id: e.id, name: fullName(e), employeeCode: e.employeeCode, department: e.department?.name ?? null, designation: e.designation?.name ?? null },
+        ...standing.get(e.id)!,
+        cells: ordered.map((s) => {
+          const mine = levelOf.get(`${e.id}|${s.id}`);
+          const need = e.designationId ? needOf.get(`${e.designationId}|${s.id}`) : undefined;
+          const level = effectiveLevel(mine);
+          return { skillId: s.id, level, selfLevel: mine?.level ?? null, verifiedLevel: mine?.verifiedLevel ?? null, required: need ?? null, gap: need ? Math.max(0, need - level) : 0 };
+        }),
+      }));
     const summary = ordered.map((s) => {
-      const held = allLevels.filter((l) => l.skillId === s.id).map(effectiveLevel).filter((v) => v > 0);
-      return { skillId: s.id, people: held.length, advanced: held.filter((v) => v >= 4).length, average: held.length ? Math.round((held.reduce((a, b) => a + b, 0) / held.length) * 10) / 10 : null };
+      const { held, required, meeting } = perSkill.get(s.id)!;
+      return {
+        skillId: s.id,
+        people: held.length,
+        advanced: held.filter((v) => v >= 4).length,
+        average: held.length ? Math.round((held.reduce((a, b) => a + b, 0) / held.length) * 10) / 10 : null,
+        required,
+        meeting,
+      };
     });
-    return { skills: ordered.map((s) => ({ id: s.id, name: s.name, category: s.category })), summary, page: new PaginatedResult(rows, paginationMeta(query, allIds.length)) };
+    return { skills: ordered.map((s) => ({ id: s.id, name: s.name, category: s.category })), summary, totals, page: new PaginatedResult(rows, paginationMeta(query, listed.length)) };
   }
 
   // ---- Internals --------------------------------------------------------------------------------
