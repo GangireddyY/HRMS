@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, CalendarClock, ClipboardCheck, GraduationCap
 import { EXIT_STATUSES, type ExitStatus } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { exitApi } from '@/modules/exit/api/exit.api';
+import ExitGridCard from '@/modules/exit/components/ExitGridCard.vue';
 import ExitStageMeter from '@/modules/exit/components/ExitStageMeter.vue';
 import InitiateExitModal from '@/modules/exit/components/InitiateExitModal.vue';
 import type { ExitDetail, ExitSummary } from '@/modules/exit/types';
@@ -204,6 +205,7 @@ function countdown(e: ExitSummary): { text: string; cls: string } | null {
             </template>
             <span v-else class="inline-flex items-center gap-1 text-xs whitespace-nowrap text-fg-subtle"><CalendarClock :size="12" aria-hidden="true" />{{ row.status === 'APPROVED' || row.status === 'COMPLETED' ? 'Not worked out' : '—' }}</span>
           </template>
+          <template #card="{ row }"><ExitGridCard :exit="row" :countdown="countdown(row)" /></template>
         </AppDataTable>
       </AppCard>
     </AppTabs>

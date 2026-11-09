@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Clock, Globe } from '@lucide/vue';
+import { Building2, Clock, Globe } from '@lucide/vue';
 import type { LoginEventRow } from '@/modules/audit/types';
 import { OUTCOME_VISUAL, TONE_TILE, describeIp, deviceIcon, reasonText } from '@/modules/audit/utils/audit-visuals';
 import { AppAvatar } from '@/shared/components';
 import { describeUserAgent, formatDateTime, fullName, timeAgo } from '@/shared/utils/format';
 
-/** One sign-in attempt in the grid: who, the result, from which device and address, and when. */
-const props = defineProps<{ event: LoginEventRow }>();
+/**
+ * One sign-in attempt in the grid: who, the result, from which device and address, and when. `own` is the signed-in
+ * user's history (My account): the result leads instead of the person, with the organization signed into.
+ */
+const props = defineProps<{ event: LoginEventRow; own?: boolean }>();
 
 const outcome = computed(() => OUTCOME_VISUAL[props.event.outcome] ?? OUTCOME_VISUAL.FAILURE!);
 const ip = computed(() => describeIp(props.event.ipAddress));
@@ -16,7 +19,17 @@ const name = computed(() => (props.event.user ? fullName(props.event.user) : (pr
 
 <template>
   <div class="flex h-full flex-col gap-3">
-    <div class="flex items-center gap-3">
+    <div v-if="own" class="flex items-center gap-3">
+      <span :class="['grid h-10 w-10 shrink-0 place-items-center rounded-xl', TONE_TILE[outcome.tone]]" aria-hidden="true"><component :is="outcome.icon" :size="18" /></span>
+      <div class="min-w-0 flex-1">
+        <h3 class="truncate text-sm leading-snug font-semibold text-fg">{{ outcome.label }}</h3>
+        <p class="flex items-center gap-1 truncate text-xs text-fg-muted">
+          <Building2 :size="12" class="shrink-0 text-fg-subtle" aria-hidden="true" />{{ event.organization?.name ?? 'No organization chosen' }}
+        </p>
+      </div>
+      <time :datetime="event.createdAt" :title="formatDateTime(event.createdAt)" class="shrink-0 text-xs whitespace-nowrap text-fg-muted">{{ timeAgo(event.createdAt) }}</time>
+    </div>
+    <div v-else class="flex items-center gap-3">
       <AppAvatar :name="name" size="md" />
       <div class="min-w-0 flex-1">
         <h3 class="truncate text-sm leading-snug font-semibold text-fg">{{ name }}</h3>

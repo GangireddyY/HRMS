@@ -203,12 +203,27 @@ const active = ref(ids[0]!);
 const anchorId = (id: string) => `settings-${id}`;
 let main: HTMLElement | null = null;
 let lockUntil = 0;
+const navEl = ref<HTMLElement | null>(null);
 
 function go(id: string) {
+  const el = document.getElementById(anchorId(id));
+  main ??= document.getElementById('main');
   active.value = id;
+  if (!el || !main) return;
   lockUntil = Date.now() + 800;
-  document.getElementById(anchorId(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const offset = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  main.scrollTo({ top: main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - offset, behavior: 'smooth' });
 }
+
+/** On short screens the navigator scrolls on its own; keep the current section's item in view. */
+watch(active, async (id) => {
+  await nextTick();
+  const box = navEl.value;
+  const item = box?.querySelector<HTMLElement>(`[data-section="${id}"]`);
+  if (!box || !item || box.scrollHeight <= box.clientHeight) return;
+  const top = item.getBoundingClientRect().top - box.getBoundingClientRect().top;
+  if (top < 8 || top + item.offsetHeight > box.clientHeight - 8) box.scrollTo({ top: box.scrollTop + top - box.clientHeight / 3, behavior: 'smooth' });
+});
 
 function onScroll() {
   if (!main || Date.now() < lockUntil) return;
@@ -264,7 +279,11 @@ if (wanted) {
     <AppErrorState v-if="org.error.value" :error="org.error.value" title="Could not load organization settings" @retry="org.run" />
     <div v-else class="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
       <!-- Section navigator -->
-      <nav aria-label="Settings sections" class="min-w-0 lg:sticky lg:top-4">
+      <nav
+        ref="navEl"
+        aria-label="Settings sections"
+        class="scrollbar-none min-w-0 lg:sticky lg:top-4 lg:-m-1 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:p-1"
+      >
         <ol class="scrollbar-none -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:hidden">
           <li v-for="item in nav.flatMap((g) => g.items)" :key="item.id">
             <button
@@ -283,6 +302,7 @@ if (wanted) {
               <li v-for="item in g.items" :key="item.id">
                 <button
                   type="button"
+                  :data-section="item.id"
                   :aria-current="active === item.id ? 'location' : undefined"
                   :class="[
                     'group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-start text-sm transition-colors',

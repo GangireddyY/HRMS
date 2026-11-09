@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { Building2, CalendarRange, ChevronDown, ChevronRight, Download, FileSpreadsheet, FileText, Info, Layers, Loader2, RotateCcw, Sheet, Users } from '@lucide/vue';
+import { Building2, CalendarRange, ChevronDown, ChevronRight, Download, FileSpreadsheet, FileText, Info, Layers, Lightbulb, Loader2, RotateCcw, Sheet, Users } from '@lucide/vue';
 import type { ReportExportFormat } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { structureApi } from '@/modules/people/api/people.api';
 import { reportsApi, type ReportQuery } from '@/modules/reports/api/reports.api';
+import ReportKpiCard from '@/modules/reports/components/ReportKpiCard.vue';
 import ReportTableCard from '@/modules/reports/components/ReportTableCard.vue';
+import { KPI_META, highlights, sparkFor } from '@/modules/reports/utils/report-visuals';
 import TrendChart from '@/modules/reports/components/TrendChart.vue';
 import { PERIOD_LABELS, REPORT_CATEGORIES, REPORTS, formatValue } from '@/modules/reports/utils/report-definitions';
-import { AppAlert, AppBadge, AppButton, AppCard, AppDatePicker, AppDropdown, AppErrorState, AppInput, AppMenuItem, AppPageHeader, AppSelect, AppSkeleton, AppStatStrip, type StripItem } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppDatePicker, AppDropdown, AppErrorState, AppInput, AppMenuItem, AppPageHeader, AppSelect, AppSkeleton } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -122,7 +124,23 @@ const periodLabel = computed(() => {
   if (r.value.from) return `${formatDate(r.value.from)} – ${formatDate(r.value.to!)}`;
   return `${monthLabel(r.value.fromMonth ?? '')} – ${monthLabel(r.value.toMonth ?? '')}`;
 });
-const kpis = computed<StripItem[]>(() => (def.value && r.value ? def.value.summary.map((s) => ({ key: s.key, label: s.label, value: formatValue(r.value!.summary[s.key] ?? null, s.format), tone: s.tone ?? 'brand' })) : []));
+const kpis = computed(() => {
+  const d = def.value;
+  if (!d || !r.value) return [];
+  return d.summary.map((s) => ({
+    key: s.key,
+    label: s.label,
+    value: formatValue(r.value!.summary[s.key] ?? null, s.format),
+    tone: s.tone ?? 'brand',
+    icon: KPI_META[s.key]?.icon ?? Info,
+    hint: KPI_META[s.key]?.hint,
+    spark: sparkFor(d.key, s.key, r.value),
+    changeLabel: (diff: number) => formatValue(diff, s.format),
+  }));
+});
+const kpiCols = computed(() => ({ 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5' })[kpis.value.length] ?? 'lg:grid-cols-4');
+const takeaways = computed(() => (r.value ? highlights(r.value) : []));
+const takeawayCols = computed(() => ({ 1: '', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-2 xl:grid-cols-4' })[takeaways.value.length] ?? '');
 const others = computed(() => REPORTS.filter((x) => x.key !== def.value?.key && auth.can(x.permission)));
 
 const exporting = ref<ReportExportFormat | null>(null);
@@ -206,10 +224,24 @@ async function exportAs(format: ReportExportFormat) {
       </div>
       <AppErrorState v-else-if="report.error.value" :error="report.error.value" @retry="report.run" />
       <div v-else-if="r" class="space-y-4">
-        <AppStatStrip :class="['transition-opacity', report.loading.value && 'opacity-60']" :items="kpis" :label="`${def.title} summary`" />
+        <ul :class="['grid gap-3 transition-opacity sm:grid-cols-2', kpiCols, report.loading.value && 'opacity-60']" :aria-label="`${def.title} summary`">
+          <li v-for="k in kpis" :key="k.key">
+            <ReportKpiCard :label="k.label" :value="k.value" :icon="k.icon" :tone="k.tone" :hint="k.hint" :spark="k.spark" :change-label="k.changeLabel" />
+          </li>
+        </ul>
         <div class="space-y-4">
           <div class="min-w-0 space-y-4 transition-opacity" :class="report.loading.value && 'opacity-60'" :aria-busy="report.loading.value || undefined">
-            <TrendChart v-if="def.chart" :title="def.chart.label" :description="periodLabel" :points="chartPoints" :format="def.chart.format" :kind="def.chart.kind" />
+            <div :class="['grid items-stretch gap-4', def.chart && takeaways.length && 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]']">
+              <TrendChart v-if="def.chart" :title="def.chart.label" :description="periodLabel" :points="chartPoints" :format="def.chart.format" :kind="def.chart.kind" />
+              <AppCard v-if="takeaways.length" title="Key takeaways" description="Worked out from the figures below" :icon="Lightbulb">
+                <ul :class="['grid gap-3', !def.chart && takeawayCols]">
+                  <li v-for="(t, i) in takeaways" :key="i" class="flex items-start gap-2.5 rounded-lg bg-surface-muted/50 p-3 text-sm leading-snug text-fg">
+                    <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent-soft text-2xs font-semibold text-accent-fg" aria-hidden="true">{{ i + 1 }}</span>
+                    {{ t }}
+                  </li>
+                </ul>
+              </AppCard>
+            </div>
             <div class="grid items-start gap-4 xl:grid-cols-2">
               <ReportTableCard v-for="t in r.tables" :key="t.key" :table="t" :class="t.columns.length > 4 ? 'xl:col-span-2' : ''" />
             </div>

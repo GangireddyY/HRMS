@@ -5,6 +5,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, FileBarChart, Inbox, Layers
 import { GRIEVANCE_CATEGORIES, GRIEVANCE_STATUSES, type GrievanceCategory, type GrievanceStatus } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { grievanceApi } from '@/modules/grievance/api/grievance.api';
+import GrievanceCaseGridCard from '@/modules/grievance/components/GrievanceCaseGridCard.vue';
 import type { CaseRow, GrievanceView } from '@/modules/grievance/types';
 import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, priorityTone, statusTone } from '@/modules/grievance/utils/grievance-format';
 import { CATEGORY_VISUALS, DUE_SOON_DAYS, SLA_BAR, SLA_TEXT, caseSla, daysBetween, isOpenCase, plural, todayIso } from '@/modules/grievance/utils/case-sla';
@@ -328,6 +329,7 @@ const openCase = (r: CaseRow) => router.push(`/hr/grievances/${r.id}`);
               </div>
               <span v-else class="text-xs text-fg-muted">{{ formatDate(row.dueOn) }}</span>
             </template>
+            <template #card="{ row }"><GrievanceCaseGridCard :grievance="row" /></template>
           </AppDataTable>
         </section>
       </div>

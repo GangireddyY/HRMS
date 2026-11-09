@@ -5,6 +5,7 @@ import { AlertTriangle, BellRing, CalendarClock, CheckCircle2, FilePen, Plus, Sc
 import { POLICY_CATEGORIES, POLICY_STATUSES, type PolicyCategory, type PolicyStatus } from '@contracts';
 import { complianceApi } from '@/modules/compliance/api/compliance.api';
 import PolicyFormModal from '@/modules/compliance/components/PolicyFormModal.vue';
+import PolicyGridCard from '@/modules/compliance/components/PolicyGridCard.vue';
 import type { PolicyDetail, PolicySummary } from '@/modules/compliance/types';
 import { POLICY_CATEGORY_LABELS, POLICY_STATUS_LABELS, policyTone } from '@/modules/compliance/utils/compliance-format';
 import { POLICY_VISUALS, ackBar, ackPct, relativeDays } from '@/modules/compliance/utils/compliance-visuals';
@@ -228,6 +229,7 @@ const TONE_EDGE = { danger: 'bg-danger', warning: 'bg-warning', info: 'bg-info' 
           <span v-else class="text-xs text-fg-muted">{{ row.reviewMonths ? '—' : 'No review cycle' }}</span>
         </template>
         <template #cell-updated="{ row }"><span class="text-xs text-fg-muted" :title="formatDate(row.updatedAt)">{{ timeAgo(row.updatedAt) }}</span></template>
+        <template #card="{ row }"><PolicyGridCard :policy="row" /></template>
       </AppDataTable>
     </section>
     <PolicyFormModal :open="formOpen" :policy="null" @close="formOpen = false" @saved="onSaved" />

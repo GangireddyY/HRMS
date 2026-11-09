@@ -4,6 +4,7 @@ import { Check, CircleSlash, ShieldCheck, X } from '@lucide/vue';
 import { BENEFIT_ENROLLMENT_STATUSES, type BenefitEnrollmentStatus } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { benefitsApi } from '@/modules/benefits/api/benefits.api';
+import EnrollmentGridCard from '@/modules/benefits/components/EnrollmentGridCard.vue';
 import type { Enrollment } from '@/modules/benefits/types';
 import { BENEFIT_TYPE_VISUALS } from '@/modules/benefits/utils/benefit-visuals';
 import { ENROLLMENT_STATUS_LABELS, LIFE_EVENT_LABELS, REASON_LABELS, RELATION_LABELS, enrollmentTone, inr } from '@/modules/benefits/utils/benefits-format';
@@ -228,6 +229,9 @@ const listTitle = computed(() => props.title ?? (table.filters.status ? ENROLLME
             <AppButton v-else-if="row.status === 'ACTIVE' && compact" size="sm" variant="ghost" :icon="CircleSlash" :aria-label="`End ${row.employee?.name}'s cover`" title="End cover" @click="openEnd(row)" />
             <AppButton v-else-if="row.status === 'ACTIVE'" size="sm" variant="ghost" :icon="CircleSlash" @click="openEnd(row)">End cover</AppButton>
           </div>
+        </template>
+        <template #card="{ row }">
+          <EnrollmentGridCard :enrollment="row" :show-plan="showPlan" :can-manage="manage" :busy="busy" :selectable="manage && row.status === 'PENDING'" @approve="approve(row)" @reject="openReject(row)" @end="openEnd(row)" />
         </template>
       </AppDataTable>
     </AppCard>

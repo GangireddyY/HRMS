@@ -1,26 +1,40 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ChevronDown, ChevronUp, Table2 } from '@lucide/vue';
+import { ChartColumn, ChevronDown, ChevronUp, Table2 } from '@lucide/vue';
 import type { ReportTable } from '@contracts';
+import BreakdownChart from '@/modules/reports/components/BreakdownChart.vue';
 import { formatValue } from '@/modules/reports/utils/report-definitions';
-import { AppButton, AppCard, AppEmptyState } from '@/shared/components';
+import { chartFirst, chartable } from '@/modules/reports/utils/report-visuals';
+import { AppButton, AppCard, AppEmptyState, AppSegmented } from '@/shared/components';
 import { formatDate } from '@/shared/utils/format';
 
-/** One table of a report; percentage columns also show a bar. Long tables show their first rows until expanded. */
+/**
+ * One table of a report. Breakdowns can switch between a chart and the table (shares open as a chart); percentage
+ * columns also show a bar. Long tables show their first rows until expanded.
+ */
 const props = withDefaults(defineProps<{ table: ReportTable; limit?: number }>(), { limit: 10 });
 const cell = (v: string | number | null, format?: string) => (format === 'date' && typeof v === 'string' ? formatDate(v) : formatValue(v, format as never));
 const numeric = (format?: string) => !!format && format !== 'date';
 const expanded = ref(false);
 const rows = computed(() => (expanded.value ? props.table.rows : props.table.rows.slice(0, props.limit)));
 const hidden = computed(() => props.table.rows.length - props.limit);
+
+const spec = computed(() => chartable(props.table));
+const view = ref<'chart' | 'table'>(chartFirst(props.table) ? 'chart' : 'table');
+const viewOptions = [
+  { value: 'chart' as const, label: 'Chart', icon: ChartColumn },
+  { value: 'table' as const, label: 'Table', icon: Table2 },
+];
 </script>
 
 <template>
-  <AppCard :title="table.title" :icon="Table2" :padded="false">
+  <AppCard :title="table.title" :icon="spec && view === 'chart' ? ChartColumn : Table2" :padded="false">
     <template v-if="table.rows.length" #actions>
-      <span class="rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted tabular-nums ring-1 ring-line ring-inset">{{ table.rows.length }} row{{ table.rows.length === 1 ? '' : 's' }}</span>
+      <AppSegmented v-if="spec" v-model="view" class="w-44 max-sm:w-auto" size="sm" :options="viewOptions" :label="`${table.title}: show as`" />
+      <span v-else class="rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted tabular-nums ring-1 ring-line ring-inset">{{ table.rows.length }} row{{ table.rows.length === 1 ? '' : 's' }}</span>
     </template>
     <AppEmptyState v-if="!table.rows.length" compact :icon="Table2" title="Nothing in this period" description="Widen the period or clear the department filter." />
+    <BreakdownChart v-else-if="spec && view === 'chart'" :table="table" :spec="spec" />
     <div v-else class="overflow-x-auto">
       <table class="w-full text-sm">
         <caption class="sr-only">{{ table.title }}</caption>
@@ -57,7 +71,7 @@ const hidden = computed(() => props.table.rows.length - props.limit);
         </tbody>
       </table>
     </div>
-    <div v-if="hidden > 0" class="border-t border-line/70 px-2 py-1.5">
+    <div v-if="hidden > 0 && !(spec && view === 'chart')" class="border-t border-line/70 px-2 py-1.5">
       <AppButton size="sm" variant="ghost" :icon-right="expanded ? ChevronUp : ChevronDown" :aria-expanded="expanded" @click="expanded = !expanded">
         {{ expanded ? 'Show fewer rows' : `Show all ${table.rows.length} rows` }}
       </AppButton>

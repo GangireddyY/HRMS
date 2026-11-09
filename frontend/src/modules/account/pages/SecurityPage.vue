@@ -5,6 +5,7 @@ import { validatePassword } from '@contracts';
 import { authApi } from '@/modules/auth/api/auth.api';
 import type { LoginEventRow } from '@/modules/audit/types';
 import MfaPanel from '@/modules/account/components/MfaPanel.vue';
+import LoginEventCard from '@/modules/audit/components/LoginEventCard.vue';
 import {
   AppAlert,
   AppBadge,
@@ -160,6 +161,7 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
         </template>
         <template #cell-device="{ row }">{{ describeUserAgent(row.userAgent) }}</template>
         <template #cell-organization="{ row }">{{ row.organization?.name ?? '—' }}</template>
+        <template #card="{ row }"><LoginEventCard :event="row" own /></template>
       </AppDataTable>
     </AppCard>
   </div>

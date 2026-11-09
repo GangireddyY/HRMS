@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { ArrowRight, CalendarRange, HeartPulse, Hourglass, Plus, ShieldCheck } from '@lucide/vue';
 import { BENEFIT_PLAN_STATUSES, type BenefitPlanStatus } from '@contracts';
 import { benefitsApi } from '@/modules/benefits/api/benefits.api';
+import BenefitPlanGridCard from '@/modules/benefits/components/BenefitPlanGridCard.vue';
 import PlanFormModal from '@/modules/benefits/components/PlanFormModal.vue';
 import type { Plan } from '@/modules/benefits/types';
 import { BENEFIT_TYPE_VISUALS } from '@/modules/benefits/utils/benefit-visuals';
@@ -147,6 +148,7 @@ const employerPct = (p: Plan) => (total(p) ? Math.round(((p.stats?.employerMonth
           </div>
           <p class="mt-0.5 text-2xs whitespace-nowrap text-fg-muted tabular-nums">employer {{ inr(row.stats?.employerMonthly ?? 0) }} · {{ employerPct(row) }}%</p>
         </template>
+        <template #card="{ row }"><BenefitPlanGridCard :plan="row" /></template>
       </AppDataTable>
     </AppCard>
     <PlanFormModal :open="formOpen" :plan="null" @close="formOpen = false" @saved="onSaved" />

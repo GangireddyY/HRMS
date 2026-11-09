@@ -30,10 +30,11 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
 <template>
   <a href="#main" class="sr-only z-50 rounded-lg bg-brand-600 px-3 py-2 text-white focus:not-sr-only focus:fixed focus:top-2 focus:start-2">Skip to content</a>
   <!-- The page panel sits flush against the sidebar, separated by a hairline. -->
-  <div class="flex h-dvh overflow-hidden bg-sidebar">
+  <!-- overflow-clip, not -hidden: a hidden box is still scrollable by scrollIntoView, which would shift the shell under the top bar. -->
+  <div class="flex h-dvh overflow-clip bg-sidebar">
     <AppSidebar v-if="isDesktop" :workspace="ws" />
     <div class="flex min-w-0 flex-1 flex-col">
-      <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas lg:border-s lg:border-line">
+      <div class="flex min-h-0 flex-1 flex-col overflow-clip bg-canvas lg:border-s lg:border-line">
         <AppTopbar v-if="isDesktop" :workspace="ws" />
         <MobileTopbar v-else :workspace="ws" />
         <div

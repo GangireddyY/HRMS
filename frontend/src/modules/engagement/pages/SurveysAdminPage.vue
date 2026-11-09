@@ -5,6 +5,7 @@ import { BarChart3, ChevronRight, ClipboardList, Clock, FileClock, Globe, ListCh
 import { SURVEY_STATUSES, type SurveyStatus } from '@contracts';
 import { engagementApi } from '@/modules/engagement/api/engagement.api';
 import SurveyFormModal from '@/modules/engagement/components/SurveyFormModal.vue';
+import SurveyGridCard from '@/modules/engagement/components/SurveyGridCard.vue';
 import type { SurveyDetail, SurveyResults, SurveySummary } from '@/modules/engagement/types';
 import { SURVEY_STATUS_LABELS, surveyTone } from '@/modules/engagement/utils/engagement-format';
 import { AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppSelect, AppStatStrip, type StripItem, type TableColumn } from '@/shared/components';
@@ -200,6 +201,9 @@ const attention = computed(() => {
             <AppButton v-if="row.status === 'OPEN'" size="sm" variant="ghost" :icon="Lock" :aria-label="`Close ${row.title}`" @click="close(row)" />
             <AppButton v-if="row.status === 'DRAFT'" size="sm" :icon="Rocket" @click="open(row)">Open</AppButton>
           </div>
+        </template>
+        <template #card="{ row }">
+          <SurveyGridCard :survey="row" :rate="rates[row.id]" @results="router.push(`/hr/engagement/surveys/${row.id}`)" @edit="openForm(row)" @remove="remove(row)" @close="close(row)" @open="open(row)" />
         </template>
       </AppDataTable>
     </AppCard>

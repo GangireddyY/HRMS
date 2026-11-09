@@ -5,6 +5,7 @@ import { ANNOUNCEMENT_CATEGORIES, ANNOUNCEMENT_STATUSES, type AnnouncementCatego
 import { appLocale } from '@/core/locale/locale';
 import { engagementApi } from '@/modules/engagement/api/engagement.api';
 import AnnouncementFormModal from '@/modules/engagement/components/AnnouncementFormModal.vue';
+import AnnouncementGridCard from '@/modules/engagement/components/AnnouncementGridCard.vue';
 import type { Announcement, Tracking } from '@/modules/engagement/types';
 import { ANNOUNCEMENT_VISUALS } from '@/modules/engagement/utils/admin-visuals';
 import { ANNOUNCEMENT_STATUS_LABELS, CATEGORY_LABELS, RSVP_LABELS, announcementTone, eventWhen } from '@/modules/engagement/utils/engagement-format';
@@ -289,6 +290,9 @@ const tile = (iso: string) => {
             <AppButton v-if="row.status === 'PUBLISHED'" size="sm" variant="ghost" :icon="Archive" :aria-label="`Archive ${row.title}`" @click="act(() => engagementApi.archive(row.id), 'Archived')" />
             <AppButton v-if="row.status === 'DRAFT'" size="sm" :icon="Send" @click="publish(row)">Publish</AppButton>
           </div>
+        </template>
+        <template #card="{ row }">
+          <AnnouncementGridCard :announcement="row" :reach="reach[row.id]" @responses="openTracking(row)" @edit="openForm(row)" @remove="remove(row)" @archive="act(() => engagementApi.archive(row.id), 'Archived')" @publish="publish(row)" />
         </template>
       </AppDataTable>
     </AppCard>
