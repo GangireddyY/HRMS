@@ -519,7 +519,7 @@ if (wanted) {
             <AppSkeleton v-if="subscription.loading.value && !subscription.data.value" :lines="6" />
             <AppErrorState v-else-if="subscription.error.value" :error="subscription.error.value" @retry="subscription.run" />
             <template v-else-if="subscription.data.value">
-              <div :id="anchorId('plan')" class="relative scroll-mt-20 lg:scroll-mt-4 overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
+              <div :id="anchorId('plan')" class="relative scroll-mt-20 lg:scroll-mt-4 overflow-hidden rounded-xl hero-banner p-5 text-white shadow-card">
                 <div class="pointer-events-none absolute -end-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
                 <div class="relative flex flex-wrap items-end justify-between gap-6">
                   <div class="min-w-0">

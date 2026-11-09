@@ -55,8 +55,7 @@ const statusText = computed(() => {
       <PayslipView :payslip="p" />
       <template #aside>
         <section class="card overflow-hidden" aria-labelledby="net-title">
-          <div class="relative bg-gradient-to-br from-brand-700 via-brand-600 to-sky-500 px-5 py-5 text-white">
-            <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_-10%,rgba(255,255,255,0.28),transparent_45%)]" aria-hidden="true" />
+          <div class="relative hero-banner px-5 py-5 text-white">
             <p class="relative inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium"><ReceiptText :size="13" aria-hidden="true" />{{ p.period }}</p>
             <h2 id="net-title" class="relative mt-3 text-xs tracking-wide text-white/75 uppercase">Net pay</h2>
             <p class="relative text-3xl font-semibold tracking-tight tabular-nums">{{ rupees(p.netPay) }}</p>

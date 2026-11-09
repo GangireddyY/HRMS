@@ -103,8 +103,7 @@ const probationTone = (days: number) => (days < 0 ? 'bg-danger-soft text-danger-
     <template v-else-if="d">
       <!-- Welcome -->
       <section class="card overflow-hidden">
-        <div class="relative flex flex-wrap items-center gap-6 bg-gradient-to-br from-brand-700 via-brand-600 to-sky-500 px-6 py-6 text-white">
-          <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_-10%,rgba(255,255,255,0.28),transparent_45%),radial-gradient(circle_at_0%_120%,rgba(255,255,255,0.18),transparent_45%)]" aria-hidden="true" />
+        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
           <div class="relative min-w-0 flex-1">
             <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
               <component :is="d.status === 'COMPLETED' ? PartyPopper : Rocket" :size="13" aria-hidden="true" />

@@ -147,8 +147,7 @@ const raiseText = (p: number) => `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(
     <div v-else-if="!shown" class="card"><AppEmptyState :icon="Wallet" title="No salary on record" description="Your HR team sets it up; it appears here once done." /></div>
     <section v-else class="card overflow-hidden" aria-labelledby="ctc-title">
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div class="relative bg-gradient-to-br from-brand-700 via-brand-600 to-sky-500 p-6 text-white">
-          <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_-10%,rgba(255,255,255,0.28),transparent_45%),radial-gradient(circle_at_0%_120%,rgba(255,255,255,0.18),transparent_45%)]" aria-hidden="true" />
+        <div class="relative hero-banner p-6 text-white">
           <p class="relative inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
             <Layers :size="13" aria-hidden="true" />{{ shown.structure.name ?? 'Salary structure' }}
           </p>

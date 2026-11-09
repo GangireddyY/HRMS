@@ -31,7 +31,8 @@ import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, GENDER_LABELS, bloodGro
 import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppInput, AppSelect, AppTextarea } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
-import { formatDate } from '@/shared/utils/format';
+import { formatDate } from '@/shared/utils/format';
+import { profileCover } from '@/shared/utils/profile-cover';
 
 type EmploymentTab = 'details' | 'background' | 'documents';
 
@@ -157,9 +158,7 @@ const CIRCUMFERENCE = 2 * Math.PI * 18;
   <div class="space-y-4">
     <!-- Profile header -->
     <section class="card overflow-hidden">
-      <div class="relative h-24 bg-gradient-to-r from-brand-700 via-brand-500 to-sky-400" aria-hidden="true">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_85%_-20%,rgba(255,255,255,0.35),transparent_45%),radial-gradient(circle_at_10%_140%,rgba(255,255,255,0.25),transparent_40%)]" />
-      </div>
+      <div class="h-24 border-b border-line/50" :style="profileCover(employee.id)" aria-hidden="true" />
       <div class="flex flex-wrap items-end gap-x-5 gap-y-4 px-5 pb-5">
         <div class="relative z-10 -mt-12 rounded-full bg-surface p-1 shadow-sm">
           <AppAvatar :name="employee.fullName" :src="employee.avatarUrl" size="2xl" />

@@ -14,7 +14,8 @@ import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
-import { formatDate } from '@/shared/utils/format';
+import { formatDate } from '@/shared/utils/format';
+import { profileCover } from '@/shared/utils/profile-cover';
 
 /** Add or edit an employee record: grouped sections, a live preview with what's still missing, and a sticky save bar. */
 const route = useRoute();
@@ -382,7 +383,7 @@ const previewRole = computed(() => {
 
       <aside class="min-w-0 space-y-4 xl:sticky xl:top-0" aria-label="Form summary">
         <section class="card overflow-hidden">
-          <div class="h-12 bg-gradient-to-r from-brand-700 via-brand-500 to-sky-400" aria-hidden="true" />
+          <div class="h-12 border-b border-line/50" :style="profileCover(existing.data.value?.id ?? 'new-employee')" aria-hidden="true" />
           <div class="flex flex-col items-center px-4 pb-4 text-center">
             <div class="-mt-8 rounded-full bg-surface p-1 shadow-xs">
               <AppAvatar v-if="previewName" :name="previewName" :src="existing.data.value?.avatarUrl" size="xl" />

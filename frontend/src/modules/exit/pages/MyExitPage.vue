@@ -319,8 +319,7 @@ const CIRC = 2 * Math.PI * 42;
       <!-- Exit in progress or completed -->
       <template v-else>
         <section class="card overflow-hidden print:hidden" aria-labelledby="exit-title">
-          <div class="relative flex flex-wrap items-center gap-6 bg-gradient-to-br from-slate-800 via-brand-800 to-brand-600 px-6 py-6 text-white dark:from-slate-900 dark:via-brand-900 dark:to-brand-700">
-            <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_-10%,rgba(255,255,255,0.2),transparent_45%),radial-gradient(circle_at_0%_120%,rgba(255,255,255,0.12),transparent_45%)]" aria-hidden="true" />
+          <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
             <div class="relative min-w-0 flex-1 basis-80">
               <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
                 <component :is="current.status === 'COMPLETED' ? HeartHandshake : current.status === 'APPROVED' ? CalendarClock : Hourglass" :size="13" aria-hidden="true" />

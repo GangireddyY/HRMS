@@ -58,7 +58,8 @@ import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
 import { COUNTRY_OPTIONS } from '@/shared/utils/options';
-import { membershipTone, statusLabel } from '@/shared/utils/status';
+import { membershipTone, statusLabel } from '@/shared/utils/status';
+import { profileCover } from '@/shared/utils/profile-cover';
 
 /** HR's view of one employee: profile header with key facts and actions, tabbed record, and a side panel of people, dates and activity. */
 const route = useRoute();
@@ -267,9 +268,12 @@ const CIRCUMFERENCE = 2 * Math.PI * 18;
 
       <!-- Profile header (no overflow clipping: the lifecycle menu opens below it). -->
       <section class="card mb-4">
-        <div class="relative h-24 rounded-t-[inherit] bg-gradient-to-r from-brand-700 via-brand-500 to-sky-400" :class="employee.data.value.status === 'EXITED' && 'grayscale-[60%]'" aria-hidden="true">
-          <div class="absolute inset-0 rounded-t-[inherit] bg-[radial-gradient(circle_at_85%_-20%,rgba(255,255,255,0.35),transparent_45%),radial-gradient(circle_at_10%_140%,rgba(255,255,255,0.25),transparent_40%)]" />
-        </div>
+        <div
+          class="h-24 rounded-t-[inherit] border-b border-line/50"
+          :class="employee.data.value.status === 'EXITED' && 'grayscale-[60%]'"
+          :style="profileCover(employee.data.value.id)"
+          aria-hidden="true"
+        />
         <div class="flex flex-wrap items-end gap-x-5 gap-y-4 px-5 pb-5 max-sm:flex-col max-sm:items-start max-sm:gap-y-3">
           <div class="relative z-10 -mt-12 rounded-full bg-surface p-1 shadow-sm">
             <AppAvatar :name="employee.data.value.fullName" :src="employee.data.value.avatarUrl" size="2xl" />

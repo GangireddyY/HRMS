@@ -109,8 +109,7 @@ const trendStats = computed(() => {
     <template v-else>
       <!-- Latest payslip -->
       <section class="card grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" aria-labelledby="latest-title">
-        <div class="relative flex flex-col bg-gradient-to-br from-brand-700 via-brand-600 to-sky-500 p-6 text-white">
-          <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_-10%,rgba(255,255,255,0.28),transparent_45%),radial-gradient(circle_at_0%_120%,rgba(255,255,255,0.18),transparent_45%)]" aria-hidden="true" />
+        <div class="relative flex flex-col hero-banner p-6 text-white">
           <div class="relative flex flex-wrap items-center gap-2">
             <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur"><ReceiptText :size="13" aria-hidden="true" />Latest payslip</span>
             <span class="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-brand-700">

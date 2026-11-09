@@ -63,7 +63,7 @@ function inWords(amount: number): string {
 
 <template>
   <article class="payslip card overflow-hidden print:rounded-none print:shadow-none print:ring-0" :aria-label="`Payslip for ${p.period}`">
-    <div class="h-1.5 bg-gradient-to-r from-brand-600 via-brand-500 to-sky-400" aria-hidden="true" />
+    <div class="h-1.5 bg-gradient-to-r from-brand-700 via-brand-500 to-brand-300" aria-hidden="true" />
     <div class="p-5 sm:p-6">
       <!-- Letterhead -->
       <header class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
