@@ -6,6 +6,7 @@
 export * from './permissions';
 export * from './roles';
 export * from './api';
+export * from './audit';
 export * from './password-policy';
 export * from './people';
 export * from './attendance';

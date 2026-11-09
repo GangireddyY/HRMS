@@ -1,4 +1,4 @@
-import { AuditLog, Notification } from './activity.models';
+import { AuditLog, LogArchive, Notification } from './activity.models';
 import {
   AttendanceDevice,
   AttendanceOvertime,
@@ -93,6 +93,7 @@ export const ALL_MODELS = [
   RolePermission,
   MembershipRole,
   AuditLog,
+  LogArchive,
   Notification,
   Department,
   Designation,
@@ -295,6 +296,7 @@ export const TENANT_MODELS = [
   ExitSettlement,
   ExitLetter,
   AlumniProfile,
+  LogArchive,
   // Nullable organization_id (platform-level rows exist); written with explicit organization ids.
   AuditLog,
   LoginEvent,

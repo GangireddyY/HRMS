@@ -1,3 +1,35 @@
+import type { LogArchiveKind, LogArchiveStatus } from '@contracts';
+
+export interface LogArchive {
+  id: string;
+  kind: LogArchiveKind;
+  /** Records created before this day are in the file. */
+  before: string;
+  firstRecordAt: string | null;
+  lastRecordAt: string | null;
+  recordCount: number;
+  fileName: string;
+  sizeBytes: number;
+  sha256: string;
+  status: LogArchiveStatus;
+  downloadedAt: string | null;
+  purgedAt: string | null;
+  /** Null when the records were deleted together with a later archive. */
+  purgedCount: number | null;
+  createdAt: string;
+  createdBy: { id: string; name: string } | null;
+  purgedBy: { id: string; name: string } | null;
+}
+
+export interface LogArchivePreview {
+  kind: LogArchiveKind;
+  before: string;
+  count: number;
+  firstRecordAt: string | null;
+  lastRecordAt: string | null;
+  maxRecords: number;
+}
+
 export interface DailyLoginStat {
   day: string;
   outcome: string;

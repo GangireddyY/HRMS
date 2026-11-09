@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+import { Archive } from '@lucide/vue';
+import { useAuthStore } from '@/core/auth/auth.store';
 import { auditApi } from '@/modules/audit/api/audit.api';
+import LogArchiveModal from '@/modules/audit/components/LogArchiveModal.vue';
 import type { LoginEventRow } from '@/modules/audit/types';
-import { AppBadge, AppCard, AppDataTable, AppDatePicker, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
+import { AppBadge, AppButton, AppCard, AppDataTable, AppDatePicker, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
 import { useTable } from '@/shared/composables/use-table';
 import { describeUserAgent, formatDateTime, fullName } from '@/shared/utils/format';
 import { loginTone, statusLabel } from '@/shared/utils/status';
 
+const auth = useAuthStore();
+const archiveOpen = ref(false);
 const table = useTable((q) => auditApi.loginEvents(q), {
   pageSize: 25,
   filters: { outcome: undefined as string | undefined, from: undefined as string | undefined, to: undefined as string | undefined },
@@ -28,7 +34,12 @@ const outcomeOptions = [
 
 <template>
   <div>
-    <AppPageHeader title="Login history" description="Sign-in attempts for this organization, including failures and lockouts." />
+    <AppPageHeader title="Login history" description="Sign-in attempts for this organization, including failures and lockouts. Old events can be archived to a file and then deleted.">
+      <template #actions>
+        <AppButton v-if="auth.can('audit.purge')" variant="secondary" :icon="Archive" @click="archiveOpen = true">Archive & delete</AppButton>
+      </template>
+    </AppPageHeader>
+    <LogArchiveModal v-if="auth.can('audit.purge')" :open="archiveOpen" kind="LOGIN_HISTORY" @close="archiveOpen = false" @purged="table.load()" />
     <AppCard :padded="false">
       <div class="grid gap-3 border-b border-line/70 px-4 py-3 md:grid-cols-[1fr_180px_160px_160px]">
         <AppSearchInput v-model="table.search.value" placeholder="Search by email" aria-label="Search by email" />

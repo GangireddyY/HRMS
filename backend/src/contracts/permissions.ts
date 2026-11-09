@@ -116,6 +116,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // Core: audit
   def('core', 'audit', 'audit.view', 'View audit trail'),
   def('core', 'audit', 'audit.login_history.view', 'View login history of all users'),
+  def('core', 'audit', 'audit.purge', 'Archive old audit trail and login history to a file, then delete them'),
   // Core: self-service
   def('core', 'self', 'self.profile.update', 'Update own permitted personal details'),
 
