@@ -143,6 +143,7 @@ async function create() {
 
       <AppDataTable
         v-else
+        :grid="false"
         :columns="columns"
         :rows="shown"
         :loading="roles.loading.value"

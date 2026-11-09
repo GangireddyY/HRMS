@@ -145,6 +145,7 @@ function onInvited(member: Member) {
       <AppDataTable
         v-else
         v-model:sort="table.sort.value"
+        :grid="false"
         :columns="columns"
         :rows="table.rows.value"
         :loading="table.loading.value"

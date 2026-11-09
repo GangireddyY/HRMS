@@ -121,6 +121,7 @@ const plural: Record<StructureKind, string> = { departments: 'departments', desi
 
       <AppCard v-else :padded="false">
         <AppDataTable
+          :grid="false"
           :columns="columns"
           :rows="rows"
           :loading="current.loading.value"

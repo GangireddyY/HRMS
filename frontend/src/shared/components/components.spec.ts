@@ -66,6 +66,39 @@ describe('AppDataTable', () => {
     const w = mount(AppDataTable, { props: { columns, rows: [{ id: '1', name: 'A' }], meta: { page: 2, pageSize: 1, total: 3, totalPages: 3 } } });
     expect(w.text()).toContain('Page 2 of 3');
   });
+
+  it('switches to a remembered grid of cards that reuse the cell slots', async () => {
+    localStorage.clear();
+    const cols: TableColumn<Row & { city: string }>[] = [
+      { key: 'name', label: 'Name' },
+      { key: 'city', label: 'City' },
+      { key: 'actions', label: '' },
+    ];
+    const rows = [{ id: '1', name: 'Asha', city: 'Pune' }];
+    const opts = {
+      props: { columns: cols, rows, caption: 'People', clickable: true },
+      slots: { 'cell-name': '<template #cell-name="{ row }"><b class="who">{{ row.name }}</b></template>', 'cell-actions': '<template #cell-actions><button class="act">Edit</button></template>' },
+    };
+    const w = mount(AppDataTable, opts);
+    await w.findAll('[role="radio"]').find((b) => b.text() === 'Grid')!.trigger('click');
+    expect(w.find('table').exists()).toBe(false);
+    const card = w.find('article');
+    expect(card.find('.who').text()).toBe('Asha');
+    expect(card.find('dt').text()).toBe('City');
+    expect(card.find('dd').text()).toBe('Pune');
+    await card.find('.act').trigger('click');
+    expect(w.emitted('rowClick')).toBeUndefined();
+    await card.trigger('click');
+    expect(w.emitted('rowClick')).toHaveLength(1);
+    // The choice is remembered for this table.
+    expect(mount(AppDataTable, opts).find('table').exists()).toBe(false);
+    localStorage.clear();
+  });
+
+  it('has no layout switch when grid is off', () => {
+    const w = mount(AppDataTable, { props: { columns, rows: [{ id: '1', name: 'A' }], grid: false } });
+    expect(w.find('[role="radiogroup"]').exists()).toBe(false);
+  });
 });
 
 const options = [

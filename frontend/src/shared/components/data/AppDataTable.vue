@@ -1,9 +1,11 @@
 <script setup lang="ts" generic="Row extends Record<string, any>">
-import { computed, watch } from 'vue';
-import { ArrowDown, ArrowUp, ArrowUpDown, FilterX, SearchX } from '@lucide/vue';
+import { computed, inject, ref, watch } from 'vue';
+import { routerKey, type Router } from 'vue-router';
+import { ArrowDown, ArrowUp, ArrowUpDown, FilterX, LayoutGrid, Rows3, SearchX } from '@lucide/vue';
 import AppButton from '@/shared/components/forms/AppButton.vue';
 import type { PaginationMeta } from '@contracts';
 import AppPagination from '@/shared/components/data/AppPagination.vue';
+import AppSegmented from '@/shared/components/forms/AppSegmented.vue';
 import AppSelect from '@/shared/components/forms/AppSelect.vue';
 import AppEmptyState from '@/shared/components/feedback/AppEmptyState.vue';
 import AppErrorState from '@/shared/components/feedback/AppErrorState.vue';
@@ -29,8 +31,12 @@ const props = withDefaults(
     canSelect?: (row: Row) => boolean;
     /** Accessible name of a row's checkbox, e.g. "Select Asha Patel". */
     selectLabel?: (row: Row) => string;
+    /** Offer a Table / Grid switch (off for pages with their own layout switch). */
+    grid?: boolean;
+    /** Remembers the chosen layout; defaults to the page's route plus the caption. */
+    layoutKey?: string;
   }>(),
-  { rowKey: (row: Row) => String(row.id), emptyTitle: 'No records found', clickable: false, canSelect: () => true, selectLabel: undefined },
+  { rowKey: (row: Row) => String(row.id), emptyTitle: 'No records found', clickable: false, canSelect: () => true, selectLabel: undefined, grid: true, layoutKey: undefined },
 );
 
 const emit = defineEmits<{ 'update:sort': [sort: string]; page: [page: number]; retry: []; rowClick: [row: Row]; clear: [] }>();
@@ -97,14 +103,52 @@ const sortOptions = computed(() =>
     { value: `${c.sortField}:desc`, label: `${c.label} (descending)` },
   ]),
 );
+
+// ---- Table / Grid layout -----------------------------------------------------------------------------------------
+const router = inject<Router | null>(routerKey, null);
+const storageKey = computed(() => `hrms.layout.${props.layoutKey ?? `${router?.currentRoute.value.matched.at(-1)?.path ?? ''}|${props.caption ?? ''}`}`);
+const readLayout = (): 'table' | 'grid' => {
+  try {
+    return localStorage.getItem(storageKey.value) === 'grid' ? 'grid' : 'table';
+  } catch {
+    return 'table';
+  }
+};
+const chosen = ref<'table' | 'grid'>(readLayout());
+watch(storageKey, () => (chosen.value = readLayout()));
+const layout = computed({
+  get: () => (props.grid ? chosen.value : 'table'),
+  set: (v: 'table' | 'grid') => {
+    chosen.value = v;
+    try {
+      localStorage.setItem(storageKey.value, v);
+    } catch {
+      // Private mode: the choice lasts for this page only.
+    }
+  },
+});
+const layoutOptions = [
+  { value: 'table' as const, label: 'Table', icon: Rows3 },
+  { value: 'grid' as const, label: 'Grid', icon: LayoutGrid },
+];
+const hasSortMenu = computed(() => sortOptions.value.length > 0 && props.rows.length > 1);
+/** Small screens already show rows as cards, so the switch is for wider screens; the sort menu shows when headers don't. */
+const toolbarClass = computed(() => [
+  !hasSortMenu.value && 'max-md:hidden',
+  !props.grid && !(hasSortMenu.value && layout.value === 'grid') && 'md:hidden',
+]);
+/** In a card: the first column is the title, labelled columns are details, unlabelled ones (actions) the footer. */
+const titleColumn = computed(() => props.columns[0]);
+const detailColumns = computed(() => props.columns.slice(1).filter((c) => c.label));
+const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.label));
 </script>
 
 <template>
   <div class="overflow-hidden">
     <AppErrorState v-if="error && !loading" :error="error" @retry="emit('retry')" />
     <template v-else>
-      <div v-if="sortOptions.length && rows.length > 1" class="border-b border-line px-3 py-2 md:hidden">
-        <div class="flex items-center gap-2 text-xs text-fg-muted">
+      <div v-if="hasSortMenu || grid" :class="['flex items-center gap-3 border-b border-line px-3 py-2', toolbarClass]">
+        <div v-if="hasSortMenu" :class="['flex min-w-0 flex-1 items-center gap-2 text-xs text-fg-muted', layout === 'table' && 'md:hidden']">
           <span class="shrink-0 font-medium" aria-hidden="true">Sort by</span>
           <AppSelect
             :model-value="sortOptions.some((o) => o.value === sort) ? sort : undefined"
@@ -114,17 +158,72 @@ const sortOptions = computed(() =>
             :searchable="false"
             aria-label="Sort by"
             size="sm"
-            class="flex-1"
+            class="flex-1 md:max-w-60"
             @update:model-value="(v) => v && emit('update:sort', v)"
           />
         </div>
+        <AppSegmented v-if="grid" v-model="layout" class="ms-auto w-40 shrink-0 max-md:hidden" size="sm" :options="layoutOptions" :label="caption ? `${caption} layout` : 'Layout'" />
       </div>
       <div v-if="selectable && selected.length" class="flex flex-wrap items-center gap-2 border-b border-line bg-accent-soft px-4 py-2" role="region" aria-label="Bulk actions">
         <p class="me-auto text-sm font-medium text-accent-fg" aria-live="polite">{{ selected.length }} selected</p>
         <slot name="bulk" :selected="selected" :rows="rows.filter((r) => selected.includes(rowKey(r)))" />
         <AppButton size="sm" variant="ghost" @click="selected = []">Clear selection</AppButton>
       </div>
-      <div class="overflow-x-auto">
+      <div v-if="layout === 'grid'" class="@container" :aria-busy="loading || undefined">
+        <ul v-if="loading && rows.length === 0" class="grid gap-3 p-3 @lg:grid-cols-2 @4xl:grid-cols-3 @7xl:grid-cols-4" :aria-label="caption ? `Loading ${caption}` : 'Loading'">
+          <li v-for="i in 6" :key="`s${i}`" class="card space-y-3 p-4">
+            <div class="skeleton h-4 w-2/3 rounded-full" />
+            <div v-for="c in detailColumns.slice(0, 4)" :key="c.key" class="flex justify-between gap-4">
+              <div class="skeleton h-3 w-1/4 rounded-full" />
+              <div class="skeleton h-3 rounded-full" :style="{ width: `${25 + ((i * 13 + c.key.length * 7) % 35)}%` }" />
+            </div>
+          </li>
+        </ul>
+        <ul v-else-if="rows.length" class="grid gap-3 p-3 @lg:grid-cols-2 @4xl:grid-cols-3 @7xl:grid-cols-4" :aria-label="caption">
+          <li v-for="row in rows" :key="rowKey(row)">
+            <article
+              :class="[
+                'card flex h-full flex-col p-4 text-sm transition',
+                clickable ? 'card-interactive cursor-pointer focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:outline-none' : 'hover:shadow-lift',
+                selectable && selected.includes(rowKey(row)) && 'ring-2 ring-brand-500/40',
+                loading && 'opacity-60',
+              ]"
+              :tabindex="clickable ? 0 : undefined"
+              @click="clickable && emit('rowClick', row)"
+              @keydown.enter="clickable && emit('rowClick', row)"
+            >
+              <div class="flex items-start gap-3">
+                <input
+                  v-if="selectable && canSelect(row)"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-brand-600"
+                  :checked="selected.includes(rowKey(row))"
+                  :aria-label="selectLabel ? selectLabel(row) : `Select row ${rows.indexOf(row) + 1}`"
+                  @click.stop
+                  @change="toggleRow(row)"
+                />
+                <div v-if="titleColumn" class="min-w-0 flex-1 font-medium text-fg">
+                  <slot :name="`cell-${titleColumn.key}`" :row="row">{{ titleColumn.value ? titleColumn.value(row) : row[titleColumn.key] }}</slot>
+                </div>
+              </div>
+              <dl v-if="detailColumns.length" class="mt-3 space-y-2 border-t border-line/60 pt-3">
+                <div v-for="col in detailColumns" :key="col.key" class="flex items-start justify-between gap-4">
+                  <dt class="shrink-0 pt-0.5 text-xs font-medium text-fg-muted">{{ col.label }}</dt>
+                  <dd class="min-w-0 text-end text-fg">
+                    <slot :name="`cell-${col.key}`" :row="row">{{ col.value ? col.value(row) : row[col.key] }}</slot>
+                  </dd>
+                </div>
+              </dl>
+              <div v-if="actionColumns.length" class="mt-auto flex flex-wrap justify-end gap-1 pt-3" @click.stop>
+                <template v-for="col in actionColumns" :key="col.key">
+                  <slot :name="`cell-${col.key}`" :row="row">{{ col.value ? col.value(row) : row[col.key] }}</slot>
+                </template>
+              </div>
+            </article>
+          </li>
+        </ul>
+      </div>
+      <div v-else class="overflow-x-auto">
         <!-- Explicit roles keep table semantics when the small-screen card layout changes CSS display. -->
         <table role="table" class="min-w-full text-sm max-md:block" :aria-busy="loading || undefined">
           <caption v-if="caption" class="sr-only">{{ caption }}</caption>
