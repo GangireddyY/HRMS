@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { appLocale } from '@/core/locale/locale';
 import { computed, reactive, ref, watch } from 'vue';
-import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink, Plane, Tags, UserRound, Users, X } from '@lucide/vue';
+import { CalendarClock, CalendarRange, ChevronLeft, ChevronRight, ExternalLink, Plane, Tags, UserRound, Users, X } from '@lucide/vue';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { leaveApi } from '@/modules/leave/api/leave.api';
 import LeaveFilterMenu from '@/modules/leave/components/LeaveFilterMenu.vue';
@@ -119,6 +119,14 @@ function clearFilters() {
   departmentId.value = null;
 }
 const pending = computed(() => inRange.value.filter((e) => e.status === 'PENDING').length);
+/** People shown who are on approved leave today, for the header summary. */
+const outToday = computed(() => {
+  const seen = new Map<string, Entry['employee']>();
+  for (const e of visible.value) if (e.status === 'APPROVED' && e.startDate <= today && e.endDate >= today) seen.set(e.employee.id, e.employee);
+  return [...seen.values()];
+});
+const awayShown = computed(() => new Set(visible.value.map((e) => e.employee.id)).size);
+const periodNoun = computed(() => (view.value === 'week' ? 'this week' : 'this month'));
 
 function goTo(iso: string, asWeek = false) {
   anchor.value = iso;
@@ -161,18 +169,41 @@ function open(e: Entry, el: HTMLElement) {
     <!-- Calendar -->
     <section class="card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label="Calendar">
       <div class="shrink-0 border-b border-line">
-        <div class="flex flex-wrap items-center gap-2 px-3 pt-2.5 pb-2 sm:px-4">
-          <AppButton size="sm" variant="secondary" :disabled="showsToday" @click="anchor = today">Today</AppButton>
-          <div class="flex items-center">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-3 pb-2.5 sm:px-4">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-gradient-to-b from-surface to-surface-muted text-accent-fg shadow-xs max-sm:hidden" aria-hidden="true">
+            <CalendarRange :size="17" />
+          </span>
+          <div class="min-w-0">
+            <h2 class="text-lg leading-6 font-semibold tracking-tight text-fg sm:text-xl" aria-live="polite">{{ title }}</h2>
+            <ul class="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-fg-muted" aria-label="Summary">
+              <li class="inline-flex items-center gap-1" :title="outToday.map((p) => p.name).join(', ') || undefined">
+                <span :class="['h-1.5 w-1.5 rounded-full', outToday.length ? 'bg-info' : 'bg-success']" aria-hidden="true" />
+                <span class="font-semibold text-fg tabular-nums">{{ outToday.length }}</span> out today
+              </li>
+              <li class="inline-flex items-center gap-1">
+                <Users :size="12" class="text-fg-subtle" aria-hidden="true" /><span class="font-semibold text-fg tabular-nums">{{ awayShown }}</span> away {{ periodNoun }}
+              </li>
+              <li v-if="pending" class="inline-flex items-center gap-1 text-warning-fg">
+                <span class="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" /><span class="font-semibold tabular-nums">{{ pending }}</span> pending
+              </li>
+            </ul>
+          </div>
+          <div class="flex items-center gap-1">
+            <AppButton size="sm" variant="secondary" :disabled="showsToday" @click="anchor = today">Today</AppButton>
             <AppButton size="sm" variant="ghost" :icon="ChevronLeft" :aria-label="view === 'week' ? 'Previous week' : 'Previous month'" @click="shift(-1)" />
             <AppButton size="sm" variant="ghost" :icon="ChevronRight" :aria-label="view === 'week' ? 'Next week' : 'Next month'" @click="shift(1)" />
           </div>
-          <h2 class="me-auto text-lg font-normal text-fg sm:text-xl" aria-live="polite">{{ title }}</h2>
-          <AppSegmented v-model="view" :options="VIEWS" label="Calendar view" size="sm" />
-          <AppButton size="sm" :icon="CalendarClock" to="/hr/leave/requests">
-            Leave requests
-            <span v-if="pending" class="ms-0.5 rounded-full bg-white/25 px-1.5 text-2xs font-semibold tabular-nums">{{ pending }}</span>
-          </AppButton>
+          <ul v-if="outToday.length" class="flex -space-x-1.5 max-lg:hidden" :aria-label="`Out today: ${outToday.map((p) => p.name).join(', ')}`">
+            <li v-for="p in outToday.slice(0, 5)" :key="p.id"><AppAvatar :name="p.name" size="xs" class="ring-2 ring-surface" :title="`${p.name} is out today`" /></li>
+          </ul>
+
+          <div class="ms-auto flex flex-wrap items-center gap-2">
+            <AppSegmented v-model="view" :options="VIEWS" label="Calendar view" size="sm" />
+            <AppButton size="sm" :icon="CalendarClock" to="/hr/leave/requests">
+              Leave requests
+              <span v-if="pending" class="ms-0.5 rounded-full bg-white/25 px-1.5 text-2xs font-semibold tabular-nums">{{ pending }}</span>
+            </AppButton>
+          </div>
         </div>
 
         <!-- Filters -->
@@ -221,11 +252,13 @@ function open(e: Entry, el: HTMLElement) {
 
           <button v-if="hidden.people.size || hidden.types.size || departmentId" type="button" class="text-xs font-medium text-accent-fg hover:underline" @click="clearFilters">Clear filters</button>
 
-          <ul class="ms-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-fg-muted max-md:hidden" aria-label="Legend">
-            <li v-for="t in types.filter((x) => !hidden.types.has(x.id))" :key="t.id" class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" :style="{ backgroundColor: t.color }" aria-hidden="true" />{{ t.name }}</li>
-            <li class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full ring-[1.5px] ring-fg-muted ring-inset" aria-hidden="true" />Pending</li>
-            <li class="inline-flex items-center gap-1.5"><span class="text-fg-subtle">AM / PM</span>Half day</li>
-            <li v-if="holidays.size" class="inline-flex items-center gap-1.5"><span class="h-2 w-3 rounded-sm bg-special/25" aria-hidden="true" />Holiday</li>
+          <ul class="ms-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 rounded-md bg-surface-muted/50 px-2.5 py-1 text-2xs font-medium text-fg-muted ring-1 ring-line/70 ring-inset max-md:hidden" aria-label="Legend">
+            <li v-for="t in types.filter((x) => !hidden.types.has(x.id))" :key="t.id" class="inline-flex items-center gap-1.5">
+              <span class="h-2.5 w-4 rounded-[3px]" :style="{ backgroundColor: t.color }" aria-hidden="true" />{{ t.name }}
+            </li>
+            <li class="inline-flex items-center gap-1.5"><span class="h-2.5 w-4 rounded-[3px] border border-dashed border-fg-subtle bg-surface" aria-hidden="true" />Pending</li>
+            <li class="inline-flex items-center gap-1.5"><span class="rounded-[3px] bg-surface px-1 text-[0.625rem] leading-3.5 font-semibold text-fg-subtle ring-1 ring-line" aria-hidden="true">AM</span>Half day</li>
+            <li v-if="holidays.size" class="inline-flex items-center gap-1.5"><span class="h-2.5 w-4 rounded-[3px] bg-special/25" aria-hidden="true" />Holiday</li>
           </ul>
         </div>
       </div>

@@ -1,12 +1,42 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowRight, CalendarPlus, CheckCircle2, Download, Eye, FileUp, Mail, Phone, Send, Undo2, UserCheck, XCircle } from '@lucide/vue';
-import { PIPELINE_STAGES, RESUME_MAX_BYTES, type ApplicationStage } from '@contracts';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarClock,
+  CalendarDays,
+  CalendarPlus,
+  Check,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  Eye,
+  FileSignature,
+  FileText,
+  FileUp,
+  Hourglass,
+  Mail,
+  MapPin,
+  MessageSquareText,
+  Phone,
+  Send,
+  Star,
+  ThumbsDown,
+  ThumbsUp,
+  Undo2,
+  UserCheck,
+  UserRound,
+  Video,
+  X,
+  XCircle,
+} from '@lucide/vue';
+import { PIPELINE_STAGES, RESUME_MAX_BYTES, type ApplicationStage, type InterviewMode } from '@contracts';
+import { appLocale } from '@/core/locale/locale';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import OfferFormModal from '@/modules/recruitment/components/OfferFormModal.vue';
 import ScheduleInterviewModal from '@/modules/recruitment/components/ScheduleInterviewModal.vue';
-import type { ApplicationDetail } from '@/modules/recruitment/types';
+import type { ApplicationDetail, InterviewItem } from '@/modules/recruitment/types';
 import {
   MODE_LABELS,
   OFFER_STATUS_LABELS,
@@ -18,12 +48,14 @@ import {
   recommendationTone,
   stageTone,
 } from '@/modules/recruitment/utils/recruitment-format';
-import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppErrorState, AppInput, AppModal, AppPageHeader, AppSkeleton, AppTextarea } from '@/shared/components';
+import { SOURCE_ICON, STAGE_ICON, daysUntil, dueText, stageAge, timeOfDay } from '@/modules/recruitment/utils/recruitment-ui';
+import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppEmptyState, AppErrorState, AppInput, AppModal, AppPageHeader, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
-import { formatDate, formatDateTime } from '@/shared/utils/format';
+import { formatDate, formatDateTime, timeAgo } from '@/shared/utils/format';
 
+/** One candidate in one job: where they are in the process, interviews and scorecards, the offer and the history. */
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -121,18 +153,134 @@ async function hire() {
     busy.value = null;
   }
 }
+
+// ---- Stage stepper ------------------------------------------------------------------------------------------------
+const STEPS: ApplicationStage[] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED'];
+/** Where a rejected or withdrawn application stopped: the stage it left, from the history. */
+const stoppedAt = computed<ApplicationStage | null>(() => {
+  if (!a.value || STEPS.includes(a.value.stage)) return null;
+  const last = [...a.value.events].reverse().find((e) => e.toStage === a.value!.stage);
+  return last?.fromStage && STEPS.includes(last.fromStage) ? last.fromStage : 'APPLIED';
+});
+/** When each stage was (last) entered. */
+const enteredAt = computed(() => {
+  const m = new Map<ApplicationStage, string>();
+  for (const e of a.value?.events ?? []) m.set(e.toStage, e.createdAt);
+  return m;
+});
+const steps = computed(() => {
+  const cur = a.value ? (stoppedAt.value ?? a.value.stage) : 'APPLIED';
+  const at = STEPS.indexOf(cur);
+  return STEPS.map((s, i) => ({
+    stage: s,
+    state: stoppedAt.value && i === at ? 'stopped' : i < at || (i === at && s === 'HIRED') ? 'done' : i === at ? 'current' : 'upcoming',
+    at: i <= at ? enteredAt.value.get(s) : undefined,
+  }));
+});
+const age = computed(() => (a.value ? stageAge(a.value.stageChangedAt) : null));
+
+// ---- Interviews and scorecards ------------------------------------------------------------------------------------
+const MODE_ICON: Record<InterviewMode, Component> = { VIDEO: Video, PHONE: Phone, IN_PERSON: MapPin };
+const isLink = (s: string | null) => !!s && /^https?:\/\//i.test(s);
+const interviews = computed(() => [...(a.value?.interviews ?? [])].sort((x, y) => y.scheduledAt.localeCompare(x.scheduledAt)));
+const scorecards = computed(() => (a.value?.interviews ?? []).filter((i) => i.status !== 'CANCELLED').flatMap((i) => i.panel.filter((p) => p.submittedAt)));
+const avgRating = computed(() => {
+  const r = scorecards.value.filter((p) => p.rating);
+  return r.length ? Math.round((r.reduce((n, p) => n + (p.rating ?? 0), 0) / r.length) * 10) / 10 : null;
+});
+const votes = computed(() => ({
+  hire: scorecards.value.filter((p) => p.recommendation === 'HIRE' || p.recommendation === 'STRONG_HIRE').length,
+  noHire: scorecards.value.filter((p) => p.recommendation === 'NO_HIRE' || p.recommendation === 'STRONG_NO_HIRE').length,
+}));
+const isPast = (i: InterviewItem) => new Date(i.scheduledAt).getTime() <= Date.now();
+/** Feedback is expected within a day of the interview. */
+const lateFeedback = (i: InterviewItem) => i.status !== 'CANCELLED' && Date.now() - new Date(i.scheduledAt).getTime() > 24 * 3_600_000;
+const pendingFeedback = computed(() => (a.value?.interviews ?? []).filter((i) => i.status !== 'CANCELLED' && isPast(i)).reduce((n, i) => n + i.panel.filter((p) => !p.submittedAt).length, 0));
+const nextInterview = computed(() => (a.value?.interviews ?? []).filter((i) => i.status === 'SCHEDULED' && !isPast(i)).sort((x, y) => x.scheduledAt.localeCompare(y.scheduledAt))[0] ?? null);
+const tile = (iso: string) => {
+  const d = new Date(iso);
+  return { day: d.getDate(), month: d.toLocaleDateString(appLocale(), { month: 'short' }) };
+};
+const interviewStatus = (i: InterviewItem) =>
+  i.status === 'COMPLETED' ? { label: 'Completed', tone: 'success' as const } : i.status === 'CANCELLED' ? { label: 'Cancelled', tone: 'neutral' as const } : isPast(i) ? { label: 'Awaiting feedback', tone: 'warning' as const } : { label: 'Scheduled', tone: 'info' as const };
+
+// ---- Activity -----------------------------------------------------------------------------------------------------
+interface Activity {
+  key: string;
+  at: string;
+  icon: Component;
+  tone: string;
+  title: string;
+  detail?: string | null;
+  by?: string | null;
+}
+const activity = computed<Activity[]>(() => {
+  const d = a.value;
+  if (!d) return [];
+  const list: Activity[] = d.events.map((e) => ({
+    key: `e-${e.id}`,
+    at: e.createdAt,
+    icon: STAGE_ICON[e.toStage],
+    tone: e.toStage === 'REJECTED' ? 'bg-danger-soft text-danger-fg' : e.toStage === 'HIRED' ? 'bg-success-soft text-success-fg' : 'bg-accent-soft text-accent-fg',
+    title: e.fromStage ? `${STAGE_LABELS[e.fromStage]} → ${STAGE_LABELS[e.toStage]}` : `Applied via ${SOURCE_LABELS[d.source].toLowerCase()}`,
+    detail: e.note,
+    by: e.createdBy ?? 'Careers page',
+  }));
+  for (const i of d.interviews) {
+    list.push({
+      key: `i-${i.id}`,
+      at: i.scheduledAt,
+      icon: i.status === 'CANCELLED' ? X : MessageSquareText,
+      tone: i.status === 'CANCELLED' ? 'bg-surface-muted text-fg-muted' : 'bg-special-soft text-special-fg',
+      title: `${i.roundName} ${i.status === 'CANCELLED' ? 'cancelled' : isPast(i) ? 'held' : 'scheduled'}`,
+      detail: i.panel.map((p) => p.employee?.name).filter(Boolean).join(', ') || null,
+    });
+    for (const p of i.panel)
+      if (p.submittedAt && p.recommendation)
+        list.push({ key: `f-${i.id}-${p.employee?.id}`, at: p.submittedAt, icon: Star, tone: 'bg-warning-soft text-warning-fg', title: `Scorecard: ${RECOMMENDATION_LABELS[p.recommendation]}`, detail: i.roundName, by: p.employee?.name });
+  }
+  if (d.offer?.releasedAt) list.push({ key: 'o-rel', at: d.offer.releasedAt, icon: Send, tone: 'bg-accent-soft text-accent-fg', title: 'Offer released' });
+  if (d.offer?.respondedAt)
+    list.push({
+      key: 'o-resp',
+      at: d.offer.respondedAt,
+      icon: d.offer.status === 'ACCEPTED' ? CheckCircle2 : XCircle,
+      tone: d.offer.status === 'ACCEPTED' ? 'bg-success-soft text-success-fg' : 'bg-danger-soft text-danger-fg',
+      title: `Offer ${OFFER_STATUS_LABELS[d.offer.status].toLowerCase()}`,
+      detail: d.offer.declineReason,
+    });
+  return list.sort((x, y) => y.at.localeCompare(x.at));
+});
+const showAllActivity = ref(false);
+
+// ---- Side panel ---------------------------------------------------------------------------------------------------
+const keyDates = computed(() => {
+  const d = a.value;
+  if (!d) return [];
+  const out: { label: string; value: string; hint?: string; icon: Component; tone: string }[] = [
+    { label: 'Applied', value: formatDate(d.createdAt), hint: timeAgo(d.createdAt), icon: CalendarDays, tone: 'bg-surface-muted text-fg-muted' },
+    { label: `In ${STAGE_LABELS[d.stage].toLowerCase()} since`, value: formatDate(d.stageChangedAt), hint: timeAgo(d.stageChangedAt), icon: STAGE_ICON[d.stage], tone: 'bg-accent-soft text-accent-fg' },
+  ];
+  if (nextInterview.value) out.push({ label: 'Next interview', value: `${formatDate(nextInterview.value.scheduledAt)}, ${timeOfDay(nextInterview.value.scheduledAt)}`, hint: nextInterview.value.roundName, icon: CalendarClock, tone: 'bg-special-soft text-special-fg' });
+  if (d.offer?.expiresOn && d.offer.status === 'RELEASED') out.push({ label: 'Offer valid until', value: formatDate(d.offer.expiresOn), hint: dueText(d.offer.expiresOn), icon: Hourglass, tone: daysUntil(d.offer.expiresOn) < 0 ? 'bg-danger-soft text-danger-fg' : 'bg-warning-soft text-warning-fg' });
+  if (d.offer && ['DRAFT', 'RELEASED', 'ACCEPTED'].includes(d.offer.status)) out.push({ label: 'Joining date', value: formatDate(d.offer.joiningDate), hint: dueText(d.offer.joiningDate, false), icon: UserCheck, tone: 'bg-success-soft text-success-fg' });
+  return out;
+});
 </script>
 
 <template>
-  <div>
+  <div class="space-y-4">
     <AppSkeleton v-if="app.loading.value && !a" :lines="8" />
     <AppErrorState v-else-if="app.error.value" :error="app.error.value" title="Could not load the application" @retry="app.run" />
     <template v-else-if="a">
       <AppPageHeader :title="a.candidate.name" :description="`${a.job.title} · applied ${formatDate(a.createdAt)} via ${SOURCE_LABELS[a.source].toLowerCase()}`" :back="`/hr/recruitment/jobs/${a.job.id}`" back-label="Pipeline">
         <template #leading><AppAvatar :name="a.candidate.name" size="xl" /></template>
-        <template #badges><AppBadge :tone="stageTone[a.stage]" dot>{{ STAGE_LABELS[a.stage] }}</AppBadge></template>
+        <template #badges>
+          <AppBadge :tone="stageTone[a.stage]" dot>{{ STAGE_LABELS[a.stage] }}</AppBadge>
+          <AppBadge v-if="avgRating !== null" tone="warning"><Star :size="11" class="fill-warning text-warning" aria-hidden="true" />{{ avgRating }} · {{ scorecards.length }} scorecard{{ scorecards.length === 1 ? '' : 's' }}</AppBadge>
+        </template>
         <template v-if="canManage && active" #actions>
-          <AppButton variant="ghost" :icon="XCircle" :disabled="offerOpen" @click="rejecting = 'REJECTED'; note = ''">Reject</AppButton>
+          <AppButton variant="ghost" :icon="XCircle" :disabled="offerOpen" :title="offerOpen ? 'Withdraw the offer first' : undefined" @click="rejecting = 'REJECTED'; note = ''">Reject</AppButton>
           <AppButton variant="secondary" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule interview</AppButton>
           <AppButton v-if="nextStage" :icon-right="ArrowRight" :loading="busy === 'move'" @click="act('move', () => recruitmentApi.move(id, nextStage!), `Moved to ${STAGE_LABELS[nextStage!].toLowerCase()}`)">Move to {{ STAGE_LABELS[nextStage] }}</AppButton>
         </template>
@@ -144,93 +292,159 @@ async function hire() {
         </template>
       </AppPageHeader>
 
-      <AppAlert v-if="a.stage === 'REJECTED' && a.rejectionReason" tone="warning" class="mb-4" title="Rejected">{{ a.rejectionReason }}</AppAlert>
+      <!-- Stage stepper -->
+      <nav class="card px-4 py-3" aria-label="Hiring stages">
+        <ol class="flex flex-wrap items-center gap-y-2">
+          <template v-for="(s, i) in steps" :key="s.stage">
+            <li class="flex items-center gap-2.5" :aria-current="s.state === 'current' ? 'step' : undefined">
+              <span
+                :class="[
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                  s.state === 'done' && 'bg-success text-white',
+                  s.state === 'current' && 'bg-brand-600 text-white ring-4 ring-brand-500/15',
+                  s.state === 'stopped' && 'bg-danger text-white ring-4 ring-danger/15',
+                  s.state === 'upcoming' && 'bg-surface-muted text-fg-subtle ring-1 ring-line ring-inset',
+                ]"
+                aria-hidden="true"
+              >
+                <Check v-if="s.state === 'done'" :size="15" :stroke-width="3" />
+                <X v-else-if="s.state === 'stopped'" :size="15" :stroke-width="3" />
+                <component :is="STAGE_ICON[s.stage]" v-else :size="14" />
+              </span>
+              <span class="min-w-0">
+                <span :class="['block text-sm', s.state === 'upcoming' ? 'text-fg-muted' : 'font-semibold text-fg']">{{ STAGE_LABELS[s.stage] }}</span>
+                <span class="block text-2xs text-fg-muted">
+                  <template v-if="s.state === 'stopped'">{{ STAGE_LABELS[a.stage] }} here</template>
+                  <template v-else-if="s.state === 'current' && age">{{ age.days === 0 ? 'Since today' : `${age.days} day${age.days === 1 ? '' : 's'} here` }}</template>
+                  <template v-else-if="s.at">{{ formatDate(s.at) }}</template>
+                  <template v-else>&nbsp;</template>
+                </span>
+                <span class="sr-only">({{ s.state === 'done' ? 'completed' : s.state === 'current' ? 'current stage' : s.state === 'stopped' ? STAGE_LABELS[a.stage] : 'not reached' }})</span>
+              </span>
+            </li>
+            <li v-if="i < steps.length - 1" :class="['mx-3 hidden h-px min-w-6 flex-1 sm:block', s.state === 'done' ? 'bg-success' : 'bg-line']" aria-hidden="true" />
+          </template>
+        </ol>
+        <p v-if="active && age && age.tone !== 'fresh'" :class="['mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-xs', age.tone === 'stuck' ? 'bg-danger-soft/60 text-danger-fg' : 'bg-warning-soft/60 text-warning-fg']">
+          <AlertTriangle :size="14" aria-hidden="true" />{{ a.candidate.name.split(' ')[0] }} has been in {{ STAGE_LABELS[a.stage].toLowerCase() }} for {{ age.days }} days — move them forward or close the application.
+        </p>
+      </nav>
 
-      <div class="grid items-start gap-4 lg:grid-cols-3">
-        <div class="space-y-4 lg:col-span-2">
-          <AppCard title="Interviews">
+      <AppAlert v-if="a.stage === 'REJECTED' && a.rejectionReason" tone="warning" title="Rejected">{{ a.rejectionReason }}</AppAlert>
+
+      <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
+        <div class="space-y-4">
+          <!-- Interviews & scorecards -->
+          <AppCard title="Interviews & scorecards" :icon="MessageSquareText" :padded="false">
             <template v-if="canManage && active" #actions><AppButton size="sm" variant="secondary" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule</AppButton></template>
-            <p v-if="!a.interviews.length" class="text-sm text-fg-muted">No interviews yet.</p>
-            <ul v-else class="space-y-4">
-              <li v-for="i in a.interviews" :key="i.id" class="rounded-xl p-4 ring-1 ring-line">
-                <div class="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p class="font-medium text-fg">{{ i.roundName }}</p>
-                    <p class="text-xs text-fg-muted">{{ formatDateTime(i.scheduledAt) }} · {{ i.durationMinutes }} min · {{ MODE_LABELS[i.mode] }}{{ i.location ? ` · ${i.location}` : '' }}</p>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <AppBadge :tone="i.status === 'COMPLETED' ? 'success' : i.status === 'CANCELLED' ? 'neutral' : 'info'" size="sm">{{ i.status === 'SCHEDULED' ? 'Scheduled' : i.status === 'COMPLETED' ? 'Completed' : 'Cancelled' }}</AppBadge>
-                    <AppButton v-if="canManage && i.status === 'SCHEDULED'" size="xs" variant="ghost" @click="act(`int-${i.id}`, () => recruitmentApi.cancelInterview(i.id), 'Interview cancelled')">Cancel</AppButton>
-                  </div>
+            <AppEmptyState v-if="!a.interviews.length" compact :icon="CalendarClock" :title="active ? 'No interviews yet' : 'No interviews were recorded'" :description="canManage && active ? 'Schedule a round; the panel is notified and can leave a scorecard afterwards.' : undefined">
+              <AppButton v-if="canManage && active" size="sm" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule interview</AppButton>
+            </AppEmptyState>
+            <template v-else>
+              <dl class="grid grid-cols-2 gap-px border-b border-line/70 bg-line/60 sm:grid-cols-4">
+                <div class="bg-surface px-4 py-2.5">
+                  <dt class="text-2xs font-medium text-fg-muted">Average rating</dt>
+                  <dd class="mt-0.5 flex items-center gap-1 text-lg font-semibold text-fg tabular-nums">
+                    <template v-if="avgRating !== null"><Star :size="15" class="fill-warning text-warning" aria-hidden="true" />{{ avgRating }}<span class="text-xs font-normal text-fg-subtle">/5</span></template>
+                    <span v-else class="text-sm font-normal text-fg-subtle">—</span>
+                  </dd>
                 </div>
-                <ul class="mt-3 space-y-3">
-                  <li v-for="(p, n) in i.panel" :key="n" class="text-sm">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="font-medium text-fg">{{ p.employee?.name }}</span>
-                      <span v-if="p.employee?.designation" class="text-xs text-fg-muted">{{ p.employee.designation }}</span>
-                      <template v-if="p.submittedAt">
-                        <AppBadge v-if="p.recommendation" :tone="recommendationTone[p.recommendation]" size="sm">{{ RECOMMENDATION_LABELS[p.recommendation] }}</AppBadge>
-                        <span class="text-xs text-warning-fg">{{ '★'.repeat(p.rating ?? 0) }}<span class="text-fg-subtle">{{ '★'.repeat(5 - (p.rating ?? 0)) }}</span></span>
-                      </template>
-                      <span v-else class="text-xs text-fg-subtle">Feedback pending</span>
+                <div class="bg-surface px-4 py-2.5">
+                  <dt class="text-2xs font-medium text-fg-muted">Recommend hire</dt>
+                  <dd class="mt-0.5 flex items-center gap-1.5 text-lg font-semibold text-success-fg tabular-nums"><ThumbsUp :size="15" aria-hidden="true" />{{ votes.hire }}</dd>
+                </div>
+                <div class="bg-surface px-4 py-2.5">
+                  <dt class="text-2xs font-medium text-fg-muted">Recommend no hire</dt>
+                  <dd class="mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums" :class="votes.noHire ? 'text-danger-fg' : 'text-fg-subtle'"><ThumbsDown :size="15" aria-hidden="true" />{{ votes.noHire }}</dd>
+                </div>
+                <div class="bg-surface px-4 py-2.5">
+                  <dt class="text-2xs font-medium text-fg-muted">Feedback pending</dt>
+                  <dd class="mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums" :class="pendingFeedback ? 'text-warning-fg' : 'text-fg-subtle'"><Hourglass :size="15" aria-hidden="true" />{{ pendingFeedback }}</dd>
+                </div>
+              </dl>
+              <ul class="divide-y divide-line/70">
+                <li v-for="i in interviews" :key="i.id" :class="['px-4 py-4', i.status === 'CANCELLED' && 'opacity-70']">
+                  <div class="flex flex-wrap items-start gap-3">
+                    <div class="flex w-12 shrink-0 flex-col items-center rounded-lg bg-surface-muted py-1" aria-hidden="true">
+                      <span class="text-2xs font-semibold text-fg-muted uppercase">{{ tile(i.scheduledAt).month }}</span>
+                      <span class="text-lg leading-6 font-semibold text-fg tabular-nums">{{ tile(i.scheduledAt).day }}</span>
                     </div>
-                    <p v-if="p.feedback" class="mt-1 whitespace-pre-line text-fg-muted">{{ p.feedback }}</p>
-                  </li>
-                </ul>
-              </li>
-            </ul>
+                    <div class="min-w-0 flex-1">
+                      <p :class="['font-semibold text-fg', i.status === 'CANCELLED' && 'line-through decoration-fg-subtle/60']">{{ i.roundName }}</p>
+                      <p class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-fg-muted">
+                        <span class="inline-flex items-center gap-1"><CalendarClock :size="12" aria-hidden="true" />{{ formatDateTime(i.scheduledAt) }} · {{ i.durationMinutes }} min</span>
+                        <span class="inline-flex items-center gap-1"><component :is="MODE_ICON[i.mode]" :size="12" aria-hidden="true" />{{ MODE_LABELS[i.mode] }}</span>
+                        <a v-if="isLink(i.location)" :href="i.location!" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-accent-fg hover:underline"><ExternalLink :size="12" aria-hidden="true" />Meeting link</a>
+                        <span v-else-if="i.location">{{ i.location }}</span>
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <AppBadge :tone="interviewStatus(i).tone" size="sm" dot>{{ interviewStatus(i).label }}</AppBadge>
+                      <AppButton v-if="canManage && i.status === 'SCHEDULED'" size="xs" variant="ghost" :loading="busy === `int-${i.id}`" @click="act(`int-${i.id}`, () => recruitmentApi.cancelInterview(i.id), 'Interview cancelled')">Cancel</AppButton>
+                    </div>
+                  </div>
+                  <ul class="mt-3 space-y-2 sm:ms-15">
+                    <li v-for="(p, n) in i.panel" :key="n" :class="['rounded-lg p-3 ring-1 ring-inset', p.submittedAt ? 'bg-surface ring-line' : 'bg-surface-muted/50 ring-line/60']">
+                      <div class="flex flex-wrap items-center gap-2.5">
+                        <AppAvatar :name="p.employee?.name ?? '?'" size="sm" />
+                        <div class="min-w-0 flex-1">
+                          <p class="truncate text-sm font-medium text-fg">{{ p.employee?.name ?? 'Former panelist' }}</p>
+                          <p v-if="p.employee?.designation" class="truncate text-2xs text-fg-muted">{{ p.employee.designation }}</p>
+                        </div>
+                        <template v-if="p.submittedAt">
+                          <span class="flex items-center gap-0.5" :aria-label="`${p.rating ?? 0} of 5 stars`">
+                            <Star v-for="k in 5" :key="k" :size="13" :class="k <= (p.rating ?? 0) ? 'fill-warning text-warning' : 'text-line-strong'" aria-hidden="true" />
+                          </span>
+                          <AppBadge v-if="p.recommendation" :tone="recommendationTone[p.recommendation]" size="sm" dot>{{ RECOMMENDATION_LABELS[p.recommendation] }}</AppBadge>
+                        </template>
+                        <span v-else-if="i.status !== 'CANCELLED' && isPast(i)" :class="['inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium', lateFeedback(i) ? 'bg-danger-soft text-danger-fg' : 'bg-warning-soft text-warning-fg']">
+                          <Hourglass :size="11" aria-hidden="true" />{{ lateFeedback(i) ? 'Feedback overdue' : 'Feedback pending' }}
+                        </span>
+                        <span v-else-if="i.status !== 'CANCELLED'" class="text-2xs text-fg-subtle">Interviews {{ timeAgo(i.scheduledAt) }}</span>
+                      </div>
+                      <p v-if="p.feedback" class="mt-2 border-s-2 border-line-strong ps-3 text-sm whitespace-pre-line text-fg-muted">{{ p.feedback }}</p>
+                      <p v-if="p.submittedAt" class="mt-1.5 text-2xs text-fg-subtle">Submitted {{ formatDateTime(p.submittedAt) }}</p>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </template>
           </AppCard>
 
-          <AppCard title="Timeline">
-            <ol class="relative space-y-4 border-s border-line ps-6">
-              <li v-for="e in [...a.events].reverse()" :key="e.id" class="relative">
-                <span class="absolute top-1 -start-[29px] h-3 w-3 rounded-full border-2 border-surface bg-brand-500" aria-hidden="true" />
-                <p class="text-sm text-fg">{{ e.fromStage ? `${STAGE_LABELS[e.fromStage]} → ` : '' }}<span class="font-medium">{{ STAGE_LABELS[e.toStage] }}</span></p>
-                <p v-if="e.note" class="text-sm text-fg-muted">{{ e.note }}</p>
-                <p class="text-xs text-fg-subtle">{{ e.createdBy ?? 'Careers page' }} · {{ formatDateTime(e.createdAt) }}</p>
+          <!-- Activity -->
+          <AppCard title="Activity" :icon="CalendarDays">
+            <ol class="space-y-4">
+              <li v-for="(e, n) in showAllActivity ? activity : activity.slice(0, 8)" :key="e.key" class="relative flex gap-3">
+                <span v-if="n < (showAllActivity ? activity.length : Math.min(8, activity.length)) - 1" class="absolute start-[13px] top-7 -bottom-4 w-px bg-line" aria-hidden="true" />
+                <span :class="['relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full', e.tone]" aria-hidden="true"><component :is="e.icon" :size="13" /></span>
+                <div class="min-w-0 flex-1 pt-0.5">
+                  <p class="text-sm font-medium text-fg">{{ e.title }}</p>
+                  <p v-if="e.detail" class="text-sm text-fg-muted">{{ e.detail }}</p>
+                  <p class="text-2xs text-fg-subtle"><template v-if="e.by">{{ e.by }} · </template>{{ formatDateTime(e.at) }}</p>
+                </div>
               </li>
             </ol>
+            <AppButton v-if="activity.length > 8" class="mt-3" size="sm" variant="ghost" @click="showAllActivity = !showAllActivity">{{ showAllActivity ? 'Show less' : `Show all ${activity.length} events` }}</AppButton>
           </AppCard>
         </div>
 
-        <div class="space-y-4">
-          <AppCard title="Candidate">
-            <dl class="space-y-3 text-sm">
-              <div class="flex items-center gap-2 text-fg"><Mail :size="14" class="text-fg-subtle" aria-hidden="true" /><a :href="`mailto:${a.candidate.email}`" class="break-all hover:underline">{{ a.candidate.email }}</a></div>
-              <div v-if="a.candidate.phone" class="flex items-center gap-2 text-fg"><Phone :size="14" class="text-fg-subtle" aria-hidden="true" />{{ a.candidate.phone }}</div>
-              <div><dt class="text-xs text-fg-muted">Current role</dt><dd class="text-fg">{{ [a.candidate.currentTitle, a.candidate.currentCompany].filter(Boolean).join(' at ') || '—' }}</dd></div>
-              <div class="grid grid-cols-2 gap-3">
-                <div><dt class="text-xs text-fg-muted">Experience</dt><dd class="text-fg">{{ a.candidate.experienceYears !== null ? `${a.candidate.experienceYears} years` : '—' }}</dd></div>
-                <div><dt class="text-xs text-fg-muted">Notice period</dt><dd class="text-fg">{{ a.candidate.noticePeriodDays !== null ? `${a.candidate.noticePeriodDays} days` : '—' }}</dd></div>
-                <div><dt class="text-xs text-fg-muted">Current CTC</dt><dd class="text-fg">{{ money(a.candidate.currentCtc) }}</dd></div>
-                <div><dt class="text-xs text-fg-muted">Expected CTC</dt><dd class="text-fg">{{ money(a.candidate.expectedCtc) }}</dd></div>
-              </div>
-              <div v-if="a.candidate.linkedinUrl"><a :href="a.candidate.linkedinUrl" target="_blank" rel="noopener noreferrer nofollow" class="text-accent-fg hover:underline">LinkedIn profile</a></div>
-              <div v-if="a.candidate.notes"><dt class="text-xs text-fg-muted">Notes</dt><dd class="whitespace-pre-line text-fg-muted">{{ a.candidate.notes }}</dd></div>
-            </dl>
-            <div class="mt-4 flex flex-wrap gap-2 border-t border-line/70 pt-4">
-              <template v-if="a.candidate.resume">
-                <AppButton size="sm" variant="secondary" :icon="Eye" @click="viewResume">View resume</AppButton>
-                <AppButton size="sm" variant="ghost" :icon="Download" @click="recruitmentApi.downloadResume(a.candidate.id, a.candidate.resume.fileName)">Download</AppButton>
-              </template>
-              <AppButton v-if="canManage" size="sm" variant="ghost" :icon="FileUp" :loading="busy === 'resume'" @click="fileInput?.click()">{{ a.candidate.resume ? 'Replace' : 'Upload resume' }}</AppButton>
-              <input ref="fileInput" type="file" class="sr-only" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="Resume file" @change="onResume" />
-            </div>
-          </AppCard>
-
-          <AppCard v-if="canOffer && (a.stage === 'OFFER' || a.offer)" title="Offer">
+        <aside class="space-y-4">
+          <!-- Offer -->
+          <AppCard v-if="canOffer && (a.stage === 'OFFER' || a.offer)" title="Offer" :icon="FileSignature">
             <template v-if="!a.offer || a.offer.status === 'WITHDRAWN' || a.offer.status === 'DECLINED'">
-              <p v-if="a.offer" class="mb-3 text-sm text-fg-muted">Previous offer {{ OFFER_STATUS_LABELS[a.offer.status].toLowerCase() }}{{ a.offer.declineReason ? `: “${a.offer.declineReason}”` : '' }}.</p>
+              <p v-if="a.offer" class="mb-3 rounded-md bg-surface-muted/70 px-3 py-2 text-sm text-fg-muted">Previous offer {{ OFFER_STATUS_LABELS[a.offer.status].toLowerCase() }}{{ a.offer.declineReason ? `: “${a.offer.declineReason}”` : '' }}.</p>
+              <p v-else class="mb-3 text-sm text-fg-muted">Draft the offer — compensation, joining date and validity — then release it to the candidate.</p>
               <AppButton v-if="a.stage === 'OFFER'" :icon="Send" @click="offerFormOpen = true">Draft offer</AppButton>
             </template>
             <template v-else>
               <AppBadge :tone="offerTone[a.offer.status]" dot>{{ OFFER_STATUS_LABELS[a.offer.status] }}</AppBadge>
+              <p class="mt-3 text-2xs font-medium text-fg-muted">Annual CTC</p>
+              <p class="text-2xl font-semibold tracking-tight text-fg tabular-nums">{{ money(a.offer.annualCtc) }}</p>
               <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div><dt class="text-xs text-fg-muted">Annual CTC</dt><dd class="font-medium text-fg">{{ money(a.offer.annualCtc) }}</dd></div>
-                <div><dt class="text-xs text-fg-muted">Joining</dt><dd class="text-fg">{{ formatDate(a.offer.joiningDate) }}</dd></div>
-                <div v-if="a.offer.expiresOn"><dt class="text-xs text-fg-muted">Valid until</dt><dd class="text-fg">{{ formatDate(a.offer.expiresOn) }}</dd></div>
+                <div><dt class="text-2xs font-medium text-fg-muted">Joining</dt><dd class="text-fg">{{ formatDate(a.offer.joiningDate) }}</dd></div>
+                <div v-if="a.offer.expiresOn"><dt class="text-2xs font-medium text-fg-muted">Valid until</dt><dd class="text-fg">{{ formatDate(a.offer.expiresOn) }}</dd></div>
               </dl>
-              <div class="mt-4 flex flex-wrap gap-2">
+              <div class="mt-4 flex flex-wrap gap-2 border-t border-line/70 pt-4">
                 <template v-if="a.offer.status === 'DRAFT'">
                   <AppButton size="sm" variant="secondary" @click="offerFormOpen = true">Edit</AppButton>
                   <AppButton size="sm" :icon="Send" :loading="busy === 'release'" @click="act('release', () => recruitmentApi.releaseOffer(a!.offer!.id), 'Offer released')">Release</AppButton>
@@ -245,7 +459,61 @@ async function hire() {
               <p v-if="a.offer.status === 'ACCEPTED' && !canHire && a.stage !== 'HIRED'" class="mt-2 text-xs text-fg-muted">Hiring creates the employee record; someone with permission to create employees completes it.</p>
             </template>
           </AppCard>
-        </div>
+
+          <!-- Candidate -->
+          <AppCard title="Candidate" :icon="UserRound">
+            <template #actions><AppButton size="xs" variant="link" :to="`/hr/recruitment/candidates/${a.candidate.id}`">Full profile</AppButton></template>
+            <ul class="space-y-2 text-sm">
+              <li class="flex items-center gap-2 text-fg"><Mail :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" /><a :href="`mailto:${a.candidate.email}`" class="break-all hover:underline">{{ a.candidate.email }}</a></li>
+              <li v-if="a.candidate.phone" class="flex items-center gap-2 text-fg"><Phone :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" /><a :href="`tel:${a.candidate.phone}`" class="hover:underline">{{ a.candidate.phone }}</a></li>
+              <li v-if="a.candidate.location" class="flex items-center gap-2 text-fg-muted"><MapPin :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" />{{ a.candidate.location }}</li>
+              <li class="flex items-center gap-2 text-fg-muted"><component :is="SOURCE_ICON[a.source]" :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" />{{ SOURCE_LABELS[a.source] }}<template v-if="a.candidate.referredBy"> · {{ a.candidate.referredBy.name }}</template></li>
+              <li v-if="a.candidate.linkedinUrl"><a :href="a.candidate.linkedinUrl" target="_blank" rel="noopener noreferrer nofollow" class="inline-flex items-center gap-2 text-accent-fg hover:underline"><ExternalLink :size="14" aria-hidden="true" />LinkedIn profile</a></li>
+            </ul>
+            <dl class="mt-4 space-y-3 border-t border-line/70 pt-4 text-sm">
+              <div><dt class="text-2xs font-medium text-fg-muted">Current role</dt><dd class="text-fg">{{ [a.candidate.currentTitle, a.candidate.currentCompany].filter(Boolean).join(' at ') || '—' }}</dd></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><dt class="text-2xs font-medium text-fg-muted">Experience</dt><dd class="text-fg tabular-nums">{{ a.candidate.experienceYears !== null ? `${a.candidate.experienceYears} years` : '—' }}</dd></div>
+                <div><dt class="text-2xs font-medium text-fg-muted">Notice period</dt><dd class="text-fg tabular-nums">{{ a.candidate.noticePeriodDays !== null ? `${a.candidate.noticePeriodDays} days` : '—' }}</dd></div>
+                <div><dt class="text-2xs font-medium text-fg-muted">Current CTC</dt><dd class="text-fg tabular-nums">{{ money(a.candidate.currentCtc) }}</dd></div>
+                <div><dt class="text-2xs font-medium text-fg-muted">Expected CTC</dt><dd class="text-fg tabular-nums">{{ money(a.candidate.expectedCtc) }}</dd></div>
+              </div>
+              <div v-if="a.candidate.skills.length">
+                <dt class="text-2xs font-medium text-fg-muted">Skills</dt>
+                <dd class="mt-1 flex flex-wrap gap-1"><AppBadge v-for="s in a.candidate.skills" :key="s" size="sm">{{ s }}</AppBadge></dd>
+              </div>
+              <div v-if="a.candidate.notes"><dt class="text-2xs font-medium text-fg-muted">Notes</dt><dd class="whitespace-pre-line text-fg-muted">{{ a.candidate.notes }}</dd></div>
+            </dl>
+            <div class="mt-4 border-t border-line/70 pt-4">
+              <div v-if="a.candidate.resume" class="mb-2 flex items-center gap-2 text-sm">
+                <FileText :size="15" class="shrink-0 text-danger-fg" aria-hidden="true" />
+                <span class="min-w-0 flex-1 truncate text-fg" :title="a.candidate.resume.fileName">{{ a.candidate.resume.fileName }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <template v-if="a.candidate.resume">
+                  <AppButton size="sm" variant="secondary" :icon="Eye" @click="viewResume">View resume</AppButton>
+                  <AppButton size="sm" variant="ghost" :icon="Download" @click="recruitmentApi.downloadResume(a.candidate.id, a.candidate.resume.fileName)">Download</AppButton>
+                </template>
+                <AppButton v-if="canManage" size="sm" variant="ghost" :icon="FileUp" :loading="busy === 'resume'" @click="fileInput?.click()">{{ a.candidate.resume ? 'Replace' : 'Upload resume' }}</AppButton>
+              </div>
+              <input ref="fileInput" type="file" class="sr-only" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="Resume file" @change="onResume" />
+            </div>
+          </AppCard>
+
+          <!-- Key dates -->
+          <AppCard title="Key dates" :icon="CalendarDays">
+            <ul class="space-y-3 text-sm">
+              <li v-for="k in keyDates" :key="k.label" class="flex items-start gap-3">
+                <span :class="['mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md', k.tone]" aria-hidden="true"><component :is="k.icon" :size="14" /></span>
+                <div class="min-w-0">
+                  <p class="text-2xs font-medium text-fg-muted">{{ k.label }}</p>
+                  <p class="font-medium text-fg">{{ k.value }}</p>
+                  <p v-if="k.hint" class="text-xs text-fg-muted">{{ k.hint }}</p>
+                </div>
+              </li>
+            </ul>
+          </AppCard>
+        </aside>
       </div>
 
       <ScheduleInterviewModal :open="scheduleOpen" :application-id="a.id" @close="scheduleOpen = false" @saved="onScheduled" />

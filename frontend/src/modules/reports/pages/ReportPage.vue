@@ -1,44 +1,90 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { ChevronDown, Download, FileSpreadsheet, FileText, Sheet } from '@lucide/vue';
+import { Building2, CalendarRange, ChevronDown, ChevronRight, Download, FileSpreadsheet, FileText, Info, Layers, Loader2, RotateCcw, Sheet, Users } from '@lucide/vue';
 import type { ReportExportFormat } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { structureApi } from '@/modules/people/api/people.api';
 import { reportsApi, type ReportQuery } from '@/modules/reports/api/reports.api';
 import ReportTableCard from '@/modules/reports/components/ReportTableCard.vue';
 import TrendChart from '@/modules/reports/components/TrendChart.vue';
-import { REPORTS, formatValue } from '@/modules/reports/utils/report-definitions';
-import { AppAlert, AppButton, AppDatePicker, AppDropdown, AppErrorState, AppInput, AppMenuItem, AppPageHeader, AppSelect, AppSkeleton, AppStatCard } from '@/shared/components';
+import { PERIOD_LABELS, REPORT_CATEGORIES, REPORTS, formatValue } from '@/modules/reports/utils/report-definitions';
+import { AppAlert, AppBadge, AppButton, AppCard, AppDatePicker, AppDropdown, AppErrorState, AppInput, AppMenuItem, AppPageHeader, AppSelect, AppSkeleton, AppStatStrip, type StripItem } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
 
+/** One report: period and department filters with quick presets, headline figures, trend chart, tables and export. */
 const route = useRoute();
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const def = computed(() => REPORTS.find((r) => r.key === route.params.key) ?? null);
+const category = computed(() => (def.value ? REPORT_CATEGORIES[def.value.category] : null));
 const pad = (n: number) => String(n).padStart(2, '0');
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const today = iso(new Date());
 const thisMonth = today.slice(0, 7);
+const year = Number(today.slice(0, 4));
 const filters = reactive({ asOf: today as string | undefined, from: undefined as string | undefined, to: today as string | undefined, fromMonth: '', toMonth: thisMonth, departmentId: null as string | null });
+
+/** Months or days back from today, as the start of a period. */
+function back(amount: number, unit: 'days' | 'months') {
+  const d = new Date();
+  if (unit === 'months') d.setMonth(d.getMonth() - amount);
+  else d.setDate(d.getDate() - amount);
+  return iso(d);
+}
 function resetFilters() {
   const d = def.value;
   if (!d) return;
-  const back = new Date();
-  if (d.period === 'months') {
-    back.setMonth(back.getMonth() - (d.defaultBack ?? 11));
-    Object.assign(filters, { fromMonth: iso(back).slice(0, 7), toMonth: thisMonth });
-  } else {
-    back.setDate(back.getDate() - (d.defaultBack ?? 30));
-    Object.assign(filters, { asOf: today, from: iso(back), to: today });
-  }
+  if (d.period === 'months') Object.assign(filters, { fromMonth: back(d.defaultBack ?? 11, 'months').slice(0, 7), toMonth: thisMonth });
+  else Object.assign(filters, { asOf: today, from: back(d.defaultBack ?? 30, 'days'), to: today });
   filters.departmentId = null;
 }
 resetFilters();
+
+interface Preset {
+  key: string;
+  label: string;
+  values: Partial<typeof filters>;
+}
+const lastMonthEnd = (() => {
+  const d = new Date();
+  d.setDate(0);
+  return iso(d);
+})();
+const presets = computed<Preset[]>(() => {
+  const p = def.value?.period;
+  if (p === 'asOf')
+    return [
+      { key: 'today', label: 'Today', values: { asOf: today } },
+      { key: 'month-end', label: 'Last month end', values: { asOf: lastMonthEnd } },
+      { key: 'year-end', label: `End of ${year - 1}`, values: { asOf: `${year - 1}-12-31` } },
+    ];
+  if (p === 'months')
+    return [
+      { key: '6m', label: 'Last 6 months', values: { fromMonth: back(5, 'months').slice(0, 7), toMonth: thisMonth } },
+      { key: '12m', label: 'Last 12 months', values: { fromMonth: back(11, 'months').slice(0, 7), toMonth: thisMonth } },
+      { key: 'ytd', label: 'This year', values: { fromMonth: `${year}-01`, toMonth: thisMonth } },
+    ];
+  return [
+    { key: '30d', label: 'Last 30 days', values: { from: back(30, 'days'), to: today } },
+    { key: '90d', label: 'Last 90 days', values: { from: back(90, 'days'), to: today } },
+    { key: '12m', label: 'Last 12 months', values: { from: back(365, 'days'), to: today } },
+    { key: 'ytd', label: 'Year to date', values: { from: `${year}-01-01`, to: today } },
+  ];
+});
+const isActive = (p: Preset) => (Object.keys(p.values) as (keyof typeof filters)[]).every((k) => filters[k] === p.values[k]);
+const defaultPeriod = computed(() => {
+  const d = def.value;
+  if (!d) return {};
+  return d.period === 'months' ? { fromMonth: back(d.defaultBack ?? 11, 'months').slice(0, 7), toMonth: thisMonth } : d.period === 'asOf' ? { asOf: today } : { from: back(d.defaultBack ?? 30, 'days'), to: today };
+});
+const modified = computed(() => !!filters.departmentId || !(Object.keys(defaultPeriod.value) as (keyof typeof filters)[]).every((k) => filters[k] === (defaultPeriod.value as Partial<typeof filters>)[k]));
+
 const query = computed<ReportQuery>(() => {
-  const d = def.value!;
+  const d = def.value;
+  if (!d) return {};
   const base = d.departmentFilter && filters.departmentId ? { departmentId: filters.departmentId } : {};
   if (d.period === 'asOf') return { ...base, asOf: filters.asOf };
   if (d.period === 'months') return { ...base, fromMonth: filters.fromMonth || undefined, toMonth: filters.toMonth || undefined };
@@ -57,6 +103,7 @@ watch(query, () => {
 }, { deep: true });
 const departments = useAsync(() => structureApi.departments(), { immediate: !!def.value?.departmentFilter });
 const departmentOptions = computed(() => (departments.data.value ?? []).map((d) => ({ value: d.id, label: d.name })));
+const departmentName = computed(() => departmentOptions.value.find((o) => o.value === filters.departmentId)?.label ?? 'All departments');
 const r = computed(() => report.data.value);
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const chartPoints = computed(() => {
@@ -68,12 +115,16 @@ const chartPoints = computed(() => {
     return { label, value: Number(t[c.key] ?? 0) };
   });
 });
+const monthLabel = (m: string) => (/^\d{4}-\d{2}$/.test(m) ? `${MONTH_NAMES[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}` : m);
 const periodLabel = computed(() => {
   if (!r.value) return '';
   if (r.value.asOf) return `On ${formatDate(r.value.asOf)}`;
   if (r.value.from) return `${formatDate(r.value.from)} – ${formatDate(r.value.to!)}`;
-  return `${r.value.fromMonth} – ${r.value.toMonth}`;
+  return `${monthLabel(r.value.fromMonth ?? '')} – ${monthLabel(r.value.toMonth ?? '')}`;
 });
+const kpis = computed<StripItem[]>(() => (def.value && r.value ? def.value.summary.map((s) => ({ key: s.key, label: s.label, value: formatValue(r.value!.summary[s.key] ?? null, s.format), tone: s.tone ?? 'brand' })) : []));
+const others = computed(() => REPORTS.filter((x) => x.key !== def.value?.key && auth.can(x.permission)));
+
 const exporting = ref<ReportExportFormat | null>(null);
 async function exportAs(format: ReportExportFormat) {
   if (!def.value) return;
@@ -90,11 +141,19 @@ async function exportAs(format: ReportExportFormat) {
 
 <template>
   <div>
-    <AppAlert v-if="!def" tone="error">This report doesn't exist.</AppAlert>
+    <AppPageHeader v-if="!def" title="Report not found" back="/hr/reports" back-label="Reports" />
+    <AppAlert v-if="!def" tone="error">This report doesn't exist. Pick one from the reports list.</AppAlert>
     <template v-else>
       <AppPageHeader :title="def.title" :description="def.description" back="/hr/reports" back-label="Reports">
-        <template v-if="auth.can('reports.export')" #actions>
-          <AppDropdown label="Export" width="w-56">
+        <template #leading>
+          <span :class="['flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', category?.tile]" aria-hidden="true"><component :is="def.icon" :size="20" /></span>
+        </template>
+        <template #badges>
+          <AppBadge size="sm">{{ category?.label }}</AppBadge>
+        </template>
+        <template #actions>
+          <AppButton v-if="modified" variant="ghost" :icon="RotateCcw" @click="resetFilters">Reset filters</AppButton>
+          <AppDropdown v-if="auth.can('reports.export')" label="Export" width="w-56">
             <template #trigger="{ toggle }"><AppButton variant="secondary" :icon="Download" :icon-right="ChevronDown" :disabled="!r" :loading="!!exporting" @click="toggle">Export</AppButton></template>
             <template #default="{ close }">
               <AppMenuItem :icon="FileSpreadsheet" @select="close(); exportAs('xlsx')">Excel workbook (.xlsx)</AppMenuItem>
@@ -105,29 +164,96 @@ async function exportAs(format: ReportExportFormat) {
         </template>
       </AppPageHeader>
 
-      <div class="mb-4 flex flex-wrap items-end gap-3 card p-4">
-        <AppDatePicker v-if="def.period === 'asOf'" v-model="filters.asOf" class="w-48" label="On" :max="today" />
-        <template v-else-if="def.period === 'range'">
-          <AppDatePicker v-model="filters.from" class="w-48" label="From" :max="filters.to" />
-          <AppDatePicker v-model="filters.to" class="w-48" label="To" :max="today" />
-        </template>
-        <template v-else>
-          <AppInput v-model="filters.fromMonth" class="w-40" label="From month" type="month" />
-          <AppInput v-model="filters.toMonth" class="w-40" label="To month" type="month" />
-        </template>
-        <AppSelect v-if="def.departmentFilter" v-model="filters.departmentId" class="w-56" label="Department" placeholder="All departments" :options="departmentOptions" />
-        <p v-if="r" class="ms-auto text-xs text-fg-muted">{{ periodLabel }}</p>
-      </div>
-
-      <AppSkeleton v-if="report.loading.value && !r" :lines="8" />
-      <AppErrorState v-else-if="report.error.value" :error="report.error.value" @retry="report.run" />
-      <div v-else-if="r" class="space-y-4" :class="report.loading.value ? 'opacity-60 transition' : ''">
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <AppStatCard v-for="s in def.summary" :key="s.key" :label="s.label" :value="formatValue(r.summary[s.key] ?? null, s.format)" :tone="s.tone" />
+      <section class="card mb-4" aria-label="Report filters">
+        <div class="flex flex-wrap items-end gap-3 p-4">
+          <AppDatePicker v-if="def.period === 'asOf'" v-model="filters.asOf" class="w-48 max-sm:flex-1" label="On" :max="today" />
+          <template v-else-if="def.period === 'range'">
+            <AppDatePicker v-model="filters.from" class="w-48 max-sm:flex-1" label="From" :max="filters.to" />
+            <AppDatePicker v-model="filters.to" class="w-48 max-sm:flex-1" label="To" :max="today" />
+          </template>
+          <template v-else>
+            <AppInput v-model="filters.fromMonth" class="w-40 max-sm:flex-1" label="From month" type="month" />
+            <AppInput v-model="filters.toMonth" class="w-40 max-sm:flex-1" label="To month" type="month" />
+          </template>
+          <AppSelect v-if="def.departmentFilter" v-model="filters.departmentId" class="w-56 max-sm:w-full" label="Department" placeholder="All departments" :options="departmentOptions" />
+          <div class="flex flex-wrap items-center gap-1.5 lg:ms-auto" role="group" aria-label="Quick periods">
+            <button
+              v-for="p in presets"
+              :key="p.key"
+              type="button"
+              :aria-pressed="isActive(p)"
+              :class="[
+                'h-8 rounded-full px-3 text-xs font-medium ring-1 transition ring-inset focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none',
+                isActive(p) ? 'bg-accent-soft text-accent-fg ring-brand-500/30' : 'text-fg-muted ring-line hover:bg-surface-muted hover:text-fg',
+              ]"
+              @click="Object.assign(filters, p.values)"
+            >
+              {{ p.label }}
+            </button>
+          </div>
         </div>
-        <TrendChart v-if="def.chart" :title="def.chart.label" :points="chartPoints" :format="def.chart.format" />
-        <div class="grid items-start gap-4 xl:grid-cols-2">
-          <ReportTableCard v-for="t in r.tables" :key="t.key" :table="t" :class="t.columns.length > 4 ? 'xl:col-span-2' : ''" />
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line/70 bg-surface-muted/40 px-4 py-2 text-xs text-fg-muted">
+          <span class="inline-flex items-center gap-1.5"><CalendarRange :size="13" aria-hidden="true" /><span class="font-medium text-fg">{{ periodLabel || '…' }}</span></span>
+          <span v-if="def.departmentFilter" class="inline-flex items-center gap-1.5"><Building2 :size="13" aria-hidden="true" />{{ departmentName }}</span>
+          <span class="inline-flex items-center gap-1.5"><Users :size="13" aria-hidden="true" />People within your access</span>
+          <span v-if="report.loading.value && r" class="ms-auto inline-flex items-center gap-1.5 text-accent-fg" role="status"><Loader2 :size="13" class="animate-spin" aria-hidden="true" />Updating…</span>
+        </div>
+      </section>
+
+      <div v-if="report.loading.value && !r" class="space-y-4">
+        <div class="card skeleton h-24" />
+        <div class="card p-4"><AppSkeleton :lines="8" /></div>
+      </div>
+      <AppErrorState v-else-if="report.error.value" :error="report.error.value" @retry="report.run" />
+      <div v-else-if="r" class="space-y-4">
+        <AppStatStrip :class="['transition-opacity', report.loading.value && 'opacity-60']" :items="kpis" :label="`${def.title} summary`" />
+        <div class="space-y-4">
+          <div class="min-w-0 space-y-4 transition-opacity" :class="report.loading.value && 'opacity-60'" :aria-busy="report.loading.value || undefined">
+            <TrendChart v-if="def.chart" :title="def.chart.label" :description="periodLabel" :points="chartPoints" :format="def.chart.format" :kind="def.chart.kind" />
+            <div class="grid items-start gap-4 xl:grid-cols-2">
+              <ReportTableCard v-for="t in r.tables" :key="t.key" :table="t" :class="t.columns.length > 4 ? 'xl:col-span-2' : ''" />
+            </div>
+          </div>
+
+          <aside class="grid items-start gap-4 lg:grid-cols-2" aria-label="Report details">
+            <AppCard title="About this report" :icon="Info">
+              <dl class="space-y-3 text-sm">
+                <div class="flex items-start gap-3">
+                  <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-fg-muted" aria-hidden="true"><CalendarRange :size="14" /></span>
+                  <div class="min-w-0"><dt class="text-xs text-fg-muted">{{ PERIOD_LABELS[def.period] }}</dt><dd class="font-medium text-fg">{{ periodLabel }}</dd></div>
+                </div>
+                <div v-if="def.departmentFilter" class="flex items-start gap-3">
+                  <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-fg-muted" aria-hidden="true"><Building2 :size="14" /></span>
+                  <div class="min-w-0"><dt class="text-xs text-fg-muted">Department</dt><dd class="truncate font-medium text-fg">{{ departmentName }}</dd></div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-fg-muted" aria-hidden="true"><Layers :size="14" /></span>
+                  <div class="min-w-0">
+                    <dt class="text-xs text-fg-muted">Broken down by</dt>
+                    <dd class="mt-1 flex flex-wrap gap-1">
+                      <span v-for="b in def.breakdowns" :key="b" class="rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted ring-1 ring-line ring-inset">{{ b }}</span>
+                    </dd>
+                  </div>
+                </div>
+              </dl>
+              <p class="mt-4 rounded-md bg-surface-muted/70 px-3 py-2 text-xs text-fg-muted">Figures cover the people within your access, so colleagues with other roles may see different totals.</p>
+            </AppCard>
+
+            <AppCard v-if="others.length" title="Other reports" :padded="false">
+              <ul class="divide-y divide-line/60">
+                <li v-for="o in others" :key="o.key">
+                  <RouterLink :to="`/hr/reports/${o.key}`" class="group flex items-center gap-3 px-4 py-2.5 transition hover:bg-surface-muted/50">
+                    <span :class="['flex h-8 w-8 shrink-0 items-center justify-center rounded-md', REPORT_CATEGORIES[o.category].tile]" aria-hidden="true"><component :is="o.icon" :size="15" /></span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-sm font-medium text-fg">{{ o.title }}</span>
+                      <span class="block truncate text-xs text-fg-muted">{{ REPORT_CATEGORIES[o.category].label }} · {{ PERIOD_LABELS[o.period].toLowerCase() }}</span>
+                    </span>
+                    <ChevronRight :size="15" class="shrink-0 text-fg-subtle transition group-hover:translate-x-0.5" aria-hidden="true" />
+                  </RouterLink>
+                </li>
+              </ul>
+            </AppCard>
+          </aside>
         </div>
       </div>
     </template>

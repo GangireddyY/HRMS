@@ -31,7 +31,7 @@ const props = withDefaults(
     canSelect?: (row: Row) => boolean;
     /** Accessible name of a row's checkbox, e.g. "Select Asha Patel". */
     selectLabel?: (row: Row) => string;
-    /** Offer a Table / Grid switch (off for pages with their own layout switch). */
+    /** Offer a Table / Grid switch (off for pages with their own layout switch). A `card` slot replaces the default grid card body. */
     grid?: boolean;
     /** Remembers the chosen layout; defaults to the page's route plus the caption. */
     layoutKey?: string;
@@ -183,7 +183,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
           <li v-for="row in rows" :key="rowKey(row)">
             <article
               :class="[
-                'card flex h-full flex-col p-4 text-sm transition',
+                'group/card card flex h-full flex-col p-4 text-sm transition',
                 clickable ? 'card-interactive cursor-pointer focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:outline-none' : 'hover:shadow-lift',
                 selectable && selected.includes(rowKey(row)) && 'ring-2 ring-brand-500/40',
                 loading && 'opacity-60',
@@ -192,7 +192,8 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
               @click="clickable && emit('rowClick', row)"
               @keydown.enter="clickable && emit('rowClick', row)"
             >
-              <div class="flex items-start gap-3">
+              <slot v-if="$slots.card" name="card" :row="row" />
+              <div v-else class="flex items-start gap-3">
                 <input
                   v-if="selectable && canSelect(row)"
                   type="checkbox"
@@ -206,7 +207,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
                   <slot :name="`cell-${titleColumn.key}`" :row="row">{{ titleColumn.value ? titleColumn.value(row) : row[titleColumn.key] }}</slot>
                 </div>
               </div>
-              <dl v-if="detailColumns.length" class="mt-3 space-y-2 border-t border-line/60 pt-3">
+              <dl v-if="!$slots.card && detailColumns.length" class="mt-3 space-y-2 border-t border-line/60 pt-3">
                 <div v-for="col in detailColumns" :key="col.key" class="flex items-start justify-between gap-4">
                   <dt class="shrink-0 pt-0.5 text-xs font-medium text-fg-muted">{{ col.label }}</dt>
                   <dd class="min-w-0 text-end text-fg">
@@ -214,7 +215,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
                   </dd>
                 </div>
               </dl>
-              <div v-if="actionColumns.length" class="mt-auto flex flex-wrap justify-end gap-1 pt-3" @click.stop>
+              <div v-if="!$slots.card && actionColumns.length" class="mt-auto flex flex-wrap justify-end gap-1 pt-3" @click.stop>
                 <template v-for="col in actionColumns" :key="col.key">
                   <slot :name="`cell-${col.key}`" :row="row">{{ col.value ? col.value(row) : row[col.key] }}</slot>
                 </template>

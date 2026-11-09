@@ -4,7 +4,9 @@ import { Archive } from '@lucide/vue';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { auditApi } from '@/modules/audit/api/audit.api';
 import LogArchiveModal from '@/modules/audit/components/LogArchiveModal.vue';
+import LoginEventCard from '@/modules/audit/components/LoginEventCard.vue';
 import type { LoginEventRow } from '@/modules/audit/types';
+import { describeIp, deviceIcon, reasonText } from '@/modules/audit/utils/audit-visuals';
 import { AppBadge, AppButton, AppCard, AppDataTable, AppDatePicker, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
 import { useTable } from '@/shared/composables/use-table';
 import { describeUserAgent, formatDateTime, fullName } from '@/shared/utils/format';
@@ -66,9 +68,16 @@ const outcomeOptions = [
         </template>
         <template #cell-outcome="{ row }">
           <AppBadge :tone="loginTone[row.outcome]">{{ statusLabel(row.outcome) }}</AppBadge>
-          <span v-if="row.failureReason" class="ms-1 text-xs text-fg-subtle">{{ row.failureReason.replace(/_/g, ' ') }}</span>
+          <span v-if="row.failureReason && row.failureReason !== 'account_locked'" class="ms-1.5 text-xs text-fg-muted">{{ reasonText(row.failureReason) }}</span>
         </template>
-        <template #cell-device="{ row }">{{ describeUserAgent(row.userAgent) }}</template>
+        <template #cell-device="{ row }">
+          <span class="inline-flex items-center gap-2" :title="row.userAgent ?? undefined">
+            <component :is="deviceIcon(row.userAgent)" :size="14" class="shrink-0 text-fg-subtle" aria-hidden="true" />
+            {{ describeUserAgent(row.userAgent) }}
+          </span>
+        </template>
+        <template #cell-ipAddress="{ row }"><span :title="row.ipAddress ?? undefined">{{ describeIp(row.ipAddress) }}</span></template>
+        <template #card="{ row }"><LoginEventCard :event="row" /></template>
       </AppDataTable>
     </AppCard>
   </div>

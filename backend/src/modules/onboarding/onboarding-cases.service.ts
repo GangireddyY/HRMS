@@ -66,12 +66,19 @@ export class OnboardingCasesService {
     if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
     const filters: WhereOptions[] = [scoped];
     if (query.status) filters.push({ status: query.status });
-    const employeeWhere = query.search
-      ? { [Op.or]: [{ firstName: { [Op.iLike]: containsPattern(query.search) } }, { lastName: { [Op.iLike]: containsPattern(query.search) } }, { employeeCode: { [Op.iLike]: containsPattern(query.search) } }] }
-      : undefined;
+    // Matched up front: a filter on the employee include combined with the task include and paging breaks the query.
+    if (query.search) {
+      const like = containsPattern(query.search);
+      const matching = await Employee.findAll({
+        where: { [Op.or]: [{ firstName: { [Op.iLike]: like } }, { lastName: { [Op.iLike]: like } }, { employeeCode: { [Op.iLike]: like } }] },
+        attributes: ['id'],
+        raw: true,
+      });
+      filters.push({ employeeId: matching.map((e) => e.id) });
+    }
     const { rows, count } = await OnboardingCase.findAndCountAll({
       where: { [Op.and]: filters },
-      include: [{ model: Employee, as: 'employee', attributes: EMPLOYEE_ATTRS, include: EMPLOYEE_INCLUDE, ...(employeeWhere ? { where: employeeWhere } : {}) }, { model: OnboardingTask }],
+      include: [{ model: Employee, as: 'employee', attributes: EMPLOYEE_ATTRS, include: EMPLOYEE_INCLUDE }, { model: OnboardingTask }],
       order: [['status', 'DESC'], ['joiningDate', 'DESC']],
       distinct: true,
       ...paginationArgs(query),

@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { BadgeCheck, Check, CircleCheck, Circle, Clock, Eye, FileUp, MoreHorizontal, RotateCcw, SkipForward, Trash2, XCircle } from '@lucide/vue';
+import { BadgeCheck, CalendarClock, Check, CircleCheck, Circle, Clock, Eye, FileText, FileUp, MoreHorizontal, RotateCcw, SkipForward, Trash2, XCircle } from '@lucide/vue';
 import { DOCUMENT_MAX_BYTES } from '@contracts';
 import { onboardingApi } from '@/modules/onboarding/api/onboarding.api';
 import type { CaseDetail, OnboardingTask } from '@/modules/onboarding/types';
-import { ASSIGNEE_LABELS, PHASE_LABELS, TASK_STATE_LABELS, assigneeTone, phaseOf, taskStateTone } from '@/modules/onboarding/utils/onboarding-format';
+import { ASSIGNEE_LABELS, PHASES, PHASE_LABELS, TASK_STATE_LABELS, assigneeTone, dueLabel, needsViewer, phaseOf, taskStateTone } from '@/modules/onboarding/utils/onboarding-format';
 import { AppBadge, AppButton, AppDropdown, AppEmptyState, AppMenuItem, AppModal, AppTextarea } from '@/shared/components';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
 
-/** The checklist of one onboarding case; actions are offered only to whoever may take them. */
-const props = defineProps<{ detail: CaseDetail }>();
+/**
+ * The checklist of one onboarding case, grouped by phase; actions are offered only to whoever may take them.
+ * `filter`: 'mine' = tasks waiting for the viewer, 'open' = not finished. Sections and tasks have ids
+ * (`phase-<key>`, `task-<id>`) so the page can scroll to them.
+ */
+const props = withDefaults(defineProps<{ detail: CaseDetail; filter?: 'all' | 'mine' | 'open' }>(), { filter: 'all' });
 const emit = defineEmits<{ updated: [detail: CaseDetail] }>();
 
 const feedback = useFeedbackStore();
@@ -22,12 +26,21 @@ const canAct = (t: OnboardingTask) => open.value && (p.value.manage || (t.assign
 const canUpload = (t: OnboardingTask) => open.value && !!t.documentCategory && (t.state === 'PENDING' || t.state === 'REJECTED') && (p.value.isSelf || p.value.manage);
 const canVerify = (t: OnboardingTask) => open.value && p.value.verify && t.state === 'SUBMITTED';
 
-const groups = computed(() => {
-  const order = ['before', 'first-day', 'first-week', 'later'] as const;
-  return order
-    .map((key) => ({ key, label: PHASE_LABELS[key], tasks: props.detail.tasks.filter((t) => phaseOf(t.dueDate, props.detail.joiningDate) === key) }))
-    .filter((g) => g.tasks.length);
-});
+const mine = (t: OnboardingTask) => needsViewer(props.detail, t);
+const shown = (t: OnboardingTask) => (props.filter === 'mine' ? mine(t) : props.filter === 'open' ? !finished(t) : true);
+const groups = computed(() =>
+  PHASES.map((key) => {
+    const all = props.detail.tasks.filter((t) => phaseOf(t.dueDate, props.detail.joiningDate) === key);
+    return { key, label: PHASE_LABELS[key], all, tasks: all.filter(shown), done: all.filter(finished).length };
+  }).filter((g) => g.tasks.length),
+);
+const STATE_TILE: Record<OnboardingTask['state'], string> = {
+  DONE: 'bg-success-soft text-success-fg',
+  SKIPPED: 'bg-surface-muted text-fg-subtle',
+  SUBMITTED: 'bg-warning-soft text-warning-fg',
+  REJECTED: 'bg-danger-soft text-danger-fg',
+  PENDING: 'bg-surface-muted text-fg-subtle',
+};
 
 const busy = ref<string | null>(null);
 async function run(task: OnboardingTask, fn: () => Promise<CaseDetail>, success: string) {
@@ -97,30 +110,56 @@ async function remove(task: OnboardingTask) {
 <template>
   <div>
     <AppEmptyState v-if="!detail.tasks.length" compact title="No tasks in this checklist" />
-    <section v-for="g in groups" :key="g.key" class="mb-4 last:mb-0">
-      <h3 class="mb-2 text-xs font-semibold tracking-wide text-fg-subtle uppercase">{{ g.label }}</h3>
-      <ul class="divide-y divide-line overflow-hidden rounded-xl ring-1 ring-line">
-        <li v-for="t in g.tasks" :key="t.id" class="flex flex-wrap items-start gap-3 bg-surface px-4 py-3" :class="finished(t) && 'bg-surface-muted/30'">
-          <span class="mt-0.5 shrink-0" aria-hidden="true">
-            <CircleCheck v-if="t.state === 'DONE'" :size="18" class="text-success" />
-            <SkipForward v-else-if="t.state === 'SKIPPED'" :size="18" class="text-fg-subtle" />
-            <Clock v-else-if="t.state === 'SUBMITTED'" :size="18" class="text-warning" />
-            <XCircle v-else-if="t.state === 'REJECTED'" :size="18" class="text-danger" />
-            <Circle v-else :size="18" class="text-fg-subtle" />
+    <AppEmptyState v-else-if="!groups.length" compact :icon="CircleCheck" :title="filter === 'mine' ? 'Nothing waiting for you' : 'No open tasks'" description="You're all caught up here." />
+    <section v-for="g in groups" :id="`phase-${g.key}`" :key="g.key" class="mb-5 scroll-mt-20 last:mb-0">
+      <div class="mb-2 flex items-center gap-3">
+        <h3 class="text-xs font-semibold tracking-wide text-fg-muted uppercase">{{ g.label }}</h3>
+        <span class="h-1 w-16 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
+          <span :class="['block h-full rounded-full', g.done === g.all.length ? 'bg-success' : 'bg-brand-500']" :style="{ width: `${(g.done / g.all.length) * 100}%` }" />
+        </span>
+        <span class="text-2xs text-fg-subtle tabular-nums">{{ g.done }}/{{ g.all.length }}</span>
+      </div>
+      <ul class="divide-y divide-line/70 overflow-hidden rounded-xl ring-1 ring-line">
+        <li
+          v-for="t in g.tasks"
+          :id="`task-${t.id}`"
+          :key="t.id"
+          :class="[
+            'relative flex scroll-mt-24 flex-wrap items-start gap-3 px-4 py-3.5 transition-colors',
+            finished(t) ? 'bg-surface-muted/30' : mine(t) ? 'bg-accent-soft/30' : 'bg-surface',
+          ]"
+        >
+          <span v-if="mine(t)" class="absolute inset-y-0 start-0 w-1 bg-brand-500" aria-hidden="true" />
+          <span :class="['flex h-8 w-8 shrink-0 items-center justify-center rounded-full', STATE_TILE[t.state]]" aria-hidden="true">
+            <CircleCheck v-if="t.state === 'DONE'" :size="17" />
+            <SkipForward v-else-if="t.state === 'SKIPPED'" :size="16" />
+            <Clock v-else-if="t.state === 'SUBMITTED'" :size="16" />
+            <XCircle v-else-if="t.state === 'REJECTED'" :size="16" />
+            <FileText v-else-if="t.documentCategory" :size="15" />
+            <Circle v-else :size="16" />
           </span>
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium" :class="finished(t) ? 'text-fg-muted line-through decoration-fg-subtle/50' : 'text-fg'">
-              {{ t.title }}<span v-if="!t.isRequired" class="ms-2 text-xs font-normal text-fg-subtle no-underline">(optional)</span>
+            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+              <span :class="finished(t) ? 'text-fg-muted line-through decoration-fg-subtle/50' : 'text-fg'">{{ t.title }}</span>
+              <span v-if="!t.isRequired" class="text-xs font-normal text-fg-subtle">Optional</span>
+              <AppBadge v-if="mine(t)" size="sm" tone="brand">Your action</AppBadge>
             </p>
             <p v-if="t.description" class="mt-0.5 text-xs text-fg-muted">{{ t.description }}</p>
             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <AppBadge :tone="assigneeTone[t.assignee]" size="sm">{{ ASSIGNEE_LABELS[t.assignee] }}</AppBadge>
               <AppBadge v-if="t.state !== 'PENDING'" :tone="taskStateTone[t.state]" size="sm" dot>{{ TASK_STATE_LABELS[t.state] }}</AppBadge>
-              <span :class="t.overdue ? 'font-medium text-danger-fg' : 'text-fg-subtle'">{{ t.overdue ? 'Overdue · ' : 'Due ' }}{{ formatDate(t.dueDate) }}</span>
-              <span v-if="t.completedBy && finished(t)" class="text-fg-subtle">· {{ t.state === 'SKIPPED' ? 'Skipped' : 'Done' }} by {{ t.completedBy }}</span>
+              <span
+                v-if="!finished(t)"
+                :class="['inline-flex items-center gap-1', t.overdue ? 'font-medium text-danger-fg' : 'text-fg-muted']"
+                :title="formatDate(t.dueDate)"
+              >
+                <CalendarClock :size="12" aria-hidden="true" />{{ dueLabel(t.dueDate, t.overdue) }} · {{ formatDate(t.dueDate) }}
+              </span>
+              <span v-if="t.completedBy && finished(t)" class="text-fg-subtle">{{ t.state === 'SKIPPED' ? 'Skipped' : 'Done' }} by {{ t.completedBy }}{{ t.completedAt ? ` · ${formatDate(t.completedAt)}` : '' }}</span>
             </div>
-            <p v-if="t.document" class="mt-1 text-xs text-fg-muted">
-              {{ t.document.fileName }}<template v-if="t.document.status === 'REJECTED' && t.document.reviewNote"> · <span class="text-danger-fg">“{{ t.document.reviewNote }}”</span></template>
+            <p v-if="t.document" class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md bg-surface-muted px-2 py-1 text-xs text-fg-muted">
+              <FileText :size="12" class="shrink-0" aria-hidden="true" /><span class="truncate">{{ t.document.fileName }}</span>
+              <template v-if="t.document.status === 'REJECTED' && t.document.reviewNote"> · <span class="text-danger-fg">“{{ t.document.reviewNote }}”</span></template>
             </p>
             <p v-if="t.note && finished(t)" class="mt-1 text-xs text-fg-muted italic">“{{ t.note }}”</p>
           </div>

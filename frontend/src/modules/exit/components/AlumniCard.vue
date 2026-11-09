@@ -2,7 +2,7 @@
 import { reactive, ref, watch } from 'vue';
 import { Handshake } from '@lucide/vue';
 import { alumniApi } from '@/modules/exit/api/exit.api';
-import { AppAlert, AppButton, AppCard, AppInput, AppSkeleton, AppSwitch } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppInput, AppSkeleton, AppSwitch } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -57,6 +57,10 @@ async function save() {
 <template>
   <AppSkeleton v-if="mine.loading.value && !mine.data.value" :lines="4" />
   <AppCard v-else-if="mine.data.value?.eligible" title="Stay in touch" :icon="Handshake" description="Join the alumni network so we can keep you posted about reunions, referrals and openings.">
+    <template #actions>
+      <AppBadge v-if="mine.data.value.joined && mine.data.value.profile?.optedIn" tone="success" dot>In the alumni network</AppBadge>
+      <AppBadge v-else>Not joined yet</AppBadge>
+    </template>
     <form id="alumni-form" class="space-y-4" novalidate @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
       <AppSwitch v-model="form.optedIn" label="Join the alumni network" description="HR sees the details below only while you are in the network." />

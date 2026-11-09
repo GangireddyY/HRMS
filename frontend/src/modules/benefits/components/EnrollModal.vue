@@ -95,7 +95,7 @@ async function save() {
               <span class="block font-medium text-fg">{{ o.name }}</span>
               <span class="block text-xs text-fg-muted">
                 <template v-if="o.coverageAmount">Cover {{ inr(o.coverageAmount) }} · </template>
-                {{ o.employeeMonthly ? `you pay ${inr(o.employeeMonthly)}/month` : 'no cost to you' }}
+                {{ o.employeeMonthly ? `you pay ${inr(o.employeeMonthly)}/month` : 'no cost to you' }}<template v-if="o.employerMonthly"> (employer pays {{ inr(o.employerMonthly) }})</template>
                 <template v-if="o.maxDependents"> · up to {{ o.maxDependents }} dependant{{ o.maxDependents === 1 ? '' : 's' }} ({{ o.allowedRelations.map((r) => RELATION_LABELS[r].toLowerCase()).join(', ') }})</template>
               </span>
             </span>

@@ -4,14 +4,16 @@ import { AppInput, AppSelect } from '@/shared/components';
 import { COMPANY_SIZE_OPTIONS, COUNTRY_OPTIONS, CURRENCY_OPTIONS, DATE_FORMAT_OPTIONS, MONTH_OPTIONS, timezoneOptions } from '@/shared/utils/options';
 import type { ProfileFields } from '@/modules/organization/utils/profile';
 
-defineProps<{ errors: Record<string, string>; disabled?: boolean }>();
+/** Company, contact and regional fields. `anchorPrefix` gives each group an id (`<prefix>company|contact|regional`) for in-page navigation. */
+const props = defineProps<{ errors: Record<string, string>; disabled?: boolean; anchorPrefix?: string }>();
 const model = defineModel<ProfileFields>({ required: true });
 const timezones = computed(() => timezoneOptions(model.value.timezone));
+const anchor = (key: string) => (props.anchorPrefix ? `${props.anchorPrefix}${key}` : undefined);
 </script>
 
 <template>
   <fieldset :disabled="disabled" class="divide-y divide-line/70" aria-label="Organization profile">
-    <div class="grid gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div :id="anchor('company')" class="grid scroll-mt-4 gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Company</p>
         <p class="mt-1 text-sm text-fg-muted">How your organization appears across the product and on documents.</p>
@@ -25,7 +27,7 @@ const timezones = computed(() => timezoneOptions(model.value.timezone));
         <AppInput v-model="model.taxId" label="Tax ID (PAN / TAN / GSTIN)" :error="errors.taxId" />
       </div>
     </div>
-    <div class="grid gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div :id="anchor('contact')" class="grid scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Contact &amp; address</p>
         <p class="mt-1 text-sm text-fg-muted">Registered office and the contact details employees and partners see.</p>
@@ -42,7 +44,7 @@ const timezones = computed(() => timezoneOptions(model.value.timezone));
         <AppSelect v-model="model.country" label="Country" :options="COUNTRY_OPTIONS" :error="errors.country" />
       </div>
     </div>
-    <div class="grid gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div :id="anchor('regional')" class="grid scroll-mt-4 gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Regional settings</p>
         <p class="mt-1 text-sm text-fg-muted">Defaults for dates, money and the financial year.</p>

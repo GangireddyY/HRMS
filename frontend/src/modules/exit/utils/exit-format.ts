@@ -42,3 +42,30 @@ export function longDate(iso: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 export const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Whole days from today to an ISO date (negative when it is in the past). */
+export function daysUntil(iso: string): number {
+  return Math.round((Date.parse(iso.slice(0, 10)) - Date.parse(localIso(new Date()))) / 86_400_000);
+}
+/** "in 3 days", "today", "tomorrow", "2 days ago". */
+export function relativeDays(iso: string): string {
+  const d = daysUntil(iso);
+  if (d === 0) return 'today';
+  if (d === 1) return 'tomorrow';
+  if (d === -1) return 'yesterday';
+  return d > 0 ? `in ${d} days` : `${-d} days ago`;
+}
+
+/** The HR exit workflow, for steppers: which steps are done and which one is next. */
+export function exitSteps(e: { type: ExitType; status: ExitStatus; clearance: { total: number; done: number }; settlement: { status: SettlementStatus } | null }) {
+  const accepted = e.status === 'APPROVED' || e.status === 'COMPLETED';
+  const list = [
+    { key: 'submitted', label: e.type === 'RESIGNATION' ? 'Resigned' : 'Notice given', done: true },
+    { key: 'accepted', label: e.type === 'RESIGNATION' ? 'Accepted' : 'Confirmed', done: accepted },
+    { key: 'clearance', label: 'Clearance', done: e.clearance.total > 0 && e.clearance.done === e.clearance.total },
+    { key: 'settlement', label: 'Settlement', done: e.settlement?.status === 'PAID' },
+    { key: 'exited', label: 'Exited', done: e.status === 'COMPLETED' },
+  ];
+  const at = list.findIndex((s) => !s.done);
+  return list.map((s, i) => ({ ...s, state: (s.done ? 'done' : i === at ? 'current' : 'upcoming') as 'done' | 'current' | 'upcoming' }));
+}

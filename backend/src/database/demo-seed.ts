@@ -20,6 +20,8 @@ import { configureApp } from '../bootstrap';
 import { addDays, addMonths, zonedParts } from '../common/utils/zoned-time';
 import { DEFAULT_MERIT_MATRIX } from '../contracts';
 import { DatabaseService } from './database.service';
+import { runDemoExtras } from './demo-extras/index';
+import { createKit, demoOrganizationId } from './demo-extras/kit';
 import { Employee, MembershipRole, Organization, OrganizationMembership, Plan, User } from './models';
 import { PasswordHasher } from '../infrastructure/crypto/password-hasher.service';
 import { MailService } from '../infrastructure/mail/mail.service';
@@ -206,7 +208,9 @@ async function buildOrganization(
   structure: { departments: string[]; designations: string[]; locations: { name: string; city: string; state: string }[] },
   people: PersonSpec[],
 ): Promise<OrgCtx | null> {
-  const existing = await Organization.findOne({ where: { name: spec.name } });
+  // By name, or through the admin's membership when the organization was renamed in Settings.
+  const byAdmin = await demoOrganizationId(deps.db, people[0]!.email);
+  const existing = (await Organization.findOne({ where: { name: spec.name } })) ?? (byAdmin ? await Organization.findByPk(byAdmin) : null);
   if (existing) {
     if (await Employee.count({ where: { organizationId: existing.id }, ...RAW })) {
       console.log(`${spec.name} already exists — left as it is`);
@@ -730,6 +734,9 @@ async function main(): Promise<void> {
     await seedAcme(deps);
     await seedBrightleaf(deps);
     await seedNimbus(deps);
+    // Scenario data for every screen state; it skips whatever already exists, so it also tops up an older Acme.
+    const acmeId = await demoOrganizationId(deps.db, 'admin@acme.test');
+    if (acmeId) await runDemoExtras(createKit(base, deps.db, acmeId, problems));
     console.log(`Done. Every demo user signs in with the password ${DEMO_PASSWORD} (see docs/DEMO.md).`);
     if (problems.length) {
       logger.warn(`${problems.length} part(s) could not be created:`);

@@ -4,6 +4,7 @@ import { Clock, Mail, ShieldCheck, ShieldOff } from '@lucide/vue';
 import type { Member } from '@/modules/users/types';
 import { AppAvatar, AppBadge } from '@/shared/components';
 import { timeAgo } from '@/shared/utils/format';
+import { profileCover } from '@/shared/utils/profile-cover';
 import { membershipTone, statusLabel } from '@/shared/utils/status';
 
 /** A profile card for the Users grid: cover, photo, name, roles as the headline, and account status. */
@@ -12,18 +13,7 @@ const props = defineProps<{ member: Member }>();
 const name = computed(() => `${props.member.firstName} ${props.member.lastName}`);
 const headline = computed(() => props.member.roles.map((r) => r.name).join(' · ') || 'No role assigned');
 
-/** Deterministic cover per person, so the same user always gets the same banner. */
-const covers = [
-  'from-indigo-500 via-sky-500 to-cyan-400',
-  'from-emerald-500 via-teal-500 to-cyan-500',
-  'from-amber-400 via-orange-500 to-rose-500',
-  'from-violet-500 via-purple-500 to-fuchsia-500',
-  'from-sky-500 via-blue-600 to-indigo-600',
-  'from-rose-400 via-pink-500 to-fuchsia-500',
-  'from-teal-400 via-emerald-500 to-lime-500',
-  'from-slate-500 via-slate-600 to-slate-800',
-];
-const cover = computed(() => covers[[...props.member.email].reduce((a, c) => a + c.charCodeAt(0), 0) % covers.length]);
+const cover = computed(() => profileCover(props.member.email));
 </script>
 
 <template>
@@ -32,8 +22,7 @@ const cover = computed(() => covers[[...props.member.email].reduce((a, c) => a +
     class="group card card-interactive flex h-full flex-col overflow-hidden focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:outline-none"
     :aria-label="`${name}, ${headline}, ${statusLabel(member.status)}`"
   >
-    <div :class="['relative h-16 bg-gradient-to-br', cover]" aria-hidden="true">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_120%,rgba(255,255,255,0.35),transparent_55%)]" />
+    <div class="relative h-16 border-b border-line/50" :style="cover" aria-hidden="true">
       <span class="absolute end-2 top-2 rounded-full bg-surface shadow-xs">
         <AppBadge :tone="membershipTone[member.status]" size="sm" dot>{{ statusLabel(member.status) }}</AppBadge>
       </span>

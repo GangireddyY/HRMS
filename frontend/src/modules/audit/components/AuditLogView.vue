@@ -3,10 +3,12 @@ import { ref } from 'vue';
 import { Boxes } from '@lucide/vue';
 import type { Page } from '@/core/http/http-client';
 import type { AuditQuery } from '@/modules/audit/api/audit.api';
+import AuditEventCard from '@/modules/audit/components/AuditEventCard.vue';
+import { TONE_TILE, auditArea, auditSummary, auditTitle, auditTone } from '@/modules/audit/utils/audit-visuals';
 import type { AuditEntry } from '@/modules/audit/types';
 import { AppCard, AppDataTable, AppDatePicker, AppInput, AppModal, AppSearchInput, type TableColumn } from '@/shared/components';
 import { useTable } from '@/shared/composables/use-table';
-import { formatDateTime, fullName, humanize } from '@/shared/utils/format';
+import { formatDateTime, fullName } from '@/shared/utils/format';
 
 const props = defineProps<{ fetcher: (q: AuditQuery) => Promise<Page<AuditEntry>>; showOrganization?: boolean; organizationId?: string }>();
 
@@ -54,14 +56,32 @@ const stringify = (v: unknown) => (v === null || v === undefined ? '—' : typeo
       @clear="table.clearFilters()"
     >
       <template #cell-createdAt="{ row }"><span class="text-fg-muted">{{ formatDateTime(row.createdAt) }}</span></template>
-      <template #cell-action="{ row }"><code class="rounded bg-surface-muted px-2 py-0.5 font-mono text-xs">{{ row.action }}</code></template>
-      <template #cell-summary="{ row }"><span class="line-clamp-1 max-w-md">{{ row.summary ?? humanize(row.entityType) }}</span></template>
+      <template #cell-action="{ row }">
+        <span class="flex items-center gap-2.5" :title="row.action">
+          <span :class="['grid h-7 w-7 shrink-0 place-items-center rounded-lg', TONE_TILE[auditTone(row.action)]]" aria-hidden="true">
+            <component :is="auditArea(row.action).icon" :size="14" />
+          </span>
+          <span class="min-w-0">
+            <span class="block truncate font-medium text-fg">{{ auditTitle(row.action) }}</span>
+            <span class="block truncate text-xs text-fg-muted">{{ auditArea(row.action).label }}</span>
+          </span>
+        </span>
+      </template>
+      <template #cell-summary="{ row }"><span class="line-clamp-1 max-w-md">{{ auditSummary(row) }}</span></template>
       <template #cell-actor="{ row }">{{ row.actor ? fullName(row.actor) : 'System' }}</template>
       <template #cell-organization="{ row }">{{ row.organization?.name ?? 'Platform' }}</template>
+      <template #card="{ row }"><AuditEventCard :entry="row" :show-organization="showOrganization" /></template>
     </AppDataTable>
 
-    <AppModal :open="!!selected" :title="selected?.action ?? ''" :description="selected ? formatDateTime(selected.createdAt) : ''" size="lg" @close="selected = null">
+    <AppModal
+      :open="!!selected"
+      :title="selected ? `${auditArea(selected.action).label} · ${auditTitle(selected.action)}` : ''"
+      :description="selected ? formatDateTime(selected.createdAt) : ''"
+      size="lg"
+      @close="selected = null"
+    >
       <dl v-if="selected" class="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
+        <dt class="text-fg-muted">Action</dt><dd><code class="rounded bg-surface-muted px-2 py-0.5 font-mono text-xs">{{ selected.action }}</code></dd>
         <dt class="text-fg-muted">Summary</dt><dd>{{ selected.summary ?? '—' }}</dd>
         <dt class="text-fg-muted">Actor</dt><dd>{{ selected.actor ? `${fullName(selected.actor)} (${selected.actor.email})` : 'System' }}</dd>
         <dt class="text-fg-muted">Entity</dt><dd>{{ selected.entityType }} <span class="font-mono text-xs text-fg-subtle">{{ selected.entityId }}</span></dd>

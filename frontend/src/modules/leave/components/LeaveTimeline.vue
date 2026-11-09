@@ -159,7 +159,7 @@ const weekStart = (i: number) => i > 0 && weekday(props.days[i]!) === 1;
                   <RouterLink :to="`/hr/employees/${r.employee.id}`" class="block truncate text-sm font-medium text-fg hover:text-accent-fg">{{ r.employee.name }}</RouterLink>
                   <span class="block truncate text-xs text-fg-subtle">{{ r.employee.employeeCode }}</span>
                 </span>
-                <span class="shrink-0 text-xs font-semibold text-fg-muted tabular-nums" :title="`${formatDays(r.total)} of working days in view`">{{ r.total }}d</span>
+                <span class="shrink-0 rounded-full bg-surface-muted px-1.5 py-px text-2xs font-semibold text-fg-muted tabular-nums ring-1 ring-line ring-inset" :title="`${formatDays(r.total)} of working days in view`">{{ r.total }}d</span>
               </div>
               <div class="relative h-14 flex-1 transition-colors group-hover:bg-brand-500/[0.03]" role="cell">
                 <button

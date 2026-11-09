@@ -33,6 +33,8 @@ watch(
 );
 
 const assigneeOptions = ONBOARDING_ASSIGNEES.map((a) => ({ value: a, label: ASSIGNEE_LABELS[a] }));
+const assigneeCounts = computed(() => assigneeOptions.map((o) => ({ ...o, n: tasks.value.filter((t) => t.assignee === o.value).length })).filter((o) => o.n));
+const ASSIGNEE_EDGE: Record<string, string> = { EMPLOYEE: 'border-brand-500/70', MANAGER: 'border-special/70', HR: 'border-info/70' };
 function move(i: number, by: number) {
   const list = [...tasks.value];
   const [item] = list.splice(i, 1);
@@ -77,9 +79,17 @@ async function save() {
       </div>
 
       <div>
-        <h3 class="mb-2 text-sm font-semibold text-fg">Tasks</h3>
+        <div class="mb-2 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-semibold text-fg">Tasks</h3>
+            <p class="text-xs text-fg-muted tabular-nums">
+              {{ tasks.length }} task{{ tasks.length === 1 ? '' : 's' }} · {{ tasks.filter((t) => t.isRequired).length }} required<template v-for="a in assigneeCounts" :key="a.value"> · {{ a.n }} {{ a.label.toLowerCase() }}</template>
+            </p>
+          </div>
+          <AppButton size="sm" variant="secondary" :icon="Plus" @click="tasks.push(blankTask())">Add task</AppButton>
+        </div>
         <ol class="space-y-3">
-          <li v-for="(t, i) in tasks" :key="t.key" class="rounded-xl p-3 ring-1 ring-line">
+          <li v-for="(t, i) in tasks" :key="t.key" :class="['rounded-xl border-s-4 p-3 ps-4 ring-1 ring-line', ASSIGNEE_EDGE[t.assignee]]">
             <div class="grid gap-3 lg:grid-cols-[1fr_150px_120px]">
               <AppInput v-model="t.title" :label="`Task ${i + 1}`" required :error="fieldErrors[`tasks.${i}.title`]" />
               <AppSelect v-model="t.assignee" label="Done by" :options="assigneeOptions" :clearable="false" :error="fieldErrors[`tasks.${i}.assignee`]" />

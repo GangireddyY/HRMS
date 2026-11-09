@@ -507,10 +507,20 @@ export class AuthService {
       entityType: 'User',
       entityId: user.id,
       actorUserId: user.id,
-      organizationId: null,
+      organizationId: await this.soleOrganization(user.id),
       summary: `Locked for ${lockout.durationMinutes} minutes after ${lockout.threshold} failed attempts`,
     });
     await this.notifySecurity(user, 'Your account was temporarily locked after repeated failed sign-in attempts');
+  }
+
+  /**
+   * Failed and locked sign-ins happen before an organization is chosen. They are filed under the account's organization
+   * so its admins see them in Login history, but only when there is exactly one: a shared account's failures stay off
+   * every organization's log rather than leaking into one of them.
+   */
+  private async soleOrganization(userId: string): Promise<string | null> {
+    const memberships = await OrganizationMembership.findAll({ where: { userId }, attributes: ['organizationId'], limit: 2, ...CROSS_TENANT });
+    return memberships.length === 1 ? memberships[0]!.organizationId : null;
   }
 
   private async recordLogin(
@@ -519,12 +529,13 @@ export class AuthService {
     meta: ClientMeta,
     extra: { userId?: string; organizationId?: string | null; reason?: string } = {},
   ): Promise<void> {
+    const organizationId = extra.organizationId !== undefined ? extra.organizationId : extra.userId ? await this.soleOrganization(extra.userId) : null;
     await LoginEvent.create(
       {
         outcome,
         email: email.slice(0, 254),
         userId: extra.userId ?? null,
-        organizationId: extra.organizationId ?? null,
+        organizationId,
         failureReason: extra.reason ?? null,
         ipAddress: meta.ipAddress?.slice(0, 64) ?? null,
         userAgent: meta.userAgent?.slice(0, 512) ?? null,

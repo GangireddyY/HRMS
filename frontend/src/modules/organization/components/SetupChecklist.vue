@@ -103,20 +103,25 @@ function hide() {
       </div>
       <AppButton size="sm" variant="ghost" :icon="X" @click="hide">Hide</AppButton>
     </header>
-    <ol v-if="!complete" class="divide-y divide-line/70">
-      <li v-for="s in steps" :key="s.key" class="flex items-center gap-3 px-4 py-2.5">
-        <span :class="['flex h-6 w-6 shrink-0 items-center justify-center rounded-full', results[s.key] ? 'bg-success text-white' : 'text-fg-subtle']" aria-hidden="true">
-          <Check v-if="results[s.key]" :size="14" :stroke-width="3" />
-          <Circle v-else :size="18" />
-        </span>
-        <div class="min-w-0 flex-1">
-          <p :class="['text-sm font-medium', results[s.key] ? 'text-fg-muted line-through decoration-fg-subtle/60' : 'text-fg']">
-            {{ s.title }}<span class="sr-only">{{ results[s.key] ? ' (done)' : ' (to do)' }}</span>
-          </p>
-          <p v-if="!results[s.key]" class="text-xs text-fg-muted">{{ s.description }}</p>
-        </div>
-        <AppButton v-if="!results[s.key]" size="sm" :variant="s.key === nextStep?.key ? 'primary' : 'secondary'" :icon-right="ArrowRight" :to="s.to">Set up</AppButton>
-      </li>
-    </ol>
+    <template v-if="!complete">
+      <ol class="divide-y divide-line/70" aria-label="Steps to do">
+        <li v-for="s in steps.filter((x) => !results[x.key])" :key="s.key" :class="['flex items-center gap-3 px-4 py-2.5', s.key === nextStep?.key && 'bg-accent-soft/40']">
+          <span :class="['flex h-6 w-6 shrink-0 items-center justify-center', s.key === nextStep?.key ? 'text-accent-fg' : 'text-fg-subtle']" aria-hidden="true"><Circle :size="18" /></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-fg">{{ s.title }}<span class="sr-only"> (to do)</span></p>
+            <p class="text-xs text-fg-muted">{{ s.description }}</p>
+          </div>
+          <AppButton size="sm" :variant="s.key === nextStep?.key ? 'primary' : 'secondary'" :icon-right="ArrowRight" :to="s.to">Set up</AppButton>
+        </li>
+      </ol>
+      <div v-if="done" class="flex flex-wrap items-center gap-1.5 border-t border-line/70 bg-surface-muted/40 px-4 py-2.5">
+        <span class="me-1 text-2xs font-semibold tracking-wider text-fg-subtle uppercase">Done</span>
+        <ul class="contents" aria-label="Completed steps">
+          <li v-for="s in steps.filter((x) => results[x.key])" :key="s.key" class="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-0.5 text-2xs font-medium text-success-fg">
+            <Check :size="11" :stroke-width="3" aria-hidden="true" />{{ s.title }}
+          </li>
+        </ul>
+      </div>
+    </template>
   </section>
 </template>

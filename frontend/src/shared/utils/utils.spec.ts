@@ -39,6 +39,8 @@ describe('safeRedirect', () => {
 describe('format helpers', () => {
   it('describes user agents', () => {
     expect(describeUserAgent('Mozilla/5.0 (Windows NT 10.0) AppleWebKit Chrome/130 Safari/537')).toBe('Chrome on Windows');
+    expect(describeUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Version/18.1 Mobile Safari/604.1')).toBe('Safari on iOS');
+    expect(describeUserAgent('Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36')).toBe('Chrome on Android');
     expect(describeUserAgent(null)).toBe('Unknown device');
   });
 

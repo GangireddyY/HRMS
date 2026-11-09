@@ -82,14 +82,17 @@ async function revoke() {
     <AppErrorState v-else-if="letters.error.value" :error="letters.error.value" @retry="letters.run" />
     <template v-else>
       <div class="grid gap-4 md:grid-cols-2">
-        <AppCard v-for="type in EXIT_LETTER_TYPES" :key="type" :title="LETTER_LABELS[type]" :icon="FileText">
-          <template v-if="active(type)">
-            <p class="text-sm text-fg">
-              <span class="font-medium">{{ active(type)!.reference }}</span> · dated {{ formatDate(active(type)!.letterDate) }}
-            </p>
-            <p class="mt-1 text-xs text-fg-muted">Issued by {{ active(type)!.issuedBy ?? '—' }}, {{ formatDateTime(active(type)!.issuedAt) }} · signed by {{ active(type)!.signatoryName }}</p>
+        <AppCard v-for="type in EXIT_LETTER_TYPES" :key="type" :title="LETTER_LABELS[type]" :icon="FileText" fill>
+          <template #actions>
+            <AppBadge :tone="active(type) ? 'success' : 'neutral'" size="sm" dot>{{ active(type) ? 'Issued' : 'Not issued' }}</AppBadge>
           </template>
-          <p v-else class="text-sm text-fg-muted">Not issued yet. You'll start from a suggested text you can edit.</p>
+          <dl v-if="active(type)" class="grid grid-cols-2 gap-3 text-sm">
+            <div><dt class="text-2xs font-medium text-fg-muted">Reference</dt><dd class="font-medium text-fg tabular-nums">{{ active(type)!.reference }}</dd></div>
+            <div><dt class="text-2xs font-medium text-fg-muted">Dated</dt><dd class="text-fg">{{ formatDate(active(type)!.letterDate) }}</dd></div>
+            <div><dt class="text-2xs font-medium text-fg-muted">Signed by</dt><dd class="truncate text-fg">{{ active(type)!.signatoryName }}</dd></div>
+            <div><dt class="text-2xs font-medium text-fg-muted">Issued</dt><dd class="text-fg">{{ active(type)!.issuedBy ?? '—' }}<span class="block text-xs text-fg-muted">{{ formatDateTime(active(type)!.issuedAt) }}</span></dd></div>
+          </dl>
+          <p v-else class="text-sm text-fg-muted">Not issued yet. You'll start from a suggested text you can edit; {{ exit.employee?.name.split(' ')[0] ?? 'the employee' }} is told once it is issued.</p>
           <template #footer>
             <div class="flex flex-wrap justify-end gap-2">
               <template v-if="active(type)">

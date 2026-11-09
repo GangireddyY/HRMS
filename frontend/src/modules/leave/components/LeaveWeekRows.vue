@@ -174,7 +174,11 @@ const label = (s: Segment) => {
             v-for="(d, i) in r.days"
             :key="d"
             :aria-current="d === today ? 'date' : undefined"
-            :class="['flex flex-col items-center pt-1.5', i < 6 && 'border-e border-line/80', outside(d) ? 'bg-surface-muted/30' : isWeekend(d) && 'bg-surface-muted/20']"
+            :class="[
+              'flex flex-col items-center pt-1.5',
+              i < 6 && 'border-e border-line/80',
+              d === today ? 'bg-brand-500/[0.05] dark:bg-brand-400/[0.07]' : holidays.has(d) && !outside(d) ? 'bg-special/[0.05]' : outside(d) ? 'bg-surface-muted/40' : isWeekend(d) && 'bg-surface-muted/25',
+            ]"
           >
             <template v-if="mode === 'month'">
               <span v-if="ri === 0" class="text-2xs font-semibold tracking-wide text-fg-muted uppercase"><span class="sm:hidden">{{ weekdays[i]!.charAt(0) }}</span><span class="max-sm:hidden">{{ weekdays[i] }}</span></span>
