@@ -13,7 +13,7 @@ const anchor = (key: string) => (props.anchorPrefix ? `${props.anchorPrefix}${ke
 
 <template>
   <fieldset :disabled="disabled" class="divide-y divide-line/70" aria-label="Organization profile">
-    <div :id="anchor('company')" class="grid scroll-mt-4 gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div :id="anchor('company')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Company</p>
         <p class="mt-1 text-sm text-fg-muted">How your organization appears across the product and on documents.</p>
@@ -27,7 +27,7 @@ const anchor = (key: string) => (props.anchorPrefix ? `${props.anchorPrefix}${ke
         <AppInput v-model="model.taxId" label="Tax ID (PAN / TAN / GSTIN)" :error="errors.taxId" />
       </div>
     </div>
-    <div :id="anchor('contact')" class="grid scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div :id="anchor('contact')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Contact &amp; address</p>
         <p class="mt-1 text-sm text-fg-muted">Registered office and the contact details employees and partners see.</p>
@@ -44,7 +44,7 @@ const anchor = (key: string) => (props.anchorPrefix ? `${props.anchorPrefix}${ke
         <AppSelect v-model="model.country" label="Country" :options="COUNTRY_OPTIONS" :error="errors.country" />
       </div>
     </div>
-    <div :id="anchor('regional')" class="grid scroll-mt-4 gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div :id="anchor('regional')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <p class="text-sm font-semibold text-fg">Regional settings</p>
         <p class="mt-1 text-sm text-fg-muted">Defaults for dates, money and the financial year.</p>

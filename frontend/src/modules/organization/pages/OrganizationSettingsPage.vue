@@ -215,12 +215,32 @@ function go(id: string) {
   main.scrollTo({ top: main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - offset, behavior: 'smooth' });
 }
 
-/** On short screens the navigator scrolls on its own; keep the current section's item in view. */
+const chipsEl = ref<HTMLElement | null>(null);
+const chipEdges = ref({ start: false, end: false });
+function onChipsScroll() {
+  const el = chipsEl.value;
+  if (!el) return;
+  const left = Math.abs(el.scrollLeft);
+  chipEdges.value = { start: left > 2, end: left + el.clientWidth < el.scrollWidth - 2 };
+}
+const chipsMask = computed(() => {
+  const { start, end } = chipEdges.value;
+  if (!start && !end) return undefined;
+  const stops = `${start ? 'transparent, #000 2rem' : '#000'}, ${end ? '#000 calc(100% - 2.5rem), transparent' : '#000'}`;
+  return { maskImage: `linear-gradient(to right, ${stops})`, WebkitMaskImage: `linear-gradient(to right, ${stops})` };
+});
+
+/** The navigator scrolls on its own (vertically on short desktops, sideways as chips on phones); keep the current item in view. */
 watch(active, async (id) => {
   await nextTick();
+  const chips = chipsEl.value;
+  const chip = chips?.querySelector<HTMLElement>(`[data-chip="${id}"]`);
+  if (chips && chip && chips.offsetParent && chips.scrollWidth > chips.clientWidth) {
+    chips.scrollTo({ left: chip.offsetLeft - (chips.clientWidth - chip.offsetWidth) / 2, behavior: 'smooth' });
+  }
   const box = navEl.value;
   const item = box?.querySelector<HTMLElement>(`[data-section="${id}"]`);
-  if (!box || !item || box.scrollHeight <= box.clientHeight) return;
+  if (!box || !item || !item.offsetParent || box.scrollHeight <= box.clientHeight) return;
   const top = item.getBoundingClientRect().top - box.getBoundingClientRect().top;
   if (top < 8 || top + item.offsetHeight > box.clientHeight - 8) box.scrollTo({ top: box.scrollTop + top - box.clientHeight / 3, behavior: 'smooth' });
 });
@@ -237,11 +257,19 @@ function onScroll() {
   active.value = current;
 }
 
+const chipsResize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onChipsScroll);
+watch(chipsEl, (el, old) => {
+  if (old) chipsResize?.unobserve(old);
+  if (el) chipsResize?.observe(el);
+});
 onMounted(() => {
   main = document.getElementById('main');
   main?.addEventListener('scroll', onScroll, { passive: true });
 });
-onBeforeUnmount(() => main?.removeEventListener('scroll', onScroll));
+onBeforeUnmount(() => {
+  main?.removeEventListener('scroll', onScroll);
+  chipsResize?.disconnect();
+});
 
 /** `/admin/organization#security` (or any section id) opens the page at that section once it has rendered. */
 const ALIASES: Record<string, string> = { profile: 'company', brand: 'branding', security: 'passwords', subscription: 'plan' };
@@ -282,16 +310,19 @@ if (wanted) {
       <nav
         ref="navEl"
         aria-label="Settings sections"
-        class="scrollbar-none min-w-0 lg:sticky lg:top-4 lg:-m-1 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:p-1"
+        class="scrollbar-none sticky top-0 z-10 -mx-4 -my-2 min-w-0 border-b border-line/60 bg-canvas/90 py-2 backdrop-blur-md md:-mx-6 lg:top-4 lg:-m-1 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto lg:border-0 lg:bg-transparent lg:p-1 lg:backdrop-blur-none"
       >
-        <ol class="scrollbar-none -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:hidden">
-          <li v-for="item in nav.flatMap((g) => g.items)" :key="item.id">
+        <ol ref="chipsEl" class="scrollbar-none relative flex snap-x gap-1.5 overflow-x-auto scroll-px-4 px-4 md:scroll-px-6 md:px-6 lg:hidden" :style="chipsMask" @scroll.passive="onChipsScroll">
+          <li v-for="item in nav.flatMap((g) => g.items)" :key="item.id" class="snap-start">
             <button
               type="button"
-              :class="['inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap ring-1 transition', active === item.id ? 'bg-accent-soft text-accent-fg ring-brand-600/20' : 'bg-surface text-fg-muted ring-line hover:text-fg']"
+              :data-chip="item.id"
+              :aria-current="active === item.id ? 'location' : undefined"
+              :class="['inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium whitespace-nowrap ring-1 transition-colors', active === item.id ? 'bg-accent-soft text-accent-fg ring-brand-600/25' : 'bg-surface text-fg-muted ring-line hover:text-fg']"
               @click="go(item.id)"
             >
               <component :is="item.icon" :size="13" aria-hidden="true" />{{ item.label }}
+              <span v-if="item.dirty?.()" class="h-1.5 w-1.5 rounded-full bg-warning" aria-label="Unsaved changes" />
             </button>
           </li>
         </ol>
@@ -330,14 +361,14 @@ if (wanted) {
 
       <div class="min-w-0 space-y-6">
         <!-- Branding -->
-        <section :id="anchorId('branding')" class="card scroll-mt-4" aria-labelledby="branding-title">
+        <section :id="anchorId('branding')" class="card scroll-mt-20 lg:scroll-mt-4" aria-labelledby="branding-title">
           <header class="flex min-h-14 flex-wrap items-center gap-3 border-b border-line/70 px-5 py-3">
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 ring-1 ring-violet-600/15 ring-inset dark:bg-violet-500/15 dark:text-violet-300" aria-hidden="true"><Palette :size="17" /></span>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 basis-52">
               <h2 id="branding-title" class="text-sm font-semibold text-fg">Branding</h2>
               <p class="text-xs text-fg-muted">Your logo and color across the sidebar, theme and documents.</p>
             </div>
-            <span class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted"><Zap :size="11" aria-hidden="true" />Applies immediately</span>
+            <span class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted max-sm:ms-12"><Zap :size="11" aria-hidden="true" />Applies immediately</span>
           </header>
           <div class="divide-y divide-line/70 px-5">
             <AppSkeleton v-if="!org.data.value" class="py-6" :lines="4" />
@@ -364,11 +395,11 @@ if (wanted) {
         <section class="card" aria-labelledby="profile-title">
           <header class="flex min-h-14 flex-wrap items-center gap-3 border-b border-line/70 px-5 py-3">
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-sky-600/15 ring-inset dark:bg-sky-500/15 dark:text-sky-300" aria-hidden="true"><Building2 :size="17" /></span>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 basis-52">
               <h2 id="profile-title" class="text-sm font-semibold text-fg">Company profile</h2>
               <p class="text-xs text-fg-muted">Legal details, registered office and regional defaults.</p>
             </div>
-            <span v-if="!canEditProfile" class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted"><LockKeyhole :size="11" aria-hidden="true" />Read only</span>
+            <span v-if="!canEditProfile" class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted max-sm:ms-12"><LockKeyhole :size="11" aria-hidden="true" />Read only</span>
           </header>
           <div class="px-5 py-6">
             <AppSkeleton v-if="!profile" :lines="8" />
@@ -383,11 +414,11 @@ if (wanted) {
         <section class="card" aria-labelledby="security-title">
           <header class="flex min-h-14 flex-wrap items-center gap-3 border-b border-line/70 px-5 py-3">
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-600/15 ring-inset dark:bg-emerald-500/15 dark:text-emerald-300" aria-hidden="true"><ShieldCheck :size="17" /></span>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 basis-52">
               <h2 id="security-title" class="text-sm font-semibold text-fg">Security policy</h2>
               <p class="text-xs text-fg-muted">Applies to everyone who signs in to this organization.</p>
             </div>
-            <span v-if="!canEditPolicy" class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted"><LockKeyhole :size="11" aria-hidden="true" />Read only</span>
+            <span v-if="!canEditPolicy" class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-2xs font-medium text-fg-muted max-sm:ms-12"><LockKeyhole :size="11" aria-hidden="true" />Read only</span>
           </header>
           <div class="px-5 py-6">
             <AppSkeleton v-if="policy.loading.value && !policy.data.value" :lines="8" />
@@ -422,7 +453,7 @@ if (wanted) {
               </div>
 
               <fieldset :disabled="!canEditPolicy" class="divide-y divide-line/70">
-                <div :id="anchorId('passwords')" class="grid scroll-mt-4 gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div :id="anchorId('passwords')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 pb-8 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
                     <p class="text-sm font-semibold text-fg">Password requirements</p>
                     <p class="mt-1 text-sm text-fg-muted">Rules every new password must meet. Longer passwords protect better than complex ones.</p>
@@ -441,7 +472,7 @@ if (wanted) {
                     </div>
                   </div>
                 </div>
-                <div :id="anchorId('lockout')" class="grid scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div :id="anchorId('lockout')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
                     <p class="text-sm font-semibold text-fg">Account lockout</p>
                     <p class="mt-1 text-sm text-fg-muted">Slows down password guessing by locking an account after repeated failures.</p>
@@ -451,7 +482,7 @@ if (wanted) {
                     <AppInput v-model="policyForm.lockoutDurationMinutes" type="number" label="Lockout duration" suffix="min" :min="1" :max="1440" :error="policyErrors.fieldErrors.value.lockoutDurationMinutes" />
                   </div>
                 </div>
-                <div :id="anchorId('sessions')" class="grid scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div :id="anchorId('sessions')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
                     <p class="text-sm font-semibold text-fg">Sessions</p>
                     <p class="mt-1 text-sm text-fg-muted">How long people stay signed in when idle, and at most.</p>
@@ -461,7 +492,7 @@ if (wanted) {
                     <AppInput v-model="policyForm.sessionMaxLifetimeHours" type="number" label="Maximum lifetime" suffix="hours" :min="1" :max="720" :error="policyErrors.fieldErrors.value.sessionMaxLifetimeHours" />
                   </div>
                 </div>
-                <div :id="anchorId('mfa')" class="grid scroll-mt-4 gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div :id="anchorId('mfa')" class="grid scroll-mt-20 lg:scroll-mt-4 gap-x-10 gap-y-4 pt-8 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
                     <p class="text-sm font-semibold text-fg">Two-factor authentication</p>
                     <p class="mt-1 text-sm text-fg-muted">The single most effective protection against stolen passwords.</p>
@@ -479,7 +510,7 @@ if (wanted) {
         <section class="card" aria-labelledby="subscription-title">
           <header class="flex min-h-14 flex-wrap items-center gap-3 border-b border-line/70 px-5 py-3">
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 ring-1 ring-amber-600/15 ring-inset dark:bg-amber-500/15 dark:text-amber-300" aria-hidden="true"><CreditCard :size="17" /></span>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 basis-52">
               <h2 id="subscription-title" class="text-sm font-semibold text-fg">Subscription</h2>
               <p class="text-xs text-fg-muted">Your plan, seats and included modules. Contact your platform administrator to change them.</p>
             </div>
@@ -488,7 +519,7 @@ if (wanted) {
             <AppSkeleton v-if="subscription.loading.value && !subscription.data.value" :lines="6" />
             <AppErrorState v-else-if="subscription.error.value" :error="subscription.error.value" @retry="subscription.run" />
             <template v-else-if="subscription.data.value">
-              <div :id="anchorId('plan')" class="relative scroll-mt-4 overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
+              <div :id="anchorId('plan')" class="relative scroll-mt-20 lg:scroll-mt-4 overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
                 <div class="pointer-events-none absolute -end-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
                 <div class="relative flex flex-wrap items-end justify-between gap-6">
                   <div class="min-w-0">
@@ -523,7 +554,7 @@ if (wanted) {
                 </div>
               </div>
 
-              <div :id="anchorId('modules')" class="scroll-mt-4">
+              <div :id="anchorId('modules')" class="scroll-mt-20 lg:scroll-mt-4">
                 <div class="mb-3 flex items-baseline justify-between gap-3">
                   <p class="text-sm font-semibold text-fg">Modules</p>
                   <p class="text-xs text-fg-muted tabular-nums">{{ includedModules }} included · {{ subscription.data.value.modules.length - includedModules }} available on other plans</p>
