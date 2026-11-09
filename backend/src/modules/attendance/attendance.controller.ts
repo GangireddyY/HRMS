@@ -24,6 +24,8 @@ import {
   DeviceDto,
   DevicePunchesDto,
   HolidayQueryDto,
+  ImportHolidaysDto,
+  OfficialHolidaysQueryDto,
   OvertimeQueryDto,
   PeriodQueryDto,
   PunchDto,
@@ -39,6 +41,7 @@ import {
   UpsertRecordDto,
   WorkFromHomeQueryDto,
 } from './dto/attendance.dto';
+import { OfficialHolidaysService } from './official-holidays.service';
 import { OvertimeService } from './overtime.service';
 import { RegularizationService } from './regularization.service';
 import { RosterService } from './roster.service';
@@ -355,12 +358,29 @@ export class DevicePunchesController {
 @ApiBearerAuth()
 @Controller({ path: 'holidays', version: '1' })
 export class HolidaysController {
-  constructor(private readonly config: AttendanceConfigService) {}
+  constructor(
+    private readonly config: AttendanceConfigService,
+    private readonly official: OfficialHolidaysService,
+  ) {}
 
   @Get()
   @RequireTenant()
   list(@Query() query: HolidayQueryDto) {
     return this.config.listHolidays(query.year ?? new Date().getUTCFullYear());
+  }
+
+  @Get('official')
+  @RequirePermissions('organization.calendar.manage')
+  @ApiOperation({ summary: "A country's official public holidays for a year, to choose which ones the organization gives" })
+  officialHolidays(@CurrentAuth() auth: AuthContext, @Query() query: OfficialHolidaysQueryDto) {
+    return this.official.list(auth, query.year, query.country);
+  }
+
+  @Post('import')
+  @RequirePermissions('organization.calendar.manage')
+  @ApiOperation({ summary: 'Add several holidays at once; dates that already have a holiday are skipped' })
+  importHolidays(@CurrentAuth() auth: AuthContext, @Body() dto: ImportHolidaysDto) {
+    return this.official.import(auth, dto);
   }
 
   @Post()

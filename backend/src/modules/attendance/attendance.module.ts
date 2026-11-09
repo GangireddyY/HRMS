@@ -7,6 +7,7 @@ import { AttendanceRulesService } from './attendance-rules.service';
 import { AttendanceController, DevicePunchesController, HolidaysController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
 import { DevicesService } from './devices.service';
+import { OfficialHolidaysService } from './official-holidays.service';
 import { OvertimeService } from './overtime.service';
 import { RegularizationService } from './regularization.service';
 import { RosterService } from './roster.service';
@@ -15,7 +16,18 @@ import { WorkFromHomeService } from './work-from-home.service';
 @Module({
   imports: [EmployeesModule, RbacModule],
   controllers: [AttendanceController, HolidaysController, DevicePunchesController],
-  providers: [AttendanceService, AttendanceRulesService, AttendanceConfigService, RegularizationService, AttendancePeriodsService, OvertimeService, WorkFromHomeService, RosterService, DevicesService],
+  providers: [
+    AttendanceService,
+    AttendanceRulesService,
+    AttendanceConfigService,
+    OfficialHolidaysService,
+    RegularizationService,
+    AttendancePeriodsService,
+    OvertimeService,
+    WorkFromHomeService,
+    RosterService,
+    DevicesService,
+  ],
   exports: [AttendanceRulesService],
 })
 export class AttendanceModule {}

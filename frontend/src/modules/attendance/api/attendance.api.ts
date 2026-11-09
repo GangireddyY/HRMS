@@ -1,6 +1,6 @@
-import type { OvertimeStatus, RegularizationStatus } from '@contracts';
+import type { HolidayCountry, OvertimeStatus, RegularizationStatus } from '@contracts';
 import { http, type ListQuery, type Page } from '@/core/http/http-client';
-import type { AttendanceCalendar, AttendancePeriod, AttendanceRecord, DailyRow, DailySummary, Device, Holiday, Overtime, Regularization, RosterRow, Rotation, RotationStep, Shift, TodayAttendance, WorkFromHome } from '../types';
+import type { AttendanceCalendar, AttendancePeriod, AttendanceRecord, DailyRow, DailySummary, Device, Holiday, OfficialHolidays, Overtime, Regularization, RosterRow, Rotation, RotationStep, Shift, TodayAttendance, WorkFromHome } from '../types';
 
 export interface DailyQuery extends ListQuery {
   date?: string;
@@ -67,4 +67,6 @@ export const attendanceApi = {
   createHoliday: (body: Omit<Holiday, 'id'>) => http.post<Holiday>('/holidays', body),
   updateHoliday: (id: string, body: Partial<Holiday>) => http.patch<Holiday>(`/holidays/${id}`, body),
   removeHoliday: (id: string) => http.delete<{ deleted: boolean }>(`/holidays/${id}`),
+  officialHolidays: (year: number, country?: HolidayCountry) => http.get<OfficialHolidays>('/holidays/official', { year, country }),
+  importHolidays: (body: { country?: HolidayCountry; holidays: Omit<Holiday, 'id'>[] }) => http.post<{ created: number; skipped: number }>('/holidays/import', body),
 };

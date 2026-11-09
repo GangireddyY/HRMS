@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Landmark, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
+import ImportHolidaysModal from '@/modules/attendance/components/ImportHolidaysModal.vue';
 import type { Holiday } from '@/modules/attendance/types';
 import { WEEKDAY_SHORT } from '@/modules/attendance/utils/attendance-format';
-import { AppAlert, AppBadge, AppButton, AppCard, AppDataTable, AppDatePicker, AppErrorState, AppInput, AppMiniMonth, AppModal, AppPageHeader, AppSegmented, AppSwitch, type TableColumn } from '@/shared/components';import { useAsync } from '@/shared/composables/use-async';
+import { AppAlert, AppBadge, AppButton, AppCard, AppDataTable, AppDatePicker, AppErrorState, AppInput, AppMiniMonth, AppModal, AppPageHeader, AppSegmented, AppSwitch, type TableColumn } from '@/shared/components';
+import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -65,6 +67,13 @@ async function remove(h: Holiday) {
   }
 }
 
+const importOpen = ref(false);
+function onImported(y: number) {
+  importOpen.value = false;
+  if (y !== year.value) year.value = y;
+  else void holidays.run();
+}
+
 const weekdayOf = (date: string) => WEEKDAY_SHORT[new Date(`${date}T00:00:00Z`).getUTCDay()];
 
 const view = ref<'year' | 'list'>('year');
@@ -100,6 +109,7 @@ function onDay(iso: string) {
           <AppButton size="sm" variant="ghost" :icon="ChevronRight" aria-label="Next year" @click="year++" />
         </div>
         <AppSegmented v-model="view" class="sm:w-36" :options="viewOptions" label="View" />
+        <AppButton v-if="canManage" variant="secondary" :icon="Landmark" @click="importOpen = true">Import official holidays</AppButton>
         <AppButton v-if="canManage" :icon="Plus" @click="edit(null)">Add holiday</AppButton>
       </template>
     </AppPageHeader>
@@ -122,7 +132,12 @@ function onDay(iso: string) {
     </AppCard>
     <AppCard v-else :padded="false">
       <AppDataTable :columns="columns" :rows="holidays.data.value ?? []" :loading="holidays.loading.value" :error="holidays.error.value" caption="Holidays" :empty-title="`No holidays in ${year}`" @retry="holidays.run">
-        <template #empty><AppButton v-if="canManage" :icon="Plus" @click="edit(null)">Add holiday</AppButton></template>
+        <template #empty>
+          <div v-if="canManage" class="flex flex-wrap justify-center gap-2">
+            <AppButton :icon="Landmark" @click="importOpen = true">Import official holidays</AppButton>
+            <AppButton variant="secondary" :icon="Plus" @click="edit(null)">Add holiday</AppButton>
+          </div>
+        </template>
         <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span> <span class="text-xs text-fg-muted">{{ weekdayOf(row.date) }}</span></template>
         <template #cell-name="{ row }"><span class="font-medium text-fg">{{ row.name }}</span></template>
         <template #cell-type="{ row }"><AppBadge :tone="row.isOptional ? 'neutral' : 'violet'">{{ row.isOptional ? 'Optional' : 'Public holiday' }}</AppBadge></template>
@@ -147,5 +162,7 @@ function onDay(iso: string) {
         <AppButton type="submit" form="holiday-form" :loading="saving" :disabled="!form.date || form.name.trim().length < 2">{{ editing ? 'Save changes' : 'Add holiday' }}</AppButton>
       </template>
     </AppModal>
+
+    <ImportHolidaysModal v-if="canManage" :open="importOpen" :year="year" @close="importOpen = false" @imported="onImported" />
   </div>
 </template>

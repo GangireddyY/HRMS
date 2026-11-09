@@ -20,7 +20,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { DEVICE_BATCH_MAX, OVERTIME_STATUSES, PUNCH_DIRECTIONS, REGULARIZATION_STATUSES, type OvertimeStatus, type PunchDirection, type RegularizationStatus } from '../../../contracts';
+import { DEVICE_BATCH_MAX, HOLIDAY_COUNTRIES, HOLIDAY_IMPORT_MAX, OVERTIME_STATUSES, type HolidayCountry, PUNCH_DIRECTIONS, REGULARIZATION_STATUSES, type OvertimeStatus, type PunchDirection, type RegularizationStatus } from '../../../contracts';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { emptyToNull, optionalNullable, trim } from '../../../common/validation/transforms';
 
@@ -60,6 +60,22 @@ export class CreateHolidayDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isOptional?: boolean;
 }
 export class UpdateHolidayDto extends PartialType(CreateHolidayDto) {}
+
+const HOLIDAY_COUNTRY_CODES = Object.keys(HOLIDAY_COUNTRIES) as HolidayCountry[];
+
+export class OfficialHolidaysQueryDto {
+  @ApiProperty({ example: 2027 }) @Type(() => Number) @IsInt() @Min(2000) @Max(2100) year!: number;
+  @ApiPropertyOptional({ enum: HOLIDAY_COUNTRY_CODES, description: "Defaults to the organization's country" })
+  @IsOptional() @IsIn(HOLIDAY_COUNTRY_CODES) country?: HolidayCountry;
+}
+
+export class ImportHolidaysDto {
+  @ApiPropertyOptional({ enum: HOLIDAY_COUNTRY_CODES, description: 'Where the holidays came from (for the audit log)' })
+  @IsOptional() @IsIn(HOLIDAY_COUNTRY_CODES) country?: HolidayCountry;
+  @ApiProperty({ type: [CreateHolidayDto] })
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(HOLIDAY_IMPORT_MAX) @ValidateNested({ each: true }) @Type(() => CreateHolidayDto)
+  holidays!: CreateHolidayDto[];
+}
 
 export class PunchDto {
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @Type(() => Number) @IsNumber() @Min(-90) @Max(90) latitude?: number;

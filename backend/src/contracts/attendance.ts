@@ -58,3 +58,32 @@ export const FALLBACK_SHIFT = {
 
 /** Employees can request regularization for days up to this many days in the past. */
 export const REGULARIZATION_WINDOW_DAYS = 45;
+
+/** Countries whose official holiday calendar can be imported into the organization's holidays. */
+export const HOLIDAY_COUNTRIES = {
+  IN: 'India',
+  AE: 'United Arab Emirates',
+  AU: 'Australia',
+  BD: 'Bangladesh',
+  CA: 'Canada',
+  DE: 'Germany',
+  FR: 'France',
+  GB: 'United Kingdom',
+  IE: 'Ireland',
+  JP: 'Japan',
+  LK: 'Sri Lanka',
+  MY: 'Malaysia',
+  NP: 'Nepal',
+  NZ: 'New Zealand',
+  PH: 'Philippines',
+  QA: 'Qatar',
+  SA: 'Saudi Arabia',
+  SG: 'Singapore',
+  US: 'United States',
+  ZA: 'South Africa',
+} as const;
+export type HolidayCountry = keyof typeof HOLIDAY_COUNTRIES;
+/** PUBLIC = a national day off; REGIONAL = a day off only in some states or regions; OBSERVANCE = marked but not a day off. */
+export const OFFICIAL_HOLIDAY_KINDS = ['PUBLIC', 'REGIONAL', 'OBSERVANCE'] as const;
+export type OfficialHolidayKind = (typeof OFFICIAL_HOLIDAY_KINDS)[number];
+export const HOLIDAY_IMPORT_MAX = 100;

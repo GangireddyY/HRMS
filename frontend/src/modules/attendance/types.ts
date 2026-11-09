@@ -1,4 +1,4 @@
-import type { AttendanceRecordStatus, AttendanceSource, DayStatus, LeaveSession, OvertimeStatus, RegularizationStatus, WorkMode } from '@contracts';
+import type { AttendanceRecordStatus, AttendanceSource, DayStatus, HolidayCountry, LeaveSession, OfficialHolidayKind, OvertimeStatus, RegularizationStatus, WorkMode } from '@contracts';
 
 export interface AttendanceRecord {
   id: string;
@@ -199,6 +199,24 @@ export interface Holiday {
   date: string;
   name: string;
   isOptional: boolean;
+}
+
+export interface OfficialHoliday {
+  date: string;
+  name: string;
+  kind: OfficialHolidayKind;
+  /** States or regions where a regional holiday is a day off. */
+  regions: string[];
+  halfDay: boolean;
+  /** Name of the organization's holiday already on this date. */
+  existing: string | null;
+}
+
+export interface OfficialHolidays {
+  country: HolidayCountry;
+  countryName: string;
+  year: number;
+  holidays: OfficialHoliday[];
 }
 
 export interface AttendancePeriod {
