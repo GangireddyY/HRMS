@@ -6,6 +6,7 @@ import type { PayrollRunStatus } from '@contracts';
 import { financialYearLabel, financialYearOf } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
+import PayrollRunGridCard from '@/modules/payroll/components/PayrollRunGridCard.vue';
 import RunStepper from '@/modules/payroll/components/RunStepper.vue';
 import type { PayrollRun } from '@/modules/payroll/types';
 import { MONTH_NAMES, RUN_STATUS_LABELS, rupees, runTone } from '@/modules/payroll/utils/payroll-format';
@@ -247,6 +248,7 @@ const HOW = [
             <p class="text-xs text-fg">{{ lastStep(row).text }}</p>
             <p class="text-2xs text-fg-subtle">{{ timeAgo(lastStep(row).at) }}</p>
           </template>
+          <template #card="{ row }"><PayrollRunGridCard :run="row" :change="rowChange(row)" :last-step="lastStep(row)" /></template>
         </AppDataTable>
       </AppCard>
 

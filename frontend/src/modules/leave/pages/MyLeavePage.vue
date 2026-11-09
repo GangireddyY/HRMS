@@ -8,6 +8,7 @@ import { leaveApi } from '@/modules/leave/api/leave.api';
 import ApplyLeaveModal from '@/modules/leave/components/ApplyLeaveModal.vue';
 import LeaveBalanceCards from '@/modules/leave/components/LeaveBalanceCards.vue';
 import LeaveLedgerModal from '@/modules/leave/components/LeaveLedgerModal.vue';
+import MyLeaveGridCard from '@/modules/leave/components/MyLeaveGridCard.vue';
 import type { LeaveRequest } from '@/modules/leave/types';
 import { LEAVE_STATUS_LABELS, formatDays, formatLeaveRange, leaveStatusTone, todayIso } from '@/modules/leave/utils/leave-format';
 import { AppBadge, AppButton, AppCard, AppDataTable, AppEmptyState, AppErrorState, AppPageHeader, AppSegmented, AppSkeleton, type TableColumn } from '@/shared/components';
@@ -302,6 +303,7 @@ const tint = (color: string | undefined, amount: number) => (color ? `color-mix(
           <template #cell-actions="{ row }">
             <AppButton v-if="cancellable(row)" size="sm" variant="ghost" :icon="XCircle" :aria-label="`Cancel ${row.leaveType?.name ?? 'leave'} ${formatLeaveRange(row)}`" @click="cancel(row)">Cancel</AppButton>
           </template>
+          <template #card="{ row }"><MyLeaveGridCard :request="row" :cancellable="cancellable(row)" :starts-in="relativeDay(row.startDate)" @cancel="cancel(row)" /></template>
         </AppDataTable>
       </AppCard>
 

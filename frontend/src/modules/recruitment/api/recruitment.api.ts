@@ -13,6 +13,7 @@ import type {
   OfferInput,
   OfferSummary,
   PublicJob,
+  CareersOrganization,
   Requisition,
   RequisitionInput,
 } from '../types';
@@ -76,9 +77,9 @@ export const recruitmentApi = {
 
 /** Public careers pages (no sign-in). */
 export const careersApi = {
-  page: (slug: string) => http.get<{ organization: { name: string; logoUrl: string | null; website: string | null }; jobs: PublicJob[] }>(`/careers/${encodeURIComponent(slug)}`),
+  page: (slug: string) => http.get<{ organization: CareersOrganization; jobs: PublicJob[] }>(`/careers/${encodeURIComponent(slug)}`),
   job: (slug: string, jobId: string) =>
-    http.get<{ organization: { name: string; logoUrl: string | null }; job: PublicJob & { description: string; requirements: string | null } }>(`/careers/${encodeURIComponent(slug)}/jobs/${jobId}`),
+    http.get<{ organization: CareersOrganization; job: PublicJob & { description: string; requirements: string | null } }>(`/careers/${encodeURIComponent(slug)}/jobs/${jobId}`),
   apply: (slug: string, jobId: string, resume: File, fields: Record<string, string | null | undefined>) =>
     http.upload<{ received: boolean; message: string }>(`/careers/${encodeURIComponent(slug)}/jobs/${jobId}/apply`, resume, { fileName: resume.name, fields }),
 };

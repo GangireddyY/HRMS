@@ -219,6 +219,18 @@ export interface OfferInput {
   notes?: string | null;
 }
 
+/** The employer as shown on its public careers page. */
+export interface CareersOrganization {
+  name: string;
+  logoUrl: string | null;
+  website: string | null;
+  brandColor: string | null;
+  industry: string | null;
+  companySize: string | null;
+  city: string | null;
+  country: string | null;
+}
+
 export interface PublicJob {
   id: string;
   title: string;

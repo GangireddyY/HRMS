@@ -6,6 +6,7 @@ import { LOAN_STATUSES, LOAN_TYPES, type LoanStatus, type LoanType } from '@cont
 import { appLocale } from '@/core/locale/locale';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { loansApi } from '@/modules/payroll/api/payroll.api';
+import LoanGridCard from '@/modules/payroll/components/LoanGridCard.vue';
 import LoanRequestModal from '@/modules/payroll/components/LoanRequestModal.vue';
 import type { Loan, LoanDetail } from '@/modules/payroll/types';
 import { nextInstalmentNumber } from '@/modules/payroll/utils/loan-progress';
@@ -147,6 +148,7 @@ const columns: TableColumn<Loan>[] = [
               <template #cell-status="{ row }">
                 <AppBadge :tone="loanTone[row.status]" size="sm" dot>{{ LOAN_STATUS_LABELS[row.status] }}</AppBadge>
               </template>
+              <template #card="{ row }"><LoanGridCard :loan="row" /></template>
             </AppDataTable>
           </AppCard>
         </AppTabs>

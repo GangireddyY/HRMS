@@ -7,6 +7,7 @@ import { EMPLOYMENT_TYPE_LABELS } from '@/modules/people/utils/labels';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import JobFormModal from '@/modules/recruitment/components/JobFormModal.vue';
 import RequisitionFormModal from '@/modules/recruitment/components/RequisitionFormModal.vue';
+import RequisitionGridCard from '@/modules/recruitment/components/RequisitionGridCard.vue';
 import type { JobDetail, Requisition } from '@/modules/recruitment/types';
 import { JOB_STATUS_LABELS, PIPELINE_ORDER, REASON_LABELS, REQUISITION_STATUS_LABELS, STAGE_LABELS, jobTone, money, requisitionTone, stageAccent } from '@/modules/recruitment/utils/recruitment-format';
 import { daysSince, dueText, dueTone } from '@/modules/recruitment/utils/recruitment-ui';
@@ -317,6 +318,9 @@ const facts = computed(() => {
             </div>
             <AppButton v-else-if="row.status === 'APPROVED' && canManage" size="xs" variant="outline" :icon="BriefcaseBusiness" @click.stop="openJob(row)">Open job</AppButton>
             <span v-else class="text-xs text-fg-subtle">—</span>
+          </template>
+          <template #card="{ row }">
+            <RequisitionGridCard :requisition="row" :can-manage="canManage" @approve="review(row, 'approve')" @reject="review(row, 'reject')" @open-job="openJob(row)" />
           </template>
           <template #cell-actions="{ row }">
             <div v-if="row.permissions.decide" class="flex justify-end gap-1.5">

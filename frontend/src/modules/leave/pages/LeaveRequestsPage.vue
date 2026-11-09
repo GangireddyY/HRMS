@@ -4,6 +4,7 @@ import { CalendarRange, Check, ClipboardList, Hourglass, Inbox, Plane, Scale, Tr
 import type { LeaveRequestStatus } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { leaveApi } from '@/modules/leave/api/leave.api';
+import LeaveRequestGridCard from '@/modules/leave/components/LeaveRequestGridCard.vue';
 import type { LeaveRequest } from '@/modules/leave/types';
 import { LEAVE_STATUS_LABELS, formatDays, formatLeaveRange, leaveStatusTone, todayIso } from '@/modules/leave/utils/leave-format';
 import { AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
@@ -295,6 +296,20 @@ async function submit() {
                 <AppButton size="sm" :icon="Check" :aria-label="`Approve ${row.employee?.name}'s leave`" @click="open(row, 'approve')">Approve</AppButton>
               </div>
               <AppButton v-else-if="row.status === 'APPROVED' && canApprove" size="sm" variant="ghost" :icon="XCircle" :aria-label="`Cancel ${row.employee?.name}'s approved leave`" @click="open(row, 'cancel')">Cancel</AppButton>
+            </template>
+            <template #card="{ row }">
+              <LeaveRequestGridCard
+                :request="row"
+                :timing="timing(row)"
+                :overlaps="overlaps(row)"
+                :overlaps-loading="overlapSource.loading.value && !overlapSource.data.value"
+                :can-decide="row.status === 'PENDING' && view === 'team'"
+                :can-cancel="row.status === 'APPROVED' && canApprove"
+                :selectable="view === 'team' && row.status === 'PENDING'"
+                @approve="open(row, 'approve')"
+                @reject="open(row, 'reject')"
+                @cancel="open(row, 'cancel')"
+              />
             </template>
           </AppDataTable>
         </AppCard>

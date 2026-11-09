@@ -5,6 +5,7 @@ import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import SalaryBreakdownTable from '@/modules/payroll/components/SalaryBreakdownTable.vue';
 import SalaryFormModal from '@/modules/payroll/components/SalaryFormModal.vue';
+import SalaryGridCard from '@/modules/payroll/components/SalaryGridCard.vue';
 import type { EmployeeSalary, SalaryHistory, SalaryRow } from '@/modules/payroll/types';
 import { rupees } from '@/modules/payroll/utils/payroll-format';
 import { change } from '@/modules/payroll/utils/run-compare';
@@ -198,6 +199,9 @@ const columns: TableColumn<SalaryRow>[] = [
               <AppButton size="sm" variant="ghost" :icon="History" :aria-label="`Salary history of ${row.employee.name}`" title="Salary history" @click="openHistory(row)" />
               <AppButton v-if="canRevise" size="sm" :variant="row.current || row.upcoming ? 'secondary' : 'primary'" :icon="Wallet" @click="openForm(row)">{{ row.current || row.upcoming ? 'Revise' : 'Set salary' }}</AppButton>
             </div>
+          </template>
+          <template #card="{ row }">
+            <SalaryGridCard :row="row" :segments="row.current ? segments(row.current) : []" :can-revise="canRevise" @history="openHistory(row)" @revise="openForm(row)" />
           </template>
         </AppDataTable>
       </AppCard>

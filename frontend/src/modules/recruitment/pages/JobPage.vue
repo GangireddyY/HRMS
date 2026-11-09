@@ -7,6 +7,7 @@ import { EMPLOYMENT_TYPE_LABELS } from '@/modules/people/utils/labels';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import CandidateFormModal from '@/modules/recruitment/components/CandidateFormModal.vue';
 import JobFormModal from '@/modules/recruitment/components/JobFormModal.vue';
+import JobPostingPanel from '@/modules/recruitment/components/JobPostingPanel.vue';
 import PipelineCard from '@/modules/recruitment/components/PipelineCard.vue';
 import type { ApplicationCard, Candidate, JobDetail } from '@/modules/recruitment/types';
 import { JOB_STATUS_LABELS, SOURCE_LABELS, STAGE_LABELS, experience, jobTone, stageAccent, stageTone } from '@/modules/recruitment/utils/recruitment-format';
@@ -353,28 +354,7 @@ const hiredPct = computed(() => {
         </div>
 
         <!-- Posting -->
-        <div v-else class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <article class="card p-5">
-            <h2 class="text-sm font-semibold text-fg">About the role</h2>
-            <p class="mt-2 text-sm leading-6 whitespace-pre-line text-fg-muted">{{ job.data.value.description }}</p>
-            <template v-if="job.data.value.requirements">
-              <h2 class="mt-6 text-sm font-semibold text-fg">What we're looking for</h2>
-              <p class="mt-2 text-sm leading-6 whitespace-pre-line text-fg-muted">{{ job.data.value.requirements }}</p>
-            </template>
-          </article>
-          <aside class="card space-y-3 p-4 text-sm">
-            <h2 class="text-sm font-semibold text-fg">Posting</h2>
-            <p class="flex items-center gap-2 text-fg-muted">
-              <Globe :size="14" aria-hidden="true" />{{ job.data.value.isPublic ? 'Listed on the careers page' : 'Internal only — not on the careers page' }}
-            </p>
-            <p v-if="closing" :class="['flex items-center gap-2', closing.tone]"><CalendarClock :size="14" aria-hidden="true" />{{ closing.text }}</p>
-            <p v-else class="flex items-center gap-2 text-fg-muted"><CalendarClock :size="14" aria-hidden="true" />No closing date</p>
-            <div class="flex flex-wrap gap-2 border-t border-line/70 pt-3">
-              <AppButton v-if="publicUrl" size="sm" variant="secondary" :icon="ExternalLink" :to="publicUrl">View public posting</AppButton>
-              <AppButton v-if="canManage" size="sm" variant="ghost" :icon="Pencil" @click="editOpen = true">Edit posting</AppButton>
-            </div>
-          </aside>
-        </div>
+        <JobPostingPanel v-else :job="job.data.value" :applications="items" :public-url="publicUrl" :can-manage="canManage" @edit="editOpen = true" />
       </AppTabs>
 
       <JobFormModal :open="editOpen" :job="job.data.value" @close="editOpen = false" @saved="onEdited" />

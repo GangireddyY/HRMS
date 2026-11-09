@@ -3,9 +3,11 @@ import { computed, ref, watch } from 'vue';
 import { BadgeCheck, CalendarClock, Check, ClipboardCheck, FilterX, Gavel, Quote, X } from '@lucide/vue';
 import type { ProbationReviewStatus } from '@contracts';
 import { onboardingApi } from '@/modules/onboarding/api/onboarding.api';
+import ProbationDueGridCard from '@/modules/onboarding/components/ProbationDueGridCard.vue';
+import ProbationReviewGridCard from '@/modules/onboarding/components/ProbationReviewGridCard.vue';
 import RecommendModal from '@/modules/onboarding/components/RecommendModal.vue';
 import type { ProbationDue, ProbationReview } from '@/modules/onboarding/types';
-import { RECOMMENDATION_LABELS, REVIEW_STATUS_LABELS, reviewStatusTone } from '@/modules/onboarding/utils/onboarding-format';
+import { RECOMMENDATION_LABELS, REVIEW_STATUS_LABELS, probationCountdown, probationCountdownTone, reviewStatusTone, tenure } from '@/modules/onboarding/utils/onboarding-format';
 import { AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
@@ -99,13 +101,6 @@ const reviewColumns: TableColumn<ProbationReview>[] = [
   { key: 'status', label: 'Status' },
   { key: 'actions', label: '', align: 'right' },
 ];
-const countdown = (days: number) => (days < 0 ? `${-days} day${days === -1 ? '' : 's'} overdue` : days === 0 ? 'Ends today' : days === 1 ? 'Ends tomorrow' : `in ${days} days`);
-const countdownTone = (days: number) => (days < 0 ? 'bg-danger-soft text-danger-fg ring-danger/20' : days <= 14 ? 'bg-warning-soft text-warning-fg ring-warning/25' : 'bg-surface-muted text-fg-muted ring-line');
-/** "4 months in" from the joining date. */
-function tenure(iso: string) {
-  const months = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / (30.44 * 86_400_000)));
-  return months < 1 ? 'Less than a month in' : `${months} month${months === 1 ? '' : 's'} in`;
-}
 </script>
 
 <template>
@@ -167,6 +162,9 @@ function tenure(iso: string) {
               <AppButton size="sm" :icon="Check" @click="deciding = { review: row, action: 'approve' }; note = ''">Approve</AppButton>
             </div>
           </template>
+          <template #card="{ row }">
+            <ProbationReviewGridCard :review="row" @approve="deciding = { review: row, action: 'approve' }; note = ''" @reject="deciding = { review: row, action: 'reject' }; note = ''" />
+          </template>
         </AppDataTable>
       </AppCard>
 
@@ -208,7 +206,7 @@ function tenure(iso: string) {
           <template #cell-end="{ row }">
             <div class="flex flex-wrap items-center gap-2 max-md:justify-end">
               <span class="text-fg tabular-nums">{{ formatDate(row.probationEndDate) }}</span>
-              <span :class="['rounded-full px-2 py-px text-2xs font-semibold whitespace-nowrap ring-1 ring-inset tabular-nums', countdownTone(row.daysLeft)]">{{ countdown(row.daysLeft) }}</span>
+              <span :class="['rounded-full px-2 py-px text-2xs font-semibold whitespace-nowrap ring-1 ring-inset tabular-nums', probationCountdownTone(row.daysLeft)]">{{ probationCountdown(row.daysLeft) }}</span>
             </div>
           </template>
           <template #cell-tenure="{ row }">
@@ -225,6 +223,9 @@ function tenure(iso: string) {
           <template #cell-actions="{ row }">
             <AppButton v-if="!row.pendingReview && (canRecommend || row.isDirectReport)" size="sm" variant="secondary" :icon="ClipboardCheck" @click="recommendFor = row">Review</AppButton>
             <AppButton v-else-if="row.pendingReview && canDecide" size="sm" variant="ghost" :icon="BadgeCheck" @click="tab = 'decisions'">Decide</AppButton>
+          </template>
+          <template #card="{ row }">
+            <ProbationDueGridCard :due="row" :can-recommend="canRecommend" :can-decide="canDecide" @review="recommendFor = row" @decide="tab = 'decisions'" />
           </template>
         </AppDataTable>
       </AppCard>

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { Check, FileImage, FileText, Hourglass, Inbox, ListChecks, PieChart, Receipt, Wallet, X } from '@lucide/vue';
 import { REIMBURSEMENT_STATUSES, type ReimbursementCategory, type ReimbursementStatus } from '@contracts';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
+import ClaimGridCard from '@/modules/payroll/components/ClaimGridCard.vue';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
 import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
@@ -192,6 +193,9 @@ const columns = computed<TableColumn<Claim>[]>(() => [
                     <AppButton size="sm" :icon="Check" @click="open(row, 'approve')">Approve</AppButton>
                   </template>
                 </div>
+              </template>
+              <template #card="{ row }">
+                <ClaimGridCard :claim="row" mode="review" :selectable="row.permissions.review" :sla-days="SLA_DAYS" @approve="open(row, 'approve')" @reject="open(row, 'reject')" @receipt="receipt(row)" />
               </template>
             </AppDataTable>
           </AppCard>

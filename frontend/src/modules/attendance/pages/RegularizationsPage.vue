@@ -4,6 +4,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { Check, CircleAlert, FilePen, Hourglass, House, Lock, Timer, X } from '@lucide/vue';
 import type { OvertimeStatus, RegularizationStatus } from '@contracts';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
+import OvertimeGridCard from '@/modules/attendance/components/OvertimeGridCard.vue';
+import RegularizationGridCard from '@/modules/attendance/components/RegularizationGridCard.vue';
+import WorkFromHomeGridCard from '@/modules/attendance/components/WorkFromHomeGridCard.vue';
 import type { Overtime, Regularization, WorkFromHome } from '@/modules/attendance/types';
 import { OVERTIME_LABELS, REGULARIZATION_LABELS, dateRange, formatMinutes, formatTime, monthLabel, overtimeTone, regularizationTone } from '@/modules/attendance/utils/attendance-format';
 import { dateTile, daysBetween, localToday, plural, relativeDay, waiting } from '@/modules/attendance/utils/attendance-ops';
@@ -277,6 +280,17 @@ async function submit() {
               <AppButton size="sm" :icon="Check" @click="open({ kind: 'regularization', item: row, action: 'approve' })">Approve</AppButton>
             </div>
           </template>
+          <template #card="{ row }">
+            <RegularizationGridCard
+              :regularization="row"
+              :today="today"
+              :blocks-close="blocksClose(row.workDate)"
+              :to="personLink(row.employee?.id, row.workDate)"
+              :selectable="row.status === 'PENDING'"
+              @approve="open({ kind: 'regularization', item: row, action: 'approve' })"
+              @reject="open({ kind: 'regularization', item: row, action: 'reject' })"
+            />
+          </template>
         </AppDataTable>
       </AppCard>
 
@@ -343,6 +357,17 @@ async function submit() {
               <AppButton size="sm" variant="secondary" :icon="X" @click="open({ kind: 'wfh', item: row, action: 'reject' })">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="open({ kind: 'wfh', item: row, action: 'approve' })">Approve</AppButton>
             </div>
+          </template>
+          <template #card="{ row }">
+            <WorkFromHomeGridCard
+              :request="row"
+              :today="today"
+              :when="whenWfh(row)"
+              :to="personLink(row.employee?.id, row.startDate)"
+              :selectable="row.status === 'PENDING'"
+              @approve="open({ kind: 'wfh', item: row, action: 'approve' })"
+              @reject="open({ kind: 'wfh', item: row, action: 'reject' })"
+            />
           </template>
         </AppDataTable>
       </AppCard>
@@ -418,6 +443,17 @@ async function submit() {
               <AppButton size="sm" variant="secondary" :icon="X" @click="open({ kind: 'overtime', item: row, action: 'reject' })">Reject</AppButton>
               <AppButton size="sm" :icon="Check" @click="open({ kind: 'overtime', item: row, action: 'approve' })">Approve</AppButton>
             </div>
+          </template>
+          <template #card="{ row }">
+            <OvertimeGridCard
+              :overtime="row"
+              :today="today"
+              :blocks-close="blocksClose(row.workDate)"
+              :to="personLink(row.employee?.id, row.workDate)"
+              :selectable="row.status === 'PENDING'"
+              @approve="open({ kind: 'overtime', item: row, action: 'approve' })"
+              @reject="open({ kind: 'overtime', item: row, action: 'reject' })"
+            />
           </template>
         </AppDataTable>
       </AppCard>

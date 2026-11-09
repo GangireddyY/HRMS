@@ -5,6 +5,7 @@ import { AlertCircle, CalendarClock, CheckCircle2, ChevronRight, EyeOff, LifeBuo
 import type { PipStatus } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import PipFormModal from '@/modules/performance/components/PipFormModal.vue';
+import PipGridCard from '@/modules/performance/components/PipGridCard.vue';
 import type { PipDetail, PipRow } from '@/modules/performance/types';
 import { PIP_STATUS_LABELS, pipTone } from '@/modules/performance/utils/performance-format';
 import { daysBetween, daysFromToday, pct, plural, relativeDay, todayIso } from '@/modules/performance/utils/performance-ops';
@@ -143,6 +144,7 @@ const columns: TableColumn<PipRow>[] = [
             <p v-if="row.overdue" class="mt-0.5 text-xs font-medium text-danger-fg">Past its end date</p>
             <p v-else-if="!row.acknowledged && row.status === 'ACTIVE'" class="mt-0.5 text-xs text-warning-fg">Not acknowledged yet</p>
           </template>
+          <template #card="{ row }"><PipGridCard :pip="row" /></template>
         </AppDataTable>
       </section>
 

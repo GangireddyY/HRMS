@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue';
 import { Pencil, Plus, Trash2 } from '@lucide/vue';
 import { SKILL_CATEGORIES, type SkillCategory } from '@contracts';
 import { SKILL_CATEGORY_LABELS, skillsApi } from '@/modules/training/api/skills.api';
+import SkillGridCard from '@/modules/training/components/SkillGridCard.vue';
 import type { Skill } from '@/modules/training/types';
 import { CATEGORY_VISUALS } from '@/modules/training/utils/skill-visuals';
 import { AppAlert, AppBadge, AppButton, AppDataTable, AppInput, AppModal, AppSearchInput, AppStatStrip, AppSwitch, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
@@ -20,6 +21,12 @@ const requirements = useAsync(() => skillsApi.requirements());
 const rolesBySkill = computed(() => {
   const map = new Map<string, string[]>();
   for (const r of requirements.data.value ?? []) for (const s of r.skills) map.set(s.skillId, [...(map.get(s.skillId) ?? []), r.designation.name]);
+  return map;
+});
+/** Roles that need each skill, with the level they need (for the grid cards). */
+const roleLevelsBySkill = computed(() => {
+  const map = new Map<string, { name: string; level: number }[]>();
+  for (const r of requirements.data.value ?? []) for (const s of r.skills) map.set(s.skillId, [...(map.get(s.skillId) ?? []), { name: r.designation.name, level: s.requiredLevel }]);
   return map;
 });
 const all = computed(() => skills.data.value ?? []);
@@ -198,6 +205,9 @@ async function remove(s: Skill) {
             <AppButton size="sm" variant="ghost" :icon="Pencil" :aria-label="`Edit ${row.name}`" @click="edit(row)" />
             <AppButton size="sm" variant="ghost" :icon="Trash2" :aria-label="`Delete ${row.name}`" @click="remove(row)" />
           </div>
+        </template>
+        <template #card="{ row }">
+          <SkillGridCard :skill="row" :roles="roleLevelsBySkill.get(row.id) ?? []" :max-people="maxPeople" :unused="isUnused(row)" @edit="edit(row)" @remove="remove(row)" />
         </template>
       </AppDataTable>
     </section>

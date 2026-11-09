@@ -54,6 +54,7 @@ What's in it: 21 people in 5 departments and 2 locations, holidays, shifts with 
 | Performance | Two check-ins on Sneha's plan; Pooja's goals waiting for approval; 360 feedback on Asha's review | Improvement plans, Reviews (`team.lead@`) |
 | Benefits | Farhan adding his wife after his marriage, waiting for HR | Benefit enrolments (`hr.manager@`) |
 | Recruitment | Resumes for Sanjay, Ravi and Lata; Sanjay's phone screen waiting for feedback | My interviews (`eng.manager@`) |
+| Careers page | Three public roles in three teams: Backend Engineer (full posting), Senior Software Engineer, Platform in Pune (closes in 10 days), Operations Executive | `/careers/acme-technologies` (no sign-in); Job → Job posting tab (`recruiter@`) |
 | Onboarding | Pooja's onboarding completed (12/12) | Onboarding → Completed (`hr.manager@`) |
 | Sign-in security | Sneha mistyped her password twice yesterday on her phone, then signed in; Ishaan was locked out after repeated wrong passwords (lock already lifted) | Login history and Audit log (`admin@`) |
 

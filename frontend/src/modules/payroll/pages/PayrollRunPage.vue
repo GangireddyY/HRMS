@@ -32,6 +32,7 @@ import {
 import { appLocale } from '@/core/locale/locale';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
+import PayslipGridCard from '@/modules/payroll/components/PayslipGridCard.vue';
 import PayslipView from '@/modules/payroll/components/PayslipView.vue';
 import RunStepper from '@/modules/payroll/components/RunStepper.vue';
 import type { PayrollRunDetail, PayslipDetail, PayslipLine, PayslipSummary } from '@/modules/payroll/types';
@@ -417,6 +418,7 @@ const lop = (row: PayslipSummary) => row.lopOverride ?? row.lopDays;
                     <AppBadge v-else-if="row.warnings.length" tone="warning" size="sm" :title="row.warnings.map(warningText).join('\n')"><AlertTriangle :size="11" aria-hidden="true" />{{ row.warnings.length }}<span class="sr-only"> warning{{ row.warnings.length === 1 ? '' : 's' }}</span></AppBadge>
                   </div>
                 </template>
+                <template #card="{ row }"><PayslipGridCard :payslip="row" /></template>
               </AppDataTable>
             </AppCard>
           </AppTabs>

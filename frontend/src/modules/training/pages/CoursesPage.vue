@@ -5,6 +5,7 @@ import { AlertTriangle, CalendarX2, ChevronRight, FileClock, Library, ListChecks
 import { COURSE_CATEGORIES, COURSE_STATUSES, type CourseCategory, type CourseStatus } from '@contracts';
 import { trainingApi } from '@/modules/training/api/training.api';
 import CourseFormModal from '@/modules/training/components/CourseFormModal.vue';
+import CourseGridCard from '@/modules/training/components/CourseGridCard.vue';
 import type { CourseDetail, CourseRow } from '@/modules/training/types';
 import { COURSE_VISUALS, DELIVERY_ICON, pct } from '@/modules/training/utils/course-visuals';
 import { CATEGORY_LABELS, COURSE_STATUS_LABELS, DELIVERY_LABELS, courseTone, hours, isSessionBasedDelivery } from '@/modules/training/utils/training-format';
@@ -163,6 +164,7 @@ const open = (row: CourseRow) => router.push(`/hr/training/courses/${row.id}`);
             <span v-else class="text-xs text-fg-subtle">No learners yet</span>
           </template>
           <template #cell-open><ChevronRight :size="16" class="text-fg-subtle max-md:hidden" aria-hidden="true" /></template>
+          <template #card="{ row }"><CourseGridCard :course="row" :show-learners="canManage" /></template>
         </AppDataTable>
       </AppCard>
 

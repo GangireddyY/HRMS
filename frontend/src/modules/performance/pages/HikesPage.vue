@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { BadgeCheck, CheckCircle2, FilterX, Gavel, PiggyBank, Send, SlidersHorizontal, TrendingUp, Wand2, XCircle } from '@lucide/vue';
 import { MAX_HIKE_PERCENT, type HikeStatus, type MeritGuideline } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
+import HikeGridCard from '@/modules/performance/components/HikeGridCard.vue';
 import RatingChip from '@/modules/performance/components/RatingChip.vue';
 import type { Compensation, HikeList, HikeRow } from '@/modules/performance/types';
 import { HIKE_STATUS_LABELS, hikeTone } from '@/modules/performance/utils/performance-format';
@@ -487,6 +488,9 @@ async function apply() {
                       <AppButton size="sm" :icon="CheckCircle2" @click="openDecide(row, 'approve')">Approve</AppButton>
                     </template>
                   </div>
+                </template>
+                <template #card="{ row }">
+                  <HikeGridCard :row="row" :labels="labelFor(row)" :show-money="showMoney" :scale="scale" :busy="busy" @recommend="openRecommend(row)" @submit="submit(row)" @approve="openDecide(row, 'approve')" @reject="openDecide(row, 'reject')" />
                 </template>
               </AppDataTable>
             </section>

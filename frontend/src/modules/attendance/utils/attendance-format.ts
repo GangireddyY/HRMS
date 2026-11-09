@@ -48,10 +48,11 @@ export const OVERTIME_LABELS: Record<OvertimeStatus, string> = { PENDING: 'Waiti
 export const overtimeTone: Record<OvertimeStatus, 'warning' | 'success' | 'danger'> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' };
 
 /** "12 Nov" or "12–14 Nov". */
+/** Locale-aware: "23–24 Nov" in en-IN, "Nov 23 – 24" in en-US. */
 export function dateRange(start: string, end: string): string {
-  const f = (d: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(appLocale(), { ...opts, timeZone: 'UTC' }).format(new Date(`${d}T00:00:00Z`));
-  if (start === end) return f(start, { day: 'numeric', month: 'short' });
-  return start.slice(0, 7) === end.slice(0, 7) ? `${f(start, { day: 'numeric' })}–${f(end, { day: 'numeric', month: 'short' })}` : `${f(start, { day: 'numeric', month: 'short' })} – ${f(end, { day: 'numeric', month: 'short' })}`;
+  const fmt = new Intl.DateTimeFormat(appLocale(), { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const day = (d: string) => new Date(`${d}T00:00:00Z`);
+  return start === end ? fmt.format(day(start)) : fmt.formatRange(day(start), day(end));
 }
 
 export function addDays(date: string, n: number): string {

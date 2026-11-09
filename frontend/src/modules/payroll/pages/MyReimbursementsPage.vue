@@ -4,6 +4,7 @@ import { Banknote, CircleCheck, FilterX, Paperclip, PieChart, Plus, Receipt, Sen
 import type { ReimbursementCategory, ReimbursementStatus } from '@contracts';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import ClaimFormModal from '@/modules/payroll/components/ClaimFormModal.vue';
+import ClaimGridCard from '@/modules/payroll/components/ClaimGridCard.vue';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
 import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
@@ -170,6 +171,7 @@ const STEPS = [
               <AppButton v-if="row.permissions.cancel" size="sm" variant="ghost" :icon="Undo2" @click="withdraw(row)">Withdraw</AppButton>
             </div>
           </template>
+          <template #card="{ row }"><ClaimGridCard :claim="row" mode="mine" :note="statusNote(row)" @withdraw="withdraw(row)" @receipt="receipt(row)" /></template>
         </AppDataTable>
       </section>
 

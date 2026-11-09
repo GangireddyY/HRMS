@@ -36,17 +36,14 @@ export class CareersService {
         order: [['openedAt', 'DESC']],
         limit: 200,
       });
-      return {
-        organization: { name: org.name, logoUrl: org.logoUrl, website: org.website },
-        jobs: jobs.map((j) => this.summary(j)),
-      };
+      return { organization: this.profile(org), jobs: jobs.map((j) => this.summary(j)) };
     });
   }
 
   async job(slug: string, jobId: string) {
     return this.forOrganization(slug, async (org) => {
       const j = await this.publicJob(jobId);
-      return { organization: { name: org.name, logoUrl: org.logoUrl }, job: { ...this.summary(j), description: j.description, requirements: j.requirements } };
+      return { organization: this.profile(org), job: { ...this.summary(j), description: j.description, requirements: j.requirements } };
     });
   }
 
@@ -92,7 +89,10 @@ export class CareersService {
   // ---------------------------------------------------------------------------------------------
 
   private async forOrganization<T>(slug: string, fn: (org: Organization) => Promise<T>): Promise<T> {
-    const org = await Organization.findOne({ where: { slug: slug.toLowerCase(), status: 'ACTIVE' }, attributes: ['id', 'name', 'slug', 'logoUrl', 'website', 'status'] });
+    const org = await Organization.findOne({
+      where: { slug: slug.toLowerCase(), status: 'ACTIVE' },
+      attributes: ['id', 'name', 'slug', 'logoUrl', 'website', 'brandColor', 'industry', 'companySize', 'city', 'country', 'status'],
+    });
     if (!org || !(await this.access.entitlements(org.id)).has('recruitment')) throw AppError.notFound('Careers page');
     const store = RequestContext.get();
     return RequestContext.runForTenant(org.id, () => fn(org), { requestId: store?.requestId, ipAddress: store?.ipAddress, userAgent: store?.userAgent });
@@ -105,6 +105,11 @@ export class CareersService {
     });
     if (!j) throw AppError.notFound('Job');
     return j;
+  }
+
+  /** What a job seeker may see about the employer: only details an organization already shows publicly. */
+  private profile(org: Organization) {
+    return { name: org.name, logoUrl: org.logoUrl, website: org.website, brandColor: org.brandColor, industry: org.industry, companySize: org.companySize, city: org.city, country: org.country };
   }
 
   private summary(j: JobOpening) {

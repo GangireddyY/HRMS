@@ -94,6 +94,16 @@ export function caseStage(c: { status: OnboardingCaseStatus; joiningDate: string
   return d > 0 ? 'preboarding' : d >= -6 ? 'first-week' : 'settling';
 }
 
+/** Probation countdown from `daysLeft`: "3 days overdue", "Ends today", "in 12 days". */
+export const probationCountdown = (days: number) => (days < 0 ? `${-days} day${days === -1 ? '' : 's'} overdue` : days === 0 ? 'Ends today' : days === 1 ? 'Ends tomorrow' : `in ${days} days`);
+export const probationCountdownTone = (days: number) =>
+  days < 0 ? 'bg-danger-soft text-danger-fg ring-danger/20' : days <= 14 ? 'bg-warning-soft text-warning-fg ring-warning/25' : 'bg-surface-muted text-fg-muted ring-line';
+/** "4 months in" from the joining date. */
+export function tenure(iso: string): string {
+  const months = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / (30.44 * 86_400_000)));
+  return months < 1 ? 'Less than a month in' : `${months} month${months === 1 ? '' : 's'} in`;
+}
+
 /** "Due today", "Due in 3 days", "2 days overdue". */
 export function dueLabel(iso: string, overdue: boolean): string {
   const d = daysFromToday(iso);

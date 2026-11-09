@@ -7,6 +7,7 @@ import { performanceApi } from '@/modules/performance/api/performance.api';
 import ColleaguePicker from '@/modules/performance/components/ColleaguePicker.vue';
 import CycleFormModal from '@/modules/performance/components/CycleFormModal.vue';
 import RatingChip from '@/modules/performance/components/RatingChip.vue';
+import ReviewGridCard from '@/modules/performance/components/ReviewGridCard.vue';
 import StageTrack from '@/modules/performance/components/StageTrack.vue';
 import type { CycleDetail, ReviewRow } from '@/modules/performance/types';
 import { CYCLE_STATUS_LABELS, STAGE_LABELS, STAGE_ORDER, cycleTone, stageTone } from '@/modules/performance/utils/performance-format';
@@ -285,6 +286,7 @@ const isOverdue = (r: ReviewRow) => !!r.due && r.due < today;
                   </span>
                   <span v-else class="text-fg-subtle">—</span>
                 </template>
+                <template #card="{ row }"><ReviewGridCard :review="row" :labels="c.ratingLabels" /></template>
               </AppDataTable>
             </section>
             <AppCard v-else-if="c.status !== 'DRAFT'" title="Participants" :icon="UsersRound">

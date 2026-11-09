@@ -5,6 +5,7 @@ import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, CircleCheck, FileP
 import type { AttendanceSource } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
+import RegisterDayCard from '@/modules/attendance/components/RegisterDayCard.vue';
 import type { DailyRow, DailySummary } from '@/modules/attendance/types';
 import { DAY_STATUS_LABELS, addDays, dayStatusTone, formatMinutes, formatTime } from '@/modules/attendance/utils/attendance-format';
 import { localToday, longDay, plural, relativeDay } from '@/modules/attendance/utils/attendance-ops';
@@ -261,6 +262,7 @@ const SOURCE: Record<AttendanceSource, { icon: Component; label: string }> = {
         <template #cell-late="{ row }">
           <span :class="['tabular-nums', row.record?.lateMinutes ? 'font-medium text-caution-fg' : 'text-fg-subtle']">{{ row.record?.lateMinutes ? formatMinutes(row.record.lateMinutes) : '—' }}</span>
         </template>
+        <template #card="{ row }"><RegisterDayCard :row="row" :source="row.record ? SOURCE[row.record.source] : null" /></template>
       </AppDataTable>
     </AppCard>
   </div>

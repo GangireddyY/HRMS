@@ -5,6 +5,7 @@ import { AlertCircle, ArrowRight, CalendarClock, CheckCircle2, FilterX, Plus, Re
 import type { CycleStatus } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import CycleFormModal from '@/modules/performance/components/CycleFormModal.vue';
+import CycleGridCard from '@/modules/performance/components/CycleGridCard.vue';
 import type { Cycle, CycleDetail } from '@/modules/performance/types';
 import { CYCLE_STATUS_LABELS, STAGE_LABELS, STAGE_ORDER, cycleTone } from '@/modules/performance/utils/performance-format';
 import { STAGE_FILL, STAGE_SHORT, daysBetween, pct, plural, relativeDay, todayIso } from '@/modules/performance/utils/performance-ops';
@@ -180,6 +181,7 @@ const columns: TableColumn<Cycle>[] = [
           </div>
           <span v-else class="text-xs text-fg-subtle">{{ row.status === 'DRAFT' ? 'Not launched' : '—' }}</span>
         </template>
+        <template #card="{ row }"><CycleGridCard :cycle="row" /></template>
       </AppDataTable>
     </section>
     <CycleFormModal :open="formOpen" :cycle="null" @close="formOpen = false" @saved="onSaved" />

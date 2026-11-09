@@ -5,6 +5,7 @@ import { BriefcaseBusiness, CalendarClock, Globe, MapPin, Plus, X } from '@lucid
 import type { ApplicationStage, JobStatus } from '@contracts';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import JobFormModal from '@/modules/recruitment/components/JobFormModal.vue';
+import JobGridCard from '@/modules/recruitment/components/JobGridCard.vue';
 import type { Job, JobDetail } from '@/modules/recruitment/types';
 import { JOB_STATUS_LABELS, STAGE_LABELS, jobTone, stageAccent } from '@/modules/recruitment/utils/recruitment-format';
 import { daysUntil, dueText, dueTone } from '@/modules/recruitment/utils/recruitment-ui';
@@ -159,6 +160,7 @@ const place = (j: Job) => [j.requisition.department?.name, j.requisition.locatio
           <p v-else class="text-2xs text-fg-subtle">No closing date</p>
         </template>
         <template #cell-status="{ row }"><AppBadge :tone="jobTone[row.status]" dot>{{ JOB_STATUS_LABELS[row.status] }}</AppBadge></template>
+        <template #card="{ row }"><JobGridCard :job="row" /></template>
       </AppDataTable>
     </AppCard>
     <JobFormModal :open="formOpen" :job="null" @close="formOpen = false" @saved="onCreated" />

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { AlertCircle, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, FilterX, ListChecks, PenLine, Repeat, UserX } from '@lucide/vue';
 import type { ReviewStage } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
+import ReviewGridCard from '@/modules/performance/components/ReviewGridCard.vue';
 import StageTrack from '@/modules/performance/components/StageTrack.vue';
 import type { ReviewRow } from '@/modules/performance/types';
 import { STAGE_LABELS, STAGE_ORDER, stageTone } from '@/modules/performance/utils/performance-format';
@@ -169,6 +170,7 @@ const open = (r: ReviewRow) => router.push(`/hr/performance/reviews/${r.id}`);
                 </span>
                 <span v-else class="text-fg-subtle">—</span>
               </template>
+              <template #card="{ row }"><ReviewGridCard :review="row" show-cycle :show-reviewer="view === 'all'" :mine="view === 'team'" /></template>
             </AppDataTable>
           </section>
 

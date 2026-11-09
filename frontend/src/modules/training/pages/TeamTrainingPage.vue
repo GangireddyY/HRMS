@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { AlertTriangle, ArrowRight, Award, BookOpen, CalendarClock, CalendarX2, CheckCircle2, ChevronRight, Hourglass, Library, ListTodo } from '@lucide/vue';
 import { CERTIFICATION_WARNING_DAYS, ENROLLMENT_STATUSES, type EnrollmentStatus } from '@contracts';
 import { trainingApi } from '@/modules/training/api/training.api';
+import TeamEnrollmentGridCard from '@/modules/training/components/TeamEnrollmentGridCard.vue';
 import type { Enrollment } from '@/modules/training/types';
 import { COURSE_VISUALS, daysUntil, overdueBy, relativeDay } from '@/modules/training/utils/course-visuals';
 import { CERTIFICATION_LABELS, ENROLLMENT_STATUS_LABELS, certificationTone, enrollmentTone } from '@/modules/training/utils/training-format';
@@ -178,6 +179,7 @@ const emptyDescription = computed(() =>
             <p v-if="row.certificateNumber" class="mt-0.5 flex items-center gap-1 text-2xs text-fg-subtle"><Award :size="11" aria-hidden="true" /><span class="font-mono">{{ row.certificateNumber }}</span></p>
           </template>
           <template #cell-open><ChevronRight :size="16" class="text-fg-subtle max-md:hidden" aria-hidden="true" /></template>
+          <template #card="{ row }"><TeamEnrollmentGridCard :enrollment="row" :cert-view="certView" /></template>
         </AppDataTable>
       </AppCard>
     </AppTabs>

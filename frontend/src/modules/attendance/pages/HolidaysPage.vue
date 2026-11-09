@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight, Landmark, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
+import HolidayGridCard from '@/modules/attendance/components/HolidayGridCard.vue';
 import ImportHolidaysModal from '@/modules/attendance/components/ImportHolidaysModal.vue';
 import type { Holiday } from '@/modules/attendance/types';
 import { WEEKDAY_SHORT } from '@/modules/attendance/utils/attendance-format';
@@ -83,6 +84,7 @@ const viewOptions = [
 ];
 const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = localIso(new Date());
+const nextId = computed(() => (holidays.data.value ?? []).filter((h) => h.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0]?.id);
 const months = computed(() => Array.from({ length: 12 }, (_, i) => `${year.value}-${String(i + 1).padStart(2, '0')}`));
 const PUBLIC = 'var(--status-special)';
 const OPTIONAL = 'var(--status-neutral)';
@@ -147,6 +149,7 @@ function onDay(iso: string) {
             <AppButton size="sm" variant="ghost" :icon="Trash2" :aria-label="`Delete ${row.name}`" @click="remove(row)" />
           </div>
         </template>
+        <template #card="{ row }"><HolidayGridCard :holiday="row" :today="today" :next="row.id === nextId" :can-manage="canManage" @edit="edit(row)" @remove="remove(row)" /></template>
       </AppDataTable>
     </AppCard>
 

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { CalendarClock, CircleCheckBig, ClipboardCheck, FilterX, ListChecks, Rocket, UserPlus, XCircle } from '@lucide/vue';
 import type { OnboardingCaseStatus } from '@contracts';
 import { onboardingApi } from '@/modules/onboarding/api/onboarding.api';
+import OnboardingCaseGridCard from '@/modules/onboarding/components/OnboardingCaseGridCard.vue';
 import StartOnboardingModal from '@/modules/onboarding/components/StartOnboardingModal.vue';
 import type { CaseDetail, CaseSummary, JoinerRef } from '@/modules/onboarding/types';
 import { STAGE_LABELS, caseStage, daysFromToday, joinRelative, stageTone } from '@/modules/onboarding/utils/onboarding-format';
@@ -196,6 +197,7 @@ const joinerHint = (iso: string) => {
                 <AppBadge v-if="row.status === 'IN_PROGRESS' && !row.progress.requiredOpen" tone="success" size="sm" dot>Ready to complete</AppBadge>
               </div>
             </template>
+            <template #card="{ row }"><OnboardingCaseGridCard :onboarding="row" /></template>
           </AppDataTable>
         </AppCard>
       </div>

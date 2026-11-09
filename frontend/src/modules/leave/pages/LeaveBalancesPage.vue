@@ -4,6 +4,7 @@ import { CalendarClock, History, InfinityIcon, RefreshCw, Scale, SlidersHorizont
 import type { PaginationMeta } from '@contracts';
 import { leaveApi } from '@/modules/leave/api/leave.api';
 import AdjustBalanceModal from '@/modules/leave/components/AdjustBalanceModal.vue';
+import LeaveBalanceGridCard from '@/modules/leave/components/LeaveBalanceGridCard.vue';
 import LeaveLedgerModal from '@/modules/leave/components/LeaveLedgerModal.vue';
 import type { BalanceOverview } from '@/modules/leave/types';
 import { formatDays } from '@/modules/leave/utils/leave-format';
@@ -214,6 +215,9 @@ async function runAccruals() {
             <AppButton size="sm" variant="ghost" :icon="History" :aria-label="`Balance history for ${row.employee.name}`" title="Balance history" @click="ledgerFor = row.employee" />
             <AppButton v-if="canAllocate" size="sm" variant="ghost" :icon="SlidersHorizontal" :aria-label="`Adjust balance for ${row.employee.name}`" title="Adjust balance" @click="adjustFor = row.employee" />
           </div>
+        </template>
+        <template #card="{ row }">
+          <LeaveBalanceGridCard :row="row" :types="types" :year="overview?.year ?? new Date().getFullYear()" :can-allocate="canAllocate" @history="ledgerFor = row.employee" @adjust="adjustFor = row.employee" />
         </template>
       </AppDataTable>
     </AppCard>

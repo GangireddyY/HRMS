@@ -184,6 +184,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
             <article
               :class="[
                 'group/card card flex h-full flex-col p-4 text-sm transition',
+                $slots.card && 'relative overflow-hidden',
                 clickable ? 'card-interactive cursor-pointer focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:outline-none' : 'hover:shadow-lift',
                 selectable && selected.includes(rowKey(row)) && 'ring-2 ring-brand-500/40',
                 loading && 'opacity-60',
@@ -192,7 +193,23 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
               @click="clickable && emit('rowClick', row)"
               @keydown.enter="clickable && emit('rowClick', row)"
             >
-              <slot v-if="$slots.card" name="card" :row="row" />
+              <template v-if="$slots.card">
+                <!-- Custom cards keep bulk selection: the checkbox sits over the card's top-start corner. -->
+                <label
+                  v-if="selectable && canSelect(row)"
+                  class="absolute start-2 top-2 z-20 grid h-7 w-7 cursor-pointer place-items-center rounded-lg border border-line bg-surface shadow-xs"
+                  @click.stop
+                >
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 cursor-pointer accent-brand-600"
+                    :checked="selected.includes(rowKey(row))"
+                    :aria-label="selectLabel ? selectLabel(row) : `Select row ${rows.indexOf(row) + 1}`"
+                    @change="toggleRow(row)"
+                  />
+                </label>
+                <slot name="card" :row="row" />
+              </template>
               <div v-else class="flex items-start gap-3">
                 <input
                   v-if="selectable && canSelect(row)"

@@ -5,6 +5,7 @@ import { FileText, MapPin, Plus, UserPlus } from '@lucide/vue';
 import { CANDIDATE_SOURCES, type CandidateSource } from '@contracts';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import CandidateFormModal from '@/modules/recruitment/components/CandidateFormModal.vue';
+import CandidateGridCard from '@/modules/recruitment/components/CandidateGridCard.vue';
 import type { Candidate } from '@/modules/recruitment/types';
 import { SOURCE_LABELS, STAGE_LABELS, stageTone } from '@/modules/recruitment/utils/recruitment-format';
 import { SOURCE_ICON } from '@/modules/recruitment/utils/recruitment-ui';
@@ -128,6 +129,7 @@ const ranked = (c: Candidate) => [...c.applications].sort((a, b) => STAGE_RANK.i
           <p v-if="row.referredBy" class="text-2xs text-fg-subtle">by {{ row.referredBy.name }}</p>
         </template>
         <template #cell-createdAt="{ row }"><span class="text-fg-muted" :title="formatDate(row.createdAt)">{{ timeAgo(row.createdAt) }}</span></template>
+        <template #card="{ row }"><CandidateGridCard :candidate="row" /></template>
       </AppDataTable>
     </AppCard>
     <CandidateFormModal :open="formOpen" :candidate="null" @close="formOpen = false" @saved="onSaved" @existing="(cid) => { formOpen = false; router.push(`/hr/recruitment/candidates/${cid}`); }" />
