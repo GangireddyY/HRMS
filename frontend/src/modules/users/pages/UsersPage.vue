@@ -1,13 +1,28 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { UserPlus } from '@lucide/vue';
+import { FilterX, LayoutGrid, Rows3, SearchX, UserPlus, Users } from '@lucide/vue';
 import type { MembershipStatus } from '@contracts';
 import { rolesApi } from '@/modules/roles/api/roles.api';
 import { usersApi } from '@/modules/users/api/users.api';
 import type { Member } from '@/modules/users/types';
 import InviteUserModal from '@/modules/users/components/InviteUserModal.vue';
-import { AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppSearchInput, AppSelect, type TableColumn } from '@/shared/components';
+import UserProfileCard from '@/modules/users/components/UserProfileCard.vue';
+import {
+  AppAvatar,
+  AppBadge,
+  AppButton,
+  AppCard,
+  AppDataTable,
+  AppEmptyState,
+  AppErrorState,
+  AppPageHeader,
+  AppPagination,
+  AppSearchInput,
+  AppSegmented,
+  AppSelect,
+  type TableColumn,
+} from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -41,6 +56,22 @@ const statusOptions = [
 ];
 const roleOptions = computed(() => (roles.data.value ?? []).map((r) => ({ label: r.name, value: r.id })));
 
+const VIEW_KEY = 'hrms.users.view';
+const view = ref<'table' | 'grid'>(localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'table');
+watch(view, (v) => localStorage.setItem(VIEW_KEY, v));
+const viewOptions = [
+  { value: 'table' as const, label: 'Table', icon: Rows3 },
+  { value: 'grid' as const, label: 'Grid', icon: LayoutGrid },
+];
+/** The grid has no column headers to click, so it offers the same orderings as a list. */
+const sortOptions = [
+  { value: 'createdAt:desc', label: 'Newest first' },
+  { value: 'name:asc', label: 'Name (A–Z)' },
+  { value: 'name:desc', label: 'Name (Z–A)' },
+  { value: 'lastLoginAt:desc', label: 'Recently signed in' },
+  { value: 'status:asc', label: 'Status' },
+];
+
 function onInvited(member: Member) {
   inviteOpen.value = false;
   feedback.success('Invitation sent', `${member.email} will receive an email to join.`);
@@ -57,12 +88,62 @@ function onInvited(member: Member) {
     </AppPageHeader>
 
     <AppCard :padded="false">
-      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_180px_220px]">
-        <AppSearchInput v-model="table.search.value" placeholder="Search name or email" aria-label="Search users" />
+      <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_220px_auto]">
+        <AppSearchInput v-model="table.search.value" class="sm:col-span-2 lg:col-span-1" placeholder="Search name or email" aria-label="Search users" />
         <AppSelect v-model="table.filters.status" :options="statusOptions" placeholder="All statuses" aria-label="Filter by status" />
         <AppSelect v-model="table.filters.roleId" :options="roleOptions" placeholder="All roles" aria-label="Filter by role" />
+        <AppSegmented v-model="view" class="sm:col-span-2 lg:col-span-1 lg:w-48" :options="viewOptions" label="Layout" />
       </div>
+
+      <div v-if="view === 'grid'" :aria-busy="table.loading.value || undefined">
+        <AppErrorState v-if="table.error.value && !table.loading.value" :error="table.error.value" @retry="table.load" />
+        <template v-else>
+          <div v-if="table.rows.value.length > 1" class="flex items-center justify-end gap-2 px-4 pt-3 text-xs text-fg-muted">
+            <span class="font-medium" aria-hidden="true">Sort by</span>
+            <AppSelect
+              :model-value="sortOptions.some((o) => o.value === table.sort.value) ? table.sort.value : undefined"
+              :options="sortOptions"
+              placeholder="Default order"
+              :clearable="false"
+              :searchable="false"
+              aria-label="Sort by"
+              size="sm"
+              class="w-48"
+              @update:model-value="(v) => v && (table.sort.value = v)"
+            />
+          </div>
+          <ul v-if="table.loading.value && !table.rows.value.length" class="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-label="Loading users">
+            <li v-for="i in 8" :key="i" class="card overflow-hidden">
+              <div class="skeleton h-16 rounded-none" />
+              <div class="flex flex-col items-center gap-2 px-4 pb-5">
+                <div class="relative z-10 -mt-10 h-22 w-22 rounded-full bg-surface p-1"><div class="skeleton h-full w-full rounded-full" /></div>
+                <div class="skeleton h-3.5 w-2/3 rounded-full" />
+                <div class="skeleton h-3 w-1/2 rounded-full" />
+                <div class="skeleton mt-4 h-8 w-full rounded-full" />
+              </div>
+            </li>
+          </ul>
+          <ul v-else-if="table.rows.value.length" :class="['grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4', table.loading.value && 'opacity-60']">
+            <li v-for="m in table.rows.value" :key="m.id"><UserProfileCard :member="m" /></li>
+          </ul>
+          <AppEmptyState v-else-if="table.isFiltered.value" :icon="SearchX" title="No matches" description="Nothing matches your search or filters.">
+            <AppButton variant="secondary" size="sm" :icon="FilterX" @click="table.clearFilters()">Clear filters</AppButton>
+          </AppEmptyState>
+          <AppEmptyState v-else :icon="Users" title="No users found" description="Try a different search or filter.">
+            <AppButton v-if="auth.can('user.invite')" :icon="UserPlus" :disabled="!roles.data.value" @click="inviteOpen = true">Invite user</AppButton>
+          </AppEmptyState>
+          <AppPagination
+            v-if="table.meta.value && table.meta.value.total > 0"
+            class="border-t border-line"
+            :meta="table.meta.value"
+            :disabled="table.loading.value"
+            @change="table.setPage"
+          />
+        </template>
+      </div>
+
       <AppDataTable
+        v-else
         v-model:sort="table.sort.value"
         :columns="columns"
         :rows="table.rows.value"

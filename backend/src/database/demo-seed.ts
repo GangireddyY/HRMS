@@ -20,7 +20,7 @@ import { configureApp } from '../bootstrap';
 import { addDays, addMonths, zonedParts } from '../common/utils/zoned-time';
 import { DEFAULT_MERIT_MATRIX } from '../contracts';
 import { DatabaseService } from './database.service';
-import { MembershipRole, Organization, OrganizationMembership, Plan, User } from './models';
+import { Employee, MembershipRole, Organization, OrganizationMembership, Plan, User } from './models';
 import { PasswordHasher } from '../infrastructure/crypto/password-hasher.service';
 import { MailService } from '../infrastructure/mail/mail.service';
 import { createUserWithPassword, seedPlans } from '../infrastructure/seed/platform-bootstrap';
@@ -159,9 +159,10 @@ async function createOrganization(deps: Deps, spec: { name: string; plan: string
 
 /** A user account with its organization membership and roles, signed in. */
 async function addAccount(deps: Deps, org: { id: string; roles: Map<string, string> }, s: PersonSpec) {
-  const user =
-    (await User.findOne({ where: { email: s.email } })) ??
-    (await createUserWithPassword(deps.hasher, { email: s.email, firstName: s.first, lastName: s.last, password: DEMO_PASSWORD }));
+  const existing = await User.findOne({ where: { email: s.email } });
+  // A reused account may come from an older run with another password, or be locked by failed sign-ins.
+  if (existing) await existing.update({ passwordHash: await deps.hasher.hash(DEMO_PASSWORD), passwordChangedAt: new Date(), failedLoginCount: 0, lockedUntil: null, status: 'ACTIVE' });
+  const user = existing ?? (await createUserWithPassword(deps.hasher, { email: s.email, firstName: s.first, lastName: s.last, password: DEMO_PASSWORD }));
   const membership = await OrganizationMembership.create({ organizationId: org.id, userId: user.id, status: 'ACTIVE', joinedAt: new Date() }, RAW);
   const roleIds = s.roles.map((k) => org.roles.get(k)).filter((x): x is string => !!x);
   await MembershipRole.bulkCreate(roleIds.map((roleId) => ({ organizationId: org.id, membershipId: membership.id, roleId })), RAW);
@@ -205,9 +206,19 @@ async function buildOrganization(
   structure: { departments: string[]; designations: string[]; locations: { name: string; city: string; state: string }[] },
   people: PersonSpec[],
 ): Promise<OrgCtx | null> {
-  if (await Organization.findOne({ where: { name: spec.name } })) {
-    console.log(`${spec.name} already exists — left as it is`);
-    return null;
+  const existing = await Organization.findOne({ where: { name: spec.name } });
+  if (existing) {
+    if (await Employee.count({ where: { organizationId: existing.id }, ...RAW })) {
+      console.log(`${spec.name} already exists — left as it is`);
+      return null;
+    }
+    // No employees: an earlier run stopped before the people were created, so its logins never worked.
+    try {
+      await deps.db.transaction((transaction) => Organization.destroy({ where: { id: existing.id }, transaction, ...RAW }));
+    } catch (e) {
+      throw new Error(`${spec.name} exists without employees and could not be removed (${e instanceof Error ? e.message : String(e)}); use a fresh database`);
+    }
+    console.log(`${spec.name} existed without employees — recreating it`);
   }
   const { organization, roleIdsByKey } = await createOrganization(deps, spec);
   const org = { id: organization.id, roles: roleIdsByKey };

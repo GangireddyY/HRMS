@@ -1,6 +1,8 @@
 <script setup lang="ts" generic="T extends string">
+import type { Component } from 'vue';
+
 /** A small switch between a few views or modes (Week / Month, List / Calendar). */
-defineProps<{ options: { value: T; label: string }[]; /** Accessible name of the group. */ label: string; size?: 'sm' | 'md' }>();
+defineProps<{ options: { value: T; label: string; icon?: Component }[]; /** Accessible name of the group. */ label: string; size?: 'sm' | 'md' }>();
 const model = defineModel<T>({ required: true });
 </script>
 
@@ -13,12 +15,13 @@ const model = defineModel<T>({ required: true });
       role="radio"
       :aria-checked="model === o.value"
       :class="[
-        'inline-flex flex-1 items-center justify-center rounded-[5px] px-3 font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none',
+        'inline-flex flex-1 items-center justify-center gap-1.5 rounded-[5px] px-3 font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none',
         size === 'sm' ? 'text-xs' : 'text-sm',
         model === o.value ? 'bg-surface text-fg shadow-xs ring-1 ring-line' : 'text-fg-muted hover:text-fg',
       ]"
       @click="model = o.value"
     >
+      <component :is="o.icon" v-if="o.icon" :size="size === 'sm' ? 13 : 15" aria-hidden="true" />
       {{ o.label }}
     </button>
   </div>

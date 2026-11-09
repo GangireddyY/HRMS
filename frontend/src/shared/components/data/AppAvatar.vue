@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { apiAssetUrl } from '@/core/http/http-client';
 
 /** A profile photo (`src`, an API-relative or absolute URL) or, without one or if it fails to load, the initials. */
-const props = withDefaults(defineProps<{ name: string; src?: string | null; size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' }>(), { size: 'md', src: null });
+const props = withDefaults(defineProps<{ name: string; src?: string | null; size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' }>(), { size: 'md', src: null });
 const initials = computed(() =>
   props.name
     .split(/\s+/)
@@ -34,7 +34,7 @@ watch(url, () => (failed.value = false));
     :class="[
       'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white shadow-xs ring-2 ring-surface select-none',
       url && !failed ? 'bg-surface-muted' : ['bg-gradient-to-br', color],
-      { xs: 'h-6 w-6 text-2xs', sm: 'h-7 w-7 text-2xs', md: 'h-9 w-9 text-xs', lg: 'h-12 w-12 text-sm', xl: 'h-16 w-16 text-lg' }[size],
+      { xs: 'h-6 w-6 text-2xs', sm: 'h-7 w-7 text-2xs', md: 'h-9 w-9 text-xs', lg: 'h-12 w-12 text-sm', xl: 'h-16 w-16 text-lg', '2xl': 'h-20 w-20 text-xl' }[size],
     ]"
     aria-hidden="true"
   >
