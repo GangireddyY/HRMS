@@ -129,27 +129,27 @@ function jump(id: string) {
     <template v-else>
       <!-- Profile summary -->
       <section class="card overflow-hidden">
-        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+        <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
           <div class="relative min-w-0 flex-1 basis-72">
-            <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+            <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
               <Target :size="13" aria-hidden="true" />{{ p.designation ? p.designation.name : 'Skills profile' }}
             </p>
             <h2 class="mt-3 text-2xl font-semibold tracking-tight">{{ headline.title }}</h2>
-            <p class="mt-1 max-w-2xl text-sm text-white/85">{{ headline.text }}</p>
-            <p class="mt-3 text-xs text-white/75">{{ p.employee.name }} · <span class="font-mono">{{ p.employee.employeeCode }}</span></p>
+            <p class="mt-1 max-w-2xl text-sm text-fg-muted">{{ headline.text }}</p>
+            <p class="mt-3 text-xs text-fg-muted">{{ p.employee.name }} · <span class="font-mono">{{ p.employee.employeeCode }}</span></p>
           </div>
           <div v-if="p.requirements.length" class="relative flex items-center gap-4">
             <div class="relative h-28 w-28" role="progressbar" :aria-valuenow="p.readiness" aria-valuemin="0" aria-valuemax="100" aria-label="Role readiness">
               <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-white/20" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-white transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - p.readiness / 100)" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-fg/10" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-brand-600 dark:stroke-brand-400 transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - p.readiness / 100)" />
               </svg>
               <div class="absolute inset-0 flex flex-col items-center justify-center">
                 <span class="text-2xl font-semibold tabular-nums">{{ p.readiness }}%</span>
-                <span class="text-2xs text-white/80">role ready</span>
+                <span class="text-2xs text-fg-muted">role ready</span>
               </div>
             </div>
-            <p class="text-sm text-white/85"><span class="block text-2xl font-semibold text-white tabular-nums">{{ met }}<span class="text-base font-normal text-white/70">/{{ p.requirements.length }}</span></span>skills met</p>
+            <p class="text-sm text-fg-muted"><span class="block text-2xl font-semibold text-fg tabular-nums">{{ met }}<span class="text-base font-normal text-fg-subtle">/{{ p.requirements.length }}</span></span>skills met</p>
           </div>
         </div>
         <ul class="grid gap-px bg-line/70 sm:grid-cols-2 xl:grid-cols-4">

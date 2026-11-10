@@ -319,37 +319,37 @@ const CIRC = 2 * Math.PI * 42;
       <!-- Exit in progress or completed -->
       <template v-else>
         <section class="card overflow-hidden print:hidden" aria-labelledby="exit-title">
-          <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+          <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
             <div class="relative min-w-0 flex-1 basis-80">
-              <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+              <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
                 <component :is="current.status === 'COMPLETED' ? HeartHandshake : current.status === 'APPROVED' ? CalendarClock : Hourglass" :size="13" aria-hidden="true" />
                 {{ hero.pill }}
               </p>
               <h2 id="exit-title" class="mt-3 text-2xl font-semibold tracking-tight">{{ hero.title }}</h2>
-              <p class="mt-1 max-w-2xl text-sm text-white/85">{{ hero.text }}</p>
-              <p class="mt-3 text-xs text-white/75">{{ TYPE_LABELS[current.type] }} · {{ REASON_LABELS[current.reason] }}<template v-if="current.employee?.designation"> · {{ current.employee.designation }}</template></p>
+              <p class="mt-1 max-w-2xl text-sm text-fg-muted">{{ hero.text }}</p>
+              <p class="mt-3 text-xs text-fg-muted">{{ TYPE_LABELS[current.type] }} · {{ REASON_LABELS[current.reason] }}<template v-if="current.employee?.designation"> · {{ current.employee.designation }}</template></p>
               <AppButton v-if="current.permissions.withdraw" class="mt-4" size="sm" variant="secondary" :icon="Undo2" @click="withdraw">Withdraw resignation</AppButton>
             </div>
             <div v-if="current.status === 'APPROVED' && current.daysLeft !== null" class="relative flex items-center gap-4">
               <div class="relative h-28 w-28">
                 <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-white/20" />
-                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-white transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - noticeServed)" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-fg/10" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-brand-600 dark:stroke-brand-400 transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - noticeServed)" />
                 </svg>
                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                   <span class="text-3xl leading-8 font-semibold tabular-nums">{{ current.daysLeft }}</span>
-                  <span class="text-2xs text-white/80">{{ current.daysLeft === 1 ? 'day to go' : 'days to go' }}</span>
+                  <span class="text-2xs text-fg-muted">{{ current.daysLeft === 1 ? 'day to go' : 'days to go' }}</span>
                 </div>
               </div>
-              <p class="text-sm text-white/85">
-                <span class="block text-xs text-white/70">Notice served</span>
-                <span class="text-2xl font-semibold text-white tabular-nums">{{ Math.round(noticeServed * 100) }}%</span>
+              <p class="text-sm text-fg-muted">
+                <span class="block text-xs text-fg-subtle">Notice served</span>
+                <span class="text-2xl font-semibold text-fg tabular-nums">{{ Math.round(noticeServed * 100) }}%</span>
               </p>
             </div>
-            <div v-else-if="lastDayTile" class="relative flex w-24 shrink-0 flex-col items-center rounded-xl bg-white/12 py-2.5 ring-1 ring-white/25 backdrop-blur">
-              <span class="text-2xs font-semibold tracking-wide text-white/80 uppercase">{{ current.status === 'COMPLETED' ? 'Last day' : current.lastWorkingDay ? 'Last day' : 'Notice ends' }}</span>
+            <div v-else-if="lastDayTile" class="relative flex w-24 shrink-0 flex-col items-center rounded-xl bg-surface/80 py-2.5 ring-1 ring-line">
+              <span class="text-2xs font-semibold tracking-wide text-fg-muted uppercase">{{ current.status === 'COMPLETED' ? 'Last day' : current.lastWorkingDay ? 'Last day' : 'Notice ends' }}</span>
               <span class="text-3xl leading-9 font-semibold tabular-nums">{{ lastDayTile.day }}</span>
-              <span class="text-2xs text-white/80">{{ lastDayTile.month }}</span>
+              <span class="text-2xs text-fg-muted">{{ lastDayTile.month }}</span>
             </div>
           </div>
           <dl class="grid gap-px bg-line/70 sm:grid-cols-2 lg:grid-cols-4">
@@ -492,7 +492,7 @@ const CIRC = 2 * Math.PI * 42;
             </AppCard>
 
             <section class="card overflow-hidden">
-              <div class="bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10 p-4">
+              <div class="bg-gradient-to-br from-violet-500/10 via-transparent to-brand-300/10 p-4">
                 <p class="flex items-center gap-2 text-sm font-semibold text-fg"><Sparkles :size="15" class="text-violet-500" aria-hidden="true" />Questions about leaving?</p>
                 <p class="mt-1 text-xs text-fg-muted">Ask about your notice, clearance, settlement or letters — any time.</p>
                 <AppButton class="mt-3 w-full" size="sm" variant="secondary" :icon="Sparkles" @click="askAssistant">Ask AI</AppButton>

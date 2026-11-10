@@ -202,23 +202,23 @@ const pastTone = (f: FeedbackRequest) => (f.status === 'SUBMITTED' ? 'success' :
     <template v-else>
       <!-- Current review -->
       <section class="card overflow-hidden" aria-labelledby="review-title">
-        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+        <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
           <div class="relative min-w-0 flex-1 basis-72">
-            <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+            <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
               <Target :size="13" aria-hidden="true" />{{ current.cycle.name }} · {{ STAGE_LABELS[current.stage] }}
             </p>
             <h2 id="review-title" class="mt-3 text-2xl font-semibold tracking-tight">{{ next?.you ? `${next.title}${firstName ? `, ${firstName}` : ''}` : next?.title }}</h2>
-            <p class="mt-1 max-w-2xl text-sm text-white/85">{{ next?.text }}</p>
-            <ul class="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-white/80">
+            <p class="mt-1 max-w-2xl text-sm text-fg-muted">{{ next?.text }}</p>
+            <ul class="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-fg-muted">
               <li v-if="d" class="inline-flex items-center gap-1.5"><CalendarDays :size="13" aria-hidden="true" />{{ formatDate(d.cycle.periodStart) }} – {{ formatDate(d.cycle.periodEnd) }}</li>
-              <li class="inline-flex items-center gap-1.5"><UsersRound :size="13" aria-hidden="true" />Reviewer: <span class="font-medium text-white">{{ reviewer?.name ?? 'not assigned yet' }}</span></li>
+              <li class="inline-flex items-center gap-1.5"><UsersRound :size="13" aria-hidden="true" />Reviewer: <span class="font-medium text-fg">{{ reviewer?.name ?? 'not assigned yet' }}</span></li>
               <li v-if="current.due" class="inline-flex items-center gap-1.5"><CalendarClock :size="13" aria-hidden="true" />Due {{ formatDate(current.due) }} · {{ relativeDay(current.due) }}</li>
             </ul>
           </div>
           <div class="relative flex items-center gap-4">
             <div class="relative h-28 w-28">
               <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-white/20" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-fg/10" />
                 <circle
                   cx="50"
                   cy="50"
@@ -226,25 +226,25 @@ const pastTone = (f: FeedbackRequest) => (f.status === 'SUBMITTED' ? 'success' :
                   fill="none"
                   stroke-width="9"
                   stroke-linecap="round"
-                  class="stroke-white transition-[stroke-dashoffset] duration-700"
+                  class="stroke-brand-600 dark:stroke-brand-400 transition-[stroke-dashoffset] duration-700"
                   :stroke-dasharray="CIRC"
                   :stroke-dashoffset="CIRC * (1 - (rating ? rating / 5 : goalProgress / 100))"
                 />
               </svg>
               <div class="absolute inset-0 flex flex-col items-center justify-center">
                 <template v-if="rating">
-                  <span class="text-2xl font-semibold tabular-nums">{{ rating }}<span class="text-sm font-normal text-white/70">/5</span></span>
-                  <span class="text-2xs text-white/80">rating</span>
+                  <span class="text-2xl font-semibold tabular-nums">{{ rating }}<span class="text-sm font-normal text-fg-subtle">/5</span></span>
+                  <span class="text-2xs text-fg-muted">rating</span>
                 </template>
                 <template v-else>
                   <span class="text-2xl font-semibold tabular-nums">{{ goalProgress }}%</span>
-                  <span class="text-2xs text-white/80">goal progress</span>
+                  <span class="text-2xs text-fg-muted">goal progress</span>
                 </template>
               </div>
             </div>
-            <p v-if="rating" class="max-w-36 text-sm text-white/85"><Trophy :size="16" class="mb-1 block" aria-hidden="true" />{{ labels[rating - 1] }}</p>
-            <p v-else class="text-sm text-white/85">
-              <span class="block text-2xl font-semibold text-white tabular-nums">{{ d ? goals.length : current.goals }}</span>goal{{ (d ? goals.length : current.goals) === 1 ? '' : 's' }} this cycle
+            <p v-if="rating" class="max-w-36 text-sm text-fg-muted"><Trophy :size="16" class="mb-1 block" aria-hidden="true" />{{ labels[rating - 1] }}</p>
+            <p v-else class="text-sm text-fg-muted">
+              <span class="block text-2xl font-semibold text-fg tabular-nums">{{ d ? goals.length : current.goals }}</span>goal{{ (d ? goals.length : current.goals) === 1 ? '' : 's' }} this cycle
             </p>
           </div>
         </div>

@@ -55,11 +55,11 @@ const statusText = computed(() => {
       <PayslipView :payslip="p" />
       <template #aside>
         <section class="card overflow-hidden" aria-labelledby="net-title">
-          <div class="relative hero-banner px-5 py-5 text-white">
-            <p class="relative inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium"><ReceiptText :size="13" aria-hidden="true" />{{ p.period }}</p>
-            <h2 id="net-title" class="relative mt-3 text-xs tracking-wide text-white/75 uppercase">Net pay</h2>
+          <div class="relative hero-soft px-5 py-5 text-fg">
+            <p class="relative inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70"><ReceiptText :size="13" aria-hidden="true" />{{ p.period }}</p>
+            <h2 id="net-title" class="relative mt-3 text-xs tracking-wide text-fg-muted uppercase">Net pay</h2>
             <p class="relative text-3xl font-semibold tracking-tight tabular-nums">{{ rupees(p.netPay) }}</p>
-            <p class="relative mt-1 inline-flex items-center gap-1.5 text-xs text-white/85"><component :is="statusText.icon" :size="13" aria-hidden="true" />{{ statusText.text }}</p>
+            <p class="relative mt-1 inline-flex items-center gap-1.5 text-xs text-fg-muted"><component :is="statusText.icon" :size="13" aria-hidden="true" />{{ statusText.text }}</p>
           </div>
           <div class="space-y-3 p-4">
             <PaySplitBar :segments="split" :label="`${p.period} gross pay`" />

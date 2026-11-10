@@ -479,6 +479,19 @@
     box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brand-400) 14%, transparent);
   }
 }
+/* Summary banners on the self-service (Work) pages: the card surface with a faint wash of the brand colour. */
+@utility hero-soft {
+  background-color: var(--app-surface);
+  background-image:
+    radial-gradient(70% 150% at 100% 0%, color-mix(in oklab, var(--brand-400) 13%, transparent), transparent 62%),
+    linear-gradient(115deg, color-mix(in oklab, var(--brand-500) 6%, var(--app-surface)), var(--app-surface) 65%);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent);
+  &:where(.dark, .dark *) {
+    background-image:
+      radial-gradient(70% 150% at 100% 0%, color-mix(in oklab, var(--brand-500) 11%, transparent), transparent 62%),
+      linear-gradient(115deg, color-mix(in oklab, var(--brand-500) 5%, var(--app-surface)), var(--app-surface) 65%);
+  }
+}
 @utility scrollbar-none {
   scrollbar-width: none;
   &::-webkit-scrollbar {

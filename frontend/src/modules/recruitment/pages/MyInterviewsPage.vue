@@ -136,7 +136,7 @@ async function submit() {
 
       <!-- Up next -->
       <section v-if="nextUp && (!view || view === 'upcoming' || view === 'today')" class="card overflow-hidden" aria-label="Next interview">
-        <div class="flex flex-wrap items-center gap-5 bg-gradient-to-r from-brand-500/10 via-transparent to-sky-500/10 p-5">
+        <div class="flex flex-wrap items-center gap-5 bg-gradient-to-r from-brand-500/10 via-transparent to-brand-300/10 p-5">
           <div class="flex w-20 shrink-0 flex-col items-center rounded-xl bg-surface py-2 shadow-xs ring-1 ring-line">
             <span class="text-2xs font-semibold tracking-wide text-accent-fg uppercase">{{ tile(at(nextUp)).weekday }}</span>
             <span class="text-3xl leading-9 font-semibold text-fg tabular-nums">{{ tile(at(nextUp)).day }}</span>

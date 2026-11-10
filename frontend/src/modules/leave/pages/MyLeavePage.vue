@@ -176,55 +176,55 @@ const tint = (color: string | undefined, amount: number) => (color ? `color-mix(
     <template v-else>
       <!-- Summary -->
       <section class="card overflow-hidden" aria-label="Leave summary">
-        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+        <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
           <div class="relative min-w-0 flex-1 basis-72">
-            <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+            <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
               <CalendarRange :size="13" aria-hidden="true" />Leave year {{ formatDate(balances.data.value.range.from) }} – {{ formatDate(balances.data.value.range.to) }}
             </p>
             <template v-if="limited.length">
-              <p class="mt-4 text-sm text-white/80">Available to take</p>
+              <p class="mt-4 text-sm text-fg-muted">Available to take</p>
               <p class="flex items-baseline gap-2">
                 <span class="text-5xl leading-none font-semibold tracking-tight tabular-nums">{{ available }}</span>
-                <span class="text-lg text-white/85">{{ available === 1 ? 'day' : 'days' }}</span>
+                <span class="text-lg text-fg-muted">{{ available === 1 ? 'day' : 'days' }}</span>
               </p>
-              <p class="mt-2 text-sm text-white/85">Across {{ limited.length }} paid leave type{{ limited.length === 1 ? '' : 's' }}{{ list.length > limited.length ? ', plus leave without a limit' : '' }}.</p>
+              <p class="mt-2 text-sm text-fg-muted">Across {{ limited.length }} paid leave type{{ limited.length === 1 ? '' : 's' }}{{ list.length > limited.length ? ', plus leave without a limit' : '' }}.</p>
             </template>
             <template v-else>
               <h2 class="mt-4 text-2xl font-semibold tracking-tight">No limit on your leave</h2>
-              <p class="mt-1 text-sm text-white/85">Your leave types don't have a fixed balance. Agree time off with your manager.</p>
+              <p class="mt-1 text-sm text-fg-muted">Your leave types don't have a fixed balance. Agree time off with your manager.</p>
             </template>
             <div v-if="yearProgress" class="mt-5 max-w-md">
-              <div class="mb-1.5 flex justify-between text-2xs text-white/80">
+              <div class="mb-1.5 flex justify-between text-2xs text-fg-muted">
                 <span>Leave year {{ yearProgress.pct }}% through</span>
                 <span class="tabular-nums">{{ yearProgress.daysLeft }} days left</span>
               </div>
-              <div class="h-1.5 overflow-hidden rounded-full bg-white/20" role="progressbar" :aria-valuenow="yearProgress.pct" aria-valuemin="0" aria-valuemax="100" aria-label="Leave year elapsed">
-                <div class="h-full rounded-full bg-white transition-[width] duration-700" :style="{ width: `${yearProgress.pct}%` }" />
+              <div class="h-1.5 overflow-hidden rounded-full bg-fg/10" role="progressbar" :aria-valuenow="yearProgress.pct" aria-valuemin="0" aria-valuemax="100" aria-label="Leave year elapsed">
+                <div class="h-full rounded-full bg-brand-600 transition-[width] dark:bg-brand-400 duration-700" :style="{ width: `${yearProgress.pct}%` }" />
               </div>
             </div>
           </div>
 
-          <div class="relative w-full rounded-xl bg-white/12 p-4 ring-1 ring-white/25 backdrop-blur sm:w-80" aria-live="polite">
-            <p class="text-2xs font-semibold tracking-wide text-white/80 uppercase">{{ nextLeave && onLeaveNow(nextLeave) ? 'On leave now' : 'Next time off' }}</p>
+          <div class="relative w-full rounded-xl bg-surface/80 p-4 ring-1 ring-line sm:w-80" aria-live="polite">
+            <p class="text-2xs font-semibold tracking-wide text-fg-muted uppercase">{{ nextLeave && onLeaveNow(nextLeave) ? 'On leave now' : 'Next time off' }}</p>
             <div v-if="nextLeave" class="mt-3 flex items-center gap-3">
-              <div class="flex w-16 shrink-0 flex-col items-center rounded-xl bg-white py-1.5 text-slate-900 shadow-sm">
-                <span class="text-2xs font-semibold tracking-wide text-brand-700 uppercase">{{ tile(nextLeave.startDate).weekday }}</span>
+              <div class="flex w-16 shrink-0 flex-col items-center rounded-xl bg-surface py-1.5 text-fg shadow-xs ring-1 ring-line">
+                <span class="text-2xs font-semibold tracking-wide text-accent-fg uppercase">{{ tile(nextLeave.startDate).weekday }}</span>
                 <span class="text-2xl leading-7 font-semibold tabular-nums">{{ tile(nextLeave.startDate).day }}</span>
-                <span class="text-2xs text-slate-500">{{ tile(nextLeave.startDate).month }}</span>
+                <span class="text-2xs text-fg-subtle">{{ tile(nextLeave.startDate).month }}</span>
               </div>
               <div class="min-w-0">
                 <p class="truncate font-semibold">{{ nextLeave.leaveType?.name }}</p>
-                <p class="text-xs text-white/85">{{ formatLeaveRange(nextLeave) }} · {{ formatDays(nextLeave.days) }}</p>
-                <p class="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2 py-0.5 text-2xs font-medium">
-                  <span :class="['h-1.5 w-1.5 rounded-full', nextLeave.status === 'APPROVED' ? 'bg-emerald-300' : 'bg-amber-300']" aria-hidden="true" />
+                <p class="text-xs text-fg-muted">{{ formatLeaveRange(nextLeave) }} · {{ formatDays(nextLeave.days) }}</p>
+                <p class="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2 py-0.5 text-2xs font-medium ring-1 ring-line/70">
+                  <span :class="['h-1.5 w-1.5 rounded-full', nextLeave.status === 'APPROVED' ? 'bg-success' : 'bg-warning']" aria-hidden="true" />
                   {{ LEAVE_STATUS_LABELS[nextLeave.status] }}<template v-if="!onLeaveNow(nextLeave)"> · starts {{ relativeDay(nextLeave.startDate) }}</template>
                 </p>
               </div>
             </div>
-            <p v-if="upcoming.length > 1" class="mt-3 border-t border-white/20 pt-2 text-xs text-white/80">+ {{ upcoming.length - 1 }} more coming up</p>
+            <p v-if="upcoming.length > 1" class="mt-3 border-t border-line/70 pt-2 text-xs text-fg-muted">+ {{ upcoming.length - 1 }} more coming up</p>
             <template v-if="!nextLeave">
               <p class="mt-2 text-sm font-medium">Nothing booked yet</p>
-              <p class="mt-0.5 text-xs text-white/80">{{ yearProgress ? `${yearProgress.daysLeft} days left to use this year's leave. A break helps.` : 'Plan a break when you need one.' }}</p>
+              <p class="mt-0.5 text-xs text-fg-muted">{{ yearProgress ? `${yearProgress.daysLeft} days left to use this year's leave. A break helps.` : 'Plan a break when you need one.' }}</p>
               <AppButton v-if="canApply" class="mt-3" size="sm" variant="secondary" :icon="CalendarPlus" @click="openApply()">Plan time off</AppButton>
             </template>
           </div>

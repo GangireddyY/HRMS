@@ -181,7 +181,7 @@ const HOW = [
       <div class="border-t border-line/70 bg-surface-muted/40 px-5 py-4"><RunStepper :run="open" /></div>
     </section>
     <section v-else class="card overflow-hidden" aria-labelledby="cycle-title">
-      <div class="flex flex-wrap items-center gap-5 bg-gradient-to-r from-brand-500/10 via-transparent to-sky-500/10 p-5">
+      <div class="flex flex-wrap items-center gap-5 bg-gradient-to-r from-brand-500/10 via-transparent to-brand-300/10 p-5">
         <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface text-accent-fg shadow-xs ring-1 ring-line" aria-hidden="true"><CalendarClock :size="22" /></span>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-fg-muted">Next payroll</p>

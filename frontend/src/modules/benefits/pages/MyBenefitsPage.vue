@@ -107,30 +107,30 @@ const relation = (r: string) => RELATION_LABELS[r as DependentRelation] ?? RELAT
     <template v-else-if="data">
       <!-- Summary -->
       <section v-if="plans.length" class="card overflow-hidden" aria-labelledby="benefits-headline">
-        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+        <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
           <div class="relative min-w-0 flex-1 basis-72">
-            <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+            <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
               <HeartPulse :size="13" aria-hidden="true" />{{ coveredPlans.length ? `${coveredPlans.length} active plan${coveredPlans.length === 1 ? '' : 's'}` : 'Your benefits' }}
             </p>
             <h2 id="benefits-headline" class="mt-3 text-2xl font-semibold tracking-tight">{{ headline }}</h2>
-            <p class="mt-1 max-w-2xl text-sm text-white/85">
+            <p class="mt-1 max-w-2xl text-sm text-fg-muted">
               <template v-if="coveredPlans.length">Benefits worth {{ inr(totalMonthly) }} a month — your employer pays {{ employerShare }}% of it.</template>
               <template v-else>Choose a plan below to cover yourself and your family.</template>
             </p>
             <ul v-if="coveredPlans.length" class="mt-4 flex flex-wrap gap-2">
-              <li v-for="p in coveredPlans" :key="p.id" class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs backdrop-blur">
+              <li v-for="p in coveredPlans" :key="p.id" class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-1 text-xs ring-1 ring-line/70">
                 <component :is="BENEFIT_TYPE_VISUALS[p.type].icon" :size="12" aria-hidden="true" />{{ p.name }} · {{ p.current!.option?.name }}
               </li>
             </ul>
           </div>
-          <div v-if="openWindow" class="relative flex items-center gap-4 rounded-2xl bg-white/15 p-4 ring-1 ring-white/25 backdrop-blur max-sm:w-full">
+          <div v-if="openWindow" class="relative flex items-center gap-4 rounded-2xl bg-surface/80 p-4 ring-1 ring-line max-sm:w-full">
             <div class="text-center">
               <p class="text-4xl leading-none font-semibold tabular-nums">{{ windowDays }}</p>
-              <p class="mt-1 text-2xs text-white/80">day{{ windowDays === 1 ? '' : 's' }} left</p>
+              <p class="mt-1 text-2xs text-fg-muted">day{{ windowDays === 1 ? '' : 's' }} left</p>
             </div>
-            <div class="max-w-44 border-s border-white/25 ps-4">
+            <div class="max-w-44 border-s border-line/70 ps-4">
               <p class="text-sm font-semibold">{{ windowName(openWindow) }}</p>
-              <p class="text-xs text-white/80">Closes {{ formatDate(openWindow.window!.closesOn) }}. Make changes before then.</p>
+              <p class="text-xs text-fg-muted">Closes {{ formatDate(openWindow.window!.closesOn) }}. Make changes before then.</p>
             </div>
           </div>
         </div>
@@ -222,7 +222,7 @@ const relation = (r: string) => RELATION_LABELS[r as DependentRelation] ?? RELAT
           </AppCard>
 
           <section class="card overflow-hidden">
-            <div class="bg-gradient-to-br from-amber-500/10 via-transparent to-sky-500/10 p-4">
+            <div class="bg-gradient-to-br from-amber-500/10 via-transparent to-brand-300/10 p-4">
               <p class="flex items-center gap-2 text-sm font-semibold text-fg"><Lightbulb :size="15" class="text-amber-500" aria-hidden="true" />Tax tip</p>
               <p class="mt-1 text-xs text-fg-muted">Health insurance premiums you pay for yourself, your family or your parents can be claimed under section 80D in your tax declaration (old tax regime).</p>
               <AppButton class="mt-3 w-full" size="sm" variant="secondary" to="/me/salary">Open tax declaration</AppButton>

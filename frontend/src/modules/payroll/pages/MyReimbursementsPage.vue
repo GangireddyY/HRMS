@@ -177,7 +177,7 @@ const STEPS = [
 
       <aside class="space-y-4">
         <section class="card overflow-hidden" aria-labelledby="payout-title">
-          <div class="bg-gradient-to-br from-brand-500/10 via-transparent to-sky-500/10 p-4">
+          <div class="bg-gradient-to-br from-brand-500/10 via-transparent to-brand-300/10 p-4">
             <p id="payout-title" class="flex items-center gap-2 text-xs font-semibold tracking-wide text-accent-fg uppercase"><Banknote :size="14" aria-hidden="true" />Coming with your next payroll</p>
             <p class="mt-2 text-3xl font-semibold tracking-tight text-fg tabular-nums">{{ rupees(total(toBePaid)) }}</p>
             <p class="text-xs text-fg-muted">{{ toBePaid.length ? `${plural(toBePaid.length, 'approved claim')}, paid tax-free` : 'No approved claims waiting to be paid' }}</p>

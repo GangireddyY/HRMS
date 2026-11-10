@@ -89,7 +89,7 @@ const HOW: { icon: Component; title: string; text: string }[] = [
 
     <!-- Reassurance -->
     <section class="card overflow-hidden" aria-labelledby="speak-up-title">
-      <div class="relative flex flex-wrap items-center gap-6 bg-gradient-to-br from-brand-500/12 via-surface to-sky-500/10 px-6 py-6 dark:from-brand-500/20 dark:via-surface dark:to-sky-500/15">
+      <div class="relative flex flex-wrap items-center gap-6 bg-gradient-to-br from-brand-500/12 via-surface to-brand-300/10 px-6 py-6 dark:from-brand-500/20 dark:via-surface dark:to-brand-400/10">
         <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-sm" aria-hidden="true"><ShieldCheck :size="26" /></span>
         <div class="min-w-0 flex-1 basis-80">
           <h2 id="speak-up-title" class="text-xl font-semibold tracking-tight text-fg">If something at work isn't right, you can tell us safely</h2>

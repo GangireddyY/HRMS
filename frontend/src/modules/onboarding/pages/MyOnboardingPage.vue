@@ -103,30 +103,30 @@ const probationTone = (days: number) => (days < 0 ? 'bg-danger-soft text-danger-
     <template v-else-if="d">
       <!-- Welcome -->
       <section class="card overflow-hidden">
-        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+        <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
           <div class="relative min-w-0 flex-1">
-            <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+            <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
               <component :is="d.status === 'COMPLETED' ? PartyPopper : Rocket" :size="13" aria-hidden="true" />
               {{ d.status === 'COMPLETED' ? 'All set' : 'Onboarding in progress' }}
             </p>
             <h2 class="mt-3 text-2xl font-semibold tracking-tight">{{ d.status === 'COMPLETED' ? `You're all set, ${firstName}!` : `Welcome aboard, ${firstName}!` }}</h2>
-            <p class="mt-1 max-w-2xl text-sm text-white/85">{{ journey }}</p>
-            <p v-if="d.employee.designation || d.employee.department" class="mt-3 text-xs text-white/75">
+            <p class="mt-1 max-w-2xl text-sm text-fg-muted">{{ journey }}</p>
+            <p v-if="d.employee.designation || d.employee.department" class="mt-3 text-xs text-fg-muted">
               {{ [d.employee.designation?.name, d.employee.department?.name].filter(Boolean).join(' · ') }} · {{ orgName }}
             </p>
           </div>
           <div class="relative flex items-center gap-4">
             <div class="relative h-28 w-28">
               <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-white/20" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-white transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - pct / 100)" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-fg/10" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-brand-600 dark:stroke-brand-400 transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - pct / 100)" />
               </svg>
               <div class="absolute inset-0 flex flex-col items-center justify-center">
                 <span class="text-2xl font-semibold tabular-nums">{{ pct }}%</span>
-                <span class="text-2xs text-white/80">complete</span>
+                <span class="text-2xs text-fg-muted">complete</span>
               </div>
             </div>
-            <p class="text-sm text-white/85"><span class="block text-2xl font-semibold text-white tabular-nums">{{ d.progress.done }}<span class="text-base font-normal text-white/70">/{{ d.progress.total }}</span></span>tasks done</p>
+            <p class="text-sm text-fg-muted"><span class="block text-2xl font-semibold text-fg tabular-nums">{{ d.progress.done }}<span class="text-base font-normal text-fg-subtle">/{{ d.progress.total }}</span></span>tasks done</p>
           </div>
         </div>
         <div class="grid gap-px bg-line/70 sm:grid-cols-3">
@@ -243,7 +243,7 @@ const probationTone = (days: number) => (days < 0 ? 'bg-danger-soft text-danger-
           </AppCard>
 
           <section class="card overflow-hidden">
-            <div class="bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10 p-4">
+            <div class="bg-gradient-to-br from-violet-500/10 via-transparent to-brand-300/10 p-4">
               <p class="flex items-center gap-2 text-sm font-semibold text-fg"><Sparkles :size="15" class="text-violet-500" aria-hidden="true" />Questions about joining?</p>
               <p class="mt-1 text-xs text-fg-muted">Ask about documents, policies, payroll or your first week — any time.</p>
               <AppButton class="mt-3 w-full" size="sm" variant="secondary" :icon="Sparkles" @click="askAssistant">Ask AI</AppButton>

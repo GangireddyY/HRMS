@@ -109,20 +109,20 @@ const trendStats = computed(() => {
     <template v-else>
       <!-- Latest payslip -->
       <section class="card grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" aria-labelledby="latest-title">
-        <div class="relative flex flex-col hero-banner p-6 text-white">
+        <div class="relative flex flex-col hero-soft p-6 text-fg">
           <div class="relative flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur"><ReceiptText :size="13" aria-hidden="true" />Latest payslip</span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70"><ReceiptText :size="13" aria-hidden="true" />Latest payslip</span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-accent-fg">
               <span :class="['h-1.5 w-1.5 rounded-full', latest.status === 'PAID' ? 'bg-emerald-500' : 'bg-sky-500']" aria-hidden="true" />{{ latest.status === 'PAID' ? 'Paid' : 'Approved' }}
             </span>
           </div>
-          <h2 id="latest-title" class="relative mt-4 text-lg font-medium text-white/90">{{ latest.period }}</h2>
-          <p class="relative text-xs tracking-wide text-white/70 uppercase">Net pay</p>
+          <h2 id="latest-title" class="relative mt-4 text-lg font-medium text-fg-muted">{{ latest.period }}</h2>
+          <p class="relative text-xs tracking-wide text-fg-subtle uppercase">Net pay</p>
           <p class="relative mt-0.5 text-4xl font-semibold tracking-tight tabular-nums">{{ rupees(latest.netPay) }}</p>
-          <div class="relative mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-white/85">
+          <div class="relative mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-fg-muted">
             <span v-if="latest.status === 'PAID'" class="inline-flex items-center gap-1.5"><CalendarCheck :size="13" aria-hidden="true" />{{ latest.paidAt ? `Paid ${formatDate(latest.paidAt)} · ${timeAgo(latest.paidAt)}` : 'Paid' }}</span>
             <span v-else class="inline-flex items-center gap-1.5"><Clock :size="13" aria-hidden="true" />Approved · payment on its way</span>
-            <span v-if="change" class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 font-medium">
+            <span v-if="change" class="inline-flex items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 font-medium ring-1 ring-line/70">
               <component :is="change.diff >= 0 ? ArrowUpRight : ArrowDownRight" :size="13" aria-hidden="true" />
               {{ change.diff === 0 ? 'Same as' : `${change.diff > 0 ? '+' : ''}${rupees(change.diff)} (${change.pct}%) vs` }} {{ change.period }}
             </span>
@@ -130,13 +130,13 @@ const trendStats = computed(() => {
           <div class="relative mt-auto flex flex-wrap gap-2 pt-6">
             <RouterLink
               :to="`/me/payslips/${latest.id}`"
-              class="inline-flex h-9 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 focus-visible:ring-4 focus-visible:ring-white/40 focus-visible:outline-none"
+              class="inline-flex h-9 items-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus-visible:ring-4 focus-visible:ring-brand-500/30 focus-visible:outline-none"
             >
               <FileText :size="15" aria-hidden="true" />View & download
             </RouterLink>
             <button
               type="button"
-              class="inline-flex h-9 items-center gap-2 rounded-md bg-white/15 px-4 text-sm font-medium text-white ring-1 ring-white/30 backdrop-blur transition ring-inset hover:bg-white/25 focus-visible:ring-4 focus-visible:ring-white/40 focus-visible:outline-none"
+              class="inline-flex h-9 items-center gap-2 rounded-md bg-surface/80 px-4 text-sm font-medium text-fg ring-1 ring-line transition ring-inset hover:bg-surface-muted focus-visible:ring-4 focus-visible:ring-brand-500/30 focus-visible:outline-none"
               @click="assistant.ask('my latest payslip')"
             >
               <Sparkles :size="15" aria-hidden="true" />Ask AI about my pay

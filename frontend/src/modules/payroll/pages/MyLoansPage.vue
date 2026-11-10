@@ -96,26 +96,26 @@ const HOW = [
     <template v-else-if="mine.data.value">
       <!-- Balance -->
       <section v-if="active.length" class="card overflow-hidden" aria-labelledby="balance-title">
-        <div class="relative flex flex-wrap items-center gap-6 hero-banner px-6 py-6 text-white">
+        <div class="relative flex flex-wrap items-center gap-6 hero-soft px-6 py-6 text-fg">
           <div class="relative min-w-0 flex-1">
-            <p class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+            <p class="inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
               <HandCoins :size="13" aria-hidden="true" />Repaying {{ active.length === 1 ? `${LOAN_TYPE_LABELS[active[0]!.type].toLowerCase()} ${active[0]!.reference}` : `${active.length} loans and advances` }}
             </p>
-            <h2 id="balance-title" class="mt-3 text-sm font-medium text-white/80">Outstanding balance</h2>
+            <h2 id="balance-title" class="mt-3 text-sm font-medium text-fg-muted">Outstanding balance</h2>
             <p class="text-4xl font-semibold tracking-tight tabular-nums">{{ rupees(outstanding) }}</p>
-            <p class="mt-1 text-sm text-white/85 tabular-nums">of {{ rupees(borrowed) }} borrowed · {{ rupees(repaid) }} repaid</p>
-            <div class="mt-4 h-2 max-w-md overflow-hidden rounded-full bg-white/20" role="progressbar" :aria-valuenow="pct" aria-valuemin="0" aria-valuemax="100" aria-label="Repaid">
-              <div class="h-full rounded-full bg-white transition-[width] duration-700" :style="{ width: `${pct}%` }" />
+            <p class="mt-1 text-sm text-fg-muted tabular-nums">of {{ rupees(borrowed) }} borrowed · {{ rupees(repaid) }} repaid</p>
+            <div class="mt-4 h-2 max-w-md overflow-hidden rounded-full bg-fg/10" role="progressbar" :aria-valuenow="pct" aria-valuemin="0" aria-valuemax="100" aria-label="Repaid">
+              <div class="h-full rounded-full bg-brand-600 transition-[width] dark:bg-brand-400 duration-700" :style="{ width: `${pct}%` }" />
             </div>
           </div>
           <div class="relative h-28 w-28">
             <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-              <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-white/20" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-white transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - pct / 100)" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" class="stroke-fg/10" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke-width="9" stroke-linecap="round" class="stroke-brand-600 dark:stroke-brand-400 transition-[stroke-dashoffset] duration-700" :stroke-dasharray="CIRC" :stroke-dashoffset="CIRC * (1 - pct / 100)" />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
               <span class="text-2xl font-semibold tabular-nums">{{ pct }}%</span>
-              <span class="text-2xs text-white/80">repaid</span>
+              <span class="text-2xs text-fg-muted">repaid</span>
             </div>
           </div>
         </div>
@@ -133,7 +133,7 @@ const HOW = [
 
       <!-- Nothing owed -->
       <section v-else class="card overflow-hidden">
-        <div class="flex flex-wrap items-center gap-5 bg-gradient-to-r from-brand-500/10 via-transparent to-sky-500/10 p-5">
+        <div class="flex flex-wrap items-center gap-5 bg-gradient-to-r from-brand-500/10 via-transparent to-brand-300/10 p-5">
           <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface text-accent-fg shadow-xs ring-1 ring-line" aria-hidden="true"><Wallet :size="22" /></span>
           <div class="min-w-0 flex-1">
             <p class="text-lg font-semibold text-fg">{{ loans.length ? 'Nothing to repay' : 'Need some money before payday?' }}</p>

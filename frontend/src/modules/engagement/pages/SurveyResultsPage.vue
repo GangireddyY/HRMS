@@ -288,7 +288,7 @@ const showAllTexts = ref<Record<string, boolean>>({});
             <p class="text-sm text-fg-muted">{{ r.respondents.join(', ') || '—' }}</p>
           </AppCard>
           <section v-else-if="r.survey.anonymous" class="card overflow-hidden">
-            <div class="bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10 p-4">
+            <div class="bg-gradient-to-br from-violet-500/10 via-transparent to-brand-300/10 p-4">
               <p class="flex items-center gap-2 text-sm font-semibold text-fg"><ShieldCheck :size="15" class="text-violet-500" aria-hidden="true" />Anonymous survey</p>
               <p class="mt-1 text-xs text-fg-muted">Nobody, including HR, can see who answered what. Results only show once {{ r.threshold }} or more people have responded.</p>
             </div>

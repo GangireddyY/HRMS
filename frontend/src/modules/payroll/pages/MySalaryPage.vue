@@ -147,17 +147,17 @@ const raiseText = (p: number) => `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(
     <div v-else-if="!shown" class="card"><AppEmptyState :icon="Wallet" title="No salary on record" description="Your HR team sets it up; it appears here once done." /></div>
     <section v-else class="card overflow-hidden" aria-labelledby="ctc-title">
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div class="relative hero-banner p-6 text-white">
-          <p class="relative inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+        <div class="relative hero-soft p-6 text-fg">
+          <p class="relative inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70">
             <Layers :size="13" aria-hidden="true" />{{ shown.structure.name ?? 'Salary structure' }}
           </p>
-          <p id="ctc-title" class="relative mt-4 text-xs tracking-wide text-white/75 uppercase">{{ current ? 'Annual cost to company' : 'Starting annual cost to company' }}</p>
+          <p id="ctc-title" class="relative mt-4 text-xs tracking-wide text-fg-muted uppercase">{{ current ? 'Annual cost to company' : 'Starting annual cost to company' }}</p>
           <p class="relative mt-0.5 text-4xl font-semibold tracking-tight tabular-nums">{{ rupees(shown.annualCtc) }}</p>
-          <p class="relative mt-1 text-sm text-white/85">
+          <p class="relative mt-1 text-sm text-fg-muted">
             {{ rupees(shown.monthlyCtc) }} a month · {{ current ? 'since' : 'from' }} {{ formatDate(shown.effectiveFrom) }}
           </p>
-          <ul class="relative mt-5 space-y-1.5 text-xs text-white/85">
-            <li class="flex items-center gap-2"><Wallet :size="13" aria-hidden="true" />Gross <span class="font-semibold text-white tabular-nums">{{ rupees(shown.monthlyGross) }}</span> a month before deductions</li>
+          <ul class="relative mt-5 space-y-1.5 text-xs text-fg-muted">
+            <li class="flex items-center gap-2"><Wallet :size="13" aria-hidden="true" />Gross <span class="font-semibold text-fg tabular-nums">{{ rupees(shown.monthlyGross) }}</span> a month before deductions</li>
             <li class="flex items-center gap-2"><PiggyBank :size="13" aria-hidden="true" />{{ shown.pfApplicable ? 'Provident fund applies' : 'No provident fund' }}</li>
             <li v-if="shown.reason" class="flex items-center gap-2"><Info :size="13" aria-hidden="true" />{{ shown.reason }}</li>
           </ul>
