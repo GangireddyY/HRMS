@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ForeignKeyConstraintError, UniqueConstraintError, type Transaction } from 'sequelize';
-import { professionalTaxState } from '../../contracts';
+import { professionalTaxState, weekStartOf, type TimesheetMissedAction } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
+import { zonedParts } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { EmployeeSalary, Organization, PayrollSettings, SalaryComponentDef, SalaryStructure, SalaryStructureLine } from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
@@ -21,6 +22,11 @@ export type EffectiveSettings = {
   tan: string | null;
   overtimeMultiplier: number;
   overtimeBasis: 'BASIC' | 'GROSS';
+  timesheetsRequired: boolean;
+  timesheetsFrom: string | null;
+  timesheetDueWeekday: number;
+  timesheetMissedAction: TimesheetMissedAction;
+  timesheetAutoRemind: boolean;
 };
 
 const DEFAULTS: EffectiveSettings = {
@@ -35,6 +41,11 @@ const DEFAULTS: EffectiveSettings = {
   tan: null,
   overtimeMultiplier: 2,
   overtimeBasis: 'GROSS',
+  timesheetsRequired: false,
+  timesheetsFrom: null,
+  timesheetDueWeekday: 1,
+  timesheetMissedAction: 'FLAG',
+  timesheetAutoRemind: true,
 };
 
 /** Recommended starting point (created only on request): Basic at half the CTC, HRA at half of Basic, the rest as a special allowance. */
@@ -73,7 +84,16 @@ export class PayrollConfigService {
       tan: s.tan,
       overtimeMultiplier: Number(s.overtimeMultiplier),
       overtimeBasis: s.overtimeBasis,
+      timesheetsRequired: s.timesheetsRequired,
+      timesheetsFrom: s.timesheetsFrom,
+      timesheetDueWeekday: s.timesheetDueWeekday,
+      timesheetMissedAction: s.timesheetMissedAction,
+      timesheetAutoRemind: s.timesheetAutoRemind,
     };
+  }
+
+  private async organizationTimeZone(organizationId: string): Promise<string> {
+    return (await Organization.findByPk(organizationId, { attributes: ['timezone'] }))?.timezone ?? 'UTC';
   }
 
   /** Settings with the organization's own state as the professional-tax fallback (for display). */
@@ -85,8 +105,16 @@ export class PayrollConfigService {
   async updateSettings(auth: AuthContext, dto: PayrollSettingsDto) {
     const before = await this.settings(auth.organizationId!);
     const next = { ...before, ...Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined)) } as EffectiveSettings;
+    if (next.timesheetsFrom) next.timesheetsFrom = weekStartOf(next.timesheetsFrom);
+    // Switching timesheets on starts from the current week, so earlier weeks never count as missed.
+    if (next.timesheetsRequired && (!before.timesheetsRequired || !next.timesheetsFrom) && !dto.timesheetsFrom) {
+      next.timesheetsFrom = weekStartOf(zonedParts(new Date(), await this.organizationTimeZone(auth.organizationId!)).date);
+    }
     await this.db.transaction(async (transaction) => {
-      await PayrollSettings.upsert({ organizationId: auth.organizationId!, ...next, overtimeMultiplier: String(next.overtimeMultiplier), updatedById: auth.userId }, { transaction });
+      const values = { ...next, overtimeMultiplier: String(next.overtimeMultiplier), updatedById: auth.userId };
+      const row = await PayrollSettings.findByPk(auth.organizationId!, { transaction, lock: transaction.LOCK.UPDATE });
+      if (row) await row.update(values, { transaction });
+      else await PayrollSettings.create({ organizationId: auth.organizationId!, ...values }, { transaction });
       await this.audit.record({ action: 'payroll.settings_updated', entityType: 'PayrollSettings', summary: 'Payroll settings updated', changes: diff(before, next) }, transaction);
     });
     return this.settingsView(auth);

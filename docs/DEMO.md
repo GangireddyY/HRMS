@@ -4,7 +4,7 @@
 
 It only adds data: existing organizations are untouched, and a demo organization that already exists is skipped (to recreate one, use a fresh database). A demo organization is recognised by its admin account too, so renaming it in Settings doesn't make the seed create a second one. Dates are relative to the day you run it.
 
-It then adds the **Acme scenarios** below (also on their own: `npm run db:seed:demo-extras`, or one area: `npm run db:seed:demo-extras -- payroll|cases|people`). They top up an existing Acme and skip anything already there, so running them again is safe.
+It then adds the **Acme scenarios** below (also on their own: `npm run db:seed:demo-extras`, or one area: `npm run db:seed:demo-extras -- payroll|cases|people|security|recruitment|timesheets`). They top up an existing Acme and skip anything already there, so running them again is safe.
 
 **Password for every demo user: `Demo@Hrms2026`**
 
@@ -57,6 +57,7 @@ What's in it: 21 people in 5 departments and 2 locations, holidays, shifts with 
 | Careers page | Three public roles in three teams: Backend Engineer (full posting), Senior Software Engineer, Platform in Pune (closes in 10 days), Operations Executive | `/careers/acme-technologies` (no sign-in); Job → Job posting tab (`recruiter@`) |
 | Onboarding | Pooja's onboarding completed (12/12) | Onboarding → Completed (`hr.manager@`) |
 | Sign-in security | Sneha mistyped her password twice yesterday on her phone, then signed in; Ishaan was locked out after repeated wrong passwords (lock already lifted) | Login history and Audit log (`admin@`) |
+| Timesheets | Required every week, due Monday, flagged on the payslip when missed (from three weeks ago). Asha: approved two weeks ago, last week waiting for review, this week in progress; Karthik's last week sent back; Pooja's waiting; Divya's still a draft; everyone else missing | Timesheets (`employee@`, `karthik@`); HR → Attendance → Timesheets: review, week status and reminders (`hr.manager@`, `team.lead@`); rules in Payroll setup → Statutory settings (`payroll@`) |
 
 October's tax deduction (TDS) is low because it was worked out before August and September existed, so November's deductions show a large rise against October.
 

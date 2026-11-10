@@ -4,6 +4,7 @@ import { seedCaseExtras } from './cases';
 import { seedPeopleExtras } from './people';
 import { seedSecurityExtras } from './security';
 import { seedRecruitmentExtras } from './recruitment';
+import { seedTimesheetExtras } from './timesheets';
 
 /** Scenario areas, in the order they run (payroll first: other areas read payslips and salaries). */
 export const EXTRA_AREAS: Record<string, (kit: Kit) => Promise<void>> = {
@@ -12,6 +13,7 @@ export const EXTRA_AREAS: Record<string, (kit: Kit) => Promise<void>> = {
   people: seedPeopleExtras,
   security: seedSecurityExtras,
   recruitment: seedRecruitmentExtras,
+  timesheets: seedTimesheetExtras,
 };
 
 /** Runs the chosen areas (all by default) against the Acme demo organization. */

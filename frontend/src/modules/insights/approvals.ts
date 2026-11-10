@@ -1,5 +1,5 @@
 import type { Component } from 'vue';
-import { Banknote, BadgeCheck, Briefcase, CalendarCheck, Clock, HandCoins, House, LogOut, Receipt, Timer } from '@lucide/vue';
+import { Banknote, BadgeCheck, Briefcase, CalendarCheck, CalendarClock, Clock, HandCoins, House, LogOut, Receipt, Timer } from '@lucide/vue';
 import type { useAuthStore } from '@/core/auth/auth.store';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import { exitApi } from '@/modules/exit/api/exit.api';
@@ -32,6 +32,7 @@ const SOURCES: Source[] = [
   { key: 'regularizations', label: 'Attendance corrections', to: '/hr/attendance/regularizations', icon: Clock, allowed: (a) => a.can('attendance.regularize.approve') && a.hasFeature('attendance'), count: () => total(attendanceApi.regularizations({ ...ONE, view: 'team', status: 'PENDING' })) },
   { key: 'wfh', label: 'Work from home', to: '/hr/attendance/regularizations?tab=wfh', icon: House, allowed: (a) => a.can('attendance.regularize.approve') && a.hasFeature('attendance'), count: () => total(attendanceApi.workFromHome({ ...ONE, view: 'team', status: 'PENDING' })) },
   { key: 'overtime', label: 'Overtime', to: '/hr/attendance/regularizations?tab=overtime', icon: Timer, allowed: (a) => a.can('attendance.regularize.approve') && a.hasFeature('attendance'), count: () => total(attendanceApi.overtime({ ...ONE, view: 'team', status: 'PENDING' })) },
+  { key: 'timesheets', label: 'Timesheets', to: '/hr/attendance/timesheets', icon: CalendarClock, allowed: (a) => a.can('attendance.timesheet.approve') && a.hasFeature('attendance'), count: () => total(attendanceApi.timesheets({ ...ONE, view: 'team', status: 'SUBMITTED' })) },
   { key: 'claims', label: 'Expense claims', to: '/hr/payroll/reimbursements', icon: Receipt, allowed: (a) => a.can('payroll.reimbursement.approve') && a.hasFeature('payroll'), count: () => total(payrollApi.claims({ ...ONE, view: 'approve', status: 'PENDING' })) },
   { key: 'loans', label: 'Loans & advances', to: '/hr/payroll/loans', icon: HandCoins, allowed: (a) => a.can('payroll.loan.approve') && a.hasFeature('payroll'), count: () => total(loansApi.list({ ...ONE, view: 'approve' })) },
   { key: 'payroll', label: 'Payroll runs to approve', to: '/hr/payroll/runs', icon: Banknote, allowed: (a) => a.can('payroll.approve') && a.hasFeature('payroll'), count: () => total(payrollApi.runs({ ...ONE, status: 'SUBMITTED' })) },

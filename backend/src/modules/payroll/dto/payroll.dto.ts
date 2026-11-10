@@ -34,6 +34,7 @@ import {
   REIMBURSEMENT_CATEGORIES,
   REIMBURSEMENT_STATUSES,
   TAX_REGIMES,
+  TIMESHEET_MISSED_ACTIONS,
   type ComponentCalculation,
   type LoanStatus,
   type LoanType,
@@ -42,6 +43,7 @@ import {
   type ReimbursementCategory,
   type ReimbursementStatus,
   type TaxRegime,
+  type TimesheetMissedAction,
 } from '../../../contracts';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { emptyToNull, emptyToNullUpper, optionalNullable, trim, upper } from '../../../common/validation/transforms';
@@ -71,6 +73,14 @@ export class PayrollSettingsDto {
   @ApiPropertyOptional({ description: 'Overtime is paid at this multiple of the hourly rate (Factories Act: twice)', default: 2 })
   @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 1 }) @Min(1) @Max(5) overtimeMultiplier?: number;
   @ApiPropertyOptional({ enum: OVERTIME_BASES, description: 'Hourly rate = monthly Basic or gross ÷ 26 days ÷ 8 hours' }) @IsOptional() @IsIn(OVERTIME_BASES) overtimeBasis?: OvertimeBasis;
+  @ApiPropertyOptional({ description: 'Everyone submits a weekly timesheet, reviewed before payroll' }) @IsOptional() @IsBoolean() timesheetsRequired?: boolean;
+  @ApiPropertyOptional({ example: '2026-11-09', description: 'First week that needs a timesheet (moved to its Monday); defaults to the week the rule is switched on' })
+  @IsOptional() @IsISO8601({ strict: true, strictSeparator: true }) timesheetsFrom?: string;
+  @ApiPropertyOptional({ description: 'Due on this weekday after the week ends (0 = Sunday … 6 = Saturday)', default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(6) timesheetDueWeekday?: number;
+  @ApiPropertyOptional({ enum: TIMESHEET_MISSED_ACTIONS, description: 'FLAG: warn on the payslip; LOP: working days of the week are unpaid; HOLD: hold the salary in the run' })
+  @IsOptional() @IsIn(TIMESHEET_MISSED_ACTIONS) timesheetMissedAction?: TimesheetMissedAction;
+  @ApiPropertyOptional({ description: 'Remind people on the due day (9:00) and the day after; managers get a summary of their team', default: true })
+  @IsOptional() @IsBoolean() timesheetAutoRemind?: boolean;
 }
 
 // ---- Components & structures -------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '@contracts';
+import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '@contracts';
 
 export interface PayrollSettings {
   pfEnabled: boolean;
@@ -12,6 +12,11 @@ export interface PayrollSettings {
   pfEstablishmentCode: string | null;
   esiEmployerCode: string | null;
   tan: string | null;
+  timesheetsRequired: boolean;
+  timesheetsFrom: string | null;
+  timesheetDueWeekday: number;
+  timesheetMissedAction: TimesheetMissedAction;
+  timesheetAutoRemind: boolean;
   organizationState: string | null;
   organizationPtState: string | null;
 }

@@ -154,6 +154,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('attendance', 'attendance.regularization', 'attendance.regularize.apply', 'Apply for attendance regularization'),
   def('attendance', 'attendance.regularization', 'attendance.regularize.approve', 'Approve attendance regularization, work from home and overtime', S),
   def('attendance', 'attendance.regularization', 'attendance.wfh.apply', 'Request to work from home'),
+  def('attendance', 'attendance.timesheets', 'attendance.timesheet.submit', 'Submit weekly timesheets'),
+  def('attendance', 'attendance.timesheets', 'attendance.timesheet.approve', 'Review weekly timesheets and remind people who missed them', S),
   def('attendance', 'attendance.configuration', 'attendance.configure', 'Configure shifts, rules and devices'),
   def('attendance', 'attendance.closing', 'attendance.close', 'Close monthly attendance'),
 

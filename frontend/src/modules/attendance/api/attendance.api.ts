@@ -1,6 +1,33 @@
-import type { HolidayCountry, OvertimeStatus, RegularizationStatus } from '@contracts';
+import type { HolidayCountry, OvertimeStatus, RegularizationStatus, TimesheetEntry, TimesheetStatus, TimesheetWeekStatus } from '@contracts';
 import { http, type ListQuery, type Page } from '@/core/http/http-client';
-import type { AttendanceCalendar, AttendancePeriod, AttendanceRecord, DailyRow, DailySummary, Device, Holiday, OfficialHolidays, Overtime, Regularization, RosterRow, Rotation, RotationStep, Shift, TodayAttendance, WorkFromHome } from '../types';
+import type {
+  AttendanceCalendar,
+  AttendancePeriod,
+  AttendanceRecord,
+  DailyRow,
+  DailySummary,
+  Device,
+  Holiday,
+  OfficialHolidays,
+  Overtime,
+  Regularization,
+  RosterRow,
+  Rotation,
+  RotationStep,
+  Shift,
+  Timesheet,
+  TimesheetBoard,
+  TimesheetDetail,
+  TimesheetWeek,
+  TodayAttendance,
+  WorkFromHome,
+} from '../types';
+
+export interface TimesheetBody {
+  weekStart: string;
+  entries: TimesheetEntry[];
+  note: string | null;
+}
 
 export interface DailyQuery extends ListQuery {
   date?: string;
@@ -34,6 +61,17 @@ export const attendanceApi = {
   approveWorkFromHome: (id: string, note?: string | null) => http.post<WorkFromHome>(`/attendance/work-from-home/${id}/approve`, { note }),
   rejectWorkFromHome: (id: string, note: string) => http.post<WorkFromHome>(`/attendance/work-from-home/${id}/reject`, { note }),
   cancelWorkFromHome: (id: string) => http.post<WorkFromHome>(`/attendance/work-from-home/${id}/cancel`),
+
+  timesheetWeek: (weekStart?: string) => http.get<TimesheetWeek>('/attendance/timesheets/week', { weekStart }),
+  saveTimesheet: (body: TimesheetBody) => http.put<TimesheetWeek>('/attendance/timesheets/week', body),
+  submitTimesheet: (body: TimesheetBody) => http.post<TimesheetWeek>('/attendance/timesheets/week/submit', body),
+  withdrawTimesheet: (id: string) => http.post<TimesheetWeek>(`/attendance/timesheets/${id}/withdraw`),
+  timesheets: (q: ListQuery & { view: 'mine' | 'team'; status?: TimesheetStatus; weekStart?: string }) => http.page<Timesheet>('/attendance/timesheets', q),
+  timesheet: (id: string) => http.get<TimesheetDetail>(`/attendance/timesheets/${id}`),
+  approveTimesheet: (id: string, note?: string | null) => http.post<TimesheetDetail>(`/attendance/timesheets/${id}/approve`, { note }),
+  rejectTimesheet: (id: string, note: string) => http.post<TimesheetDetail>(`/attendance/timesheets/${id}/reject`, { note }),
+  timesheetBoard: (q: ListQuery & { weekStart?: string; status?: TimesheetWeekStatus }) => http.get<TimesheetBoard>('/attendance/timesheets/board', q),
+  remindTimesheets: (weekStart: string) => http.post<{ reminded: number }>('/attendance/timesheets/remind', { weekStart }),
 
   periods: (year: number) => http.get<AttendancePeriod[]>('/attendance/periods', { year }),
   close: (year: number, month: number) => http.post<AttendancePeriod>(`/attendance/periods/${year}/${month}/close`),

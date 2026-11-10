@@ -11,11 +11,14 @@ import { OfficialHolidaysService } from './official-holidays.service';
 import { OvertimeService } from './overtime.service';
 import { RegularizationService } from './regularization.service';
 import { RosterService } from './roster.service';
+import { TimesheetReminderJob } from './timesheet-reminder.job';
+import { TimesheetsController } from './timesheets.controller';
+import { TimesheetsService } from './timesheets.service';
 import { WorkFromHomeService } from './work-from-home.service';
 
 @Module({
   imports: [EmployeesModule, RbacModule],
-  controllers: [AttendanceController, HolidaysController, DevicePunchesController],
+  controllers: [TimesheetsController, AttendanceController, HolidaysController, DevicePunchesController],
   providers: [
     AttendanceService,
     AttendanceRulesService,
@@ -27,7 +30,9 @@ import { WorkFromHomeService } from './work-from-home.service';
     WorkFromHomeService,
     RosterService,
     DevicesService,
+    TimesheetsService,
+    TimesheetReminderJob,
   ],
-  exports: [AttendanceRulesService],
+  exports: [AttendanceRulesService, TimesheetsService],
 })
 export class AttendanceModule {}

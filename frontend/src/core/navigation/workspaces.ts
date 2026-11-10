@@ -99,7 +99,7 @@ export interface Workspace {
  */
 export const HR_OPERATIONS_PERMISSIONS = [
   'employee.view', 'employee.create', 'employee.lifecycle.manage', 'recruitment.view', 'recruitment.requisition.create', 'recruitment.requisition.approve',
-  'onboarding.view', 'onboarding.manage', 'onboarding.confirmation.approve', 'attendance.view', 'attendance.manage', 'attendance.regularize.approve', 'attendance.close', 'attendance.configure',
+  'onboarding.view', 'onboarding.manage', 'onboarding.confirmation.approve', 'attendance.view', 'attendance.manage', 'attendance.regularize.approve', 'attendance.timesheet.approve', 'attendance.close', 'attendance.configure',
   'leave.view', 'leave.approve', 'leave.allocate', 'leave.configure',
   'payroll.view', 'payroll.configure', 'payroll.reimbursement.approve', 'payroll.loan.approve', 'payroll.loan.manage', 'employee.salary.view', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.configure', 'training.manage', 'training.assign',
   'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage', 'reports.view', 'reports.payroll.view', 'reports.recruitment.view',
@@ -208,6 +208,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Register', to: '/hr/attendance', icon: ClipboardList, exact: true, access: { permissions: ['attendance.view'], scope: 'TEAM' } },
           { label: 'Approvals', to: '/hr/attendance/regularizations', icon: ClockAlert, access: { permissions: ['attendance.regularize.approve'], scope: 'TEAM' } },
+          { label: 'Timesheets', to: '/hr/attendance/timesheets', icon: ClipboardCheck, access: { permissions: ['attendance.timesheet.approve'], scope: 'TEAM', feature: 'attendance' } },
           { label: 'Roster', to: '/hr/attendance/roster', icon: CalendarDays, access: { permissions: ['attendance.configure', 'attendance.view'], scope: 'TEAM' } },
           { label: 'Monthly closing', to: '/hr/attendance/closing', icon: CalendarCheck, access: { permissions: ['attendance.close'] } },
           { label: 'Shifts', to: '/hr/attendance/shifts', icon: Clock, access: { permissions: ['attendance.configure'] } },
@@ -315,6 +316,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Onboarding', to: '/me/onboarding', icon: Rocket, access: { tenant: true, feature: 'onboarding' } },
           { label: 'Interviews', to: '/me/interviews', icon: MessagesSquare, access: { permissions: ['recruitment.interview.feedback'], feature: 'recruitment' } },
           { label: 'Attendance', to: '/me/attendance', icon: Fingerprint, access: { permissions: ['attendance.view'] } },
+          { label: 'Timesheets', to: '/me/timesheets', icon: CalendarClock, access: { permissions: ['attendance.timesheet.submit'], feature: 'attendance' } },
           { label: 'Leave', to: '/me/leave', icon: Plane, access: { permissions: ['leave.view'] } },
           { label: 'Performance', to: '/me/performance', icon: Target, access: { tenant: true, feature: 'performance' } },
           { label: 'Learning', to: '/me/training', icon: GraduationCap, access: { tenant: true, feature: 'training' } },

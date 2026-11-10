@@ -20,7 +20,25 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { DEVICE_BATCH_MAX, HOLIDAY_COUNTRIES, HOLIDAY_IMPORT_MAX, OVERTIME_STATUSES, type HolidayCountry, PUNCH_DIRECTIONS, REGULARIZATION_STATUSES, type OvertimeStatus, type PunchDirection, type RegularizationStatus } from '../../../contracts';
+import {
+  DEVICE_BATCH_MAX,
+  HOLIDAY_COUNTRIES,
+  HOLIDAY_IMPORT_MAX,
+  OVERTIME_STATUSES,
+  type HolidayCountry,
+  PUNCH_DIRECTIONS,
+  REGULARIZATION_STATUSES,
+  TIMESHEET_ACTIVITY_MAX,
+  TIMESHEET_MAX_ENTRIES,
+  TIMESHEET_NOTE_MAX,
+  TIMESHEET_PROJECT_MAX,
+  TIMESHEET_STATUSES,
+  type OvertimeStatus,
+  type PunchDirection,
+  type RegularizationStatus,
+  type TimesheetStatus,
+  type TimesheetWeekStatus,
+} from '../../../contracts';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { emptyToNull, optionalNullable, trim } from '../../../common/validation/transforms';
 
@@ -122,6 +140,38 @@ export class RegularizationQueryDto extends PaginationQueryDto {
 
 export class ReviewDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+
+// ---- Timesheets ---------------------------------------------------------------------------------
+
+export class TimesheetEntryDto {
+  @ApiProperty({ description: '0 = Monday … 6 = Sunday', example: 0 }) @Type(() => Number) @IsInt() @Min(0) @Max(6) day!: number;
+  @ApiProperty({ example: 'Payroll migration' }) @Transform(trim) @IsString() @Length(1, TIMESHEET_PROJECT_MAX) project!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'Development' }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(TIMESHEET_ACTIVITY_MAX) activity?: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '09:00' }) @Transform(emptyToNull) @optionalNullable @Matches(TIME, { message: `start ${TIME_MESSAGE}` }) start?: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '18:00' }) @Transform(emptyToNull) @optionalNullable @Matches(TIME, { message: `end ${TIME_MESSAGE}` }) end?: string | null;
+  @ApiPropertyOptional({ description: 'Minutes, when no From–To is given', example: 480 }) @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1440) minutes?: number;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(TIMESHEET_NOTE_MAX) note?: string | null;
+}
+export class SaveTimesheetDto {
+  @ApiProperty({ example: '2026-11-09', description: 'Monday of the week' }) @IsISO8601(DATE) weekStart!: string;
+  @ApiProperty({ type: [TimesheetEntryDto] }) @IsArray() @ArrayMaxSize(TIMESHEET_MAX_ENTRIES) @ValidateNested({ each: true }) @Type(() => TimesheetEntryDto) entries!: TimesheetEntryDto[];
+  @ApiPropertyOptional({ nullable: true, description: 'Note for the reviewer' }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+export class TimesheetWeekQueryDto {
+  @ApiPropertyOptional({ example: '2026-11-09', description: 'Any day of the week (defaults to this week)' }) @IsOptional() @IsISO8601(DATE) weekStart?: string;
+}
+export class TimesheetQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: ['mine', 'team'], default: 'mine' }) @IsOptional() @IsIn(['mine', 'team']) view?: 'mine' | 'team';
+  @ApiPropertyOptional({ enum: TIMESHEET_STATUSES }) @IsOptional() @IsIn(TIMESHEET_STATUSES) status?: TimesheetStatus;
+  @ApiPropertyOptional({ example: '2026-11-09' }) @IsOptional() @IsISO8601(DATE) weekStart?: string;
+}
+export class TimesheetBoardQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ example: '2026-11-09' }) @IsOptional() @IsISO8601(DATE) weekStart?: string;
+  @ApiPropertyOptional({ enum: [...TIMESHEET_STATUSES, 'MISSING'] }) @IsOptional() @IsIn([...TIMESHEET_STATUSES, 'MISSING']) status?: TimesheetWeekStatus;
+}
+export class TimesheetRemindDto {
+  @ApiProperty({ example: '2026-11-02' }) @IsISO8601(DATE) weekStart!: string;
 }
 
 export class PeriodQueryDto {

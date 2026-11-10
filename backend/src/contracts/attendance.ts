@@ -59,6 +59,72 @@ export const FALLBACK_SHIFT = {
 /** Employees can request regularization for days up to this many days in the past. */
 export const REGULARIZATION_WINDOW_DAYS = 45;
 
+// ---- Timesheets ---------------------------------------------------------------------------------
+
+/** A weekly timesheet: saved as a draft, submitted for review, then approved or sent back (rejected). */
+export const TIMESHEET_STATUSES = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'] as const;
+export type TimesheetStatus = (typeof TIMESHEET_STATUSES)[number];
+/** Week status on the HR board: a timesheet's status, or no timesheet at all. */
+export type TimesheetWeekStatus = TimesheetStatus | 'MISSING';
+
+/**
+ * What payroll does when a required timesheet is not approved by its due date: only flag it on the payslip, count
+ * the week's working days as loss of pay, or hold the employee's salary in the run.
+ */
+export const TIMESHEET_MISSED_ACTIONS = ['FLAG', 'LOP', 'HOLD'] as const;
+export type TimesheetMissedAction = (typeof TIMESHEET_MISSED_ACTIONS)[number];
+
+export const TIMESHEET_MAX_ENTRIES = 80;
+export const TIMESHEET_PROJECT_MAX = 120;
+export const TIMESHEET_ACTIVITY_MAX = 120;
+export const TIMESHEET_NOTE_MAX = 300;
+
+/**
+ * One activity on one day of the week (`day` 0 = Monday … 6 = Sunday): the project, what was done, and either a
+ * From–To time range (local `HH:MM`; a range ending at or before its start runs past midnight) or just a duration.
+ */
+export interface TimesheetEntry {
+  day: number;
+  project: string;
+  activity: string | null;
+  start: string | null;
+  end: string | null;
+  minutes: number;
+  note: string | null;
+}
+
+/** Minutes from `start` to `end` (`HH:MM`); an end at or before the start is on the next day. */
+export function rangeMinutes(start: string, end: string): number {
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const diff = toMin(end) - toMin(start);
+  return diff > 0 ? diff : diff + 1440;
+}
+
+/** Payroll holds a salary with this reason when timesheets are missing; recalculating releases it once they're in. */
+export const TIMESHEET_HOLD_REASON = 'Timesheets missing';
+
+const dayNumber = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay();
+const shiftDate = (date: string, days: number) => {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+/** Timesheet weeks run Monday to Sunday; this is the Monday of the week containing `date`. */
+export function weekStartOf(date: string): string {
+  return shiftDate(date, -((dayNumber(date) + 6) % 7));
+}
+
+/** The timesheet for a week is due on the first `dueWeekday` (0 = Sunday … 6 = Saturday) after the week ends. */
+export function timesheetDueDate(weekStart: string, dueWeekday: number): string {
+  const sunday = shiftDate(weekStart, 6);
+  for (let i = 1; i <= 7; i++) {
+    const d = shiftDate(sunday, i);
+    if (dayNumber(d) === dueWeekday) return d;
+  }
+  return shiftDate(sunday, 1);
+}
+
 /** Countries whose official holiday calendar can be imported into the organization's holidays. */
 export const HOLIDAY_COUNTRIES = {
   IN: 'India',

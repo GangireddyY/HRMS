@@ -1,4 +1,18 @@
-import type { AttendanceRecordStatus, AttendanceSource, DayStatus, HolidayCountry, LeaveSession, OfficialHolidayKind, OvertimeStatus, RegularizationStatus, WorkMode } from '@contracts';
+import type {
+  AttendanceRecordStatus,
+  AttendanceSource,
+  DayStatus,
+  HolidayCountry,
+  LeaveSession,
+  OfficialHolidayKind,
+  OvertimeStatus,
+  RegularizationStatus,
+  TimesheetEntry,
+  TimesheetMissedAction,
+  TimesheetStatus,
+  TimesheetWeekStatus,
+  WorkMode,
+} from '@contracts';
 
 export interface AttendanceRecord {
   id: string;
@@ -131,6 +145,81 @@ export interface WorkFromHome {
   createdAt: string;
   employee: { id: string; name: string; employeeCode: string } | null;
   permissions: { review: boolean; cancel: boolean };
+}
+
+export type TimesheetDayKind = 'WORKING' | 'WEEKLY_OFF' | 'HOLIDAY' | 'LEAVE' | 'NOT_EMPLOYED';
+
+export interface TimesheetDay {
+  date: string;
+  kind: TimesheetDayKind;
+  label: string | null;
+  expectedMinutes: number;
+  workedMinutes: number | null;
+  checkIn: string | null;
+  checkOut: string | null;
+  future: boolean;
+}
+
+export interface TimesheetRulesView {
+  required: boolean;
+  dueWeekday: number;
+  missedAction: TimesheetMissedAction;
+  from: string | null;
+}
+
+export interface Timesheet {
+  id: string;
+  weekStart: string;
+  weekEnd: string;
+  dueDate: string;
+  status: TimesheetStatus;
+  entries: TimesheetEntry[];
+  totalMinutes: number;
+  dayTotals: number[];
+  note: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+  updatedAt: string;
+  employee: { id: string; name: string; employeeCode: string; department: string | null } | null;
+  permissions: { review: boolean; withdraw: boolean };
+}
+
+export interface TimesheetDetail extends Timesheet {
+  days: TimesheetDay[];
+}
+
+export interface TimesheetWeek {
+  weekStart: string;
+  weekEnd: string;
+  today: string;
+  dueDate: string;
+  rules: TimesheetRulesView;
+  days: TimesheetDay[];
+  timesheet: Timesheet | null;
+  previous: { weekStart: string; entries: TimesheetEntry[] } | null;
+  canEdit: boolean;
+}
+
+export interface TimesheetBoardRow {
+  employee: { id: string; name: string; employeeCode: string; department: string | null };
+  status: TimesheetWeekStatus;
+  timesheetId: string | null;
+  totalMinutes: number;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+}
+
+export interface TimesheetBoard {
+  weekStart: string;
+  weekEnd: string;
+  dueDate: string;
+  overdue: boolean;
+  rules: TimesheetRulesView;
+  summary: Record<TimesheetWeekStatus, number> & { total: number };
+  items: TimesheetBoardRow[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
 export interface Shift {

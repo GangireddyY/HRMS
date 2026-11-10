@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Op, UniqueConstraintError, type Transaction, type WhereOptions } from 'sequelize';
-import { OVERTIME_HOURLY_DIVISOR, financialYearOf, professionalTaxState, type ProfessionalTaxState } from '../../contracts';
+import { OVERTIME_HOURLY_DIVISOR, TIMESHEET_HOLD_REASON, financialYearOf, professionalTaxState, weekStartOf, type ProfessionalTaxState, type TimesheetStatus } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
@@ -32,12 +32,14 @@ import {
   ReimbursementClaim,
   RolePermission,
   TaxDeclarationRecord,
+  Timesheet,
   User,
   type PayslipLine,
 } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { AttendanceRulesService, type DayLeave, type EmployeeContext } from '../attendance/attendance-rules.service';
+import { timesheetGaps, weeksPhrase, type TimesheetGaps, type TimesheetRules } from '../attendance/timesheet-rules';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AdjustmentDto, CreateRunDto, PayRunDto, RejectRunDto, ReviewRunDto, RunPayslipQueryDto, RunQueryDto, UpdatePayslipDto } from './dto/payroll.dto';
@@ -120,6 +122,8 @@ interface CalcContext {
   days: string[];
   today: string;
   attendanceLop: boolean;
+  /** Timesheet rules when the organization requires timesheets (and uses attendance). */
+  timesheets: TimesheetRules | null;
 }
 
 /** Payroll runs: calculation, review workflow (process → approve → pay), payslips and statutory exports. */
@@ -552,7 +556,19 @@ export class PayrollRunsService {
     if (attendanceLop && !(await AttendancePeriod.count({ where: { year: run.year, month: run.month } }))) {
       throw AppError.conflict(`Close attendance for ${periodLabel(run.year, run.month)} first (loss of pay is taken from attendance)`);
     }
-    return { run, settings, orgState: org?.state ?? null, from, to, days, today, attendanceLop };
+    const timesheets: TimesheetRules | null =
+      settings.timesheetsRequired && auth.features.has('attendance')
+        ? { required: true, from: settings.timesheetsFrom, dueWeekday: settings.timesheetDueWeekday, missedAction: settings.timesheetMissedAction }
+        : null;
+    return { run, settings, orgState: org?.state ?? null, from, to, days, today, attendanceLop, timesheets };
+  }
+
+  /** Days a timesheet must cover: employed, not a holiday or weekly off, and not a full day of leave. */
+  private timesheetDay(date: string, ctx: CalcContext, e: Employee, context: EmployeeContext, holidays: Map<string, Holiday>, leave: Map<string, DayLeave> | undefined): boolean {
+    const dayLeave = leave?.get(date);
+    const status = this.rules.dayStatus(date, ctx.today, e, context, holidays.get(date), undefined, dayLeave);
+    if (status === 'NOT_EMPLOYED' || status === 'HOLIDAY' || status === 'WEEKLY_OFF') return false;
+    return !(status === 'ON_LEAVE' && dayLeave?.session === 'FULL');
   }
 
   private async calculateEmployees(auth: AuthContext, ctx: CalcContext, transaction: Transaction, only?: string[]) {
@@ -609,6 +625,12 @@ export class PayrollRunsService {
     ]);
     const recordsBy = new Map<string, Map<string, AttendanceRecord>>();
     for (const r of records) recordsBy.set(r.employeeId, (recordsBy.get(r.employeeId) ?? new Map()).set(r.workDate, r));
+    const sheets =
+      ctx.timesheets && ids.length
+        ? await Timesheet.findAll({ where: { employeeId: ids, weekStart: { [Op.between]: [weekStartOf(from), to] } }, attributes: ['id', 'employeeId', 'weekStart', 'status'], transaction })
+        : [];
+    const sheetStatus = new Map<string, Map<string, TimesheetStatus>>();
+    for (const s of sheets) sheetStatus.set(s.employeeId, (sheetStatus.get(s.employeeId) ?? new Map()).set(s.weekStart, s.status));
     const existingBy = new Map(existing.map((p) => [p.employeeId, p]));
     const declarationBy = new Map(declarations.map((d) => [d.employeeId, d]));
 
@@ -618,7 +640,24 @@ export class PayrollRunsService {
     const claimIdsInRun: string[] = [];
     for (const e of payable) {
       const prior = existingBy.get(e.id);
-      const excluded = prior?.excluded ?? false;
+      const gaps = ctx.timesheets
+        ? timesheetGaps({
+            days,
+            today: ctx.today,
+            rules: ctx.timesheets,
+            isWorkingDay: (date) => this.timesheetDay(date, ctx, e, contexts.get(e.id)!, holidays, leave.get(e.id)),
+            statusOf: (week) => sheetStatus.get(e.id)?.get(week),
+          })
+        : null;
+      // Missing timesheets hold the salary (with "hold" as the rule); recalculating releases that hold once they're in.
+      const timesheetHold = ctx.timesheets?.missedAction === 'HOLD' && !!gaps?.missed.length;
+      const heldForTimesheets = !!prior?.excluded && !!prior.excludeReason?.startsWith(TIMESHEET_HOLD_REASON);
+      const excluded = timesheetHold || (heldForTimesheets ? false : (prior?.excluded ?? false));
+      const hold = timesheetHold
+        ? { excluded: true, excludeReason: `${TIMESHEET_HOLD_REASON} for ${weeksPhrase(gaps!.missed)}`.slice(0, 300) }
+        : heldForTimesheets
+          ? { excluded: false, excludeReason: null }
+          : {};
       const empClaims = excluded ? [] : claims.filter((c) => c.employeeId === e.id);
       claimIdsInRun.push(...empClaims.map((c) => c.id));
       const values = this.computePayslip(ctx, e, {
@@ -637,9 +676,10 @@ export class PayrollRunsService {
         benefits: excluded ? [] : latestPerPlan(benefits.filter((b) => b.employeeId === e.id)),
         loans: excluded ? [] : (loans.get(e.id) ?? []),
         overtime: excluded ? [] : overtime.filter((o) => o.employeeId === e.id),
+        timesheetGaps: gaps,
       });
-      if (prior) await prior.update(values, { transaction });
-      else await Payslip.create({ organizationId: auth.organizationId!, runId: run.id, employeeId: e.id, ...values }, { transaction });
+      if (prior) await prior.update({ ...values, ...hold }, { transaction });
+      else await Payslip.create({ organizationId: auth.organizationId!, runId: run.id, employeeId: e.id, ...values, ...hold }, { transaction });
     }
 
     // Approved claims are paid by this run (unless the employee is held); others go back to the queue.
@@ -670,12 +710,15 @@ export class PayrollRunsService {
       benefits: BenefitEnrollment[];
       loans: DueInstalment[];
       overtime: AttendanceOvertime[];
+      timesheetGaps: TimesheetGaps | null;
     },
   ) {
     const { run, settings, days, today } = ctx;
     const warnings: string[] = [];
     let missedPunches = 0;
     let unsalariedDays = 0;
+    let timesheetLopDays = 0;
+    const timesheetLop = ctx.timesheets?.missedAction === 'LOP' ? input.timesheetGaps?.missedDays : undefined;
     const payDays: PayDay[] = days.map((date) => {
       const employed = date >= e.dateOfJoining && (!e.exitDate || date <= e.exitDate);
       if (!employed) return { date, salary: null, lop: 0 };
@@ -697,6 +740,10 @@ export class PayrollRunsService {
         else if (status === 'HALF_DAY') lop = dayLeave && dayLeave.session !== 'FULL' && dayLeave.isPaid ? 0 : 0.5;
         else if (status === 'MISSED_PUNCH') missedPunches++;
       }
+      if (timesheetLop?.has(date)) {
+        if (lop < 1) timesheetLopDays += 1 - lop;
+        lop = 1;
+      }
       return { date, salary: salary.components as SalaryComponent[], lop: Math.min(1, lop) };
     });
     const salariedDays = payDays.filter((d) => d.salary).length;
@@ -707,6 +754,19 @@ export class PayrollRunsService {
     const latest = input.salaries[input.salaries.length - 1]!;
     if (unsalariedDays) warnings.push(`No salary for ${unsalariedDays} day${unsalariedDays === 1 ? '' : 's'} of employment this month`);
     if (missedPunches) warnings.push(`${missedPunches} missed punch${missedPunches === 1 ? '' : 'es'} counted as worked`);
+    const gaps = input.timesheetGaps;
+    if (gaps && ctx.timesheets) {
+      const action = ctx.timesheets.missedAction;
+      if (gaps.missed.length) {
+        const phrase = weeksPhrase(gaps.missed);
+        if (action === 'LOP') warnings.push(`Timesheets missing for ${phrase}: ${timesheetLopDays} working day${timesheetLopDays === 1 ? '' : 's'} counted as loss of pay`);
+        else if (action === 'HOLD') warnings.push(`Salary held: timesheets missing for ${phrase}`);
+        else warnings.push(`Timesheets missing for ${phrase}`);
+      }
+      // With pay at stake, a timesheet still waiting for review blocks submitting the run.
+      if (gaps.pending.length) warnings.push(`${action === 'FLAG' ? '' : '! '}Timesheet${gaps.pending.length === 1 ? '' : 's'} for ${weeksPhrase(gaps.pending)} waiting for review`);
+      if (gaps.notDue.length) warnings.push(`Timesheet for ${weeksPhrase(gaps.notDue)} isn't due yet (not counted)`);
+    }
 
     // Earnings
     const earningAdjustments = input.adjustments.filter((a) => a.kind === 'EARNING');

@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { AttendanceRecordStatus, AttendanceSource, OvertimeStatus, PunchDirection, RegularizationStatus, WorkMode } from '../../contracts';
+import type { AttendanceRecordStatus, AttendanceSource, OvertimeStatus, PunchDirection, RegularizationStatus, TimesheetEntry, TimesheetStatus, WorkMode } from '../../contracts';
 import { Employee } from './people.models';
 
 @Table({ tableName: 'shifts', underscored: true })
@@ -155,6 +155,30 @@ export class WorkFromHomeRequest extends Model<InferAttributes<WorkFromHomeReque
   @Column(DataType.STRING(500)) reason: string;
   @Column(DataType.STRING(10)) status: CreationOptional<RegularizationStatus>;
   @Column(DataType.UUID) requestedById: CreationOptional<string | null>;
+  @Column(DataType.UUID) reviewedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+}
+
+/** One employee's week (Monday to Sunday). Entries are kept as JSON: day, project, activity, From–To, minutes, note. */
+@Table({ tableName: 'timesheets', underscored: true })
+export class Timesheet extends Model<InferAttributes<Timesheet>, InferCreationAttributes<Timesheet>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.DATEONLY) weekStart: string;
+  @Column(DataType.STRING(10)) status: CreationOptional<TimesheetStatus>;
+  @Column(DataType.JSONB) entries: CreationOptional<TimesheetEntry[]>;
+  @Column(DataType.INTEGER) totalMinutes: CreationOptional<number>;
+  @Column(DataType.STRING(500)) note: CreationOptional<string | null>;
+  @Column(DataType.DATE) submittedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) submittedById: CreationOptional<string | null>;
   @Column(DataType.UUID) reviewedById: CreationOptional<string | null>;
   @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
   @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;

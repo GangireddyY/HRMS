@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { AlertTriangle, Blocks, Building2, CalendarCheck, Clock, Coins, HeartPulse, Home, Landmark, Layers, Pencil, PiggyBank, Plus, Receipt, Scale, Sparkles, Trash2 } from '@lucide/vue';
-import { PROFESSIONAL_TAX_STATES } from '@contracts';
+import { useRoute } from 'vue-router';
+import { AlertTriangle, Blocks, Building2, CalendarCheck, CalendarClock, CalendarX, Clock, Coins, Flag, HeartPulse, Home, Landmark, Layers, PauseCircle, Pencil, PiggyBank, Plus, Receipt, Scale, Sparkles, Trash2 } from '@lucide/vue';
+import { PROFESSIONAL_TAX_STATES, type TimesheetMissedAction } from '@contracts';
+import { MISSED_ACTION_LABELS, WEEKDAY_NAMES } from '@/modules/attendance/utils/timesheet-format';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import ComponentFormModal from '@/modules/payroll/components/ComponentFormModal.vue';
 import StructureFormModal from '@/modules/payroll/components/StructureFormModal.vue';
 import type { SalaryComponentDef, SalaryStructure } from '@/modules/payroll/types';
 import { lineRule } from '@/modules/payroll/utils/payroll-format';
-import { AppAddTile, AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppStatStrip, AppSwitch, AppTabs, type StripItem } from '@/shared/components';
+import { AppAddTile, AppAlert, AppBadge, AppButton, AppCard, AppDatePicker, AppEmptyState, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppStatStrip, AppSwitch, AppTabs, type StripItem } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -17,7 +19,8 @@ import { useFeedbackStore } from '@/shared/stores/feedback.store';
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const canConfigure = computed(() => auth.can('payroll.configure'));
-const tab = ref('structures');
+const route = useRoute();
+const tab = ref(['structures', 'components', 'statutory'].includes(String(route.query.tab)) ? String(route.query.tab) : 'structures');
 const components = useAsync(() => payrollApi.components());
 const structures = useAsync(() => payrollApi.structures());
 const tabs = computed(() => [
@@ -88,14 +91,37 @@ async function removeComponent(c: SalaryComponentDef) {
 // Statutory settings
 const settings = useAsync(() => payrollApi.settings());
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const s = reactive({ pfEnabled: true, pfRestrictToCeiling: true, esiEnabled: true, ptEnabled: true, ptState: null as string | null, lopFromAttendance: false, pfEstablishmentCode: '', esiEmployerCode: '', tan: '', overtimeMultiplier: 2 as number | string, overtimeBasis: 'GROSS' as 'BASIC' | 'GROSS' });
+const s = reactive({
+  pfEnabled: true,
+  pfRestrictToCeiling: true,
+  esiEnabled: true,
+  ptEnabled: true,
+  ptState: null as string | null,
+  lopFromAttendance: false,
+  pfEstablishmentCode: '',
+  esiEmployerCode: '',
+  tan: '',
+  overtimeMultiplier: 2 as number | string,
+  overtimeBasis: 'GROSS' as 'BASIC' | 'GROSS',
+  timesheetsRequired: false,
+  timesheetsFrom: '' as string | undefined,
+  timesheetDueWeekday: 1,
+  timesheetMissedAction: 'FLAG' as TimesheetMissedAction,
+  timesheetAutoRemind: true,
+});
+const weekdayOptions = WEEKDAY_NAMES.map((label, value) => ({ value, label }));
+const missedOptions = [
+  { value: 'FLAG' as const, icon: Flag, ...MISSED_ACTION_LABELS.FLAG },
+  { value: 'LOP' as const, icon: CalendarX, ...MISSED_ACTION_LABELS.LOP },
+  { value: 'HOLD' as const, icon: PauseCircle, ...MISSED_ACTION_LABELS.HOLD },
+];
 const overtimeBasisOptions = [
   { value: 'GROSS', label: 'Monthly gross ÷ 26 ÷ 8' },
   { value: 'BASIC', label: 'Monthly Basic ÷ 26 ÷ 8' },
 ];
 const fromSettings = () => {
   const v = settings.data.value!;
-  return { ...v, pfEstablishmentCode: v.pfEstablishmentCode ?? '', esiEmployerCode: v.esiEmployerCode ?? '', tan: v.tan ?? '' };
+  return { ...v, pfEstablishmentCode: v.pfEstablishmentCode ?? '', esiEmployerCode: v.esiEmployerCode ?? '', tan: v.tan ?? '', timesheetsFrom: v.timesheetsFrom ?? '' };
 };
 watch(
   () => settings.data.value,
@@ -104,7 +130,24 @@ watch(
   },
   { immediate: true },
 );
-const FIELDS = ['pfEnabled', 'pfRestrictToCeiling', 'esiEnabled', 'ptEnabled', 'ptState', 'lopFromAttendance', 'pfEstablishmentCode', 'esiEmployerCode', 'tan', 'overtimeMultiplier', 'overtimeBasis'] as const;
+const FIELDS = [
+  'pfEnabled',
+  'pfRestrictToCeiling',
+  'esiEnabled',
+  'ptEnabled',
+  'ptState',
+  'lopFromAttendance',
+  'pfEstablishmentCode',
+  'esiEmployerCode',
+  'tan',
+  'overtimeMultiplier',
+  'overtimeBasis',
+  'timesheetsRequired',
+  'timesheetsFrom',
+  'timesheetDueWeekday',
+  'timesheetMissedAction',
+  'timesheetAutoRemind',
+] as const;
 const dirty = computed(() => {
   if (!settings.data.value) return false;
   const saved = fromSettings();
@@ -117,7 +160,14 @@ async function saveSettings() {
   reset();
   savingSettings.value = true;
   try {
-    settings.data.value = await payrollApi.updateSettings({ ...s, overtimeMultiplier: Number(s.overtimeMultiplier), pfEstablishmentCode: s.pfEstablishmentCode || null, esiEmployerCode: s.esiEmployerCode || null, tan: s.tan || null });
+    settings.data.value = await payrollApi.updateSettings({
+      ...s,
+      overtimeMultiplier: Number(s.overtimeMultiplier),
+      pfEstablishmentCode: s.pfEstablishmentCode || null,
+      esiEmployerCode: s.esiEmployerCode || null,
+      tan: s.tan || null,
+      timesheetsFrom: s.timesheetsFrom || undefined,
+    });
     feedback.success('Payroll settings saved');
   } catch (e) {
     handle(e, 'Could not save the settings');
@@ -299,6 +349,66 @@ const ruleTone = (calculation: string) => (calculation === 'BALANCE' ? 'bg-speci
             <div class="grid gap-3 sm:grid-cols-2">
               <AppInput v-model="s.overtimeMultiplier" :disabled="!canConfigure" type="number" :min="1" :max="5" :step="0.5" label="Rate" suffix="× hourly" help="The Factories Act sets twice the ordinary rate." :error="fieldErrors.overtimeMultiplier" />
               <AppSelect v-model="s.overtimeBasis" :disabled="!canConfigure" label="Hourly rate" :options="overtimeBasisOptions" :clearable="false" :error="fieldErrors.overtimeBasis" />
+            </div>
+          </AppCard>
+          <AppCard
+            class="lg:col-span-2"
+            title="Timesheets"
+            :icon="CalendarClock"
+            description="Employees submit a timesheet every week (Monday to Sunday); their manager or HR reviews it. Payroll only counts approved timesheets."
+          >
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+              <div class="space-y-4">
+                <AppSwitch
+                  v-model="s.timesheetsRequired"
+                  :disabled="!canConfigure"
+                  label="Require a timesheet every week"
+                  description="Only weeks with working days count — holidays, weekly offs and full days of leave are left out."
+                />
+                <AppSelect
+                  v-model="s.timesheetDueWeekday"
+                  :disabled="!canConfigure || !s.timesheetsRequired"
+                  label="Due on"
+                  :options="weekdayOptions"
+                  :clearable="false"
+                  help="Of the week after, e.g. Monday for the previous week."
+                  :error="fieldErrors.timesheetDueWeekday"
+                />
+                <AppDatePicker
+                  v-model="s.timesheetsFrom"
+                  :disabled="!canConfigure || !s.timesheetsRequired"
+                  label="Counted from"
+                  :help="s.timesheetsFrom ? 'Weeks before this one are never treated as missed.' : 'Leave empty to start with the current week.'"
+                  :error="fieldErrors.timesheetsFrom"
+                />
+                <AppSwitch
+                  v-model="s.timesheetAutoRemind"
+                  :disabled="!canConfigure || !s.timesheetsRequired"
+                  label="Send reminders automatically"
+                  :description="`At 9:00 on ${WEEKDAY_NAMES[s.timesheetDueWeekday]} to everyone who hasn’t submitted, and again the next day — when managers also get a list of who in their team is missing.`"
+                />
+              </div>
+              <fieldset class="min-w-0 space-y-2" :disabled="!canConfigure || !s.timesheetsRequired">
+                <legend class="mb-2 text-sm font-medium text-fg">When a week’s timesheet isn’t approved by its due date</legend>
+                <label
+                  v-for="a in missedOptions"
+                  :key="a.value"
+                  :class="[
+                    'flex cursor-pointer items-start gap-3 rounded-xl p-3 ring-1 transition ring-inset has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60',
+                    s.timesheetMissedAction === a.value ? 'bg-accent-soft/60 ring-brand-600/40' : 'ring-line hover:bg-surface-muted/60',
+                  ]"
+                >
+                  <input v-model="s.timesheetMissedAction" type="radio" name="timesheet-missed" :value="a.value" class="mt-1 accent-brand-600" />
+                  <span :class="['flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', s.timesheetMissedAction === a.value ? 'bg-surface text-accent-fg' : 'bg-surface-muted text-fg-muted']" aria-hidden="true">
+                    <component :is="a.icon" :size="16" />
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-sm font-medium text-fg">{{ a.label }}</span>
+                    <span class="block text-xs text-fg-muted">{{ a.description }}</span>
+                  </span>
+                </label>
+                <p class="pt-1 text-xs text-fg-muted">When pay is affected, a timesheet still waiting for review blocks submitting the payroll run, so it gets reviewed first.</p>
+              </fieldset>
             </div>
           </AppCard>
           <div v-if="canConfigure" class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 rounded-xl border border-line bg-surface/95 px-4 py-3 shadow-pop backdrop-blur lg:col-span-2">

@@ -11,6 +11,7 @@ import {
   ShiftAssignment,
   ShiftRotation,
   WorkFromHomeRequest,
+  Timesheet,
 } from './attendance.models';
 import { LeaveLedgerEntry, LeaveRequest, LeaveType } from './leave.models';
 import { OnboardingCase, OnboardingTask, OnboardingTemplate, OnboardingTemplateTask, ProbationReview } from './onboarding.models';
@@ -113,6 +114,7 @@ export const ALL_MODELS = [
   AttendancePeriod,
   AttendanceOvertime,
   WorkFromHomeRequest,
+  Timesheet,
   ShiftRotation,
   ShiftAssignment,
   AttendanceDevice,
@@ -221,6 +223,7 @@ export const TENANT_MODELS = [
   AttendancePeriod,
   AttendanceOvertime,
   WorkFromHomeRequest,
+  Timesheet,
   ShiftRotation,
   ShiftAssignment,
   AttendanceDevice,

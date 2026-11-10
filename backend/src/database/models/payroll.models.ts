@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime } from '../../contracts';
+import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '../../contracts';
 import { Employee } from './people.models';
 
 /** Decimal columns come back from PostgreSQL as strings. */
@@ -19,6 +19,16 @@ export class PayrollSettings extends Model<InferAttributes<PayrollSettings>, Inf
   @Column(DataType.STRING(10)) tan: CreationOptional<string | null>;
   @Column(DataType.DECIMAL(3, 1)) overtimeMultiplier: CreationOptional<string>;
   @Column(DataType.STRING(5)) overtimeBasis: CreationOptional<'BASIC' | 'GROSS'>;
+  @Column(DataType.BOOLEAN) timesheetsRequired: CreationOptional<boolean>;
+  /** Monday of the first week that needs a timesheet (set when the rule is switched on). */
+  @Column(DataType.DATEONLY) timesheetsFrom: CreationOptional<string | null>;
+  @Column(DataType.SMALLINT) timesheetDueWeekday: CreationOptional<number>;
+  @Column(DataType.STRING(4)) timesheetMissedAction: CreationOptional<TimesheetMissedAction>;
+  /** Remind people automatically on the due day and the day after. */
+  @Column(DataType.BOOLEAN) timesheetAutoRemind: CreationOptional<boolean>;
+  /** Monday of the last week reminded on its due day / the day after (written by the reminder job only). */
+  @Column(DataType.DATEONLY) timesheetDueReminded: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) timesheetOverdueReminded: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
