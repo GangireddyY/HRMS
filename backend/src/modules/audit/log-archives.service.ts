@@ -119,7 +119,7 @@ export class LogArchivesService {
       createdById: auth.userId,
     });
     archive.storageKey = `organizations/${auth.organizationId}/log-archives/${archive.id}.csv`;
-    await this.storage.put(archive.storageKey, data, 'text/csv; charset=utf-8');
+    await this.storage.put(archive.storageKey, data, 'text/csv; charset=utf-8', { generated: true });
     try {
       await this.db.transaction(async (transaction) => {
         await archive.save({ transaction });

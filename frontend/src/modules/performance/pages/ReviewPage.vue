@@ -27,7 +27,7 @@ import {
   UserRound,
   UsersRound,
 } from '@lucide/vue';
-import type { ReviewStage } from '@contracts';
+import { POTENTIAL_LABELS, type ReviewStage } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import ColleaguePicker from '@/modules/performance/components/ColleaguePicker.vue';
 import GoalFormModal from '@/modules/performance/components/GoalFormModal.vue';
@@ -36,7 +36,7 @@ import RatingInput from '@/modules/performance/components/RatingInput.vue';
 import type { CompetencyRating, Goal, ReviewDetail } from '@/modules/performance/types';
 import { STAGE_LABELS, STAGE_ORDER, ratingText, stageTone } from '@/modules/performance/utils/performance-format';
 import { RATING_FILL, RATING_TEXT, pct, plural, relativeDay, todayIso } from '@/modules/performance/utils/performance-ops';
-import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppErrorState, AppInput, AppModal, AppPageHeader, AppSkeleton, AppTextarea } from '@/shared/components';
+import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppErrorState, AppInput, AppModal, AppPageHeader, AppSegmented, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -182,6 +182,8 @@ async function calibrate() {
   calibrateOpen.value = false;
   await act('calibrate', () => performanceApi.calibrate(id.value, calibration.rating!, calibration.note), 'Rating calibrated');
 }
+const POTENTIAL_OPTIONS = ([1, 2, 3] as const).map((v) => ({ value: String(v), label: POTENTIAL_LABELS[v] }));
+const setPotential = (v: string) => act('potential', () => performanceApi.setPotential(id.value, Number(v)), 'Potential saved');
 const reassignOpen = ref(false);
 const newReviewer = ref<string | null>(null);
 async function reassign() {
@@ -601,6 +603,14 @@ const feedbackGiven = computed(() => (r.value?.feedback ?? []).filter((f) => f.s
               </dl>
             </div>
             <div class="space-y-4 p-4">
+              <div v-if="r.permissions.setPotential || r.manager.potential" class="flex flex-wrap items-center gap-3 rounded-lg bg-surface-muted/60 px-3 py-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-fg">Potential</p>
+                  <p class="text-xs text-fg-muted">For the 9-box in calibration. Never shown to {{ r.employee.name.split(' ')[0] }}.</p>
+                </div>
+                <AppSegmented v-if="r.permissions.setPotential" :model-value="String(r.manager.potential ?? '')" :options="POTENTIAL_OPTIONS" label="Potential" size="sm" @update:model-value="setPotential" />
+                <AppBadge v-else tone="neutral">{{ POTENTIAL_LABELS[r.manager.potential as 1 | 2 | 3] }}</AppBadge>
+              </div>
               <p v-if="r.manager.calibrationNote" class="flex gap-2 rounded-lg bg-special-soft px-3 py-2 text-sm text-fg"><Scale :size="15" class="mt-0.5 shrink-0 text-special-fg" aria-hidden="true" /><span><span class="font-medium">Calibration:</span> {{ r.manager.calibrationNote }}</span></p>
               <div v-if="r.cycle.competencies.length">
                 <h3 class="mb-2 text-2xs font-semibold tracking-wide text-fg-muted uppercase">Competencies</h3>

@@ -12,8 +12,8 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { DecideReviewDto, ProbationReviewDto, ProbationReviewQueryDto } from './dto/onboarding.dto';
+import { fullName } from '../../common/utils/names';
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const EMPLOYEE_ATTRS = ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'status', 'dateOfJoining', 'probationEndDate', 'confirmedOn', 'managerId', 'departmentId', 'membershipId'];
 const EMPLOYEE_INCLUDE = [
   { model: Department, attributes: ['id', 'name'] },

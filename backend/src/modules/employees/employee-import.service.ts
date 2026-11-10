@@ -39,10 +39,20 @@ type ColumnKey = (typeof COLUMNS)[number]['key'];
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_/-]{0,29}$/;
 const PHONE = /^\+?[0-9 ()-]{7,20}$/;
 const GENDER_ALIASES: Record<string, Gender> = {
-  male: 'MALE', m: 'MALE', female: 'FEMALE', f: 'FEMALE',
-  non_binary: 'NON_BINARY', nonbinary: 'NON_BINARY', undisclosed: 'UNDISCLOSED', prefer_not_to_say: 'UNDISCLOSED',
+  male: 'MALE',
+  m: 'MALE',
+  female: 'FEMALE',
+  f: 'FEMALE',
+  non_binary: 'NON_BINARY',
+  nonbinary: 'NON_BINARY',
+  undisclosed: 'UNDISCLOSED',
+  prefer_not_to_say: 'UNDISCLOSED',
 };
-const normalizeHeader = (h: string) => h.trim().toLowerCase().replace(/[\s-]+/g, '_');
+const normalizeHeader = (h: string) =>
+  h
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 const today = () => new Date().toISOString().slice(0, 10);
 const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && isISO8601(v, { strict: true, strictSeparator: true });
 
@@ -105,7 +115,14 @@ export class EmployeeImportService {
     };
 
     const codeColumn = index.get('employeeCode');
-    const allFileCodes = new Set(codeColumn === undefined ? [] : table.slice(1).map((cells) => (cells[codeColumn] ?? '').trim().toLowerCase()).filter(Boolean));
+    const allFileCodes = new Set(
+      codeColumn === undefined
+        ? []
+        : table
+            .slice(1)
+            .map((cells) => (cells[codeColumn] ?? '').trim().toLowerCase())
+            .filter(Boolean),
+    );
     const rows: ParsedRow[] = [];
     const fileCodes = new Map<string, number>();
     let invalidRows = 0;
@@ -136,7 +153,10 @@ export class EmployeeImportService {
         else fileCodes.set(code.toLowerCase(), line);
       }
 
-      for (const [key, column] of [['workEmail', 'work_email'], ['personalEmail', 'personal_email']] as const) {
+      for (const [key, column] of [
+        ['workEmail', 'work_email'],
+        ['personalEmail', 'personal_email'],
+      ] as const) {
         const v = get(key).toLowerCase();
         if (v && (!isEmail(v) || v.length > 254)) issue(line, column, `"${v}" is not a valid email address`);
         values[key] = v || null;
@@ -146,7 +166,11 @@ export class EmployeeImportService {
       values.phone = phone || null;
 
       const dates: Record<'dateOfBirth' | 'dateOfJoining' | 'probationEndDate', string | null> = { dateOfBirth: null, dateOfJoining: null, probationEndDate: null };
-      for (const [key, column] of [['dateOfBirth', 'date_of_birth'], ['dateOfJoining', 'date_of_joining'], ['probationEndDate', 'probation_end_date']] as const) {
+      for (const [key, column] of [
+        ['dateOfBirth', 'date_of_birth'],
+        ['dateOfJoining', 'date_of_joining'],
+        ['probationEndDate', 'probation_end_date'],
+      ] as const) {
         const v = get(key);
         if (!v) {
           if (key === 'dateOfJoining') issue(line, column, 'Date of joining is required');

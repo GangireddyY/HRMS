@@ -46,6 +46,40 @@ export interface EmployeeContext {
   timeZone: string;
   /** Roster entries loaded for the dates being looked at; they override the usual shift. */
   roster: RosterSpan[];
+  /** Work location: decides which holidays apply. */
+  locationId: string | null;
+}
+
+export const holidayAppliesAt = (h: Pick<Holiday, 'locationIds'>, locationId: string | null | undefined) => !h.locationIds?.length || (!!locationId && h.locationIds.includes(locationId));
+
+/** Another holiday on the date that a location would observe twice (a company-wide one clashes with every other). */
+export async function holidayClash(date: string, locationIds: string[], transaction?: Transaction, excludeId?: string): Promise<Holiday | null> {
+  const sameDay = await Holiday.findAll({ where: { date, ...(excludeId ? { id: { [Op.ne]: excludeId } } : {}) }, transaction });
+  return sameDay.find((h) => !locationIds.length || !h.locationIds?.length || h.locationIds.some((id) => locationIds.includes(id))) ?? null;
+}
+
+/** Location ids that exist in the organization, deduplicated (unknown ones are a validation error). */
+export async function knownLocations(ids: string[] | undefined, transaction?: Transaction): Promise<string[]> {
+  const unique = [...new Set(ids ?? [])];
+  if (!unique.length) return [];
+  const found = await Location.count({ where: { id: unique }, transaction });
+  if (found !== unique.length) throw AppError.validation([{ field: 'locationIds', message: 'One of the locations no longer exists' }]);
+  return unique;
+}
+
+/** Holidays in a range; which one someone observes depends on their location. */
+export class HolidayCalendar {
+  private readonly byDate = new Map<string, Holiday[]>();
+
+  constructor(rows: Holiday[]) {
+    for (const h of rows) this.byDate.set(h.date, [...(this.byDate.get(h.date) ?? []), h]);
+  }
+
+  /** The holiday observed at a location on a date: a day off before an optional one, a location's own before a company-wide one. */
+  on(date: string, locationId: string | null | undefined): Holiday | undefined {
+    const applies = (this.byDate.get(date) ?? []).filter((h) => holidayAppliesAt(h, locationId));
+    return applies.sort((a, b) => Number(a.isOptional) - Number(b.isOptional) || (b.locationIds?.length ? 1 : 0) - (a.locationIds?.length ? 1 : 0))[0];
+  }
 }
 
 /** What a record's punches amount to. */
@@ -137,6 +171,7 @@ export class AttendanceRulesService {
           shift: (e.shiftId && shiftById.get(e.shiftId)) || fallback,
           timeZone: (e.locationId && tzByLocation.get(e.locationId)) || orgTz,
           roster: assignments.filter((a) => a.employeeId === e.id).map((a) => ({ from: a.startDate, to: a.endDate, shift: a.shiftId ? (shiftById.get(a.shiftId) ?? null) : null })),
+          locationId: e.locationId ?? null,
         },
       ]),
     );
@@ -164,9 +199,8 @@ export class AttendanceRulesService {
   }
 
   /** Public holidays in the range (optional holidays are returned too; they stay working days). */
-  async holidays(from: string, to: string): Promise<Map<string, Holiday>> {
-    const rows = await Holiday.findAll({ where: { date: { [Op.between]: [from, to] } } });
-    return new Map(rows.map((h) => [h.date, h]));
+  async holidays(from: string, to: string, transaction?: Transaction): Promise<HolidayCalendar> {
+    return new HolidayCalendar(await Holiday.findAll({ where: { date: { [Op.between]: [from, to] } }, transaction }));
   }
 
   /** Days of approved work from home per employee in a range. */
@@ -208,8 +242,8 @@ export class AttendanceRulesService {
   /** Everything a record's punches amount to on a work date: shift, lateness, worked time, status and overtime. */
   async evaluate(ctx: EmployeeContext, workDate: string, checkIn: Date, checkOut: Date | null, transaction?: Transaction): Promise<DayOutcome> {
     const shift = this.shiftOn(ctx, workDate);
-    const holiday = await Holiday.findOne({ where: { date: workDate, isOptional: false }, attributes: ['id'], transaction });
-    const dayOff = !!holiday || this.isRestDay(ctx, workDate);
+    const holiday = (await this.holidays(workDate, workDate, transaction)).on(workDate, ctx.locationId);
+    const dayOff = (!!holiday && !holiday.isOptional) || this.isRestDay(ctx, workDate);
     const { workedMinutes, status } = this.outcome(checkIn, checkOut, shift);
     return { shiftId: shift.id, lateMinutes: dayOff ? 0 : this.lateMinutes(checkIn, workDate, ctx), workedMinutes, status, overtimeMinutes: overtimeMinutes(workedMinutes, shift, dayOff) };
   }
@@ -254,8 +288,17 @@ export class AttendanceRulesService {
     for (const r of rows) {
       const byDate = out.get(r.employeeId) ?? new Map<string, DayLeave>();
       for (let d = r.startDate < from ? from : r.startDate; d <= r.endDate && d <= to; d = addDays(d, 1)) {
-        const session = r.startDate === r.endDate ? r.startSession : d === r.startDate && r.startSession === 'SECOND_HALF' ? 'SECOND_HALF' : d === r.endDate && r.endSession === 'FIRST_HALF' ? 'FIRST_HALF' : 'FULL';
-        byDate.set(d, { requestId: r.id, code: r.leaveType!.code, name: r.leaveType!.name, color: r.leaveType!.color, isPaid: r.leaveType!.isPaid, session, countsNonWorkingDays: r.leaveType!.countNonWorkingDays });
+        const session =
+          r.startDate === r.endDate ? r.startSession : d === r.startDate && r.startSession === 'SECOND_HALF' ? 'SECOND_HALF' : d === r.endDate && r.endSession === 'FIRST_HALF' ? 'FIRST_HALF' : 'FULL';
+        byDate.set(d, {
+          requestId: r.id,
+          code: r.leaveType!.code,
+          name: r.leaveType!.name,
+          color: r.leaveType!.color,
+          isPaid: r.leaveType!.isPaid,
+          session,
+          countsNonWorkingDays: r.leaveType!.countNonWorkingDays,
+        });
       }
       out.set(r.employeeId, byDate);
     }

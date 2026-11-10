@@ -1,4 +1,4 @@
-import type { HolidayCountry, OvertimeStatus, RegularizationStatus, TimesheetEntry, TimesheetStatus, TimesheetWeekStatus } from '@contracts';
+import type { HolidayCountry, OvertimeStatus, RegularizationStatus, ShiftSwapStatus, TimesheetEntry, TimesheetStatus, TimesheetWeekStatus } from '@contracts';
 import { http, type ListQuery, type Page } from '@/core/http/http-client';
 import type {
   AttendanceCalendar,
@@ -8,6 +8,7 @@ import type {
   DailySummary,
   Device,
   Holiday,
+  HolidayInput,
   OfficialHolidays,
   Overtime,
   Regularization,
@@ -15,6 +16,7 @@ import type {
   Rotation,
   RotationStep,
   Shift,
+  ShiftSwap,
   Timesheet,
   TimesheetBoard,
   TimesheetDetail,
@@ -37,8 +39,19 @@ export interface DailyQuery extends ListQuery {
 
 export const attendanceApi = {
   today: () => http.get<TodayAttendance>('/attendance/today'),
-  punchIn: (body: { latitude?: number; longitude?: number }) => http.post<TodayAttendance>('/attendance/punch-in', body),
+  punchIn: (body: { latitude?: number; longitude?: number; photo?: string }) => http.post<TodayAttendance>('/attendance/punch-in', body),
   punchOut: () => http.post<TodayAttendance>('/attendance/punch-out'),
+  /** The punch-in photo, opened in a new tab. */
+  async openPhoto(recordId: string) {
+    const blob = await http.download(`/attendance/records/${recordId}/photo`);
+    window.open(URL.createObjectURL(blob), '_blank', 'noopener');
+  },
+  swaps: (q: ListQuery & { view?: 'mine' | 'team'; status?: ShiftSwapStatus }) => http.page<ShiftSwap>('/attendance/shift-swaps', q),
+  requestSwap: (body: { colleagueId: string; workDate: string; reason: string }) => http.post<ShiftSwap>('/attendance/shift-swaps', body),
+  respondSwap: (id: string, body: { accept: boolean; note?: string | null }) => http.post<ShiftSwap>(`/attendance/shift-swaps/${id}/respond`, body),
+  cancelSwap: (id: string) => http.post<ShiftSwap>(`/attendance/shift-swaps/${id}/cancel`),
+  approveSwap: (id: string, note?: string | null) => http.post<ShiftSwap>(`/attendance/shift-swaps/${id}/approve`, { note }),
+  rejectSwap: (id: string, note: string) => http.post<ShiftSwap>(`/attendance/shift-swaps/${id}/reject`, { note }),
   calendar: (month: string, employeeId?: string) => http.get<AttendanceCalendar>('/attendance/calendar', { month, employeeId }),
   async daily(q: DailyQuery): Promise<{ date: string; summary: DailySummary; page: Page<DailyRow> }> {
     const res = await http.get<{ date: string; summary: DailySummary; page: { items: DailyRow[]; meta: Page<DailyRow>['meta'] } }>('/attendance/daily', q);
@@ -102,9 +115,9 @@ export const attendanceApi = {
   setBiometricCode: (employeeId: string, biometricCode: string | null) => http.put<{ employeeId: string; biometricCode: string | null }>(`/attendance/employees/${employeeId}/biometric-code`, { biometricCode }),
 
   holidays: (year: number) => http.get<Holiday[]>('/holidays', { year }),
-  createHoliday: (body: Omit<Holiday, 'id'>) => http.post<Holiday>('/holidays', body),
-  updateHoliday: (id: string, body: Partial<Holiday>) => http.patch<Holiday>(`/holidays/${id}`, body),
+  createHoliday: (body: HolidayInput) => http.post<Holiday>('/holidays', body),
+  updateHoliday: (id: string, body: Partial<HolidayInput>) => http.patch<Holiday>(`/holidays/${id}`, body),
   removeHoliday: (id: string) => http.delete<{ deleted: boolean }>(`/holidays/${id}`),
   officialHolidays: (year: number, country?: HolidayCountry) => http.get<OfficialHolidays>('/holidays/official', { year, country }),
-  importHolidays: (body: { country?: HolidayCountry; holidays: Omit<Holiday, 'id'>[] }) => http.post<{ created: number; skipped: number }>('/holidays/import', body),
+  importHolidays: (body: { country?: HolidayCountry; locationIds?: string[]; holidays: HolidayInput[] }) => http.post<{ created: number; skipped: number }>('/holidays/import', body),
 };

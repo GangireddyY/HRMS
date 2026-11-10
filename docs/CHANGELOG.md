@@ -2,6 +2,111 @@
 
 All notable changes are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow SemVer.
 
+## [Unreleased]
+
+### Added
+- **Single sign-on (OpenID Connect)** (Organization settings → Single sign-on): connect any OIDC provider (Microsoft Entra ID, Google Workspace, Okta, Keycloak…) with its issuer URL, client ID and secret (stored encrypted), for chosen email domains.
+  - **Sign-in:** people choose "Sign in with SSO" and enter their work email. The sign-in uses the authorization-code flow with PKCE, a single-use state and a nonce, and the ID token's signature, issuer, audience and expiry are checked.
+  - **Matching people:** people are matched to their membership by verified email, and a pending invitation is accepted on the way. With "add new people automatically", someone from an allowed domain joins with a chosen role (within the plan's seats).
+  - **Requiring SSO:** with SSO required, members can't use a password, while organization admins keep theirs as a fallback.
+  - **Step-up:** an SSO sign-in counts as a fresh step-up.
+- **Notification emails**: workflow notifications (leave, attendance, payroll, performance, hiring, policies, exit…) are also emailed, queued with the change so nothing is sent if it rolls back. Everyone chooses what they get under Notifications → Email settings (all off, or per category; announcements and surveys are off by default). Grievance emails never include case details; security alerts are always sent.
+- **Holidays per location**: a holiday applies to every location or only the chosen ones (regional holidays); attendance, leave day counts, timesheets and payroll use the holidays of each person's location. Official holidays can be imported for chosen locations.
+- **Approval cover** (Account → Approval cover, `/approvals/delegations`): someone who approves for a team hands those approvals (leave and comp-off, attendance corrections / work from home / overtime, timesheets, expense claims) to a colleague for up to 90 days. The colleague sees the team's requests marked "on behalf of", is notified of new ones, can decline; never the delegator's own requests, never payroll, salary or loan approvals, no chains. Applied centrally in the access layer (`AuthContext.delegated`, `EmployeeScopeService`).
+- **Two-level leave approval**: per leave type, the manager approves and then HR (someone with department- or organization-wide reach, not the first approver) — for every request or only above a number of days. Requests show their step and who approved; the balance is used once, at the final approval; any approver in scope can reject.
+- **Offers: approval, letters, e-signature and pre-joining**:
+  - **Approval:** optional for every offer (Recruitment → Offers & letters), always above the requisition's budget; the new `recruitment.offer.approve` permission (not for recruiters), never by whoever drafted the offer, and any change needs approving again.
+  - **Letter:** the offer letter comes from an editable template with placeholders and a live preview. It is frozen and hashed at release, so what the candidate signs can't change.
+  - **Signing:** the candidate gets a private emailed link (only its hash is stored; it can be reissued) to read the letter and sign by typing their name (time, IP, browser and document hash recorded), or decline.
+  - **Pre-joining:** after accepting, the same link is the pre-joining portal for personal details (encrypted) and documents. On hire they become the employee's record and documents.
+- **India statutory payroll**:
+  - **Investment proofs (Form 12BB):** employees upload proofs per section (80C, 80CCD(1B), 80D, rent, home-loan interest) under Salary & tax. Payroll accepts each, fully or in part, or rejects it under Payroll → Tax proofs & returns. From the cut-off month set in payroll setup, monthly TDS uses accepted amounts only, and the payslip warns when declared deductions aren't proven. Employees can print their Form 12BB.
+  - **Labour welfare fund:** state-wise rates in the collection months (15 states), employee and employer, on payslips and in the register.
+  - **Returns:** the ESIC monthly contribution file (ESI insurance number added to statutory details), and professional tax and LWF per employee and state, both from the run's downloads.
+  - **Annual tax:** 24Q deductee details per quarter and Form 16 Part B per employee, which employees can also download themselves. Exports that show PANs need a fresh step-up.
+- **Employee services** — three new modules (Growth: assets and helpdesk; Enterprise: all three):
+  - **Assets:** a register of company equipment (tags AST-0001…, serial numbers, cost, warranty, location) with every hand-over and return and the condition both ways. Employees see what they hold under My assets, confirm receipt and request equipment; HR hands requests over from stock. Managers see what their team holds. An exit can't be completed while the person still holds an asset, and the exit's clearance lists them.
+  - **HR helpdesk:** employees ask HR under HR helpdesk and follow the conversation. Agents (`helpdesk.manage`) work a queue sorted by resolution target (per priority: 8 hours urgent to 5 days low), assign tickets, reply or leave internal notes, and resolve them; employees rate resolved tickets, and resolved tickets close by themselves after 7 days. Agents never handle their own tickets. The queue shows first-reply time, share within target and rating.
+  - **Business travel:** employees request trips (purpose, route, dates, mode, hotel, estimate and an optional advance). The manager — or whoever covers their approvals — approves; the travel desk (`travel.manage`) records bookings and pays the advance, and the traveller is told at each step.
+- **Payroll extras**:
+  - **Arrears:** a salary revision can now be back-dated into months already paid (up to 12 months). The next run works out each paid month again with the new salary and the same loss-of-pay days and pays the difference as "Salary arrears" (taxable, with PF and ESI on the wage part), once. A back-dated cut is flagged on the payslip instead of being recovered automatically.
+  - **Bonuses and incentives:** add one to everyone in a draft run (or chosen people) as a fixed amount, a percentage of monthly Basic or gross, or the statutory bonus under the Payment of Bonus Act (Basic up to ₹21,000; 8.33–20% of min(Basic, ₹7,000) per month worked this financial year).
+  - **Pay groups:** people can be paid in their own monthly runs (contractors, a subsidiary). Each group's runs are processed and approved separately; nobody is paid by two runs for the same month, and people can't change group while their run is in progress.
+  - **Bank file layouts:** besides the standard CSV, HDFC, ICICI, SBI and Axis bulk-upload layouts (internal transfer or NEFT chosen from the IFSC). Check the bank's current template before the first upload.
+  - **PDF payslips:** download any payslip as a PDF (net pay in words). Payroll setup can email every payslip as a PDF when a run is approved, optionally opening with the date of birth.
+- **Shift swaps**: employees ask a colleague to trade shifts (or a shift for a day off) on a future day from My attendance; the colleague agrees or declines, then the manager — or whoever covers their approvals — approves under Attendance approvals → Shift swaps, which rosters each onto the other's shift. If either roster changed in the meantime, the approval is refused.
+- **Office networks and punch photos** (per location, under Organization → Locations): web punch-ins can be limited to the office's IP addresses or ranges (work-from-home days are exempt), and a location can ask for a camera photo with every punch-in. The punch card shows whether you're on the office network; managers and HR open the photo from the attendance register. Photos are deleted when a former employee's personal data is erased.
+- **Leave policy rules**: a leave type can apply only to some locations, employment types or grades (as well as by gender); others don't see it or get its balance. Accrual can stop at a balance cap; a month skipped at the cap isn't credited later.
+- **Nightly leave job**: accruals, carry-forward and lapse at the start of the leave year, and comp-off expiry are brought up to date every night from 1:00 local time (once per organization, even with several servers), as well as whenever balances are read.
+- **Leave encashment through payroll**: employees ask to encash unused days of encashable types under My leave, within the type's yearly limit and keeping its minimum balance. HR approves under Leave balances; the days leave the balance and the next payroll run pays them as a taxable earning (Basic ÷ 26, Basic ÷ 30 or gross ÷ 30, set in payroll setup). Held salaries and cancelled runs release them for the next run.
+- **OKRs** (My Workspace → OKRs; HR Operations → OKRs):
+  - **Levels:** company objectives (organization-wide `performance.okr.manage`, which HR roles have), department objectives (department managers for their own department) and individual objectives (yours, or those of people you review).
+  - **Structure:** objectives align to an objective at the same or a higher level in an overlapping period, never in a loop. Each has up to 8 weighted key results, measured as a number, percentage, amount or done/not-done milestone.
+  - **Check-ins:** a check-in records the current value, a confidence (on track / at risk / off track) and a note. It updates the objective's weighted progress and health, and tells the owner.
+  - **Browsing:** everyone sees the quarter's OKRs as a tree, filtered by level or "mine", with each key result's check-in history.
+- **1:1s** (My Workspace → 1:1s):
+  - **Scheduling:** managers schedule 1:1s with the people they review. The team view shows each report's last and next 1:1, highlighting anyone not seen for weeks.
+  - **Agenda and notes:** both people add agenda topics, agree actions (owner and due date) and keep shared notes. The manager also has private notes that only they see, and HR doesn't see 1:1s.
+  - **Follow-up:** marking a 1:1 as held can book the next one, carrying open topics and actions over. Moving or cancelling notifies the employee.
+- **Calibration and the 9-box** (Review cycle → Calibration & 9-box):
+  - **Target curve:** a cycle can set a target rating curve (shares adding up to 100%; otherwise the suggested 5/15/50/20/10 bell curve). It can be tuned while the cycle runs.
+  - **Calibration view:** HR sees completed ratings against that curve (people above or below the target count per rating), filtered by department. It places everyone on a 9-box of rating × potential and calibrates ratings from one table.
+  - **Potential:** reviewers or HR set potential (low / medium / high) once the manager review is in; the employee never sees it.
+- **Expense policies** (Payroll setup → Expense policy):
+  - **Rules per category:** whether it can be claimed, a limit per claim, a monthly limit (counting pending, approved and paid claims by expense date), and the amount above which a receipt is required (0 = always).
+  - **Enforcement:** claims are checked when submitted, with the monthly limit checked one claim at a time per person. The claim form shows the limits and what's left in the month, and asks for the receipt before submitting.
+- **Finance approval for large claims**:
+  - **Two steps:** above an amount set in the expense policy, a claim the manager approves goes on to finance, under Reimbursements → Finance approval. It needs the new `payroll.reimbursement.finance` permission (the Finance Manager role) and someone other than whoever gave the first approval.
+  - **Trail and visibility:** every claim keeps its approval trail (who approved or rejected at each step, with notes). Approvers see the employee's total for the month against the limit, and employees see "With finance" while it waits.
+- **Settlement payouts** (Exits → Settlement payouts): approved full & final settlements are listed with their due date and whether the employee has bank details.
+  - **Bank file:** finance downloads a transfer file for the chosen settlements (or all) in the standard, HDFC, ICICI, SBI or Axis layout. It needs `payroll.disburse` and a fresh step-up, and every export is audited.
+  - **Marking paid:** settlements are then marked paid together with the transfer reference. Each employee is notified, and any that couldn't be marked are reported back.
+- **Compensatory off**: mark a leave type as comp-off (validity in days; the recommended set adds "Compensatory off", 90 days). People who worked a holiday or weekly off ask for the day back from My leave (a full shift earns a day, half a shift half a day, within 30 days); approvers decide under Leave requests → Comp-off; approval credits the balance and each credit expires on its own.
+
+### Fixed
+- The sidebar highlights only the most specific matching link (e.g. "OKRs", not "Performance" as well).
+- Payroll calculation no longer runs several queries at once on its transaction (deprecated in the database driver).
+- Newly launched modules are added to the standard plans even when the database already knew about them (migration `20261111091000`).
+
+## [1.12.0] – 2026-11-10 – Timesheets, security hardening, privacy and operations
+
+### Added
+- **Weekly timesheets** (`/me/timesheets`, HR `/hr/attendance/timesheets`): day-wise entries (project, activity, from–to or duration, note), submitted for the manager's or HR's review; payroll setting to require them, with a due weekday, a start week and what happens when one is missed (flag, loss of pay, hold the salary); automatic reminders on the due day and the day after (managers get their team's list); the week board and manual reminders.
+- **Maker-checker**: changing an existing salary bank account waits for a second person (the employee is told by email and in the app, payroll warns about recent changes); raises above a configurable threshold wait for someone with the new `employee.salary.approve` permission (`/hr/payroll/salary-revisions`).
+- **Privacy & retention** (Administration, `privacy.manage`): retention periods, erasing former employees (partial within the statutory period, anonymized after it), per-person data export; everyone can download their own data (Security → Your data). Candidates who weren't hired are anonymized automatically after the retention period.
+- **Step-up re-authentication** (`POST /auth/step-up`, 15 minutes per session) before decrypted exports: bank file, PF ECR, log archives, personal-data exports.
+- **Background jobs** (`background_jobs`): notification emails are enqueued with the change and retried with backoff; failed jobs are reported.
+- **Health probes** `GET /health/live` and `/health/ready` (database, Redis, virus scanner, jobs); JSON logs in production; optional error reporting to Sentry (`SENTRY_DSN`).
+- **Idempotency keys**: writes with an `Idempotency-Key` header run once; the web app sends one with every write, so retries never double-submit.
+- **Live updates**: the notification badge, the notifications page and the HR dashboard's approval counts update as soon as something arrives (server-sent events at `/notifications/stream`, fanned out over Redis); polling remains only as a fallback while the tab is visible.
+- **Search** (Ctrl/⌘ K) finds employees and candidates too, offers quick actions (apply for leave, fill in the timesheet, mark attendance, claim an expense…) and remembers recently opened records for the tab.
+- **Installable app**: web manifest, icons and a service worker that keeps the app shell (never API data) for offline start; an offline banner; punches made offline are saved on the device and sent when the connection returns — one sent more than 5 minutes late is followed by a suggested correction request with the real time.
+- **Tables**: CSV export from the table (`exportFile`, with formula-safe cells), a column chooser and saved views (search, filters and sort) — on the employee and leave request lists to start with.
+- Amounts follow the organization's currency (in the access context); an i18n layer (`core/i18n`, English catalog, plurals and placeholders) for interface text, adopted in the shell first.
+- Notifications page: grid and list views. Soft, theme-aware page banners.
+
+### Security
+- Super Admins must use two-factor sign-in (`PLATFORM_MFA_REQUIRED`). Restricted permissions (POSH access, `audit.purge` — removed from the Organization Admin role) can't be granted to yourself; existing holders are alerted.
+- Lockout and account enumeration: the password is always checked and responses don't reveal whether an account exists or is locked; reset emails are sent in the background.
+- Every API route must declare its access (tested); the permission guard fails closed.
+- Encryption: key versions with rotation (`DATA_ENCRYPTION_KEY_VERSION`, `DATA_ENCRYPTION_PREVIOUS_KEYS`), ciphertext bound to its table, column and row, `npm run db:reencrypt`; addresses and emergency contacts are now encrypted too. PAN on payslips shows the last 4 characters only.
+- Uploads are scanned by ClamAV before they're stored (fail closed; required in production).
+- Database: the API runs as a row-access-only role, migrations as the schema owner; TLS to the database required in production; demo data refused in production. Web tier: CSP without inline scripts, HSTS, unprivileged nginx, security headers on every location, 12 MB upload limit.
+- Rate limits are shared across instances in Redis (required in production).
+
+### Fixed
+- Payroll settings could not be saved (an upsert the tenant scope rejects).
+- "Today" was the UTC date in several pages and in the lifecycle check, so between 00:00 and 05:30 IST dates were a day behind.
+- nginx dropped the security headers on pages and assets (nested `add_header`) and refused uploads over 2 MB.
+
+### Changed
+- Menus (`AppDropdown`) are keyboard-operable menu buttons (arrow keys, Home/End, Esc returns focus, `aria-expanded`); the HR dashboard names the widgets that didn't load, with Try again, instead of showing them empty; notification and timesheet dates follow the region setting; the Checklists menu entry shows for everyone who can open it.
+- Accessibility: automated axe-core checks on the shared table, form fields, menus, saved views and alerts.
+- Pages: unsaved-change guard on full-page forms (employee form, payroll setup, profile, policy draft, tax declaration, privacy settings); Back restores the list's scroll position; after navigation focus moves to the page heading and the title is announced; a stale page bundle after a deploy reloads once.
+- Shared helpers: `shared/utils/dates.ts` and `text.ts` (frontend), `common/utils/names.ts` (backend) replace the copies in each module.
+- Engineering: ESLint and Prettier for both apps; CI runs lint, `npm audit` (high), the full migration rollback and the real-Redis rate-limit test; Dependabot and CodeQL. NestJS 11.2.9 and sharp 0.35.5 (security advisories). The Swagger CLI plugin documents DTOs. Backend and frontend versions follow this changelog.
+- Tests: end-to-end suites for timesheets, log archives, privacy, background jobs, idempotency, encryption and upload scanning; frontend module unit tests.
+
 ## [1.11.0] – 2026-11-07 – Assistant and insight dashboards
 
 ### Added

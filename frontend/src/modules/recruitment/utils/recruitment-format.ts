@@ -1,4 +1,4 @@
-import { appLocale, INR_LOCALE } from '@/core/locale/locale';
+import { appCurrency, formatAmount } from '@/core/locale/currency';
 import type { ApplicationStage, CandidateSource, FeedbackRecommendation, InterviewMode, JobStatus, OfferStatus, RequisitionReason, RequisitionStatus } from '@contracts';
 
 export const REQUISITION_STATUS_LABELS: Record<RequisitionStatus, string> = {
@@ -52,11 +52,9 @@ export const recommendationTone: Record<FeedbackRecommendation, 'success' | 'dan
 export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = { DRAFT: 'Draft', RELEASED: 'Released – awaiting answer', ACCEPTED: 'Accepted', DECLINED: 'Declined', WITHDRAWN: 'Withdrawn' };
 export const offerTone: Record<OfferStatus, 'neutral' | 'warning' | 'success' | 'danger'> = { DRAFT: 'neutral', RELEASED: 'warning', ACCEPTED: 'success', DECLINED: 'danger', WITHDRAWN: 'neutral' };
 
-const inr = new Intl.NumberFormat(INR_LOCALE, { maximumFractionDigits: 0 });
-/** "₹12,00,000" in the organization currency (INR formatting). */
-export function money(n: number | null | undefined, currency = 'INR'): string {
-  if (n === null || n === undefined) return '—';
-  return currency === 'INR' ? `₹${inr.format(n)}` : new Intl.NumberFormat(appLocale(), { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+/** "₹12,00,000" in the given currency (the organization's by default). */
+export function money(n: number | null | undefined, currency = appCurrency()): string {
+  return formatAmount(n, { currency });
 }
 export function experience(min: number | null, max: number | null): string | null {
   if (min === null && max === null) return null;

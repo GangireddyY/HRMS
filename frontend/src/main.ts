@@ -1,9 +1,11 @@
 import { createPinia } from 'pinia';
-import { createApp } from 'vue';
+import { createApp, watch } from 'vue';
+import { setAppCurrency } from '@/core/locale/currency';
 import App from '@/App.vue';
 import { configureHttpAuth } from '@/core/http/http-client';
 import { router } from '@/app/router';
 import { useAuthStore } from '@/core/auth/auth.store';
+import { requestStepUp } from '@/core/auth/step-up';
 import { useThemeStore } from '@/core/theme/theme.store';
 import { applyLocale } from '@/core/locale/locale';
 import { syncAppearance } from '@/core/theme/appearance-sync';
@@ -19,11 +21,14 @@ const feedback = useFeedbackStore();
 const theme = useThemeStore();
 applyLocale(document.documentElement);
 syncAppearance(auth, theme);
+// Amounts follow the active organization's currency.
+watch(() => auth.organization?.currency, setAppCurrency, { immediate: true });
 
 configureHttpAuth({
   getToken: () => auth.accessToken,
   refresh: () => auth.refresh(),
   onSessionEnded: () => auth.sessionEnded(),
+  stepUp: (message) => requestStepUp(message),
 });
 
 auth.onSessionEnded(() => {
@@ -39,3 +44,8 @@ app.config.errorHandler = (err) => {
 
 app.use(router);
 app.mount('#app');
+
+// Installable app and offline shell (production builds only: the dev server serves unhashed modules).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('/sw.js').catch(() => undefined));
+}

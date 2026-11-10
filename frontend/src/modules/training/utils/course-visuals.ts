@@ -38,8 +38,5 @@ export function dateTile(iso: string) {
   return { day: d.getDate(), month: d.toLocaleDateString(appLocale(), { month: 'short' }), weekday: d.toLocaleDateString(appLocale(), { weekday: 'short' }), time: d.toLocaleTimeString(appLocale(), { hour: 'numeric', minute: '2-digit' }) };
 }
 /** Today's date as YYYY-MM-DD in local time, for comparing with date-only fields. */
-export const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+export { localToday as todayIso } from '@/shared/utils/dates';
 export const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0);

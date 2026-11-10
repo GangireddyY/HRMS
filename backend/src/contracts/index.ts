@@ -22,3 +22,7 @@ export * from './benefits';
 export * from './compliance';
 export * from './exit';
 export * from './reports';
+export * from './notifications';
+export * from './approvals';
+export * from './services';
+export * from './integrations';

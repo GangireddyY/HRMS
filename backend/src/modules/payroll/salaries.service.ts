@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Op, UniqueConstraintError, type WhereOptions } from 'sequelize';
-import { financialYearOf } from '../../contracts';
+import { Op, UniqueConstraintError, type Transaction, type WhereOptions } from 'sequelize';
+import { ARREARS_MAX_MONTHS, financialYearOf } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
@@ -8,15 +8,31 @@ import { PaginatedResult } from '../../common/interceptors/response-envelope.int
 import { containsPattern } from '../../common/utils/like';
 import { monthRange, zonedParts } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Designation, Employee, EmployeeSalary, Organization, OrganizationMembership, PayrollRun, SalaryStructure, TaxDeclarationRecord, User } from '../../database/models';
+import {
+  Department,
+  Designation,
+  Employee,
+  EmployeeSalary,
+  Organization,
+  OrganizationMembership,
+  PayrollRun,
+  SalaryRevisionRequest,
+  SalaryStructure,
+  TaxDeclarationRecord,
+  User,
+  type SalaryRevisionStatus,
+} from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { SalaryDto, SalaryListQueryDto, SalaryPreviewDto, TaxDeclarationDto } from './dto/payroll.dto';
 import { PayrollConfigService } from './payroll-config.service';
 import { salaryBreakdown, StructureError, type SalaryBreakdown, type SalaryComponent, type TaxDeclaration } from './payroll-engine';
+import { fullName } from '../../common/utils/names';
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
+/** Percent increase from one CTC to another (negative for a cut). */
+export const raisePercent = (from: number, to: number) => (from > 0 ? ((to - from) / from) * 100 : Infinity);
 const n = (v: string | null | undefined) => (v === null || v === undefined ? 0 : Number(v));
 
 export function presentSalary(s: EmployeeSalary, createdBy?: string | null) {
@@ -75,7 +91,13 @@ export class SalariesService {
 
   /** Last day of the latest month whose payroll is submitted, approved or paid (salaries up to it are locked). */
   async lockedThrough(): Promise<string | null> {
-    const run = await PayrollRun.findOne({ where: { status: ['SUBMITTED', 'APPROVED', 'PAID'] }, order: [['year', 'DESC'], ['month', 'DESC']] });
+    const run = await PayrollRun.findOne({
+      where: { status: ['SUBMITTED', 'APPROVED', 'PAID'] },
+      order: [
+        ['year', 'DESC'],
+        ['month', 'DESC'],
+      ],
+    });
     return run ? monthRange(run.year, run.month).to : null;
   }
 
@@ -98,7 +120,10 @@ export class SalariesService {
         { model: Department, attributes: ['id', 'name'] },
         { model: Designation, attributes: ['id', 'name'] },
       ],
-      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
+      order: [
+        ['firstName', 'ASC'],
+        ['lastName', 'ASC'],
+      ],
       ...paginationArgs(query),
     });
     const today = await this.today(auth.organizationId!);
@@ -130,34 +155,80 @@ export class SalariesService {
       (await User.findAll({ where: { id: rows.map((r) => r.createdById).filter((x): x is string => !!x) }, attributes: ['id', 'firstName', 'lastName'] })).map((u) => [u.id, fullName(u)]),
     );
     const lockedThrough = await this.lockedThrough();
+    // A raise still being decided is HR's business until it's approved.
+    const own = (await this.scope.self(auth))?.id === employee.id;
+    const pending = own ? null : await SalaryRevisionRequest.findOne({ where: { employeeId, status: 'PENDING' } });
     return {
       employee: { id: employee.id, name: fullName(employee), employeeCode: employee.employeeCode, dateOfJoining: employee.dateOfJoining, status: employee.status },
       lockedThrough,
+      pendingRevision: pending ? (await this.presentRevisions(auth, [pending]))[0]! : null,
       salaries: rows.map((s) => ({ ...presentSalary(s, s.createdById ? users.get(s.createdById) : null), locked: !!lockedThrough && s.effectiveFrom <= lockedThrough })),
     };
   }
 
   async mine(auth: AuthContext) {
     const self = await this.scope.self(auth);
-    if (!self) return { employee: null, lockedThrough: null, salaries: [] };
+    if (!self) return { employee: null, lockedThrough: null, pendingRevision: null, salaries: [] };
     return this.history(auth, self.id);
   }
 
+  /**
+   * Sets or revises a salary. A raise above the organization's approval threshold (over the salary in force on the
+   * effective date) becomes a request instead, returned with `pendingApproval: true`.
+   */
   async create(auth: AuthContext, employeeId: string, dto: SalaryDto) {
+    const employee = await this.checkRevision(auth, employeeId, dto);
+    const previousCtc = await this.needsApproval(auth.organizationId!, employeeId, dto);
+    if (previousCtc !== null) return this.requestApproval(auth, employee, dto, previousCtc);
+    return this.record(auth, employee, dto);
+  }
+
+  /** A revision already approved in its own workflow (performance increments), so it skips the threshold. */
+  async createApproved(auth: AuthContext, employeeId: string, dto: SalaryDto) {
+    const employee = await this.checkRevision(auth, employeeId, dto);
+    return this.record(auth, employee, dto);
+  }
+
+  private async checkRevision(auth: AuthContext, employeeId: string, dto: SalaryDto): Promise<Employee> {
     const employee = await Employee.findByPk(employeeId);
     if (!employee) throw AppError.notFound('Employee');
     const self = await this.scope.self(auth);
     if (self?.id === employee.id) throw AppError.forbidden('You cannot set your own salary');
     if (employee.status === 'EXITED') throw AppError.conflict(`${fullName(employee)} has exited`);
     if (dto.effectiveFrom < employee.dateOfJoining) throw AppError.validation([{ field: 'effectiveFrom', message: `The salary can't start before the joining date (${employee.dateOfJoining})` }]);
-    if (employee.exitDate && dto.effectiveFrom > employee.exitDate) throw AppError.validation([{ field: 'effectiveFrom', message: `The salary can't start after the exit date (${employee.exitDate})` }]);
+    if (employee.exitDate && dto.effectiveFrom > employee.exitDate)
+      throw AppError.validation([{ field: 'effectiveFrom', message: `The salary can't start after the exit date (${employee.exitDate})` }]);
+    // A revision dated in a month already paid is allowed (within ARREARS_MAX_MONTHS): the next run pays the arrears.
     const locked = await this.lockedThrough();
     if (locked && dto.effectiveFrom <= locked) {
-      throw AppError.validation([{ field: 'effectiveFrom', message: `Payroll is already processed up to ${locked}. Choose a later date and pay any arrears as an adjustment.` }]);
+      const [y, m] = locked.split('-').map(Number) as [number, number];
+      const back = y * 12 + (m - 1) - (ARREARS_MAX_MONTHS - 1);
+      const earliest = monthRange(Math.floor(back / 12), (back % 12) + 1).from;
+      if (dto.effectiveFrom < earliest) {
+        throw AppError.validation([{ field: 'effectiveFrom', message: `Payroll is processed up to ${locked}; a revision can be back-dated at most ${ARREARS_MAX_MONTHS} months (from ${earliest})` }]);
+      }
+      if (!(await EmployeeSalary.count({ where: { employeeId, effectiveFrom: { [Op.lt]: dto.effectiveFrom } } }))) {
+        throw AppError.validation([{ field: 'effectiveFrom', message: `Payroll is already processed up to ${locked}. A first salary starts after that; pay earlier months as an adjustment.` }]);
+      }
     }
+    return employee;
+  }
+
+  /** The CTC being raised from, when the raise exceeds the threshold; null when no approval is needed (or no prior salary). */
+  private async needsApproval(organizationId: string, employeeId: string, dto: SalaryDto): Promise<number | null> {
+    const { salaryApprovalThresholdPct: threshold } = await this.config.settings(organizationId);
+    if (threshold === null) return null;
+    const previous = await EmployeeSalary.findOne({ where: { employeeId, effectiveFrom: { [Op.lte]: dto.effectiveFrom } }, order: [['effectiveFrom', 'DESC']] });
+    if (!previous) return null;
+    const before = Number(previous.annualCtc);
+    return raisePercent(before, dto.annualCtc) > threshold ? before : null;
+  }
+
+  private async record(auth: AuthContext, employee: Employee, dto: SalaryDto, approval?: { requestId: string; approvedById: string; requestedById: string | null; transaction: Transaction }) {
+    const employeeId = employee.id;
     const breakdown = await this.preview(auth, dto);
     try {
-      const salary = await this.db.transaction(async (transaction) => {
+      const run = async (transaction: Transaction) => {
         const s = await EmployeeSalary.create(
           {
             organizationId: auth.organizationId!,
@@ -171,22 +242,33 @@ export class SalariesService {
             employerEsi: String(breakdown.employerEsi),
             components: breakdown.components,
             reason: dto.reason ?? null,
-            createdById: auth.userId,
+            createdById: approval ? approval.requestedById : auth.userId,
           },
           { transaction },
         );
         // Amounts stay out of the audit trail (salary data is restricted to employee.salary.view).
         await this.audit.record(
-          { action: 'payroll.salary_set', entityType: 'EmployeeSalary', entityId: s.id, summary: `Salary set for ${employee.employeeCode} – ${fullName(employee)} effective ${dto.effectiveFrom}`, metadata: { employeeId, reason: dto.reason ?? null } },
+          {
+            action: 'payroll.salary_set',
+            entityType: 'EmployeeSalary',
+            entityId: s.id,
+            summary: `Salary set for ${employee.employeeCode} – ${fullName(employee)} effective ${dto.effectiveFrom}${approval ? ' (approved revision)' : ''}`,
+            metadata: { employeeId, reason: dto.reason ?? null, ...(approval ? { revisionRequestId: approval.requestId, approvedById: approval.approvedById } : {}) },
+          },
           transaction,
         );
         const userId = await this.userIdOf(employee);
         if (userId) {
-          await this.notifications.notify(userId, { organizationId: auth.organizationId, type: 'payroll.salary', title: `Your salary has been updated (effective ${dto.effectiveFrom})`, link: '/me/salary' }, transaction);
+          await this.notifications.notify(
+            userId,
+            { organizationId: auth.organizationId, type: 'payroll.salary', title: `Your salary has been updated (effective ${dto.effectiveFrom})`, link: '/me/salary' },
+            transaction,
+          );
         }
         return s;
-      });
-      await salary.reload({ include: [{ model: SalaryStructure, attributes: ['id', 'name'] }] });
+      };
+      const salary = approval ? await run(approval.transaction) : await this.db.transaction(run);
+      await salary.reload({ include: [{ model: SalaryStructure, attributes: ['id', 'name'] }], transaction: approval?.transaction });
       return presentSalary(salary);
     } catch (e) {
       if (e instanceof UniqueConstraintError) throw AppError.conflict(`${fullName(employee)} already has a salary starting on ${dto.effectiveFrom}`);
@@ -202,9 +284,189 @@ export class SalariesService {
     await this.db.transaction(async (transaction) => {
       await s.destroy({ transaction });
       await this.audit.record(
-        { action: 'payroll.salary_deleted', entityType: 'EmployeeSalary', entityId: salaryId, summary: `Salary effective ${s.effectiveFrom} deleted for ${s.employee!.employeeCode} – ${fullName(s.employee!)}`, metadata: { employeeId: s.employeeId } },
+        {
+          action: 'payroll.salary_deleted',
+          entityType: 'EmployeeSalary',
+          entityId: salaryId,
+          summary: `Salary effective ${s.effectiveFrom} deleted for ${s.employee!.employeeCode} – ${fullName(s.employee!)}`,
+          metadata: { employeeId: s.employeeId },
+        },
         transaction,
       );
+    });
+  }
+
+  // ---- Revisions awaiting approval -------------------------------------------------------------
+
+  private async requestApproval(auth: AuthContext, employee: Employee, dto: SalaryDto, previousCtc: number) {
+    const request = await this.db.transaction(async (transaction) => {
+      if (await SalaryRevisionRequest.count({ where: { employeeId: employee.id, status: 'PENDING' }, transaction })) {
+        throw AppError.conflict(`A salary revision for ${fullName(employee)} is already waiting for approval`);
+      }
+      const r = await SalaryRevisionRequest.create(
+        {
+          organizationId: auth.organizationId!,
+          employeeId: employee.id,
+          structureId: dto.structureId,
+          annualCtc: String(dto.annualCtc),
+          previousCtc: String(previousCtc),
+          effectiveFrom: dto.effectiveFrom,
+          pfApplicable: dto.pfApplicable ?? true,
+          reason: dto.reason ?? null,
+          requestedById: auth.userId,
+        },
+        { transaction },
+      );
+      await this.audit.record(
+        {
+          action: 'payroll.salary_revision_requested',
+          entityType: 'SalaryRevisionRequest',
+          entityId: r.id,
+          summary: `Salary revision for ${employee.employeeCode} – ${fullName(employee)} effective ${dto.effectiveFrom} sent for approval`,
+          metadata: { employeeId: employee.id },
+        },
+        transaction,
+      );
+      const skip = new Set([auth.userId, await this.userIdOf(employee)]);
+      for (const userId of await usersWithPermission('employee.salary.approve', transaction)) {
+        if (skip.has(userId)) continue;
+        await this.notifications.notify(
+          userId,
+          { organizationId: auth.organizationId, type: 'payroll.salary', title: `Salary revision for ${fullName(employee)} needs your approval`, link: '/hr/payroll/salary-revisions' },
+          transaction,
+        );
+      }
+      return r;
+    });
+    return { pendingApproval: true as const, request: (await this.presentRevisions(auth, [request]))[0]! };
+  }
+
+  /** Requests for the employees `employee.salary.view` covers (pending by default). */
+  async revisions(auth: AuthContext, status: SalaryRevisionStatus | 'ALL' = 'PENDING') {
+    const scoped = await this.scope.where(auth, 'employee.salary.view', 'employeeId');
+    if (!scoped) return [];
+    const rows = await SalaryRevisionRequest.findAll({
+      where: { [Op.and]: [scoped, status === 'ALL' ? {} : { status }] },
+      order: [['createdAt', status === 'PENDING' ? 'ASC' : 'DESC']],
+      limit: 200,
+    });
+    return this.presentRevisions(auth, rows);
+  }
+
+  async approveRevision(auth: AuthContext, id: string) {
+    return this.reviewRevision(auth, id, async (r, employee, transaction) => {
+      const dto: SalaryDto = { structureId: r.structureId, annualCtc: Number(r.annualCtc), effectiveFrom: r.effectiveFrom, pfApplicable: r.pfApplicable, reason: r.reason };
+      await this.checkRevision(auth, employee.id, dto);
+      const salary = await this.record(auth, employee, dto, { requestId: r.id, approvedById: auth.userId, requestedById: r.requestedById, transaction });
+      await r.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), salaryId: salary.id }, { transaction });
+      await this.audit.record(
+        {
+          action: 'payroll.salary_revision_approved',
+          entityType: 'SalaryRevisionRequest',
+          entityId: r.id,
+          summary: `Salary revision for ${employee.employeeCode} – ${fullName(employee)} approved`,
+          metadata: { employeeId: employee.id, salaryId: salary.id },
+        },
+        transaction,
+      );
+      if (r.requestedById)
+        await this.notifications.notify(
+          r.requestedById,
+          { organizationId: auth.organizationId, type: 'payroll.salary', title: `Salary revision for ${fullName(employee)} approved`, link: `/hr/payroll/salaries?employee=${employee.id}` },
+          transaction,
+        );
+    });
+  }
+
+  async rejectRevision(auth: AuthContext, id: string, note: string | null | undefined) {
+    if (!note || note.trim().length < 3) throw AppError.validation([{ field: 'note', message: 'Say why the revision is rejected' }]);
+    return this.reviewRevision(auth, id, async (r, employee, transaction) => {
+      await r.update({ status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: note.trim() }, { transaction });
+      await this.audit.record(
+        {
+          action: 'payroll.salary_revision_rejected',
+          entityType: 'SalaryRevisionRequest',
+          entityId: r.id,
+          summary: `Salary revision for ${employee.employeeCode} – ${fullName(employee)} rejected`,
+          metadata: { employeeId: employee.id },
+        },
+        transaction,
+      );
+      if (r.requestedById)
+        await this.notifications.notify(
+          r.requestedById,
+          { organizationId: auth.organizationId, type: 'payroll.salary', title: `Salary revision for ${fullName(employee)} rejected`, body: note.trim(), link: '/hr/payroll/salary-revisions' },
+          transaction,
+        );
+    });
+  }
+
+  /** The requester withdraws their own request. */
+  async cancelRevision(auth: AuthContext, id: string) {
+    await this.db.transaction(async (transaction) => {
+      const r = await SalaryRevisionRequest.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!r || r.requestedById !== auth.userId) throw AppError.notFound('Salary revision');
+      if (r.status !== 'PENDING') throw AppError.conflict(`This revision is already ${r.status.toLowerCase()}`);
+      await r.update({ status: 'CANCELLED' }, { transaction });
+      await this.audit.record(
+        {
+          action: 'payroll.salary_revision_cancelled',
+          entityType: 'SalaryRevisionRequest',
+          entityId: r.id,
+          summary: 'Salary revision withdrawn by the requester',
+          metadata: { employeeId: r.employeeId },
+        },
+        transaction,
+      );
+    });
+    return { id };
+  }
+
+  private async reviewRevision(auth: AuthContext, id: string, fn: (r: SalaryRevisionRequest, employee: Employee, transaction: Transaction) => Promise<void>) {
+    await this.db.transaction(async (transaction) => {
+      const r = await SalaryRevisionRequest.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!r) throw AppError.notFound('Salary revision');
+      const employee = (await Employee.findByPk(r.employeeId, { transaction }))!;
+      if (!(await this.scope.covers(auth, 'employee.salary.view', employee))) throw AppError.notFound('Salary revision');
+      if (r.status !== 'PENDING') throw AppError.conflict(`This revision is already ${r.status.toLowerCase()}`);
+      if (r.requestedById === auth.userId) throw AppError.forbidden('Someone other than the requester must approve a salary revision');
+      if (auth.membershipId && employee.membershipId === auth.membershipId) throw AppError.forbidden("You can't approve your own salary revision");
+      await fn(r, employee, transaction);
+    });
+    return (await this.presentRevisions(auth, [(await SalaryRevisionRequest.findByPk(id))!]))[0]!;
+  }
+
+  private async presentRevisions(auth: AuthContext, rows: SalaryRevisionRequest[]) {
+    const [employees, structures, users] = await Promise.all([
+      Employee.findAll({ where: { id: [...new Set(rows.map((r) => r.employeeId))] }, attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'membershipId'] }),
+      SalaryStructure.findAll({ where: { id: [...new Set(rows.map((r) => r.structureId))] }, attributes: ['id', 'name'] }),
+      User.findAll({ where: { id: [...new Set(rows.flatMap((r) => [r.requestedById, r.reviewedById]).filter((x): x is string => !!x))] }, attributes: ['id', 'firstName', 'lastName'] }),
+    ]);
+    const employeeBy = new Map(employees.map((e) => [e.id, e]));
+    const structureBy = new Map(structures.map((s) => [s.id, s.name]));
+    const userBy = new Map(users.map((u) => [u.id, fullName(u)]));
+    const approver = auth.permissions.has('employee.salary.approve');
+    return rows.map((r) => {
+      const e = employeeBy.get(r.employeeId);
+      return {
+        id: r.id,
+        employee: e ? { id: e.id, name: fullName(e), employeeCode: e.employeeCode } : null,
+        structure: { id: r.structureId, name: structureBy.get(r.structureId) ?? null },
+        annualCtc: Number(r.annualCtc),
+        previousCtc: Number(r.previousCtc),
+        raisePercent: Math.round(raisePercent(Number(r.previousCtc), Number(r.annualCtc)) * 100) / 100,
+        effectiveFrom: r.effectiveFrom,
+        pfApplicable: r.pfApplicable,
+        reason: r.reason,
+        status: r.status,
+        requestedBy: r.requestedById ? (userBy.get(r.requestedById) ?? null) : null,
+        requestedAt: r.createdAt,
+        reviewedBy: r.reviewedById ? (userBy.get(r.reviewedById) ?? null) : null,
+        reviewedAt: r.reviewedAt,
+        reviewNote: r.reviewNote,
+        mine: r.requestedById === auth.userId,
+        canReview: r.status === 'PENDING' && approver && r.requestedById !== auth.userId && e?.membershipId !== auth.membershipId,
+      };
     });
   }
 
@@ -261,14 +523,21 @@ export class SalariesService {
       if (existing) await existing.update(values, { transaction });
       else await TaxDeclarationRecord.create({ organizationId: auth.organizationId!, employeeId: employee.id, financialYear: year, ...values }, { transaction });
       await this.audit.record(
-        { action: 'payroll.tax_declaration_saved', entityType: 'TaxDeclaration', entityId: employee.id, summary: `Tax declaration for FY ${year}-${(year + 1) % 100} saved for ${employee.employeeCode} (${dto.regime} regime)`, metadata: { employeeId: employee.id, financialYear: year, regime: dto.regime } },
+        {
+          action: 'payroll.tax_declaration_saved',
+          entityType: 'TaxDeclaration',
+          entityId: employee.id,
+          summary: `Tax declaration for FY ${year}-${(year + 1) % 100} saved for ${employee.employeeCode} (${dto.regime} regime)`,
+          metadata: { employeeId: employee.id, financialYear: year, regime: dto.regime },
+        },
         transaction,
       );
     });
     return this.getDeclaration(auth, employee.id, year);
   }
 
-  private async declarationOwner(auth: AuthContext, employeeId: string | null): Promise<Employee> {
+  /** The caller's own employee record, or (with `payroll.process`) anyone's. */
+  async declarationOwner(auth: AuthContext, employeeId: string | null): Promise<Employee> {
     const self = await this.scope.self(auth);
     if (!employeeId || employeeId === self?.id) {
       if (!self) throw AppError.notFound('Your employee record');

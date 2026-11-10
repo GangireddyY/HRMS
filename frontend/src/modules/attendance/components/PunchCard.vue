@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { appLocale } from '@/core/locale/locale';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Clock, House, LogIn, LogOut, MapPin } from '@lucide/vue';
+import { Camera, Clock, CloudOff, House, LogIn, LogOut, MapPin, Wifi, WifiOff } from '@lucide/vue';
+import { ApiError } from '@/core/http/http-client';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
+import { ON_TIME_MS, addPunchCorrection, queuePunch, queuedPunches, setQueuedPunches, type PunchKind, type QueuedPunch } from '@/modules/attendance/utils/offline-punches';
+import { localToday } from '@/shared/utils/dates';
 import DayTrack from '@/modules/attendance/components/DayTrack.vue';
+import PunchPhotoCapture from '@/modules/attendance/components/PunchPhotoCapture.vue';
 import WeekHoursChart from '@/modules/attendance/components/WeekHoursChart.vue';
 import type { CalendarDay } from '@/modules/attendance/types';
 import { DAY_STATUS_LABELS, addDays, dayStatusTone, formatMinutes, formatTime } from '@/modules/attendance/utils/attendance-format';
@@ -55,6 +59,8 @@ const showTrack = computed(() => !!data.value?.shift && (!!open.value || !!done.
 type Tone = 'live' | 'done' | 'violet' | 'warning' | 'neutral';
 const status = computed<{ label: string; detail?: string; tone: Tone }>(() => {
   const d = data.value!;
+  const pending = queued.value.at(-1);
+  if (pending) return { label: pending.kind === 'IN' ? 'Punched in on this device' : 'Punched out on this device', detail: `at ${pending.time}, not sent yet`, tone: pending.kind === 'IN' ? 'live' : 'warning' };
   if (open.value) return { label: 'Working', detail: `since ${formatTime(open.value.checkInAt, tz.value)}`, tone: 'live' };
   if (done.value) return { label: 'Day complete', detail: `${formatTime(done.value.checkInAt, tz.value)}–${formatTime(done.value.checkOutAt, tz.value)}`, tone: 'done' };
   if (d.holiday && !d.holiday.isOptional) return { label: 'Holiday', detail: d.holiday.name, tone: 'violet' };
@@ -103,21 +109,103 @@ function position(): Promise<{ latitude?: number; longitude?: number }> {
   });
 }
 
+// ---- Offline punches ---------------------------------------------------------------------------------------------
+const userId = computed(() => auth.user?.id ?? '');
+const queued = ref<QueuedPunch[]>(userId.value ? queuedPunches(userId.value) : []);
+/** What the next punch is, counting ones saved offline that the server hasn't seen yet. */
+const nextKind = computed<PunchKind>(() => (queued.value.at(-1) ? (queued.value.at(-1)!.kind === 'IN' ? 'OUT' : 'IN') : open.value ? 'OUT' : 'IN'));
+const hhmm = (ms: number) => {
+  const m = minutesOfDay(ms);
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+};
+const isOffline = (e: unknown) => !navigator.onLine || (e instanceof ApiError && e.code === 'NETWORK_ERROR');
+
+function saveOffline(kind: PunchKind, location: { latitude?: number; longitude?: number; photo?: string }) {
+  const at = Date.now();
+  queuePunch(userId.value, { kind, at: new Date(at).toISOString(), date: data.value?.date ?? localToday(), time: hhmm(at), ...location });
+  queued.value = queuedPunches(userId.value);
+  feedback.warning(`Punch ${kind === 'IN' ? 'in' : 'out'} saved on this device`, "You're offline. It's sent as soon as the connection is back.");
+}
+
+let syncing = false;
+async function syncOffline() {
+  if (syncing || !userId.value || !navigator.onLine) return;
+  const list = queuedPunches(userId.value);
+  if (!list.length) return;
+  syncing = true;
+  try {
+    while (list.length) {
+      const p = list[0]!;
+      try {
+        today.data.value = p.kind === 'IN' ? await attendanceApi.punchIn({ latitude: p.latitude, longitude: p.longitude, photo: p.photo }) : await attendanceApi.punchOut();
+        if (Date.now() - new Date(p.at).getTime() > ON_TIME_MS) addPunchCorrection(userId.value, { ...p, recordedAt: new Date().toISOString() });
+      } catch (e) {
+        if (isOffline(e)) break;
+        feedback.warning(`A punch saved offline at ${p.time} couldn't be recorded`, e instanceof ApiError ? e.message : undefined);
+      }
+      list.shift();
+      setQueuedPunches(userId.value, list);
+    }
+  } finally {
+    syncing = false;
+    queued.value = queuedPunches(userId.value);
+    await today.run();
+    emit('changed');
+  }
+}
+onMounted(() => {
+  void syncOffline();
+  window.addEventListener('online', syncOffline);
+});
+onBeforeUnmount(() => window.removeEventListener('online', syncOffline));
+
+// ---- Punch-in photo (where the location asks for one) ------------------------------------------------------------
+const photoOpen = ref(false);
+let photoResolve: ((photo: string | null) => void) | null = null;
+function askPhoto(): Promise<string | null> {
+  photoOpen.value = true;
+  return new Promise((resolve) => (photoResolve = resolve));
+}
+function photoDone(photo: string | null) {
+  photoOpen.value = false;
+  photoResolve?.(photo);
+  photoResolve = null;
+}
+
 async function punch() {
   busy.value = true;
+  const kind = nextKind.value;
+  let location: { latitude?: number; longitude?: number; photo?: string } = {};
   try {
-    if (open.value) {
+    if (kind === 'IN' && data.value?.photoRequired) {
+      const photo = await askPhoto();
+      if (!photo) return;
+      location.photo = photo;
+    }
+    if (queued.value.length) {
+      // Earlier punches are still waiting to be sent: keep the order.
+      if (kind === 'IN') location = { ...location, ...(await position()) };
+      saveOffline(kind, location);
+      void syncOffline();
+      return;
+    }
+    if (kind === 'OUT') {
       today.data.value = await attendanceApi.punchOut();
       feedback.success('Punched out', `Worked ${formatMinutes(today.data.value.record?.workedMinutes)} today.`);
     } else {
-      today.data.value = await attendanceApi.punchIn(await position());
+      location = { ...location, ...(await position()) };
+      today.data.value = await attendanceApi.punchIn(location);
       const late = today.data.value.openRecord?.lateMinutes ?? 0;
       feedback.success('Punched in', late ? `You are ${formatMinutes(late)} late today.` : 'Have a great day!');
     }
     emit('changed');
     void loadWeek();
   } catch (e) {
-    feedback.error(open.value ? 'Could not punch out' : 'Could not punch in', e);
+    if (isOffline(e)) {
+      saveOffline(kind, location);
+      return;
+    }
+    feedback.error(kind === 'OUT' ? 'Could not punch out' : 'Could not punch in', e);
     await today.run();
   } finally {
     busy.value = false;
@@ -162,9 +250,13 @@ defineExpose({ reload: () => Promise.all([today.run(), loadWeek()]) });
           </div>
 
           <div class="w-full sm:w-56">
-            <AppButton v-if="canPunch && !done" block size="lg" :variant="open || dayOff ? 'secondary' : 'primary'" :icon="open ? LogOut : LogIn" :loading="busy" @click="punch">
-              {{ open ? 'Punch out' : 'Punch in' }}
+            <AppButton v-if="canPunch && (!done || queued.length)" block size="lg" :variant="nextKind === 'OUT' || dayOff ? 'secondary' : 'primary'" :icon="nextKind === 'OUT' ? LogOut : LogIn" :loading="busy" @click="punch">
+              {{ nextKind === 'OUT' ? 'Punch out' : 'Punch in' }}
             </AppButton>
+            <p v-if="queued.length" class="mt-2 flex items-center gap-1.5 text-xs text-warning-fg sm:justify-end" role="status">
+              <CloudOff :size="13" aria-hidden="true" />
+              {{ queued.map((q) => `${q.kind === 'IN' ? 'In' : 'Out'} ${q.time}`).join(', ') }} saved on this device
+            </p>
             <p v-else-if="data.periodClosed" class="text-xs text-fg-muted sm:text-end">This month's attendance is closed.</p>
           </div>
         </div>
@@ -186,6 +278,10 @@ defineExpose({ reload: () => Promise.all([today.run(), loadWeek()]) });
           <AppBadge v-if="data.rostered" tone="brand">Rostered</AppBadge>
           <AppBadge v-if="data.workFromHome" tone="info"><House :size="11" /> Working from home</AppBadge>
           <span v-if="data.geofence && canPunch && !done" class="inline-flex items-center gap-1.5"><MapPin :size="13" aria-hidden="true" />Within {{ data.geofence.radiusMetres }} m of {{ data.geofence.location }}</span>
+          <span v-if="data.officeNetwork && canPunch && !done && !open" :class="['inline-flex items-center gap-1.5', data.officeNetwork.onNetwork ? '' : 'font-medium text-warning-fg']">
+            <component :is="data.officeNetwork.onNetwork ? Wifi : WifiOff" :size="13" aria-hidden="true" />{{ data.officeNetwork.onNetwork ? `On the ${data.officeNetwork.location} network` : `Connect to the ${data.officeNetwork.location} network to punch in` }}
+          </span>
+          <span v-if="data.photoRequired && canPunch && !done && !open" class="inline-flex items-center gap-1.5"><Camera :size="13" aria-hidden="true" />Photo needed to punch in</span>
         </div>
       </div>
 
@@ -193,5 +289,6 @@ defineExpose({ reload: () => Promise.all([today.run(), loadWeek()]) });
         <WeekHoursChart :days="week" :loading="weekLoading && !week.length" :today="data.date!" :live-minutes="open ? workedSoFar : 0" :target-minutes="target" :time-zone="tz" />
       </div>
     </template>
+    <PunchPhotoCapture :open="photoOpen" @close="photoDone(null)" @captured="photoDone" />
   </section>
 </template>

@@ -10,9 +10,9 @@ import { DatabaseService } from '../../database/database.service';
 import { Department, Designation, Employee, JobApplication, JobOpening, JobRequisition, Location } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import type { JobDto, JobQueryDto, UpdateJobDto } from './dto/recruitment.dto';
+import { fullName } from '../../common/utils/names';
 
 const ref = (r: { id: string; name: string } | null | undefined) => (r ? { id: r.id, name: r.name } : null);
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const REQUISITION_INCLUDE = {
   model: JobRequisition,
   include: [
@@ -37,9 +37,21 @@ export class JobsService {
     const filters: WhereOptions[] = [];
     if (query.status) filters.push({ status: query.status });
     if (query.search) filters.push({ title: { [Op.iLike]: containsPattern(query.search) } });
-    const { rows, count } = await JobOpening.findAndCountAll({ where: { [Op.and]: filters }, include: [REQUISITION_INCLUDE], order: [['status', 'ASC'], ['createdAt', 'DESC']], distinct: true, ...paginationArgs(query) });
+    const { rows, count } = await JobOpening.findAndCountAll({
+      where: { [Op.and]: filters },
+      include: [REQUISITION_INCLUDE],
+      order: [
+        ['status', 'ASC'],
+        ['createdAt', 'DESC'],
+      ],
+      distinct: true,
+      ...paginationArgs(query),
+    });
     const counts = await this.counts(rows.map((r) => r.id));
-    return new PaginatedResult(rows.map((j) => this.present(j, counts.get(j.id) ?? {})), paginationMeta(query, count));
+    return new PaginatedResult(
+      rows.map((j) => this.present(j, counts.get(j.id) ?? {})),
+      paginationMeta(query, count),
+    );
   }
 
   async get(id: string) {
@@ -96,7 +108,10 @@ export class JobsService {
     if (!TRANSITIONS[j.status as JobStatus].includes(status)) throw AppError.conflict(`A ${j.status.toLowerCase().replace('_', ' ')} job cannot become ${status.toLowerCase().replace('_', ' ')}`);
     if (status === 'OPEN' && j.requisition!.status !== 'APPROVED') throw AppError.conflict(`The requisition is ${j.requisition!.status.toLowerCase()}; the job cannot open`);
     await this.db.transaction(async (transaction) => {
-      await j.update({ status, ...(status === 'OPEN' ? { openedAt: j.openedAt ?? new Date(), closedAt: null } : {}), ...(status === 'CLOSED' ? { closedAt: new Date() } : {}), updatedById: auth.userId }, { transaction });
+      await j.update(
+        { status, ...(status === 'OPEN' ? { openedAt: j.openedAt ?? new Date(), closedAt: null } : {}), ...(status === 'CLOSED' ? { closedAt: new Date() } : {}), updatedById: auth.userId },
+        { transaction },
+      );
       await this.audit.record({ action: `job.${status.toLowerCase()}`, entityType: 'JobOpening', entityId: id, summary: `Job "${j.title}" ${status.toLowerCase().replace('_', ' ')}` }, transaction);
     });
     return this.get(id);
@@ -114,7 +129,11 @@ export class JobsService {
 
   private async counts(jobIds: string[]): Promise<Map<string, Record<string, number>>> {
     if (!jobIds.length) return new Map();
-    const rows = (await JobApplication.findAll({ where: { jobId: jobIds }, attributes: ['jobId', 'stage', [fn('COUNT', col('id')), 'count']], group: ['jobId', 'stage'], raw: true })) as unknown as { jobId: string; stage: string; count: string }[];
+    const rows = (await JobApplication.findAll({ where: { jobId: jobIds }, attributes: ['jobId', 'stage', [fn('COUNT', col('id')), 'count']], group: ['jobId', 'stage'], raw: true })) as unknown as {
+      jobId: string;
+      stage: string;
+      count: string;
+    }[];
     const out = new Map<string, Record<string, number>>();
     for (const r of rows) out.set(r.jobId, { ...(out.get(r.jobId) ?? {}), [r.stage]: Number(r.count) });
     return out;

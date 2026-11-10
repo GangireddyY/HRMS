@@ -60,8 +60,14 @@ const brandBackdrop = computed<{ class: string; style?: Record<string, string> }
   return { class: bg < 0.2 ? 'rounded-lg bg-white px-3 py-2' : 'rounded-lg bg-zinc-900 px-3 py-2' };
 });
 
+const matches = (item: NavItem) => (item.exact ? route.path === item.to : route.path === item.to || route.path.startsWith(`${item.to}/`));
+/** The most specific matching link wins, so /hr/exits/settlements highlights "Settlement payouts", not "Exits" too. */
+const activeTo = computed(() => {
+  const hits = sections.value.flatMap((s) => s.items).filter(matches);
+  return hits.length ? hits.reduce((a, b) => (b.to.length > a.to.length ? b : a)).to : null;
+});
 function isActive(item: NavItem): boolean {
-  return item.exact ? route.path === item.to : route.path === item.to || route.path.startsWith(`${item.to}/`);
+  return item.to === activeTo.value;
 }
 
 // Titled sections fold away (remembered per workspace); the one holding the current page always stays open.

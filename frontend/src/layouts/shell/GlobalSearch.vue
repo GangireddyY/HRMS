@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Building2, CornerDownLeft, Loader2, Search, Sparkles, User, X } from '@lucide/vue';
+import { Building2, CalendarClock, CalendarPlus, Contact, CornerDownLeft, Download, Fingerprint, Loader2, Receipt, Search, Sparkles, User, UserPlus, UserRound, X } from '@lucide/vue';
 import { useAssistantStore } from '@/modules/assistant/assistant.store';
+import { employeesApi } from '@/modules/people/api/people.api';
 import { platformApi } from '@/modules/platform/api/platform.api';
+import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import { usersApi } from '@/modules/users/api/users.api';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
+import { isAllowed, type AccessRule } from '@/core/navigation/access-rules';
 import { accessibleWorkspaces, visibleSections } from '@/core/navigation/workspaces';
 import { useAuthStore } from '@/core/auth/auth.store';
+import { t } from '@/core/i18n/i18n';
 import { useUiStore } from '@/shared/stores/ui.store';
 
 /**
@@ -47,11 +51,44 @@ const pages = computed<Result[]>(() =>
   ),
 );
 
+/** Things people come to do, offered when the words match (and only when the user may open the page). */
+const ACTIONS: { label: string; hint: string; words: string; to: string; icon: Component }[] = [
+  { label: 'Apply for leave', hint: 'Request time off', words: 'leave time off vacation holiday sick', to: '/me/leave?apply=1', icon: CalendarPlus },
+  { label: "Fill in this week's timesheet", hint: 'Log hours by project', words: 'timesheet hours log project', to: '/me/timesheets', icon: CalendarClock },
+  { label: 'Mark attendance', hint: 'Punch in or out', words: 'punch in out attendance clock check', to: '/me/attendance', icon: Fingerprint },
+  { label: 'Claim an expense', hint: 'Submit a reimbursement with the receipt', words: 'reimbursement expense claim bill receipt', to: '/me/reimbursements', icon: Receipt },
+  { label: 'Add an employee', hint: 'Create an employee record', words: 'new hire employee create onboard', to: '/hr/employees/new', icon: UserPlus },
+  { label: 'Download my data', hint: 'Everything the organization holds about you', words: 'privacy export personal data dpdp', to: '/me/security', icon: Download },
+];
+const canOpen = (to: string) => isAllowed(router.resolve(to).meta.access as AccessRule | undefined, subject.value);
+const actions = computed<Result[]>(() => ACTIONS.filter((a) => canOpen(a.to)).map((a) => ({ id: `do:${a.to}`, label: a.label, hint: a.hint, to: a.to, icon: a.icon, group: 'Actions' })));
+const GROUP_ORDER = ['Employees', 'Candidates', 'Users', 'Organizations'];
+
+/** Records opened from search, for this tab only (names stay off the device once it's closed). */
+const RECENT_KEY = 'hrms.searchRecent';
+const RECENT_ICONS: Record<string, Component> = { emp: UserRound, cand: Contact, user: User, org: Building2 };
+const recent = ref<Result[]>(
+  (() => {
+    try {
+      return (JSON.parse(sessionStorage.getItem(RECENT_KEY) ?? '[]') as Omit<Result, 'icon'>[]).map((r) => ({ ...r, icon: RECENT_ICONS[r.id.split(':')[0]!] ?? User, group: 'Recent' }));
+    } catch {
+      return [];
+    }
+  })(),
+);
+function remember(r: Result) {
+  if (!/^(emp|cand|user|org):/.test(r.id)) return;
+  recent.value = [{ ...r, group: 'Recent' }, ...recent.value.filter((x) => x.id !== r.id)].slice(0, 5);
+  sessionStorage.setItem(RECENT_KEY, JSON.stringify(recent.value.map(({ icon: _i, ...rest }) => rest)));
+}
+
 const results = computed(() => {
   const q = query.value.trim().toLowerCase();
-  const nav = q ? pages.value.filter((p) => p.label.toLowerCase().includes(q) || p.hint.toLowerCase().includes(q)) : pages.value.slice(0, 8);
+  if (!q) return [...recent.value, ...actions.value.slice(0, 3), ...pages.value.slice(0, 6)];
+  const nav = pages.value.filter((p) => p.label.toLowerCase().includes(q) || p.hint.toLowerCase().includes(q));
+  const todo = actions.value.filter((a) => a.label.toLowerCase().includes(q) || ACTIONS.find((x) => `do:${x.to}` === a.id)!.words.includes(q));
   const askAi: Result[] = q.length >= 3 ? [{ id: 'ask', label: `Ask AI: “${query.value.trim()}”`, hint: 'Assistant', to: '', icon: Sparkles, group: 'Assistant' }] : [];
-  return [...nav.slice(0, 8), ...remote.value, ...askAi];
+  return [...todo.slice(0, 3), ...nav.slice(0, 6), ...remote.value, ...askAi];
 });
 /** `ui.searchOpen`: the dropdown is showing (and on small screens, the box is expanded). */
 const open = computed(() => ui.searchOpen);
@@ -67,6 +104,22 @@ async function searchRemote(q: string) {
   const found: Result[] = [];
   try {
     const tasks: Promise<void>[] = [];
+    if (auth.can('employee.view', 'TEAM')) {
+      tasks.push(
+        employeesApi.list({ search: q, pageSize: 6 }).then((page) => {
+          for (const e of page.items) {
+            found.push({ id: `emp:${e.id}`, label: e.fullName, hint: [e.employeeCode, e.designation?.name, e.department?.name].filter(Boolean).join(' · '), to: `/hr/employees/${e.id}`, icon: UserRound, group: 'Employees' });
+          }
+        }),
+      );
+    }
+    if (auth.can('recruitment.view') && auth.hasFeature('recruitment')) {
+      tasks.push(
+        recruitmentApi.candidates({ search: q, pageSize: 4 }).then((page) => {
+          for (const c of page.items) found.push({ id: `cand:${c.id}`, label: `${c.firstName} ${c.lastName}`.trim(), hint: c.currentTitle ?? c.email, to: `/hr/recruitment/candidates/${c.id}`, icon: Contact, group: 'Candidates' });
+        }),
+      );
+    }
     if (auth.can('user.view')) {
       tasks.push(
         usersApi.list({ search: q, pageSize: 5 }).then((page) => {
@@ -82,7 +135,7 @@ async function searchRemote(q: string) {
       );
     }
     await Promise.allSettled(tasks);
-    if (current === sequence) remote.value = found;
+    if (current === sequence) remote.value = found.sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group));
   } finally {
     if (current === sequence) searching.value = false;
   }
@@ -113,6 +166,7 @@ function go(r: Result | undefined) {
   closeSearch();
   query.value = '';
   remote.value = [];
+  remember(r);
   if (r.id === 'ask') assistant.ask(question);
   else void router.push(r.to);
 }
@@ -186,7 +240,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
         ref="input"
         v-model="query"
         type="search"
-        placeholder="Search pages, people…"
+        :placeholder="t('search.placeholder')"
         autocomplete="off"
         class="h-8 w-full card pe-14 ps-8 text-sm text-fg transition outline-none placeholder:text-fg-subtle hover:border-line-strong focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 [&::-webkit-search-cancel-button]:hidden"
         role="combobox"
@@ -213,7 +267,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
 
     <div v-if="open" class="absolute top-full end-0 z-40 mt-1 w-full min-w-[20rem] overflow-hidden rounded-md border border-line bg-surface shadow-pop max-md:start-0 max-md:min-w-0 md:w-[26rem]">
       <ul id="global-search-results" role="listbox" aria-label="Search results" class="max-h-[60vh] overflow-y-auto p-1">
-        <li v-if="!results.length" class="px-3 py-6 text-center text-sm text-fg-muted" role="presentation">{{ searching ? 'Searching…' : 'No results' }}</li>
+        <li v-if="!results.length" class="px-3 py-6 text-center text-sm text-fg-muted" role="presentation">{{ searching ? t('search.searching') : t('search.noResults') }}</li>
         <template v-for="(r, i) in results" :key="r.id">
           <li v-if="groupStart(i)" class="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-fg-subtle uppercase" role="presentation">{{ r.group }}</li>
           <li
@@ -238,7 +292,7 @@ const groupStart = (i: number) => i === 0 || results.value[i - 1]!.group !== res
         </template>
       </ul>
       <div class="flex items-center gap-3 border-t border-line bg-surface-muted/40 px-3 py-2 text-2xs text-fg-subtle max-md:hidden">
-        <span>↑ ↓ to move</span><span>↵ to open</span><span>Esc to close</span>
+        <span>{{ t('search.hintMove') }}</span><span>{{ t('search.hintOpen') }}</span><span>{{ t('search.hintClose') }}</span>
       </div>
     </div>
   </div>

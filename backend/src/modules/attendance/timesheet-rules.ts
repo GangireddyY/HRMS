@@ -51,7 +51,8 @@ export function reminderText(kind: ReminderKind, status: TimesheetStatus | 'MISS
       body: status === 'DRAFT' ? 'Your draft is saved; submit it for review today.' : 'Submit it today so it can be reviewed before payroll.',
     };
   }
-  if (kind === 'OVERDUE') return { title: `Your timesheet for the week of ${week} is overdue`, body: `It was due on ${dateLabel(due)}. ${rules.required ? CONSEQUENCE[rules.missedAction] : ''}`.trim() };
+  if (kind === 'OVERDUE')
+    return { title: `Your timesheet for the week of ${week} is overdue`, body: `It was due on ${dateLabel(due)}. ${rules.required ? CONSEQUENCE[rules.missedAction] : ''}`.trim() };
   const what = status === 'REJECTED' ? 'needs your changes' : status === 'DRAFT' ? "isn't submitted yet" : 'is missing';
   return { title: `Reminder: your timesheet for the week of ${week} ${what}`, body: `It's due by ${dateLabel(due)}.` };
 }

@@ -35,6 +35,7 @@ import { PIPELINE_STAGES, RESUME_MAX_BYTES, type ApplicationStage, type Intervie
 import { appLocale } from '@/core/locale/locale';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import OfferFormModal from '@/modules/recruitment/components/OfferFormModal.vue';
+import OfferPanel from '@/modules/recruitment/components/OfferPanel.vue';
 import ScheduleInterviewModal from '@/modules/recruitment/components/ScheduleInterviewModal.vue';
 import type { ApplicationDetail, InterviewItem } from '@/modules/recruitment/types';
 import {
@@ -44,7 +45,6 @@ import {
   SOURCE_LABELS,
   STAGE_LABELS,
   money,
-  offerTone,
   recommendationTone,
   stageTone,
 } from '@/modules/recruitment/utils/recruitment-format';
@@ -436,28 +436,7 @@ const keyDates = computed(() => {
               <p v-else class="mb-3 text-sm text-fg-muted">Draft the offer — compensation, joining date and validity — then release it to the candidate.</p>
               <AppButton v-if="a.stage === 'OFFER'" :icon="Send" @click="offerFormOpen = true">Draft offer</AppButton>
             </template>
-            <template v-else>
-              <AppBadge :tone="offerTone[a.offer.status]" dot>{{ OFFER_STATUS_LABELS[a.offer.status] }}</AppBadge>
-              <p class="mt-3 text-2xs font-medium text-fg-muted">Annual CTC</p>
-              <p class="text-2xl font-semibold tracking-tight text-fg tabular-nums">{{ money(a.offer.annualCtc) }}</p>
-              <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div><dt class="text-2xs font-medium text-fg-muted">Joining</dt><dd class="text-fg">{{ formatDate(a.offer.joiningDate) }}</dd></div>
-                <div v-if="a.offer.expiresOn"><dt class="text-2xs font-medium text-fg-muted">Valid until</dt><dd class="text-fg">{{ formatDate(a.offer.expiresOn) }}</dd></div>
-              </dl>
-              <div class="mt-4 flex flex-wrap gap-2 border-t border-line/70 pt-4">
-                <template v-if="a.offer.status === 'DRAFT'">
-                  <AppButton size="sm" variant="secondary" @click="offerFormOpen = true">Edit</AppButton>
-                  <AppButton size="sm" :icon="Send" :loading="busy === 'release'" @click="act('release', () => recruitmentApi.releaseOffer(a!.offer!.id), 'Offer released')">Release</AppButton>
-                </template>
-                <template v-else-if="a.offer.status === 'RELEASED'">
-                  <AppButton size="sm" :icon="CheckCircle2" :loading="busy === 'accept'" @click="act('accept', () => recruitmentApi.respondOffer(a!.offer!.id, 'ACCEPTED'), 'Offer accepted')">Accepted</AppButton>
-                  <AppButton size="sm" variant="secondary" @click="declineOpen = true; declineReason = ''">Declined</AppButton>
-                </template>
-                <AppButton v-if="a.offer.status === 'ACCEPTED' && a.stage !== 'HIRED'" size="sm" :icon="UserCheck" :disabled="!canHire" @click="hireOpen = true">Hire</AppButton>
-                <AppButton v-if="a.stage !== 'HIRED'" size="sm" variant="ghost" :loading="busy === 'withdraw'" @click="act('withdraw', () => recruitmentApi.withdrawOffer(a!.offer!.id), 'Offer withdrawn')">Withdraw</AppButton>
-              </div>
-              <p v-if="a.offer.status === 'ACCEPTED' && !canHire && a.stage !== 'HIRED'" class="mt-2 text-xs text-fg-muted">Hiring creates the employee record; someone with permission to create employees completes it.</p>
-            </template>
+            <OfferPanel v-else :key="a.offer.id" :offer-id="a.offer.id" :stage="a.stage" :can-hire="canHire" @edit="offerFormOpen = true" @hire="hireOpen = true" @changed="app.run()" />
           </AppCard>
 
           <!-- Candidate -->

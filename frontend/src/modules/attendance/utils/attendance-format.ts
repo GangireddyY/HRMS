@@ -63,6 +63,13 @@ export function addDays(date: string, n: number): string {
 
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+/** "All locations", "Bengaluru", or "Bengaluru + 2 more". */
+export function holidayWhere(h: { locations: { name: string }[] }): string {
+  const [first, ...rest] = h.locations;
+  if (!first) return 'All locations';
+  return rest.length ? `${first.name} + ${rest.length} more` : first.name;
+}
+
 /** 125 → "2h 05m". */
 export function formatMinutes(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return '—';

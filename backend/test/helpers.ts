@@ -132,11 +132,11 @@ export function totp(secret: string, offsetSteps = 0): string {
   return gen.generate(secret);
 }
 
-/** Extracts the token query parameter from the last email sent to `to`. */
+/** Extracts the token query parameter from the last token-carrying email sent to `to`. */
 export function tokenFromMail(ctx: TestContext, to: string): string {
-  const message = [...ctx.mail.outbox].reverse().find((m) => m.to === to);
-  if (!message) throw new Error(`No email sent to ${to}`);
-  const match = message.text.match(/token=([^\s]+)/);
+  const sent = ctx.mail.outbox.filter((m) => m.to === to);
+  if (!sent.length) throw new Error(`No email sent to ${to}`);
+  const match = [...sent].reverse().map((m) => m.text.match(/token=([^\s]+)/)).find(Boolean);
   if (!match) throw new Error('No token in email');
   return decodeURIComponent(match[1]);
 }

@@ -51,7 +51,7 @@ export const DEFAULT_COLOR_THEME: ColorTheme = 'indigo';
 export const DEFAULT_THEME_MODE: ThemeMode = 'system';
 export const DEFAULT_SIDEBAR_STYLE: SidebarStyle = 'light';
 
-/** Also read by the pre-paint script in index.html; change both together. */
+/** Also read by the pre-paint script public/theme-boot.js; change both together. */
 export const THEME_STORAGE_KEYS = { mode: 'hrms.theme', color: 'hrms.colorTheme', sidebar: 'hrms.sidebar', brandPalette: 'hrms.brandPalette' } as const;
 
 export function isColorTheme(value: unknown): value is ColorTheme {

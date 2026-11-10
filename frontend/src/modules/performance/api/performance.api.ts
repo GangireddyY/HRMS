@@ -1,6 +1,32 @@
-import type { CycleStatus, HikeStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
+import type { CycleStatus, HikeStatus, OkrHealth, OkrLevel, OkrStatus, OneOnOneItemKind, OneOnOneStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
 import { http, type ListQuery } from '@/core/http/http-client';
-import type { AssessmentInput, Colleague, Compensation, CompensationInput, Cycle, CycleDetail, CycleInput, FeedbackRequest, GoalInput, HikeInput, HikeList, HikeRow, PipDetail, PipInput, PipRow, ReviewDetail, ReviewRow } from '../types';
+import type {
+  AssessmentInput,
+  Calibration,
+  Colleague,
+  Compensation,
+  CompensationInput,
+  Cycle,
+  CycleDetail,
+  CycleInput,
+  FeedbackRequest,
+  GoalInput,
+  HikeInput,
+  HikeList,
+  HikeRow,
+  KeyResultInput,
+  ObjectiveDetail,
+  ObjectiveInput,
+  OkrList,
+  OneOnOneDetail,
+  OneOnOneRow,
+  OneOnOneTeamRow,
+  PipDetail,
+  PipInput,
+  PipRow,
+  ReviewDetail,
+  ReviewRow,
+} from '../types';
 
 export const performanceApi = {
   cycles: (q: ListQuery & { status?: CycleStatus }) => http.page<Cycle>('/performance/cycles', q),
@@ -50,4 +76,30 @@ export const performanceApi = {
   checkIn: (id: string, body: { checkInDate: string; progress: PipProgress; note: string }) => http.post<PipDetail>(`/performance/pips/${id}/check-ins`, body),
   closePip: (id: string, body: { outcome: 'SUCCESSFUL' | 'UNSUCCESSFUL' | 'CANCELLED'; note: string; objectivesMet?: boolean[] }) => http.post<PipDetail>(`/performance/pips/${id}/close`, body),
   acknowledgePip: (id: string, comment: string | null) => http.post<PipDetail>(`/performance/pips/${id}/acknowledge`, { comment }),
+
+  calibration: (cycleId: string, departmentId?: string) => http.get<Calibration>(`/performance/cycles/${cycleId}/calibration`, { departmentId: departmentId || undefined }),
+  setPotential: (reviewId: string, potential: number | null) => http.put<ReviewDetail>(`/performance/reviews/${reviewId}/potential`, { potential }),
+
+  okrs: (q: { date?: string; level?: OkrLevel; ownerEmployeeId?: string; departmentId?: string; status?: OkrStatus }) => http.get<OkrList>('/performance/okrs', q),
+  okr: (id: string) => http.get<ObjectiveDetail>(`/performance/okrs/${id}`),
+  okrParents: (level: OkrLevel, periodStart: string, periodEnd: string) => http.get<{ id: string; title: string; level: OkrLevel }[]>('/performance/okrs/parents', { level, periodStart, periodEnd }),
+  createOkr: (body: ObjectiveInput) => http.post<ObjectiveDetail>('/performance/okrs', body),
+  updateOkr: (id: string, body: { title?: string; description?: string | null; parentId?: string | null; periodStart?: string; periodEnd?: string; status?: OkrStatus }) =>
+    http.patch<ObjectiveDetail>(`/performance/okrs/${id}`, body),
+  removeOkr: (id: string) => http.delete<{ deleted: boolean }>(`/performance/okrs/${id}`),
+  addKeyResult: (id: string, body: KeyResultInput) => http.post<ObjectiveDetail>(`/performance/okrs/${id}/key-results`, body),
+  updateKeyResult: (krId: string, body: Partial<KeyResultInput>) => http.patch<ObjectiveDetail>(`/performance/okrs/key-results/${krId}`, body),
+  removeKeyResult: (krId: string) => http.delete<ObjectiveDetail>(`/performance/okrs/key-results/${krId}`),
+  okrCheckIn: (krId: string, body: { value: number; health: OkrHealth; note: string | null }) => http.post<ObjectiveDetail>(`/performance/okrs/key-results/${krId}/check-ins`, body),
+
+  oneOnOnes: (q: ListQuery & { view?: 'mine' | 'team'; status?: OneOnOneStatus; employeeId?: string }) => http.page<OneOnOneRow>('/performance/one-on-ones', q),
+  oneOnOneTeam: () => http.get<OneOnOneTeamRow[]>('/performance/one-on-ones/team'),
+  oneOnOne: (id: string) => http.get<OneOnOneDetail>(`/performance/one-on-ones/${id}`),
+  scheduleOneOnOne: (body: { employeeId: string; scheduledAt: string; durationMinutes?: number; topics?: string[] }) => http.post<OneOnOneDetail>('/performance/one-on-ones', body),
+  updateOneOnOne: (id: string, body: { scheduledAt?: string; durationMinutes?: number; sharedNotes?: string | null; managerNotes?: string | null }) => http.patch<OneOnOneDetail>(`/performance/one-on-ones/${id}`, body),
+  addOneOnOneItem: (id: string, body: { kind: OneOnOneItemKind; text: string; ownerEmployeeId?: string | null; dueDate?: string | null }) => http.post<OneOnOneDetail>(`/performance/one-on-ones/${id}/items`, body),
+  updateOneOnOneItem: (itemId: string, body: { done?: boolean; text?: string }) => http.patch<OneOnOneDetail>(`/performance/one-on-ones/items/${itemId}`, body),
+  removeOneOnOneItem: (itemId: string) => http.delete<OneOnOneDetail>(`/performance/one-on-ones/items/${itemId}`),
+  completeOneOnOne: (id: string, nextAt: string | null) => http.post<OneOnOneDetail>(`/performance/one-on-ones/${id}/complete`, { nextAt }),
+  cancelOneOnOne: (id: string) => http.post<OneOnOneDetail>(`/performance/one-on-ones/${id}/cancel`),
 };

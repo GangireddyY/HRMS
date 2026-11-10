@@ -1,13 +1,16 @@
-import type { LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus } from '@contracts';
+import type { BankFileFormat, BonusBasis, ExpensePolicyRule, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus } from '@contracts';
 import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
 import type {
   Claim,
+  ClaimUsage,
+  ExpensePolicyView,
   ComponentInput,
-  EmployeeSalary,
   Loan,
   LoanDetail,
   MyLoans,
   MyPayslip,
+  PayGroup,
+  PayGroups,
   PayrollRun,
   PayrollRunDetail,
   PayrollSettings,
@@ -17,7 +20,10 @@ import type {
   SalaryComponentDef,
   SalaryHistory,
   SalaryInput,
+  SalaryRevision,
+  SalaryRevisionStatus,
   SalaryRow,
+  SalarySaveResult,
   SalaryStructure,
   StructureInput,
   TaxDeclaration,
@@ -26,7 +32,7 @@ import type {
 
 export const payrollApi = {
   settings: () => http.get<PayrollSettings>('/payroll/settings'),
-  updateSettings: (body: Partial<Omit<PayrollSettings, 'organizationState' | 'organizationPtState'>>) => http.put<PayrollSettings>('/payroll/settings', body),
+  updateSettings: (body: Partial<Omit<PayrollSettings, 'organizationState' | 'organizationPtState' | 'organizationLwfState'>>) => http.put<PayrollSettings>('/payroll/settings', body),
 
   components: () => http.get<SalaryComponentDef[]>('/payroll/components'),
   createComponent: (body: ComponentInput) => http.post<SalaryComponentDef>('/payroll/components', body),
@@ -42,8 +48,12 @@ export const payrollApi = {
   preview: (body: { structureId: string; annualCtc: number; pfApplicable?: boolean }) => http.post<SalaryBreakdown>('/payroll/salaries/preview', body),
   salaries: (q: ListQuery & { departmentId?: string; missing?: boolean }) => http.page<SalaryRow>('/payroll/salaries', q),
   salaryHistory: (employeeId: string) => http.get<SalaryHistory>(`/payroll/employees/${employeeId}/salaries`),
-  setSalary: (employeeId: string, body: SalaryInput) => http.post<EmployeeSalary>(`/payroll/employees/${employeeId}/salaries`, body),
+  setSalary: (employeeId: string, body: SalaryInput) => http.post<SalarySaveResult>(`/payroll/employees/${employeeId}/salaries`, body),
   removeSalary: (id: string) => http.delete<{ deleted: boolean }>(`/payroll/salaries/${id}`),
+  salaryRevisions: (status: SalaryRevisionStatus | 'ALL' = 'PENDING') => http.get<SalaryRevision[]>('/payroll/salary-revisions', { status }),
+  approveSalaryRevision: (id: string) => http.post<SalaryRevision>(`/payroll/salary-revisions/${id}/approve`),
+  rejectSalaryRevision: (id: string, note: string) => http.post<SalaryRevision>(`/payroll/salary-revisions/${id}/reject`, { note }),
+  cancelSalaryRevision: (id: string) => http.post<{ id: string }>(`/payroll/salary-revisions/${id}/cancel`),
   mySalary: () => http.get<SalaryHistory>('/payroll/me/salary'),
 
   myDeclaration: (fy?: number) => http.get<TaxDeclaration>('/payroll/me/tax-declaration', { fy }),
@@ -51,7 +61,15 @@ export const payrollApi = {
 
   runs: (q: ListQuery & { year?: number; status?: PayrollRunStatus }) => http.page<PayrollRun>('/payroll/runs', q),
   run: (id: string) => http.get<PayrollRunDetail>(`/payroll/runs/${id}`),
-  createRun: (body: { year: number; month: number; notes?: string | null }) => http.post<PayrollRunDetail>('/payroll/runs', body),
+  createRun: (body: { year: number; month: number; payGroupId?: string | null; notes?: string | null }) => http.post<PayrollRunDetail>('/payroll/runs', body),
+  addBonus: (runId: string, body: { label: string; category: 'BONUS' | 'INCENTIVE'; basis: BonusBasis; value: number; employeeIds?: string[]; taxable?: boolean }) =>
+    http.post<{ added: number; total: number; skipped: { employee: string; reason: string }[]; held: number }>(`/payroll/runs/${runId}/bonuses`, body),
+  payGroups: () => http.get<PayGroups>('/payroll/pay-groups'),
+  createPayGroup: (body: { name: string; description?: string | null }) => http.post<PayGroup>('/payroll/pay-groups', body),
+  updatePayGroup: (id: string, body: { name?: string; description?: string | null; isActive?: boolean }) => http.patch<PayGroup>(`/payroll/pay-groups/${id}`, body),
+  removePayGroup: (id: string) => http.delete<{ deleted: boolean }>(`/payroll/pay-groups/${id}`),
+  assignPayGroup: (employeeIds: string[], payGroupId: string | null) => http.put<PayGroups>('/payroll/pay-groups/members', { employeeIds, payGroupId }),
+  downloadPayslipPdf: (id: string, fileName: string) => downloadFile(`/payroll/payslips/${id}/pdf`, undefined, fileName),
   calculate: (id: string) => http.post<PayrollRunDetail>(`/payroll/runs/${id}/calculate`),
   submit: (id: string) => http.post<PayrollRunDetail>(`/payroll/runs/${id}/submit`),
   approve: (id: string, note?: string | null) => http.post<PayrollRunDetail>(`/payroll/runs/${id}/approve`, { note }),
@@ -65,13 +83,17 @@ export const payrollApi = {
     http.post<PayslipDetail>(`/payroll/runs/${runId}/adjustments`, body),
   removeAdjustment: (runId: string, adjustmentId: string) => http.delete<PayslipDetail | null>(`/payroll/runs/${runId}/adjustments/${adjustmentId}`),
   downloadRegister: (id: string) => downloadFile(`/payroll/runs/${id}/register`, undefined, 'payroll-register.csv'),
-  downloadBankFile: (id: string) => downloadFile(`/payroll/runs/${id}/bank-file`, undefined, 'bank-transfer.csv'),
+  downloadBankFile: (id: string, format: BankFileFormat = 'GENERIC') => downloadFile(`/payroll/runs/${id}/bank-file`, { format }, 'bank-transfer.csv'),
   downloadPfEcr: (id: string) => downloadFile(`/payroll/runs/${id}/pf-ecr`, undefined, 'pf-ecr.txt'),
 
   myPayslips: () => http.get<MyPayslip[]>('/payroll/me/payslips'),
   payslip: (id: string) => http.get<PayslipDetail>(`/payroll/payslips/${id}`),
 
-  claims: (q: ListQuery & { view?: 'mine' | 'approve' | 'all'; status?: ReimbursementStatus }) => http.page<Claim>('/payroll/reimbursements', q),
+  claims: (q: ListQuery & { view?: 'mine' | 'approve' | 'finance' | 'all'; status?: ReimbursementStatus }) => http.page<Claim>('/payroll/reimbursements', q),
+  claim: (id: string) => http.get<Claim>(`/payroll/reimbursements/${id}`),
+  claimUsage: (month: string) => http.get<ClaimUsage>('/payroll/me/reimbursements/usage', { month }),
+  expensePolicy: () => http.get<ExpensePolicyView>('/payroll/expense-policy'),
+  updateExpensePolicy: (body: { categories: ExpensePolicyRule[]; financeApprovalAbove: number | null }) => http.put<ExpensePolicyView>('/payroll/expense-policy', body),
   createClaim: (body: { category: ReimbursementCategory; title: string; expenseDate: string; amount: number; description?: string | null }, receipt: File | null) =>
     receipt
       ? http.upload<Claim>('/payroll/reimbursements', receipt, { fileName: receipt.name, fields: { ...body, amount: String(body.amount), description: body.description ?? '' } })

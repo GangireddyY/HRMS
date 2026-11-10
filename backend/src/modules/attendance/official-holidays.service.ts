@@ -6,6 +6,7 @@ import { HOLIDAY_COUNTRIES, type HolidayCountry, type OfficialHolidayKind } from
 import { DatabaseService } from '../../database/database.service';
 import { Holiday, Organization } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { holidayClash, knownLocations } from './attendance-rules.service';
 import type { ImportHolidaysDto } from './dto/attendance.dto';
 
 /** Google's public holiday calendars (no key needed); each covers the past few years and the next one or two. */
@@ -65,7 +66,12 @@ export function parseHolidayCalendar(ics: string): OfficialHoliday[] {
           date: `${date[1]}-${date[2]}-${date[3]}`,
           name: name.slice(0, 120),
           kind,
-          regions: regional ? regional[1]!.split(',').map((r) => r.trim()).filter(Boolean) : [],
+          regions: regional
+            ? regional[1]!
+                .split(',')
+                .map((r) => r.trim())
+                .filter(Boolean)
+            : [],
           halfDay: /half-day holiday/i.test(description),
         });
       }
@@ -99,10 +105,7 @@ export class OfficialHolidaysService {
   /** Holidays of `year`, each with the organization's existing holiday on that date (if any). */
   async list(auth: AuthContext, year: number, country?: HolidayCountry) {
     const code = country ?? (await this.defaultCountry(auth.organizationId!));
-    const [all, existing] = await Promise.all([
-      this.calendar(code),
-      Holiday.findAll({ where: { date: { [Op.between]: [`${year}-01-01`, `${year}-12-31`] } }, attributes: ['date', 'name'] }),
-    ]);
+    const [all, existing] = await Promise.all([this.calendar(code), Holiday.findAll({ where: { date: { [Op.between]: [`${year}-01-01`, `${year}-12-31`] } }, attributes: ['date', 'name'] })]);
     const taken = new Map(existing.map((h) => [h.date, h.name]));
     const holidays = all
       .filter((h) => h.date.startsWith(`${year}-`))
@@ -111,16 +114,28 @@ export class OfficialHolidaysService {
     return { country: code, countryName: HOLIDAY_COUNTRIES[code], year, holidays };
   }
 
-  /** Adds the chosen holidays; dates that already have a holiday are left as they are. */
+  /** Adds the chosen holidays (for every location, or the chosen ones); dates already covered there are left as they are. */
   async import(auth: AuthContext, dto: ImportHolidaysDto) {
     const dates = dto.holidays.map((h) => h.date);
     if (new Set(dates).size !== dates.length) throw AppError.validation([{ field: 'holidays', message: 'Choose one holiday per date' }]);
     return this.db.transaction(async (transaction) => {
-      const existing = new Set((await Holiday.findAll({ where: { date: dates }, attributes: ['date'], transaction })).map((h) => h.date));
-      const fresh = dto.holidays.filter((h) => !existing.has(h.date));
+      const batch = await knownLocations(dto.locationIds, transaction);
+      const fresh: (ImportHolidaysDto['holidays'][number] & { locationIds: string[] })[] = [];
+      for (const h of dto.holidays) {
+        const locationIds = h.locationIds?.length ? await knownLocations(h.locationIds, transaction) : batch;
+        if (!(await holidayClash(h.date, locationIds, transaction))) fresh.push({ ...h, locationIds });
+      }
       if (fresh.length) {
         await Holiday.bulkCreate(
-          fresh.map((h) => ({ date: h.date, name: h.name, isOptional: h.isOptional ?? false, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId })),
+          fresh.map((h) => ({
+            date: h.date,
+            name: h.name,
+            isOptional: h.isOptional ?? false,
+            locationIds: h.locationIds,
+            organizationId: auth.organizationId!,
+            createdById: auth.userId,
+            updatedById: auth.userId,
+          })),
           { transaction },
         );
         await this.audit.record(
@@ -128,7 +143,7 @@ export class OfficialHolidaysService {
             action: 'holiday.imported',
             entityType: 'Holiday',
             summary: `${fresh.length} official holiday${fresh.length === 1 ? '' : 's'} imported${dto.country ? ` (${HOLIDAY_COUNTRIES[dto.country]})` : ''}`,
-            metadata: { country: dto.country ?? null, holidays: fresh.map((h) => `${h.date} ${h.name}${h.isOptional ? ' (optional)' : ''}`) },
+            metadata: { country: dto.country ?? null, locationIds: batch, holidays: fresh.map((h) => `${h.date} ${h.name}${h.isOptional ? ' (optional)' : ''}`) },
           },
           transaction,
         );

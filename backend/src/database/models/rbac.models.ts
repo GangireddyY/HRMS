@@ -87,3 +87,25 @@ export class MembershipRole extends Model<InferAttributes<MembershipRole>, Infer
   @BelongsTo(() => Role, 'roleId')
   role?: NonAttribute<Role>;
 }
+
+/** While it runs (inclusive dates, not revoked), the delegate approves on the delegator's behalf. */
+@Table({ tableName: 'approval_delegations', underscored: true })
+export class ApprovalDelegation extends Model<InferAttributes<ApprovalDelegation>, InferCreationAttributes<ApprovalDelegation>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => OrganizationMembership) @Column(DataType.UUID) delegatorMembershipId: string;
+  @ForeignKey(() => OrganizationMembership) @Column(DataType.UUID) delegateMembershipId: string;
+  @Column(DataType.DATEONLY) startsOn: string;
+  @Column(DataType.DATEONLY) endsOn: string;
+  @Column(DataType.STRING(300)) reason: CreationOptional<string | null>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.DATE) revokedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) revokedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => OrganizationMembership, 'delegatorMembershipId') delegator?: NonAttribute<OrganizationMembership>;
+  @BelongsTo(() => OrganizationMembership, 'delegateMembershipId') delegate?: NonAttribute<OrganizationMembership>;
+}

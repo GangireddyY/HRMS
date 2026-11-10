@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowRight, CalendarCheck, Clock, FileText, Printer, ReceiptText, Sparkles } from '@lucide/vue';
+import { ArrowRight, CalendarCheck, Clock, Download, FileText, Printer, ReceiptText, Sparkles } from '@lucide/vue';
+import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import PayslipView from '@/modules/payroll/components/PayslipView.vue';
@@ -10,13 +11,27 @@ import { AppBadge, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton
 import { useAsync } from '@/shared/composables/use-async';
 import { useAssistantStore } from '@/modules/assistant/assistant.store';
 
-/** One payslip, printable (browser "Save as PDF"). Used in My Workspace and from payroll runs. */
+/** One payslip, as a PDF or printed. Used in My Workspace and from payroll runs. */
 const route = useRoute();
 const assistant = useAssistantStore();
 const id = computed(() => String(route.params.id));
 const payslip = useAsync(() => payrollApi.payslip(id.value));
 watch(id, () => void payslip.run());
 const print = () => window.print();
+const feedback = useFeedbackStore();
+const downloading = ref(false);
+async function downloadPdf() {
+  const x = payslip.data.value;
+  if (!x) return;
+  downloading.value = true;
+  try {
+    await payrollApi.downloadPayslipPdf(x.id, `payslip-${x.year}-${String(x.month).padStart(2, '0')}.pdf`);
+  } catch (e) {
+    feedback.error('Could not download the payslip', e);
+  } finally {
+    downloading.value = false;
+  }
+}
 const hr = computed(() => route.path.startsWith('/hr'));
 const back = computed(() => (hr.value && payslip.data.value ? `/hr/payroll/runs/${payslip.data.value.runId}` : '/me/payslips'));
 
@@ -47,7 +62,10 @@ const statusText = computed(() => {
   <div class="payslip-page">
     <AppPageHeader class="print:hidden" :title="p ? `Payslip · ${p.period}` : 'Payslip'" :description="p ? `${p.employee.name} · ${p.employee.employeeCode}${p.employee.designation ? ` · ${p.employee.designation}` : ''}` : undefined" :back="back" :back-label="hr ? 'Payroll run' : 'Payslips'">
       <template v-if="p" #badges><AppBadge :tone="runTone[p.runStatus]" dot>{{ p.runStatus === 'PAID' ? 'Paid' : RUN_STATUS_LABELS[p.runStatus] }}</AppBadge></template>
-      <template #actions><AppButton variant="secondary" :icon="Printer" :disabled="!p" @click="print">Print / save as PDF</AppButton></template>
+      <template #actions>
+        <AppButton variant="secondary" :icon="Printer" :disabled="!p" @click="print">Print</AppButton>
+        <AppButton :icon="Download" :disabled="!p" :loading="downloading" @click="downloadPdf">Download PDF</AppButton>
+      </template>
     </AppPageHeader>
     <AppSkeleton v-if="payslip.loading.value && !p" :lines="10" />
     <AppErrorState v-else-if="payslip.error.value" :error="payslip.error.value" title="This payslip isn't available" @retry="payslip.run" />
@@ -85,9 +103,10 @@ const statusText = computed(() => {
         </section>
 
         <AppCard title="Save a copy" :icon="FileText">
-          <p class="text-xs text-fg-muted">Print it, or choose “Save as PDF” as the printer to keep a file. Only the payslip is printed.</p>
+          <p class="text-xs text-fg-muted">Download the payslip as a PDF, or print it. Only the payslip is printed.</p>
           <div class="mt-3 space-y-2">
-            <AppButton block :icon="Printer" @click="print">Print / save as PDF</AppButton>
+            <AppButton block :icon="Download" :loading="downloading" @click="downloadPdf">Download PDF</AppButton>
+            <AppButton block variant="secondary" :icon="Printer" @click="print">Print</AppButton>
             <AppButton v-if="hr" block variant="ghost" :icon-right="ArrowRight" :to="back">Open the payroll run</AppButton>
             <template v-else>
               <AppButton block variant="secondary" :icon="Sparkles" @click="assistant.ask('my latest payslip')">Ask AI about my pay</AppButton>

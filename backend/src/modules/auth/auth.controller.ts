@@ -4,7 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AppConfig } from '../../config/app-config.service';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { AllowRestrictedSession, CurrentAuth, Public } from '../../common/auth/decorators';
+import { AllowRestrictedSession, Authenticated, CurrentAuth, Public } from '../../common/auth/decorators';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { AuthService, ClientMeta, IssuedRefresh } from './auth.service';
 import {
@@ -18,6 +18,7 @@ import {
   MfaVerifyDto,
   RegisterOrganizationDto,
   ResetPasswordDto,
+  StepUpDto,
   SwitchOrganizationDto,
   UpdatePreferencesDto,
   UpdateProfileDto,
@@ -31,6 +32,7 @@ const STRICT = { default: { limit: 10, ttl: 60_000 } };
 const VERY_STRICT = { default: { limit: 5, ttl: 60_000 } };
 
 @ApiTags('Auth')
+@Authenticated()
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(
@@ -234,6 +236,15 @@ export class AuthController {
   async mfaDisable(@CurrentAuth() auth: AuthContext, @Body() dto: MfaDisableDto) {
     await this.mfa.disable(auth.userId, dto.password, dto.code);
     return { enabled: false };
+  }
+
+  @ApiBearerAuth()
+  @Throttle(VERY_STRICT)
+  @Post('step-up')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Re-confirm identity (authenticator code, or password without MFA) before a sensitive action' })
+  stepUp(@CurrentAuth() auth: AuthContext, @Body() dto: StepUpDto) {
+    return this.mfa.stepUp(auth.userId, auth.sessionId, dto);
   }
 
   @ApiBearerAuth()

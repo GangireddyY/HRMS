@@ -22,6 +22,15 @@ export type WorkMode = (typeof WORK_MODES)[number];
 /** Overtime is approved (possibly for fewer minutes) before payroll pays it. */
 export const OVERTIME_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 export type OvertimeStatus = (typeof OVERTIME_STATUSES)[number];
+
+/** ASKED (waiting for the colleague) → PENDING (manager) → APPROVED; DECLINED by the colleague, REJECTED by the manager, or CANCELLED. */
+export const SHIFT_SWAP_STATUSES = ['ASKED', 'PENDING', 'APPROVED', 'DECLINED', 'REJECTED', 'CANCELLED'] as const;
+export type ShiftSwapStatus = (typeof SHIFT_SWAP_STATUSES)[number];
+
+/** Largest punch photo accepted (bytes, after base64 decoding). */
+export const PUNCH_PHOTO_MAX_BYTES = 400_000;
+/** Office networks per location. */
+export const MAX_ALLOWED_NETWORKS = 20;
 /** Overtime pay: approved hours × (monthly Basic or gross ÷ 26 days ÷ 8 hours) × the multiplier. */
 export const OVERTIME_BASES = ['BASIC', 'GROSS'] as const;
 export type OvertimeBasis = (typeof OVERTIME_BASES)[number];

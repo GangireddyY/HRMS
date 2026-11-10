@@ -16,8 +16,12 @@ import {
   ClipboardCheck,
   ClipboardList,
   Clock,
+  Crosshair,
+  Webhook,
   ClockAlert,
   DoorOpen,
+  FileCheck2,
+  FileSignature,
   Fingerprint,
   CreditCard,
   FileClock,
@@ -31,11 +35,14 @@ import {
   Handshake,
   HeartPulse,
   History,
+  Headset,
   Home,
   KeyRound,
+  Laptop,
   LayoutDashboard,
   LifeBuoy,
   Lightbulb,
+  Luggage,
   ListChecks,
   Megaphone,
   MessagesSquare,
@@ -60,6 +67,7 @@ import {
   Users,
   Wallet,
 } from '@lucide/vue';
+import { DELEGABLE_PERMISSIONS } from '@contracts';
 import { isAllowed, type AccessRule, type AccessSubject } from '@/core/navigation/access-rules';
 
 export type WorkspaceKey = 'platform' | 'admin' | 'hr' | 'me';
@@ -105,7 +113,7 @@ export const HR_OPERATIONS_PERMISSIONS = [
   'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage', 'reports.view', 'reports.payroll.view', 'reports.recruitment.view',
 ];
 
-export const ADMIN_PERMISSIONS = ['organization.update', 'organization.security.manage', 'user.view', 'role.view', 'audit.view', 'audit.login_history.view'];
+export const ADMIN_PERMISSIONS = ['organization.update', 'organization.security.manage', 'user.view', 'role.view', 'audit.view', 'audit.login_history.view', 'privacy.manage'];
 
 export const WORKSPACES: Workspace[] = [
   {
@@ -158,7 +166,12 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Audit log', to: '/admin/audit-logs', icon: FileClock, access: { permissions: ['audit.view'] } },
           { label: 'Login history', to: '/admin/login-history', icon: History, access: { permissions: ['audit.login_history.view'] } },
+          { label: 'Privacy & retention', to: '/admin/privacy', icon: ShieldAlert, access: { permissions: ['privacy.manage'] } },
         ],
+      },
+      {
+        title: 'Developers',
+        items: [{ label: 'Integrations', to: '/admin/integrations', icon: Webhook, access: { permissions: ['integration.manage'] } }],
       },
     ],
   },
@@ -193,6 +206,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Requisitions', to: '/hr/recruitment/requisitions', icon: FilePlus2, access: { permissions: ['recruitment.requisition.create', 'recruitment.requisition.approve', 'recruitment.view'], scope: 'TEAM', feature: 'recruitment' } },
           { label: 'Jobs', to: '/hr/recruitment/jobs', icon: BriefcaseBusiness, access: { permissions: ['recruitment.view'], feature: 'recruitment' } },
           { label: 'Candidates', to: '/hr/recruitment/candidates', icon: UserSearch, access: { permissions: ['recruitment.view'], feature: 'recruitment' } },
+          { label: 'Offers & letters', to: '/hr/recruitment/offer-letter', icon: FileSignature, access: { permissions: ['recruitment.offer.manage'], feature: 'recruitment' } },
         ],
       },
       {
@@ -200,7 +214,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Onboarding', to: '/hr/onboarding', icon: Rocket, exact: true, access: { permissions: ['onboarding.view'], scope: 'TEAM' } },
           { label: 'Probation', to: '/hr/onboarding/probation', icon: BadgeCheck, access: { permissions: ['onboarding.view', 'onboarding.confirmation.approve'], scope: 'TEAM' } },
-          { label: 'Checklists', to: '/hr/onboarding/checklists', icon: ListChecks, access: { permissions: ['onboarding.manage'] } },
+          { label: 'Checklists', to: '/hr/onboarding/checklists', icon: ListChecks, access: { permissions: ['onboarding.view'], scope: 'TEAM' } },
         ],
       },
       {
@@ -229,8 +243,9 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Payroll runs', to: '/hr/payroll/runs', icon: Banknote, access: { permissions: ['payroll.view'], feature: 'payroll' } },
           { label: 'Salaries', to: '/hr/payroll/salaries', icon: Wallet, access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } },
-          { label: 'Reimbursements', to: '/hr/payroll/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.approve', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
+          { label: 'Reimbursements', to: '/hr/payroll/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.approve', 'payroll.reimbursement.finance', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
           { label: 'Loans & advances', to: '/hr/payroll/loans', icon: HandCoins, access: { permissions: ['payroll.loan.approve', 'payroll.loan.manage', 'payroll.view'], feature: 'payroll' } },
+          { label: 'Tax proofs & returns', to: '/hr/payroll/tax', icon: FileCheck2, access: { permissions: ['payroll.process'], feature: 'payroll' } },
           { label: 'Payroll setup', to: '/hr/payroll/setup', icon: SlidersHorizontal, access: { permissions: ['payroll.configure', 'payroll.view'], feature: 'payroll' } },
         ],
       },
@@ -240,6 +255,8 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Reviews', to: '/hr/performance/reviews', icon: Target, access: { permissions: ['performance.review', 'performance.view', 'performance.configure'], scope: 'TEAM', feature: 'performance' } },
           { label: 'Review cycles', to: '/hr/performance/cycles', icon: RefreshCcw, access: { permissions: ['performance.configure', 'performance.view'], scope: 'TEAM', feature: 'performance' } },
           { label: 'Improvement plans', to: '/hr/performance/pips', icon: LifeBuoy, access: { permissions: ['performance.pip.manage'], scope: 'TEAM', feature: 'performance' } },
+          { label: 'OKRs', to: '/hr/performance/okrs', icon: Crosshair, access: { permissions: ['performance.okr.manage'], scope: 'TEAM', feature: 'performance' } },
+          { label: '1:1s', to: '/me/performance/one-on-ones', icon: MessagesSquare, access: { permissions: ['performance.review'], scope: 'TEAM', feature: 'performance' } },
         ],
       },
       {
@@ -280,9 +297,18 @@ export const WORKSPACES: Workspace[] = [
         ],
       },
       {
+        title: 'Employee services',
+        items: [
+          { label: 'Assets', to: '/hr/assets', icon: Laptop, access: { permissions: ['assets.view', 'assets.manage'], scope: 'TEAM', feature: 'assets' } },
+          { label: 'Helpdesk', to: '/hr/helpdesk', icon: Headset, access: { permissions: ['helpdesk.manage'], feature: 'helpdesk' } },
+          { label: 'Travel', to: '/hr/travel', icon: Luggage, access: { permissions: ['travel.approve', 'travel.manage'], scope: 'TEAM', feature: 'travel' } },
+        ],
+      },
+      {
         title: 'Exits',
         items: [
           { label: 'Exits', to: '/hr/exits', icon: DoorOpen, access: { permissions: ['exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage'], scope: 'TEAM', feature: 'exit' } },
+          { label: 'Settlement payouts', to: '/hr/exits/settlements', icon: Banknote, access: { permissions: ['payroll.settlement.manage'], feature: 'exit' } },
           { label: 'Alumni', to: '/hr/alumni', icon: Handshake, access: { permissions: ['exit.manage', 'exit.view'], scope: 'TEAM', feature: 'exit' } },
         ],
       },
@@ -319,6 +345,8 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Timesheets', to: '/me/timesheets', icon: CalendarClock, access: { permissions: ['attendance.timesheet.submit'], feature: 'attendance' } },
           { label: 'Leave', to: '/me/leave', icon: Plane, access: { permissions: ['leave.view'] } },
           { label: 'Performance', to: '/me/performance', icon: Target, access: { tenant: true, feature: 'performance' } },
+          { label: 'OKRs', to: '/me/performance/okrs', icon: Crosshair, access: { tenant: true, feature: 'performance' } },
+          { label: '1:1s', to: '/me/performance/one-on-ones', icon: MessagesSquare, access: { tenant: true, feature: 'performance' } },
           { label: 'Learning', to: '/me/training', icon: GraduationCap, access: { tenant: true, feature: 'training' } },
           { label: 'Skills', to: '/me/skills', icon: Sparkles, access: { permissions: ['training.view'], feature: 'training' } },
           { label: 'Payslips', to: '/me/payslips', icon: FileText, access: { permissions: ['payroll.payslip.view'], feature: 'payroll' } },
@@ -326,6 +354,9 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Reimbursements', to: '/me/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.apply'], feature: 'payroll' } },
           { label: 'Loans & advances', to: '/me/loans', icon: HandCoins, access: { permissions: ['payroll.loan.apply'], feature: 'payroll' } },
           { label: 'Benefits', to: '/me/benefits', icon: HeartPulse, access: { permissions: ['benefits.view'], feature: 'benefits' } },
+          { label: 'My assets', to: '/me/assets', icon: Laptop, access: { permissions: ['assets.request'], feature: 'assets' } },
+          { label: 'Business travel', to: '/me/travel', icon: Luggage, access: { permissions: ['travel.request'], feature: 'travel' } },
+          { label: 'HR helpdesk', to: '/me/helpdesk', icon: Headset, access: { permissions: ['helpdesk.raise'], feature: 'helpdesk' } },
           { label: 'Policies', to: '/me/policies', icon: ScrollText, access: { permissions: ['compliance.view'], feature: 'compliance' } },
           { label: 'Grievances', to: '/me/grievances', icon: ShieldAlert, access: { permissions: ['grievance.submit'], feature: 'grievance' } },
           { label: 'Resignation & exit', to: '/me/exit', icon: DoorOpen, access: { permissions: ['exit.resign'], feature: 'exit' } },
@@ -336,6 +367,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Profile', to: '/me/profile', icon: User },
           { label: 'Security', to: '/me/security', icon: KeyRound },
+          { label: 'Approval cover', to: '/me/delegation', icon: Handshake, access: { permissions: [...DELEGABLE_PERMISSIONS], scope: 'TEAM' } },
           { label: 'Appearance', to: '/me/appearance', icon: Palette },
           { label: 'Notifications', to: '/me/notifications', icon: Bell },
         ],

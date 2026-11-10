@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -34,6 +34,9 @@ import {
   ReviewOvertimeDto,
   RosterQueryDto,
   RotationDto,
+  ShiftSwapDto,
+  ShiftSwapQueryDto,
+  ShiftSwapResponseDto,
   UpdateDeviceDto,
   UpdateHolidayDto,
   UpdateRotationDto,
@@ -45,6 +48,7 @@ import { OfficialHolidaysService } from './official-holidays.service';
 import { OvertimeService } from './overtime.service';
 import { RegularizationService } from './regularization.service';
 import { RosterService } from './roster.service';
+import { ShiftSwapsService } from './shift-swaps.service';
 import { WorkFromHomeService } from './work-from-home.service';
 
 function monthParam(month: number): number {
@@ -65,13 +69,22 @@ export class AttendanceController {
     private readonly wfh: WorkFromHomeService,
     private readonly roster: RosterService,
     private readonly devices: DevicesService,
+    private readonly swaps: ShiftSwapsService,
   ) {}
 
   @Get('today')
   @RequirePermissions('attendance.view')
   @ApiOperation({ summary: "Today's punches, shift and day type for the signed-in employee" })
-  today(@CurrentAuth() auth: AuthContext) {
-    return this.attendance.today(auth);
+  today(@CurrentAuth() auth: AuthContext, @Req() req: Request) {
+    return this.attendance.today(auth, req.ip);
+  }
+
+  @Get('records/:id/photo')
+  @RequirePermissions('attendance.view')
+  @ApiOperation({ summary: 'The photo taken at punch-in (own records, or within attendance.view scope)' })
+  async punchPhoto(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
+    const { stream, contentType, fileName } = await this.attendance.photo(auth, id);
+    return new StreamableFile(stream, { type: contentType, disposition: `inline; filename="${fileName}"` });
   }
 
   @Post('punch-in')
@@ -105,6 +118,47 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Create or correct an attendance record (audited)' })
   upsertRecord(@CurrentAuth() auth: AuthContext, @Body() dto: UpsertRecordDto) {
     return this.attendance.upsertRecord(auth, dto);
+  }
+
+  // ---- Shift swaps ----
+
+  @Get('shift-swaps')
+  @RequirePermissions('attendance.view')
+  @ApiOperation({ summary: 'Swaps you asked for or were asked (view=mine), or the ones you can approve (view=team)' })
+  listSwaps(@CurrentAuth() auth: AuthContext, @Query() query: ShiftSwapQueryDto) {
+    return this.swaps.list(auth, query);
+  }
+
+  @Post('shift-swaps')
+  @RequirePermissions('attendance.mark')
+  @ApiOperation({ summary: 'Ask a colleague to trade shifts on a future day' })
+  requestSwap(@CurrentAuth() auth: AuthContext, @Body() dto: ShiftSwapDto) {
+    return this.swaps.create(auth, dto);
+  }
+
+  @Post('shift-swaps/:id/respond')
+  @RequirePermissions('attendance.mark')
+  @ApiOperation({ summary: 'The colleague agrees or declines' })
+  respondSwap(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ShiftSwapResponseDto) {
+    return this.swaps.respond(auth, id, dto);
+  }
+
+  @Post('shift-swaps/:id/cancel')
+  @RequirePermissions('attendance.mark')
+  cancelSwap(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.swaps.cancel(auth, id);
+  }
+
+  @Post('shift-swaps/:id/approve')
+  @RequirePermissions('attendance.regularize.approve')
+  approveSwap(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewDto) {
+    return this.swaps.approve(auth, id, dto);
+  }
+
+  @Post('shift-swaps/:id/reject')
+  @RequirePermissions('attendance.regularize.approve')
+  rejectSwap(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewDto) {
+    return this.swaps.reject(auth, id, dto);
   }
 
   // ---- Regularization ----

@@ -98,6 +98,13 @@ const teams = computed(() =>
         <span class="tabular-nums" :class="t.open ? 'text-fg-muted' : ''">{{ t.open ? `${t.open} open` : 'done' }}</span>
       </li>
     </ul>
+    <div v-if="exit.assetsHeld?.length" class="flex flex-wrap items-center gap-2 border-b border-line/70 bg-warning-soft/40 px-4 py-2.5 text-xs">
+      <Laptop :size="14" class="text-warning-fg" aria-hidden="true" />
+      <span class="font-medium text-warning-fg">Still with the employee:</span>
+      <RouterLink v-for="a in exit.assetsHeld" :key="a.id" :to="`/hr/assets/${a.id}`" class="rounded-full bg-surface px-2 py-0.5 text-fg ring-1 ring-line ring-inset hover:underline">
+        <span class="font-mono">{{ a.tag }}</span> · {{ a.name }}
+      </RouterLink>
+    </div>
     <p v-if="!exit.clearanceItems.length" class="px-4 py-4 text-sm text-fg-muted">Clearance starts when the exit is confirmed.</p>
     <ul v-else class="divide-y divide-line/70">
       <li v-for="i in exit.clearanceItems" :key="i.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">

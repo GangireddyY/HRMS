@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
+import type { Request } from 'express';
+import { Organization } from '../../database/models';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -20,9 +22,17 @@ import {
   JobQueryDto,
   JobStatusDto,
   MoveStageDto,
+  LetterTemplateDto,
+  OfferApprovalNoteDto,
   OfferDto,
   OfferResponseDto,
+  PortalAcceptDto,
+  PortalDeclineDto,
+  PortalDocumentDto,
+  PrejoiningDetailsDto,
   PublicApplicationDto,
+  RecruitmentSettingsDto,
+  RejectOfferApprovalDto,
   RequisitionDto,
   RequisitionQueryDto,
   ReviewRequisitionDto,
@@ -33,6 +43,7 @@ import {
   UpdateRequisitionDto,
 } from './dto/recruitment.dto';
 import { JobsService } from './jobs.service';
+import { OfferPortalService } from './offer-portal.service';
 import { OffersService } from './offers.service';
 import { PipelineService } from './pipeline.service';
 import { RequisitionsService } from './requisitions.service';
@@ -313,6 +324,135 @@ export class RecruitmentController {
   @ApiOperation({ summary: 'Convert an accepted offer into an employee (optionally starting onboarding)' })
   hire(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: HireDto) {
     return this.offers.hire(auth, id, dto);
+  }
+
+  @Post('offers/:id/submit-approval')
+  @RequirePermissions('recruitment.offer.manage')
+  @ApiOperation({ summary: 'Send a draft offer for approval (required by the organization setting or above the requisition budget)' })
+  submitOfferApproval(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.offers.submitForApproval(auth, id);
+  }
+
+  @Post('offers/:id/approve')
+  @RequirePermissions('recruitment.offer.approve')
+  approveOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OfferApprovalNoteDto) {
+    return this.offers.approve(auth, id, dto);
+  }
+
+  @Post('offers/:id/reject-approval')
+  @RequirePermissions('recruitment.offer.approve')
+  rejectOfferApproval(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectOfferApprovalDto) {
+    return this.offers.rejectApproval(auth, id, dto);
+  }
+
+  @Post('offers/:id/resend-link')
+  @RequirePermissions('recruitment.offer.manage')
+  @ApiOperation({ summary: 'Issue the candidate a new private offer link (the old one stops working)' })
+  resendOfferLink(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.offers.resendLink(auth, id);
+  }
+
+  @Get('offers/:id/letter')
+  @RequirePermissions('recruitment.offer.manage')
+  @ApiOperation({ summary: 'The offer letter (HTML): as released, or a preview for drafts' })
+  async offerLetter(@Param('id', UUID) id: string) {
+    const f = await this.offers.letter(id);
+    return new StreamableFile(Buffer.from(f.html, 'utf8'), { type: 'text/html; charset=utf-8', disposition: attachment(f.fileName) });
+  }
+
+  @Get('offers/:id/prejoining')
+  @RequirePermissions('recruitment.offer.manage')
+  @ApiOperation({ summary: 'Details and documents the candidate shared before joining (audited)' })
+  prejoining(@Param('id', UUID) id: string) {
+    return this.offers.prejoining(id);
+  }
+
+  @Get('offers/:id/prejoining/documents/:documentId')
+  @RequirePermissions('recruitment.offer.manage')
+  async prejoiningDocument(@Param('id', UUID) id: string, @Param('documentId', UUID) documentId: string) {
+    const f = await this.offers.prejoiningDocument(id, documentId);
+    return new StreamableFile(f.stream, { type: f.contentType, length: f.size, disposition: attachment(f.fileName) });
+  }
+
+  @Get('offer-letter-template')
+  @RequirePermissions('recruitment.offer.manage')
+  letterTemplate() {
+    return this.offers.letterTemplate();
+  }
+
+  @Put('offer-letter-template')
+  @RequirePermissions('recruitment.offer.manage')
+  saveLetterTemplate(@CurrentAuth() auth: AuthContext, @Body() dto: LetterTemplateDto) {
+    return this.offers.saveLetterTemplate(auth, dto);
+  }
+
+  @Get('settings')
+  @RequirePermissions('recruitment.offer.manage')
+  async settings(@CurrentAuth() auth: AuthContext) {
+    const org = await Organization.findByPk(auth.organizationId!, { attributes: ['offerApprovalRequired'] });
+    return { offerApprovalRequired: org?.offerApprovalRequired ?? false };
+  }
+
+  @Put('settings')
+  @RequirePermissions('recruitment.offer.approve')
+  @ApiOperation({ summary: 'Whether every offer needs approval before release (approvers decide)' })
+  async saveSettings(@CurrentAuth() auth: AuthContext, @Body() dto: RecruitmentSettingsDto) {
+    await this.offers.saveSettings(auth, dto.offerApprovalRequired);
+    return { offerApprovalRequired: dto.offerApprovalRequired };
+  }
+}
+
+/** The candidate's private offer page: sign or decline, then share details and documents before joining (no sign-in). */
+@ApiTags('Offer portal')
+@Controller({ path: 'offer-portal', version: '1' })
+export class OfferPortalController {
+  constructor(private readonly portal: OfferPortalService) {}
+
+  @Get(':token')
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  view(@Param('token') token: string) {
+    return this.portal.view(token);
+  }
+
+  @Post(':token/accept')
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Accept and sign the offer by typing your full name' })
+  accept(@Param('token') token: string, @Body() dto: PortalAcceptDto, @Req() req: Request) {
+    return this.portal.accept(token, dto, req.ip, req.headers['user-agent']);
+  }
+
+  @Post(':token/decline')
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  decline(@Param('token') token: string, @Body() dto: PortalDeclineDto) {
+    return this.portal.decline(token, dto);
+  }
+
+  @Put(':token/details')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Personal details for joining (after accepting)' })
+  details(@Param('token') token: string, @Body() dto: PrejoiningDetailsDto) {
+    return this.portal.saveDetails(token, dto);
+  }
+
+  @Post(':token/documents')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @UseInterceptors(RESUME_UPLOAD)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload a document for joining (PDF or image up to 5 MB)' })
+  upload(@Param('token') token: string, @Body() dto: PortalDocumentDto, @UploadedFile() file?: UploadedResume) {
+    return this.portal.uploadDocument(token, dto, file);
+  }
+
+  @Delete(':token/documents/:documentId')
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  removeDocument(@Param('token') token: string, @Param('documentId', UUID) documentId: string) {
+    return this.portal.removeDocument(token, documentId);
   }
 }
 

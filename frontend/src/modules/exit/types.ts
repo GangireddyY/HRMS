@@ -1,4 +1,4 @@
-import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, EmploymentType, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
+import type { AssetCategory, ClearanceDepartment, ClearanceStatus, DailyRateBasis, EmploymentType, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
 
 export interface ExitSummary {
   id: string;
@@ -49,6 +49,8 @@ export interface ExitDetail extends ExitSummary {
   closedReason: string | null;
   closedAt: string | null;
   clearanceItems: ClearanceItem[];
+  /** Registered company assets still with the employee (not shown to the employee here). */
+  assetsHeld: { id: string; tag: string; name: string; category: AssetCategory }[];
   feedback?: ExitFeedback | null;
   feedbackGiven: boolean;
   eligibleForRehire?: boolean | null;
@@ -142,6 +144,25 @@ export interface Adjustment {
   label: string;
   kind: 'EARNING' | 'DEDUCTION';
   amount: number;
+}
+
+export interface SettlementPayout {
+  id: string;
+  caseId: string;
+  employee: { id: string; name: string; employeeCode: string; department: string | null };
+  netPayable: number;
+  dueOn: string;
+  overdue: boolean;
+  approvedAt: string | null;
+  paidOn: string | null;
+  paymentReference: string | null;
+  /** Null when the employee has no bank account on record (left out of the bank file). */
+  bank: { ifsc: string; name: string | null } | null;
+}
+
+export interface SettlementPayouts {
+  items: SettlementPayout[];
+  summary: { count: number; total: number; overdue: number; withoutBank: number };
 }
 
 export interface Settlement {

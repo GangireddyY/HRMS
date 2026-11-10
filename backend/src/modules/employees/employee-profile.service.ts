@@ -17,7 +17,10 @@ const LABEL: Record<ProfileSection, string> = { family: 'Family member', educati
 const LIMIT: Record<ProfileSection, number> = { family: 20, education: 20, experience: 30 };
 const ORDER: Record<ProfileSection, Order> = {
   family: [['createdAt', 'ASC']],
-  education: [['endYear', 'DESC NULLS FIRST'], ['createdAt', 'DESC']],
+  education: [
+    ['endYear', 'DESC NULLS FIRST'],
+    ['createdAt', 'DESC'],
+  ],
   experience: [['startDate', 'DESC']],
 };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -51,10 +54,7 @@ export class EmployeeProfileService {
     const model = MODEL[section] as typeof EmployeeFamilyMember;
     if ((await model.count({ where: { employeeId } })) >= LIMIT[section]) throw AppError.conflict(`Up to ${LIMIT[section]} entries can be added here`);
     const row = await this.db.transaction(async (transaction) => {
-      const created = await model.create(
-        { ...(dto as FamilyMemberDto), organizationId: auth.organizationId!, employeeId, createdById: auth.userId, updatedById: auth.userId },
-        { transaction },
-      );
+      const created = await model.create({ ...(dto as FamilyMemberDto), organizationId: auth.organizationId!, employeeId, createdById: auth.userId, updatedById: auth.userId }, { transaction });
       await this.audit.record({ action: `employee.${section}_added`, entityType: 'Employee', entityId: employeeId, summary: `${LABEL[section]} added` }, transaction);
       return created;
     });

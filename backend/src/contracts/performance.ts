@@ -56,6 +56,37 @@ export const RATING_MIN = 1;
 export const RATING_MAX = 5;
 /** Labels for ratings 1–5 (a cycle may rename them). */
 export const DEFAULT_RATING_LABELS = ['Needs improvement', 'Partially meets expectations', 'Meets expectations', 'Exceeds expectations', 'Outstanding'];
+/** A common bell curve for ratings 1 → 5 (percent of people), offered as the calibration target. */
+export const SUGGESTED_DISTRIBUTION = [5, 15, 50, 20, 10] as const;
+
+/** Potential for the 9-box (with the rating as performance: 1–2 low, 3 medium, 4–5 high). */
+export const POTENTIAL_LABELS: Record<1 | 2 | 3, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
+/** 9-box cell names, by [performance band][potential band] (0 = low … 2 = high). */
+export const NINE_BOX_LABELS: readonly (readonly string[])[] = [
+  ['Underperformer', 'Inconsistent player', 'Rough diamond'],
+  ['Effective', 'Core player', 'High potential'],
+  ['Trusted professional', 'High performer', 'Star'],
+];
+
+// ---- OKRs ------------------------------------------------------------------------------------------
+
+export const OKR_LEVELS = ['COMPANY', 'DEPARTMENT', 'INDIVIDUAL'] as const;
+export type OkrLevel = (typeof OKR_LEVELS)[number];
+export const OKR_STATUSES = ['ACTIVE', 'CLOSED', 'DROPPED'] as const;
+export type OkrStatus = (typeof OKR_STATUSES)[number];
+export const OKR_HEALTH = ['ON_TRACK', 'AT_RISK', 'OFF_TRACK'] as const;
+export type OkrHealth = (typeof OKR_HEALTH)[number];
+/** MILESTONE: done or not (target 1). */
+export const OKR_METRICS = ['NUMBER', 'PERCENT', 'CURRENCY', 'MILESTONE'] as const;
+export type OkrMetric = (typeof OKR_METRICS)[number];
+export const OKR_MAX_KEY_RESULTS = 8;
+
+// ---- 1:1s ------------------------------------------------------------------------------------------
+
+export const ONE_ON_ONE_STATUSES = ['SCHEDULED', 'DONE', 'CANCELLED'] as const;
+export type OneOnOneStatus = (typeof ONE_ON_ONE_STATUSES)[number];
+export const ONE_ON_ONE_ITEM_KINDS = ['TOPIC', 'ACTION'] as const;
+export type OneOnOneItemKind = (typeof ONE_ON_ONE_ITEM_KINDS)[number];
 
 export interface Competency {
   key: string;

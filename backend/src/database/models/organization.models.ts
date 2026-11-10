@@ -117,6 +117,8 @@ export class Organization extends Model<InferAttributes<Organization>, InferCrea
   @Column(DataType.STRING(30)) phone: CreationOptional<string | null>;
   @Column(DataType.STRING(255)) website: CreationOptional<string | null>;
   @Column(DataType.STRING(50)) registrationNumber: CreationOptional<string | null>;
+  /** Offers need approval (recruitment.offer.approve) before release; they always do above the requisition's budget. */
+  @Column(DataType.BOOLEAN) offerApprovalRequired: CreationOptional<boolean>;
   @Column(DataType.STRING(50)) taxId: CreationOptional<string | null>;
   @Column({ type: DataType.STRING(200), field: 'address_line1' }) addressLine1: CreationOptional<string | null>;
   @Column({ type: DataType.STRING(200), field: 'address_line2' }) addressLine2: CreationOptional<string | null>;
@@ -133,6 +135,8 @@ export class Organization extends Model<InferAttributes<Organization>, InferCrea
   @Column(DataType.SMALLINT) fiscalYearStartMonth: CreationOptional<number>;
   /** First month of the leave year (1 = January). */
   @Column(DataType.SMALLINT) leaveYearStartMonth: CreationOptional<number>;
+  /** Local date the nightly leave accrual job last ran. */
+  @Column(DataType.DATEONLY) leaveAccrualsRunOn: CreationOptional<string | null>;
   @Column(DataType.STRING(500)) logoUrl: CreationOptional<string | null>;
   /** Lowercase `#rrggbb`; the web app derives an accessible palette from it. */
   @Column(DataType.STRING(7)) brandColor: CreationOptional<string | null>;

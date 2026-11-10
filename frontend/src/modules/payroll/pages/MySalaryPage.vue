@@ -5,20 +5,23 @@ import { financialYearLabel } from '@contracts';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import SalaryBreakdownTable from '@/modules/payroll/components/SalaryBreakdownTable.vue';
+import TaxProofsCard from '@/modules/payroll/components/TaxProofsCard.vue';
 import type { EmployeeSalary } from '@/modules/payroll/types';
 import { rupees } from '@/modules/payroll/utils/payroll-format';
 import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppEmptyState, AppErrorState, AppInput, AppPageHeader, AppSegmented, AppSkeleton } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
+import { useUnsavedGuard } from '@/shared/composables/use-unsaved-guard';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate, timeAgo } from '@/shared/utils/format';
+import { localToday } from '@/shared/utils/dates';
 
 /** Own salary (current breakdown and history) and the income-tax declaration for the financial year. */
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const salary = useAsync(() => payrollApi.mySalary());
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const current = computed(() => salary.data.value?.salaries.find((s) => s.effectiveFrom <= today) ?? null);
 const upcoming = computed(() => salary.data.value?.salaries.filter((s) => s.effectiveFrom > today).at(-1) ?? null);
 
@@ -71,6 +74,7 @@ const dirty = computed(() => {
   if (!d) return false;
   return form.regime !== d.regime || form.metroCity !== d.metroCity || AMOUNTS.some((k) => (Number(form[k]) || 0) !== d[k]);
 });
+useUnsavedGuard(dirty, { message: 'Your tax declaration changes are not saved yet. If you leave now, they will be lost.' });
 function discard() {
   if (declaration.data.value) Object.assign(form, declaration.data.value);
   reset();
@@ -331,6 +335,7 @@ const raiseText = (p: number) => `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(
           </form>
         </div>
       </section>
+      <TaxProofsCard v-if="canDeclare && declaration.data.value" :key="declaration.data.value.financialYear" :fy="declaration.data.value.financialYear" />
     </div>
   </div>
 </template>

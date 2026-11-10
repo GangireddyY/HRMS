@@ -8,6 +8,7 @@ import { isSessionBasedDelivery, sessionWhen } from '@/modules/training/utils/tr
 import { AppAlert, AppButton, AppDatePicker, AppModal, AppSelect } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { localToday } from '@/shared/utils/dates';
 
 /** Assign a course to people and/or whole departments within your scope, with an optional due date and session. */
 const props = defineProps<{ open: boolean; course: CourseDetail }>();
@@ -59,7 +60,7 @@ const personOptions = computed(() => people.value.filter((p) => !form.employeeId
 const sessionOptions = computed(() =>
   props.course.sessions.filter((s) => s.status === 'SCHEDULED' && new Date(s.startsAt) > new Date()).map((s) => ({ value: s.id, label: sessionWhen(s), description: s.capacity === null ? 'No seat limit' : `${s.seatsLeft} of ${s.capacity} seats left` })),
 );
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 
 async function save() {
   reset();

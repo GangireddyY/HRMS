@@ -10,6 +10,7 @@ import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
+import { localToday } from '@/shared/utils/dates';
 
 /**
  * Employee documents. On the employee's own profile (`selfService`) they upload documents for HR to verify and can
@@ -26,7 +27,7 @@ const canManage = computed(() => !props.selfService && auth.can('employee.docume
 const canUpload = computed(() => canManage.value || (props.selfService && auth.can('self.profile.update')));
 const canChange = (d: EmployeeDocument) => canManage.value || (props.selfService && d.uploadedById === auth.user?.id && d.status !== 'VERIFIED' && auth.can('self.profile.update'));
 
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const soon = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
 const expiry = (d: EmployeeDocument) => (!d.expiryDate ? null : d.expiryDate < today ? 'expired' : d.expiryDate <= soon ? 'soon' : 'ok');
 

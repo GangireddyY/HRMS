@@ -5,8 +5,10 @@ import { Op, type Transaction } from 'sequelize';
 import { AppConfig } from '../../config/app-config.service';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
-import { MfaRecoveryCode, User } from '../../database/models';
+import { STEP_UP_MINUTES } from '../../common/auth/decorators';
+import { MfaRecoveryCode, User, UserSession } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ctx } from '../../infrastructure/crypto/encrypted-fields';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { PasswordHasher } from '../../infrastructure/crypto/password-hasher.service';
 import { generateRecoveryCode, normalizeRecoveryCode, sha256 } from '../../infrastructure/crypto/tokens';
@@ -38,7 +40,7 @@ export class MfaService {
     const user = await loadUser(userId);
     if (user.mfaEnabled) throw AppError.conflict('MFA is already enabled');
     const secret = authenticator.generateSecret(20);
-    await user.update({ mfaPendingSecretEnc: this.encryption.encrypt(secret) });
+    await user.update({ mfaPendingSecretEnc: this.encryption.encrypt(secret, ctx.mfaSecret(user.id)) });
     const otpauthUrl = authenticator.keyuri(user.email, this.config.get('MFA_ISSUER'), secret);
     return { secret, otpauthUrl, qrCodeDataUrl: await toDataURL(otpauthUrl) };
   }
@@ -48,7 +50,7 @@ export class MfaService {
     if (user.mfaEnabled) throw AppError.conflict('MFA is already enabled');
     if (!user.mfaPendingSecretEnc) throw AppError.badRequest('Start MFA setup first');
 
-    const step = this.matchStep(code, this.encryption.decrypt(user.mfaPendingSecretEnc));
+    const step = this.matchStep(code, this.encryption.decrypt(user.mfaPendingSecretEnc, ctx.mfaSecret(user.id)));
     if (step === null) throw new AppError('MFA_INVALID', 'Invalid verification code');
 
     const recoveryCodes = Array.from({ length: RECOVERY_CODE_COUNT }, generateRecoveryCode);
@@ -68,7 +70,9 @@ export class MfaService {
     const user = await loadUser(userId);
     if (!user.mfaEnabled) throw AppError.badRequest('MFA is not enabled');
     const policy = await this.policies.forUser(userId);
-    if (policy.mfaRequired) throw AppError.forbidden('Your organization requires two-factor authentication');
+    if (this.policies.mfaRequiredFor(policy, user)) {
+      throw AppError.forbidden(user.platformRole && !policy.mfaRequired ? 'Platform administrators must keep two-factor authentication on' : 'Your organization requires two-factor authentication');
+    }
     if (!(await this.hasher.verify(user.passwordHash, password))) {
       throw new AppError('INVALID_CREDENTIALS', 'Current password is incorrect');
     }
@@ -85,6 +89,23 @@ export class MfaService {
     await this.notifications.notify(userId, { type: 'security', title: 'Two-factor authentication disabled', link: '/me/security' });
   }
 
+  /**
+   * Re-confirms identity for sensitive actions: a fresh authenticator code when MFA is on, otherwise the password.
+   * Valid for STEP_UP_MINUTES on this session only.
+   */
+  async stepUp(userId: string, sessionId: string, input: { code?: string; password?: string }): Promise<{ validUntil: string }> {
+    const user = await loadUser(userId);
+    if (user.mfaEnabled) {
+      if (!input.code || !(await this.verifyAndConsume(user, input.code))) throw new AppError('MFA_INVALID', 'That code is not valid. Enter the current code from your authenticator app.');
+    } else if (!input.password || !(await this.hasher.verify(user.passwordHash, input.password))) {
+      throw new AppError('INVALID_CREDENTIALS', 'Incorrect password');
+    }
+    const now = new Date();
+    await UserSession.update({ stepUpAt: now }, { where: { id: sessionId, userId } });
+    await this.audit.record({ action: 'auth.step_up', entityType: 'User', entityId: userId, summary: `Identity re-confirmed with ${user.mfaEnabled ? 'an authenticator code' : 'the password'} for a sensitive action` });
+    return { validUntil: new Date(now.getTime() + STEP_UP_MINUTES * 60_000).toISOString() };
+  }
+
   async regenerateRecoveryCodes(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
     const user = await loadUser(userId);
     if (!user.mfaEnabled) throw AppError.badRequest('MFA is not enabled');
@@ -96,11 +117,11 @@ export class MfaService {
   }
 
   async status(userId: string): Promise<{ enabled: boolean; required: boolean; recoveryCodesRemaining: number }> {
-    const user = await User.findByPk(userId, { attributes: ['mfaEnabled'], rejectOnEmpty: true });
+    const user = await User.findByPk(userId, { attributes: ['mfaEnabled', 'platformRole'], rejectOnEmpty: true });
     const policy = await this.policies.forUser(userId);
     return {
       enabled: user.mfaEnabled,
-      required: policy.mfaRequired,
+      required: this.policies.mfaRequiredFor(policy, user),
       recoveryCodesRemaining: user.mfaEnabled ? await MfaRecoveryCode.count({ where: { userId, usedAt: null } }) : 0,
     };
   }
@@ -108,7 +129,7 @@ export class MfaService {
   /** Verifies a TOTP code (rejecting replays of an already-used time-step) and records the step. */
   async verifyAndConsume(user: Pick<User, 'id' | 'mfaSecretEnc' | 'mfaLastUsedStep'>, code: string): Promise<boolean> {
     if (!user.mfaSecretEnc) return false;
-    const step = this.matchStep(code, this.encryption.decrypt(user.mfaSecretEnc));
+    const step = this.matchStep(code, this.encryption.decrypt(user.mfaSecretEnc, ctx.mfaSecret(user.id)));
     if (step === null) return false;
     if (user.mfaLastUsedStep !== null && step <= user.mfaLastUsedStep) return false;
     const [updated] = await User.update(

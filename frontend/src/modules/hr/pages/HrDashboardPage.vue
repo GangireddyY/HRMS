@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { BarChart3, BadgeCheck, Briefcase, CalendarDays, CalendarRange, ChevronDown, FileWarning, LogOut, Megaphone, MessageSquareWarning, Plane, Rocket, Scale, ShieldCheck, UserPlus, Users, Wallet } from '@lucide/vue';
+import { onLiveUpdate } from '@/core/realtime/live-updates';
+import { BarChart3, BadgeCheck, Briefcase, CalendarDays, CalendarRange, ChevronDown, FileWarning, LogOut, Megaphone, MessageSquareWarning, Plane, Rocket, RotateCw, Scale, ShieldCheck, UserPlus, Users, Wallet } from '@lucide/vue';
 import { MODULES, PERMISSIONS, SCOPE_RANK, type PermissionScope } from '@contracts';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -20,7 +21,7 @@ import { documentsApi } from '@/modules/people/api/people.api';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import { reportsApi } from '@/modules/reports/api/reports.api';
 import TrendChart from '@/modules/reports/components/TrendChart.vue';
-import { AppBadge, AppButton, AppCard, AppEmptyState, AppHero, AppInsights, AppPersonList, AppStatCard, type Insight, type PersonRow } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppHero, AppInsights, AppPersonList, AppStatCard, type Insight, type PersonRow } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { fetchAllPages } from '@/shared/utils/fetch-all';
 import { formatDate } from '@/shared/utils/format';
@@ -156,6 +157,41 @@ const priorities = computed<Priority[]>(() => {
 
 const followLoading = computed(() => [probation, documents, onboarding, exits, grievances, compliance].some((s) => s.loading.value));
 
+/** Widgets whose data didn't load: named, with a retry, instead of looking like "nothing to do". */
+const WIDGETS = [
+  { label: 'headcount', source: headcount },
+  { label: 'who is away', source: absences },
+  { label: 'open roles', source: jobs },
+  { label: 'probation reviews', source: probation },
+  { label: 'holidays', source: holidays },
+  { label: 'events', source: events },
+  { label: 'expiring documents', source: documents },
+  { label: 'onboarding', source: onboarding },
+  { label: 'exits', source: exits },
+  { label: 'grievances', source: grievances },
+  { label: 'statutory filings', source: compliance },
+];
+const failedApprovals = computed(() => (approvals.data.value ?? []).filter((a) => a.failed));
+const failed = computed(() => [
+  ...(approvals.error.value ? ['approvals'] : failedApprovals.value.map((a) => a.label.toLowerCase())),
+  ...WIDGETS.filter((w) => w.source.error.value).map((w) => w.label),
+]);
+const retrying = computed(() => approvals.loading.value || WIDGETS.some((w) => w.source.loading.value));
+
+// A new request usually arrives with a notification: refresh the counts (batched) without a reload.
+let liveTimer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(
+  onLiveUpdate(() => {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => void approvals.run(), 1500);
+  }),
+);
+onBeforeUnmount(() => clearTimeout(liveTimer));
+function retryFailed() {
+  if (approvals.error.value || failedApprovals.value.length) void approvals.run();
+  for (const w of WIDGETS) if (w.source.error.value) void w.source.run();
+}
+
 const insights = computed<Insight[]>(() => {
   const out: Insight[] = [];
   const s = summary.value;
@@ -241,6 +277,13 @@ const moduleAccess = computed(() =>
       </template>
       <AppStatCard v-if="can.jobs" label="Open roles" :value="jobs.data.value?.meta.total" :loading="jobs.loading.value" tone="info" :icon="Briefcase" to="/hr/recruitment/jobs" />
     </div>
+
+    <AppAlert v-if="failed.length" tone="warning" title="Part of the dashboard didn't load">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span>Couldn't load {{ failed.join(', ') }}, so what's shown may be incomplete. Everything else is up to date.</span>
+        <AppButton size="sm" variant="secondary" :icon="RotateCw" :loading="retrying" @click="retryFailed">Try again</AppButton>
+      </div>
+    </AppAlert>
 
     <!-- Cards in a row share one height (fill), so headers, bodies and empty states line up. -->
     <div class="grid gap-4 lg:grid-cols-3">

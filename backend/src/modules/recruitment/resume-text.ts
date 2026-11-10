@@ -42,10 +42,14 @@ export function resumeText(data: Buffer, type: ResumeContentType): Promise<strin
       clearTimeout(timer);
       fn();
     };
-    const timer = setTimeout(() => finish(() => {
-      child.kill('SIGKILL');
-      reject(new Error('Reading the resume took too long'));
-    }), TIMEOUT_MS);
+    const timer = setTimeout(
+      () =>
+        finish(() => {
+          child.kill('SIGKILL');
+          reject(new Error('Reading the resume took too long'));
+        }),
+      TIMEOUT_MS,
+    );
     child.once('message', (m: { text?: string; error?: string }) => finish(() => (m.error !== undefined ? reject(new Error(m.error)) : resolve(m.text ?? ''))));
     child.once('error', (e) => finish(() => reject(e)));
     child.once('exit', (code, signal) => finish(() => reject(new Error(`The resume reader stopped (${signal ?? `exit code ${code}`})`))));

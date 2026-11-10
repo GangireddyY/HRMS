@@ -37,7 +37,4 @@ export function formatLeaveRange(r: { startDate: string; endDate: string; startS
 }
 
 /** Today's date in the browser (YYYY-MM-DD). */
-export const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+export { localToday as todayIso } from '@/shared/utils/dates';

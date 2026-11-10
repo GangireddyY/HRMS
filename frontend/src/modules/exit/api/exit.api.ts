@@ -1,6 +1,6 @@
-import type { ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitLetterType, ExitReason, ExitStatus, ExitType } from '@contracts';
-import { http, type ListQuery } from '@/core/http/http-client';
-import type { Adjustment, AlumniDetails, AlumniRow, ExitDetail, ExitLetter, ExitLetterSummary, ExitSummary, LetterDraft, MyAlumni, Settlement } from '../types';
+import type { BankFileFormat, ClearanceDepartment, ClearanceStatus, DailyRateBasis, ExitLetterType, ExitReason, ExitStatus, ExitType } from '@contracts';
+import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
+import type { Adjustment, AlumniDetails, AlumniRow, ExitDetail, ExitLetter, ExitLetterSummary, ExitSummary, LetterDraft, MyAlumni, Settlement, SettlementPayouts } from '../types';
 
 export const exitApi = {
   resign: (body: { reason: ExitReason; reasonDetail: string | null; requestedLastDay: string | null }) => http.post<ExitDetail>('/exits/resign', body),
@@ -25,6 +25,9 @@ export const exitApi = {
   returnSettlement: (id: string, note: string) => http.post<Settlement>(`/exits/${id}/settlement/return`, { note }),
   approveSettlement: (id: string) => http.post<Settlement>(`/exits/${id}/settlement/approve`),
   paySettlement: (id: string, body: { paidOn: string; reference: string }) => http.post<Settlement>(`/exits/${id}/settlement/pay`, body),
+  payouts: (status: 'APPROVED' | 'PAID' = 'APPROVED') => http.get<SettlementPayouts>('/exits/settlements/payouts', { status }),
+  downloadPayoutFile: (ids: string[], format: BankFileFormat = 'GENERIC') => downloadFile('/exits/settlements/bank-file', { format, ids: ids.join(',') || undefined }, 'settlement-payouts.csv'),
+  payMany: (body: { ids: string[]; paidOn: string; reference: string }) => http.post<{ paid: number; failed: { id: string; reason: string }[] }>('/exits/settlements/pay', body),
 
   letters: (id: string) => http.get<ExitLetterSummary[]>(`/exits/${id}/letters`),
   letterDraft: (id: string, type: ExitLetterType) => http.get<LetterDraft>(`/exits/${id}/letters/draft`, { type }),

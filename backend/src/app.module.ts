@@ -7,11 +7,16 @@ import { AppConfig } from './config/app-config.service';
 import { validateEnv } from './config/env';
 import { RequestContextMiddleware } from './common/context/request-context.middleware';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 import { AuditModule } from './infrastructure/audit/audit.module';
 import { CryptoModule } from './infrastructure/crypto/crypto.module';
 import { MailModule } from './infrastructure/mail/mail.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
+import { JobsModule } from './infrastructure/jobs/jobs.module';
+import { REDIS, RedisModule } from './infrastructure/redis/redis.module';
+import { RedisThrottlerStorage } from './infrastructure/redis/redis-throttler.storage';
+import type Redis from 'ioredis';
 import { DatabaseModule } from './database/database.module';
 import { AuditLogsModule } from './modules/audit/audit-logs.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -38,6 +43,10 @@ import { ComplianceModule } from './modules/compliance/compliance.module';
 import { ExitModule } from './modules/exit/exit.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { OrgStructureModule } from './modules/org-structure/org-structure.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
+import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { ServicesModule } from './modules/services/services.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 
 @Module({
   imports: [
@@ -47,13 +56,18 @@ import { OrgStructureModule } from './modules/org-structure/org-structure.module
       validate: validateEnv,
     }),
     AppConfigModule,
+    RedisModule,
     ThrottlerModule.forRootAsync({
-      inject: [AppConfig],
-      useFactory: (config: AppConfig) => ({
+      imports: [RedisModule],
+      inject: [AppConfig, REDIS],
+      useFactory: (config: AppConfig, redis: Redis | null) => ({
         throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
         skipIf: () => config.isTest && process.env.TEST_ENABLE_THROTTLE !== '1',
+        // Shared counters across instances when Redis is configured; in memory otherwise.
+        ...(redis ? { storage: new RedisThrottlerStorage(redis) } : {}),
       }),
     }),
+    JobsModule,
     DatabaseModule,
     CryptoModule,
     MailModule,
@@ -81,10 +95,16 @@ import { OrgStructureModule } from './modules/org-structure/org-structure.module
     ComplianceModule,
     ExitModule,
     ReportsModule,
+    PrivacyModule,
+    ApprovalsModule,
+    ServicesModule,
+    IntegrationsModule,
   ],
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    // Outermost first: idempotency replays the enveloped response.
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
     { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
     // Order matters: rate limit → authenticate → authorize.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

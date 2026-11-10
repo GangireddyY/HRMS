@@ -6,7 +6,9 @@ import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
 import { MembershipRole, Permission, Role, RolePermission } from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { assertNoEscalation, Grant } from './escalation';
+import { alertRestrictedGrant, restrictedKeys } from './restricted-access';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 
 function roleKeyFrom(name: string): string {
@@ -44,6 +46,7 @@ export class RolesService {
   constructor(
     private readonly db: DatabaseService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list() {
@@ -158,6 +161,11 @@ export class RolesService {
     if (auth.roleIds.includes(id) && removed.includes('role.manage')) {
       throw AppError.forbidden('You cannot remove role management from a role you hold');
     }
+    // Restricted access (e.g. POSH cases) can't be given to yourself: someone else must add it to a role you hold.
+    const restrictedAdded = restrictedKeys(added.map((g) => g.key));
+    if (restrictedAdded.length && auth.roleIds.includes(id)) {
+      throw AppError.forbidden('You hold this role, so you cannot add restricted access (such as POSH cases) to it. Ask another administrator.');
+    }
 
     await this.db.transaction(async (transaction) => {
       await RolePermission.destroy({ where: { roleId: id }, transaction });
@@ -174,6 +182,9 @@ export class RolesService {
         transaction,
       );
     });
+    if (restrictedAdded.length && role.memberCount > 0) {
+      await alertRestrictedGrant({ notifications: this.notifications, audit: this.audit }, { organizationId: auth.organizationId!, actorUserId: auth.userId, keys: restrictedAdded, grantedTo: `members of the "${role.name}" role` });
+    }
     return this.get(id);
   }
 

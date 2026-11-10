@@ -8,7 +8,7 @@ import { PaginatedResult } from '../../common/interceptors/response-envelope.int
 import { containsPattern } from '../../common/utils/like';
 import { addDays } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Designation, Employee, EmployeeLifecycleEvent, ExitCase, ExitClearanceItem, ExitSettlement, User } from '../../database/models';
+import { Asset, Department, Designation, Employee, EmployeeLifecycleEvent, ExitCase, ExitClearanceItem, ExitSettlement, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { fullName, organizationToday, userIdsOf, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
@@ -368,6 +368,8 @@ export class ExitsService {
     if (c.lastWorkingDay! > today) return `The exit can be completed from the last working day (${c.lastWorkingDay})`;
     const pending = await ExitClearanceItem.count({ where: { caseId: c.id, status: 'PENDING' }, transaction });
     if (pending) return `${pending} clearance step${pending === 1 ? ' is' : 's are'} still pending`;
+    const held = await Asset.findAll({ where: { assignedEmployeeId: c.employeeId }, attributes: ['tag'], transaction });
+    if (held.length) return `${held.map((a) => a.tag).join(', ')} still ${held.length === 1 ? 'is' : 'are'} with the employee: take ${held.length === 1 ? 'it' : 'them'} back or mark lost in Assets`;
     return null;
   }
 
@@ -410,6 +412,7 @@ export class ExitsService {
     const users = await this.names([full.decidedById, full.completedById, ...items.map((i) => i.clearedById)]);
     const settlement = access.settle || access.self ? await ExitSettlement.findOne({ where: { caseId: full.id } }) : null;
     const blocker = access.manage ? await this.completeBlocker(full) : null;
+    const assetsHeld = access.self ? [] : await Asset.findAll({ where: { assignedEmployeeId: full.employeeId }, attributes: ['id', 'tag', 'name', 'category'], order: [['tag', 'ASC']] });
     const service = serviceLength(full.employee!.dateOfJoining, full.lastWorkingDay ?? today);
     return {
       ...this.summary(full, today),
@@ -432,6 +435,7 @@ export class ExitsService {
         clearedBy: i.clearedById ? (users.get(i.clearedById) ?? 'Former user') : null,
         clearedAt: i.clearedAt,
       })),
+      assetsHeld: assetsHeld.map((a) => ({ id: a.id, tag: a.tag, name: a.name, category: a.category })),
       feedback: access.manage ? full.feedback : undefined,
       feedbackGiven: !!full.feedback,
       ...(access.manage ? { eligibleForRehire: full.eligibleForRehire, rehireNote: full.rehireNote } : {}),

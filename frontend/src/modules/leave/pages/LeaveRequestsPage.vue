@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { CalendarRange, Check, ClipboardList, Hourglass, Inbox, Plane, Scale, TriangleAlert, Users, X, XCircle } from '@lucide/vue';
+import { useRoute } from 'vue-router';
+import { CalendarHeart, CalendarRange, Check, ClipboardList, Hourglass, Inbox, Plane, Scale, TriangleAlert, Users, X, XCircle } from '@lucide/vue';
 import type { LeaveRequestStatus } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { leaveApi } from '@/modules/leave/api/leave.api';
+import CompOffApprovals from '@/modules/leave/components/CompOffApprovals.vue';
 import LeaveRequestGridCard from '@/modules/leave/components/LeaveRequestGridCard.vue';
 import type { LeaveRequest } from '@/modules/leave/types';
 import { LEAVE_STATUS_LABELS, formatDays, formatLeaveRange, leaveStatusTone, todayIso } from '@/modules/leave/utils/leave-format';
-import { AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
+import { AppAlert, AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
 import { runBulk } from '@/shared/utils/bulk';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
@@ -24,19 +26,23 @@ const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const today = todayIso();
 const canApprove = computed(() => auth.can('leave.approve'));
+const actingFor = computed(() => (auth.context?.actingFor ?? []).filter((c) => c.permissions.includes('leave.approve')));
 const canViewAll = computed(() => auth.can('leave.view', 'TEAM'));
-const view = ref<'team' | 'all'>(canApprove.value ? 'team' : 'all');
-const table = useTable((q) => leaveApi.requests({ ...q, view: view.value }), { filters: { status: (canApprove.value ? 'PENDING' : undefined) as LeaveRequestStatus | undefined } });
+const route = useRoute();
+const view = ref<'team' | 'all' | 'comp-off'>(canApprove.value && route.query.tab === 'comp-off' ? 'comp-off' : canApprove.value ? 'team' : 'all');
+/** Leave lists for the leave tabs; the comp-off tab has its own. */
+const listView = computed<'team' | 'all'>(() => (view.value === 'all' ? 'all' : 'team'));
+const table = useTable((q) => leaveApi.requests({ ...q, view: listView.value }), { filters: { status: (canApprove.value ? 'PENDING' : undefined) as LeaveRequestStatus | undefined } });
 
 // ---- Status counts (one count per status for the current view) ----------------------------------------------------
 const STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
 const counts = useAsync(async () => {
-  const totals = await Promise.all(STATUSES.map((status) => leaveApi.requests({ view: view.value, status, page: 1, pageSize: 1 }).then((r) => r.meta.total)));
+  const totals = await Promise.all(STATUSES.map((status) => leaveApi.requests({ view: listView.value, status, page: 1, pageSize: 1 }).then((r) => r.meta.total)));
   return Object.fromEntries(STATUSES.map((s, i) => [s, totals[i]!])) as Record<LeaveRequestStatus, number>;
 });
 const refresh = () => Promise.all([table.load(), counts.run()]);
 
-watch(view, (v) => {
+watch(listView, (v) => {
   table.filters.status = v === 'team' ? 'PENDING' : undefined;
   void table.load();
   void counts.run();
@@ -44,6 +50,7 @@ watch(view, (v) => {
 const tabs = computed(() => [
   ...(canApprove.value ? [{ key: 'team', label: 'To approve', icon: Inbox, count: view.value === 'team' ? (counts.data.value?.PENDING ?? null) : null }] : []),
   { key: 'all', label: 'All leave', icon: ClipboardList },
+  ...(canApprove.value ? [{ key: 'comp-off', label: 'Comp-off', icon: CalendarHeart }] : []),
 ]);
 const HINTS: Record<LeaveRequestStatus, string> = {
   PENDING: 'Waiting for a decision',
@@ -127,15 +134,17 @@ const queue = computed(() => {
 // ---- Table ------------------------------------------------------------------------------------------------------
 const showTeam = computed(() => pendingRows.value.length > 0);
 const columns = computed<TableColumn<LeaveRequest>[]>(() => [
-  { key: 'employee', label: 'Employee' },
-  { key: 'type', label: 'Leave' },
-  { key: 'dates', label: 'When' },
+  { key: 'employee', label: 'Employee', exportValue: (r) => (r.employee ? `${r.employee.name} (${r.employee.employeeCode})` : '') },
+  { key: 'type', label: 'Leave', exportValue: (r) => r.leaveType?.name },
+  { key: 'dates', label: 'When', exportValue: (r) => (r.startDate === r.endDate ? r.startDate : `${r.startDate} – ${r.endDate}`) },
   { key: 'days', label: 'Days', align: 'right' },
-  ...(showTeam.value ? [{ key: 'team', label: 'Also away' }] : []),
+  ...(showTeam.value ? [{ key: 'team', label: 'Also away', noExport: true }] : []),
   // Every row is pending when the list is filtered to pending, and the strip already says so.
-  ...(table.filters.status === 'PENDING' ? [] : [{ key: 'status', label: 'Status' }]),
+  ...(table.filters.status === 'PENDING' ? [] : [{ key: 'status', label: 'Status', exportValue: (r: LeaveRequest) => LEAVE_STATUS_LABELS[r.status] }]),
   { key: 'actions', label: '', align: 'right' },
 ]);
+/** Everything matching the current view and filters, for the CSV. */
+const allRows = () => fetchAllPages((page, pageSize) => leaveApi.requests({ ...table.filters, search: table.search.value || undefined, view: listView.value, page, pageSize }));
 const tint = (color: string | undefined, amount: number) => (color ? `color-mix(in srgb, ${color} ${amount}%, transparent)` : undefined);
 const listTitle = computed(() => (table.filters.status ? `${LEAVE_STATUS_LABELS[table.filters.status]} requests` : view.value === 'team' ? 'Requests in your team' : 'All leave requests'));
 const listDescription = computed(() => {
@@ -205,8 +214,12 @@ async function submit() {
       </template>
     </AppPageHeader>
 
+    <AppAlert v-for="c in actingFor" :key="c.name" tone="info" :title="`You're approving for ${c.name}`">
+      Until {{ formatDate(c.endsOn) }}: their team's requests are in your inbox, marked “on behalf of”. <RouterLink to="/me/delegation" class="font-medium underline">Approval cover</RouterLink>
+    </AppAlert>
     <AppTabs v-model="view" :tabs="tabs">
-      <div class="space-y-4">
+      <CompOffApprovals v-if="view === 'comp-off'" />
+      <div v-else class="space-y-4">
         <AppStatStrip :items="strip" selectable :selected="table.filters.status ?? null" :loading="counts.loading.value && !counts.data.value" label="Requests by status" @select="pickStatus" />
 
         <AppCard :title="queue ? 'Waiting for your decision' : listTitle" :description="listDescription" :icon="queue ? Hourglass : view === 'team' ? Inbox : ClipboardList" :padded="false">
@@ -224,6 +237,8 @@ async function submit() {
             :loading="table.loading.value"
             :error="table.error.value"
             :meta="table.meta.value"
+            export-file="leave-requests"
+            :export-rows="allRows"
             caption="Leave requests"
             :empty-title="empty.title"
             :empty-description="empty.description"
@@ -233,7 +248,7 @@ async function submit() {
             @clear="table.clearFilters()"
             v-model:selected="selected"
             :selectable="view === 'team'"
-            :can-select="(r: LeaveRequest) => r.status === 'PENDING'"
+            :can-select="(r: LeaveRequest) => r.status === 'PENDING' && r.canApprove !== false"
             :select-label="(r: LeaveRequest) => `Select ${r.employee?.name ?? 'request'}, ${formatLeaveRange(r)}`"
           >
             <template #empty>
@@ -246,6 +261,7 @@ async function submit() {
                 <div class="min-w-0">
                   <p class="truncate font-medium text-fg">{{ row.employee?.name }}</p>
                   <p class="truncate text-xs text-fg-muted">{{ [row.employee?.employeeCode, row.employee?.department].filter(Boolean).join(' · ') }}</p>
+                  <p v-if="row.onBehalfOf" class="truncate text-2xs font-medium text-info-fg">On behalf of {{ row.onBehalfOf }}</p>
                 </div>
               </div>
             </template>
@@ -286,14 +302,18 @@ async function submit() {
             </template>
             <template #cell-status="{ row }">
               <AppBadge :tone="leaveStatusTone[row.status]" dot>{{ LEAVE_STATUS_LABELS[row.status] }}</AppBadge>
-              <p v-if="row.status === 'REJECTED' && row.reviewNote" class="mt-0.5 max-w-48 truncate text-xs text-danger-fg" :title="row.reviewNote">“{{ row.reviewNote }}”</p>
+              <p v-if="row.status === 'PENDING' && row.approval.levels > 1" class="mt-0.5 text-xs whitespace-nowrap text-fg-subtle" :title="row.approval.trail.map((s) => `Approved by ${s.name}`).join('\n')">
+                Step {{ row.approval.level }} of {{ row.approval.levels }} · {{ row.approval.awaiting }}<template v-if="row.approval.trail.length"> · approved by {{ row.approval.trail.at(-1)!.name }}</template>
+              </p>
+              <p v-else-if="row.status === 'REJECTED' && row.reviewNote" class="mt-0.5 max-w-48 truncate text-xs text-danger-fg" :title="row.reviewNote">“{{ row.reviewNote }}”</p>
               <p v-else-if="row.reviewedBy && row.status !== 'CANCELLED'" class="mt-0.5 text-xs text-fg-subtle">by {{ row.reviewedBy }}</p>
               <p v-else-if="row.cancelledBy" class="mt-0.5 text-xs text-fg-subtle">by {{ row.cancelledBy }}</p>
             </template>
             <template #cell-actions="{ row }">
               <div v-if="row.status === 'PENDING' && view === 'team'" class="flex justify-end gap-2">
                 <AppButton size="sm" variant="secondary" :icon="X" :aria-label="`Reject ${row.employee?.name}'s leave`" title="Reject" @click="open(row, 'reject')" />
-                <AppButton size="sm" :icon="Check" :aria-label="`Approve ${row.employee?.name}'s leave`" @click="open(row, 'approve')">Approve</AppButton>
+                <AppButton v-if="row.canApprove !== false" size="sm" :icon="Check" :aria-label="`Approve ${row.employee?.name}'s leave`" @click="open(row, 'approve')">Approve</AppButton>
+                <span v-else class="self-center text-xs whitespace-nowrap text-fg-muted">With {{ row.approval.awaiting }}</span>
               </div>
               <AppButton v-else-if="row.status === 'APPROVED' && canApprove" size="sm" variant="ghost" :icon="XCircle" :aria-label="`Cancel ${row.employee?.name}'s approved leave`" @click="open(row, 'cancel')">Cancel</AppButton>
             </template>
@@ -303,7 +323,7 @@ async function submit() {
                 :timing="timing(row)"
                 :overlaps="overlaps(row)"
                 :overlaps-loading="overlapSource.loading.value && !overlapSource.data.value"
-                :can-decide="row.status === 'PENDING' && view === 'team'"
+                :can-decide="row.status === 'PENDING' && view === 'team' && row.canApprove !== false"
                 :can-cancel="row.status === 'APPROVED' && canApprove"
                 :selectable="view === 'team' && row.status === 'PENDING'"
                 @approve="open(row, 'approve')"

@@ -158,6 +158,15 @@ export class MfaCodeDto {
   code!: string;
 }
 
+/** Re-confirm identity for a sensitive action: the authenticator code when MFA is on, otherwise the password. */
+export class StepUpDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @Matches(/^\d{6}$/, { message: 'code must be 6 digits' })
+  code?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(256)
+  password?: string;
+}
+
 export class MfaDisableDto extends MfaCodeDto {
   @ApiProperty()
   @IsString() @IsNotEmpty() @MaxLength(128)

@@ -4,7 +4,7 @@ import { RequestContext } from '../../common/context/request-context';
 import { AuditLog } from '../../database/models';
 
 /** Field names whose values must never be written to the audit trail. */
-const REDACTED_FIELDS = /(^password$|hash$|secret|token|^bankAccount|^accountNumber|^pan(Number)?$|^aadhaar)/i;
+const REDACTED_FIELDS = /(^password$|hash$|secret|token|^bankAccount|^accountNumber|^pan(Number)?$|^aadhaar|^passport|address$|^emergencyContact)/i;
 
 export interface AuditEntry {
   action: string;
@@ -38,15 +38,24 @@ export function diff(
   return out;
 }
 
+/** Called for every recorded entry, inside its transaction (e.g. to queue webhook deliveries with the change). */
+export type AuditListener = (entry: AuditLog, transaction?: Transaction) => Promise<void>;
+
 @Injectable()
 export class AuditService {
+  private readonly listeners: AuditListener[] = [];
+
+  subscribe(listener: AuditListener): void {
+    this.listeners.push(listener);
+  }
+
   /**
    * Records an audit entry. Pass the transaction to make the entry atomic with the change.
    * The organization is set explicitly, so tenant auto-scoping is bypassed for the write.
    */
   async record(entry: AuditEntry, transaction?: Transaction): Promise<void> {
     const ctx = RequestContext.get();
-    await AuditLog.create(
+    const row = await AuditLog.create(
       {
         organizationId: entry.organizationId === undefined ? (ctx?.organizationId ?? null) : entry.organizationId,
         actorUserId: entry.actorUserId === undefined ? (ctx?.userId ?? null) : entry.actorUserId,
@@ -62,5 +71,6 @@ export class AuditService {
       },
       { transaction, skipTenantScope: true },
     );
+    for (const listener of this.listeners) await listener(row, transaction);
   }
 }

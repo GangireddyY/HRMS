@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { col, fn, ForeignKeyConstraintError, Op, UniqueConstraintError, type Includeable, type Order, type Transaction, type WhereOptions } from 'sequelize';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta, resolveSort } from '../../common/dto/pagination.dto';
@@ -23,16 +24,50 @@ import {
   User,
 } from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
+import { ctx, type EmployeeEncryptedColumn } from '../../infrastructure/crypto/encrypted-fields';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import type { CreateEmployeeDto, EmployeeListQueryDto, LifecycleActionDto, SensitiveDetailsDto, UpdateEmployeeDto, UpdateMyEmployeeDto } from './dto/employees.dto';
+import { BankDetailsService } from './bank-details.service';
+import { organizationToday } from './employee-people';
 import { EmployeeScopeService } from './employee-scope.service';
+import { fullName } from '../../common/utils/names';
 
 const PUBLIC_ATTRIBUTES = [
-  'id', 'membershipId', 'employeeCode', 'firstName', 'lastName', 'workEmail', 'personalEmail', 'phone', 'dateOfBirth', 'gender',
-  'dateOfJoining', 'employmentType', 'status', 'departmentId', 'designationId', 'locationId', 'managerId', 'probationEndDate', 'confirmedOn',
-  'exitDate', 'address', 'emergencyContactName', 'emergencyContactPhone', 'bankAccountLast4', 'shiftId', 'gradeId', 'costCenterId',
-  'maritalStatus', 'bloodGroup', 'nationality', 'permanentAddress', 'noticePeriodDays', 'createdAt', 'updatedAt',
+  'id',
+  'membershipId',
+  'employeeCode',
+  'firstName',
+  'lastName',
+  'workEmail',
+  'personalEmail',
+  'phone',
+  'dateOfBirth',
+  'gender',
+  'dateOfJoining',
+  'employmentType',
+  'status',
+  'departmentId',
+  'designationId',
+  'locationId',
+  'managerId',
+  'probationEndDate',
+  'confirmedOn',
+  'exitDate',
+  'address',
+  'emergencyContactName',
+  'emergencyContactPhone',
+  'bankAccountLast4',
+  'shiftId',
+  'gradeId',
+  'costCenterId',
+  'maritalStatus',
+  'bloodGroup',
+  'nationality',
+  'permanentAddress',
+  'noticePeriodDays',
+  'createdAt',
+  'updatedAt',
 ];
 
 const INCLUDE: Includeable[] = [
@@ -47,10 +82,19 @@ const INCLUDE: Includeable[] = [
 ];
 
 const ref = (r: { id: string; name: string } | null | undefined) => (r ? { id: r.id, name: r.name } : null);
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function toEmployee(e: Employee) {
+/** Contact details are encrypted at rest; services pass them in decrypted. */
+export type ContactDetails = Pick<Employee, 'address' | 'permanentAddress' | 'emergencyContactName' | 'emergencyContactPhone'>;
+const CONTACT_COLUMNS: Record<keyof ContactDetails, EmployeeEncryptedColumn> = {
+  address: 'address',
+  permanentAddress: 'permanent_address',
+  emergencyContactName: 'emergency_contact_name',
+  emergencyContactPhone: 'emergency_contact_phone',
+};
+const CONTACT_KEYS = Object.keys(CONTACT_COLUMNS) as (keyof ContactDetails)[];
+
+export function toEmployee(e: Employee, contact: ContactDetails) {
   return {
     id: e.id,
     employeeCode: e.employeeCode,
@@ -68,13 +112,13 @@ export function toEmployee(e: Employee) {
     probationEndDate: e.probationEndDate,
     confirmedOn: e.confirmedOn,
     exitDate: e.exitDate,
-    address: e.address,
-    emergencyContactName: e.emergencyContactName,
-    emergencyContactPhone: e.emergencyContactPhone,
+    address: contact.address,
+    emergencyContactName: contact.emergencyContactName,
+    emergencyContactPhone: contact.emergencyContactPhone,
     maritalStatus: e.maritalStatus,
     bloodGroup: e.bloodGroup,
     nationality: e.nationality,
-    permanentAddress: e.permanentAddress,
+    permanentAddress: contact.permanentAddress,
     noticePeriodDays: e.noticePeriodDays,
     department: ref(e.department),
     designation: ref(e.designation),
@@ -99,7 +143,26 @@ export class EmployeesService {
     private readonly scope: EmployeeScopeService,
     private readonly crypto: EncryptionService,
     private readonly storage: StorageService,
+    private readonly bank: BankDetailsService,
   ) {}
+
+  private present(e: Employee) {
+    return toEmployee(e, this.openContact(e));
+  }
+
+  private openContact(e: Employee): ContactDetails {
+    return Object.fromEntries(CONTACT_KEYS.map((k) => [k, this.crypto.decryptLenient(e[k], ctx.employee(CONTACT_COLUMNS[k], e.id))])) as ContactDetails;
+  }
+
+  /** Encrypts the contact fields present in `values` (null clears, undefined leaves unchanged). */
+  private sealContact(employeeId: string, values: Partial<ContactDetails>): Partial<ContactDetails> {
+    const out: Partial<ContactDetails> = {};
+    for (const k of CONTACT_KEYS) {
+      const v = values[k];
+      if (v !== undefined) out[k] = v === null ? null : this.crypto.encrypt(v, ctx.employee(CONTACT_COLUMNS[k], employeeId));
+    }
+    return out;
+  }
 
   async list(auth: AuthContext, query: EmployeeListQueryDto) {
     const where = await this.listWhere(auth, query);
@@ -107,16 +170,25 @@ export class EmployeesService {
     const order = resolveSort<Order>(
       query.sort,
       {
-        name: (d) => [['firstName', d], ['lastName', d]],
+        name: (d) => [
+          ['firstName', d],
+          ['lastName', d],
+        ],
         employeeCode: (d) => [['employeeCode', d]],
         dateOfJoining: (d) => [['dateOfJoining', d]],
         status: (d) => [['status', d]],
         createdAt: (d) => [['createdAt', d]],
       },
-      [['firstName', 'ASC'], ['lastName', 'ASC']],
+      [
+        ['firstName', 'ASC'],
+        ['lastName', 'ASC'],
+      ],
     );
     const { rows, count } = await Employee.findAndCountAll({ where, attributes: PUBLIC_ATTRIBUTES, include: INCLUDE, order, distinct: true, ...paginationArgs(query) });
-    return new PaginatedResult(rows.map(toEmployee), paginationMeta(query, count));
+    return new PaginatedResult(
+      rows.map((r) => this.present(r)),
+      paginationMeta(query, count),
+    );
   }
 
   async get(auth: AuthContext, id: string) {
@@ -131,7 +203,7 @@ export class EmployeesService {
         })
       : [];
     return {
-      ...toEmployee(employee),
+      ...this.present(employee),
       directReports: reports.map((r) => ({ id: r.id, name: fullName(r), employeeCode: r.employeeCode, status: r.status, designation: ref(r.designation) })),
     };
   }
@@ -140,7 +212,7 @@ export class EmployeesService {
     const self = await this.scope.self(auth);
     if (!self) return null;
     const employee = await Employee.findByPk(self.id, { attributes: PUBLIC_ATTRIBUTES, include: INCLUDE });
-    return employee ? toEmployee(employee) : null;
+    return employee ? this.present(employee) : null;
   }
 
   async create(auth: AuthContext, dto: CreateEmployeeDto) {
@@ -149,20 +221,15 @@ export class EmployeesService {
     this.assertDates(dto);
     const employee = await this.db.transaction(async (transaction) => {
       const employeeCode = dto.employeeCode ?? (await this.nextEmployeeCode(transaction));
+      const id = randomUUID();
       const created = await this.uniqueGuard(() =>
-        Employee.create(
-          { ...dto, employeeCode, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId },
-          { transaction },
-        ),
+        Employee.create({ ...dto, ...this.sealContact(id, dto), id, employeeCode, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }),
       );
       await EmployeeLifecycleEvent.create(
         { organizationId: auth.organizationId!, employeeId: created.id, type: 'JOINED', effectiveDate: created.dateOfJoining, changes: {}, createdById: auth.userId },
         { transaction },
       );
-      await this.audit.record(
-        { action: 'employee.created', entityType: 'Employee', entityId: created.id, summary: `Employee ${employeeCode} – ${fullName(created)} created` },
-        transaction,
-      );
+      await this.audit.record({ action: 'employee.created', entityType: 'Employee', entityId: created.id, summary: `Employee ${employeeCode} – ${fullName(created)} created` }, transaction);
       return created;
     });
     return this.get(auth, employee.id);
@@ -176,7 +243,7 @@ export class EmployeesService {
     const before = employee.get({ plain: true, clone: true }) as Record<string, unknown>;
     // The employee code is required; an empty value keeps the current one.
     const { employeeCode, ...rest } = dto;
-    const values = { ...rest, ...(employeeCode ? { employeeCode } : {}) };
+    const values = { ...rest, ...this.sealContact(id, rest), ...(employeeCode ? { employeeCode } : {}) };
     await this.db.transaction(async (transaction) => {
       await this.uniqueGuard(() => employee.update({ ...values, updatedById: auth.userId }, { transaction }));
       await this.audit.record({ action: 'employee.updated', entityType: 'Employee', entityId: id, changes: diff(before, dto as Record<string, unknown>) }, transaction);
@@ -189,7 +256,7 @@ export class EmployeesService {
     if (!self) throw AppError.notFound('Employee record');
     const before = self.get({ plain: true, clone: true }) as Record<string, unknown>;
     await this.db.transaction(async (transaction) => {
-      await self.update({ ...dto, updatedById: auth.userId }, { transaction });
+      await self.update({ ...dto, ...this.sealContact(self.id, dto), updatedById: auth.userId }, { transaction });
       await this.audit.record({ action: 'employee.self_updated', entityType: 'Employee', entityId: self.id, changes: diff(before, dto as Record<string, unknown>) }, transaction);
     });
     return this.me(auth);
@@ -197,7 +264,8 @@ export class EmployeesService {
 
   async applyLifecycle(auth: AuthContext, id: string, dto: LifecycleActionDto) {
     const employee = await this.findVisible(auth, 'employee.lifecycle.manage', id);
-    if (dto.effectiveDate > today()) {
+    // The organization's date: in India the UTC date is still yesterday until 05:30.
+    if (dto.effectiveDate > (await organizationToday(auth.organizationId!))) {
       throw AppError.validation([{ field: 'effectiveDate', message: 'Future-dated changes are not supported yet; record the change on or after its effective date' }]);
     }
     if (dto.effectiveDate < employee.dateOfJoining) throw AppError.validation([{ field: 'effectiveDate', message: 'Effective date cannot be before the date of joining' }]);
@@ -248,14 +316,23 @@ export class EmployeesService {
         { organizationId: auth.organizationId!, employeeId: id, type: dto.type, effectiveDate: dto.effectiveDate, changes, note: dto.note ?? null, createdById: auth.userId },
         { transaction },
       );
-      await this.audit.record({ action: `employee.${dto.type.toLowerCase()}`, entityType: 'Employee', entityId: id, summary: `${dto.type.replace('_', ' ').toLowerCase()} for ${fullName(employee)}`, changes }, transaction);
+      await this.audit.record(
+        { action: `employee.${dto.type.toLowerCase()}`, entityType: 'Employee', entityId: id, summary: `${dto.type.replace('_', ' ').toLowerCase()} for ${fullName(employee)}`, changes },
+        transaction,
+      );
     });
     return this.get(auth, id);
   }
 
   async history(auth: AuthContext, id: string) {
     await this.findVisible(auth, 'employee.view', id);
-    const events = await EmployeeLifecycleEvent.findAll({ where: { employeeId: id }, order: [['effectiveDate', 'DESC'], ['createdAt', 'DESC']] });
+    const events = await EmployeeLifecycleEvent.findAll({
+      where: { employeeId: id },
+      order: [
+        ['effectiveDate', 'DESC'],
+        ['createdAt', 'DESC'],
+      ],
+    });
     const actorIds = [...new Set(events.map((e) => e.createdById).filter((x): x is string => !!x))];
     const actors = new Map((await User.findAll({ where: { id: actorIds }, attributes: ['id', 'firstName', 'lastName'] })).map((u) => [u.id, fullName(u)]));
     return events.map((e) => ({
@@ -271,37 +348,64 @@ export class EmployeesService {
 
   async getSensitive(auth: AuthContext, id: string) {
     const e = await this.findVisible(auth, 'employee.sensitive.view', id, [
-      'id', 'managerId', 'departmentId', 'panEncrypted', 'uanEncrypted', 'bankAccountEncrypted', 'bankIfsc', 'bankName', 'aadhaarEncrypted', 'passportEncrypted', 'passportExpiry',
+      'id',
+      'managerId',
+      'departmentId',
+      'membershipId',
+      'panEncrypted',
+      'uanEncrypted',
+      'esiNumber',
+      'bankAccountEncrypted',
+      'bankIfsc',
+      'bankName',
+      'aadhaarEncrypted',
+      'passportEncrypted',
+      'passportExpiry',
     ]);
     await this.audit.record({ action: 'employee.sensitive_viewed', entityType: 'Employee', entityId: id, summary: 'Bank, statutory and identity details viewed' });
-    const dec = (v: string | null) => (v ? this.crypto.decrypt(v) : null);
+    const dec = (v: string | null, column: EmployeeEncryptedColumn) => (v ? this.crypto.decrypt(v, ctx.employee(column, id)) : null);
     return {
-      pan: dec(e.panEncrypted),
-      uan: dec(e.uanEncrypted),
-      bankAccountNumber: dec(e.bankAccountEncrypted),
+      pan: dec(e.panEncrypted, 'pan'),
+      uan: dec(e.uanEncrypted, 'uan'),
+      esiNumber: e.esiNumber,
+      bankAccountNumber: dec(e.bankAccountEncrypted, 'bank_account'),
       bankIfsc: e.bankIfsc,
       bankName: e.bankName,
-      aadhaar: dec(e.aadhaarEncrypted),
-      passportNumber: dec(e.passportEncrypted),
+      aadhaar: dec(e.aadhaarEncrypted, 'aadhaar'),
+      passportNumber: dec(e.passportEncrypted, 'passport'),
       passportExpiry: e.passportExpiry,
+      pendingBankChange: await this.bank.pending(auth, e),
     };
   }
 
   async updateSensitive(auth: AuthContext, id: string, dto: SensitiveDetailsDto) {
-    const employee = await this.findVisible(auth, 'employee.update', id, ['id', 'passportEncrypted']);
+    const employee = await this.findVisible(auth, 'employee.update', id, [
+      'id',
+      'organizationId',
+      'firstName',
+      'lastName',
+      'employeeCode',
+      'managerId',
+      'departmentId',
+      'membershipId',
+      'workEmail',
+      'personalEmail',
+      'passportEncrypted',
+      'bankAccountEncrypted',
+      'bankAccountLast4',
+      'bankIfsc',
+      'bankName',
+    ]);
     if (!(await this.scope.covers(auth, 'employee.sensitive.view', employee))) throw AppError.forbidden();
-    const enc = (v: string | null | undefined) => (v === undefined ? undefined : v === null ? null : this.crypto.encrypt(v));
+    const enc = (v: string | null | undefined, column: EmployeeEncryptedColumn) => (v === undefined ? undefined : v === null ? null : this.crypto.encrypt(v, ctx.employee(column, id)));
     const values = Object.fromEntries(
       Object.entries({
-        panEncrypted: enc(dto.pan),
-        uanEncrypted: enc(dto.uan),
-        bankAccountEncrypted: enc(dto.bankAccountNumber),
-        bankAccountLast4: dto.bankAccountNumber === undefined ? undefined : (dto.bankAccountNumber?.slice(-4) ?? null),
-        bankIfsc: dto.bankIfsc,
-        bankName: dto.bankName,
-        aadhaarEncrypted: enc(dto.aadhaar),
+        panEncrypted: enc(dto.pan, 'pan'),
+        uanEncrypted: enc(dto.uan, 'uan'),
+        esiNumber: dto.esiNumber,
+        aadhaarEncrypted: enc(dto.aadhaar, 'aadhaar'),
         aadhaarLast4: dto.aadhaar === undefined ? undefined : (dto.aadhaar?.slice(-4) ?? null),
-        passportEncrypted: enc(dto.passportNumber),
+        passportEncrypted: enc(dto.passportNumber, 'passport'),
         passportExpiry: dto.passportExpiry,
       }).filter(([, v]) => v !== undefined),
     );
@@ -309,9 +413,14 @@ export class EmployeesService {
       throw AppError.validation([{ field: 'passportNumber', message: 'Enter the passport number for this expiry date' }]);
     }
     await this.db.transaction(async (transaction) => {
-      await employee.update({ ...values, updatedById: auth.userId }, { transaction });
+      // Bank account changes go through maker-checker; only the columns safe to write now come back.
+      const bank = await this.bank.handle(auth, employee, { bankAccountNumber: dto.bankAccountNumber, bankIfsc: dto.bankIfsc, bankName: dto.bankName }, transaction);
+      await employee.update({ ...values, ...bank, updatedById: auth.userId }, { transaction });
       // Values are never written to the audit trail, only which fields changed.
-      await this.audit.record({ action: 'employee.sensitive_updated', entityType: 'Employee', entityId: id, metadata: { fields: Object.keys(dto).filter((k) => dto[k as keyof SensitiveDetailsDto] !== undefined) } }, transaction);
+      await this.audit.record(
+        { action: 'employee.sensitive_updated', entityType: 'Employee', entityId: id, metadata: { fields: Object.keys(dto).filter((k) => dto[k as keyof SensitiveDetailsDto] !== undefined) } },
+        transaction,
+      );
     });
     return this.getSensitive(auth, id);
   }
@@ -357,7 +466,12 @@ export class EmployeesService {
         rows.push(employee);
       }
       await this.audit.record(
-        { action: 'employee.created_from_users', entityType: 'Employee', summary: `${rows.length} employee record${rows.length === 1 ? '' : 's'} created from user accounts`, metadata: { employeeIds: rows.map((r) => r.id) } },
+        {
+          action: 'employee.created_from_users',
+          entityType: 'Employee',
+          summary: `${rows.length} employee record${rows.length === 1 ? '' : 's'} created from user accounts`,
+          metadata: { employeeIds: rows.map((r) => r.id) },
+        },
         transaction,
       );
       return rows;
@@ -392,14 +506,45 @@ export class EmployeesService {
   async exportCsv(auth: AuthContext, query: EmployeeListQueryDto): Promise<string> {
     const where = await this.listWhere(auth, query);
     const rows = where ? await Employee.findAll({ where, attributes: PUBLIC_ATTRIBUTES, include: INCLUDE, order: [['employeeCode', 'ASC']], limit: 50_000 }) : [];
-    const header = ['Employee code', 'First name', 'Last name', 'Work email', 'Phone', 'Status', 'Employment type', 'Date of joining', 'Department', 'Designation', 'Location', 'Grade', 'Cost center', 'Manager', 'Manager code'];
+    const header = [
+      'Employee code',
+      'First name',
+      'Last name',
+      'Work email',
+      'Phone',
+      'Status',
+      'Employment type',
+      'Date of joining',
+      'Department',
+      'Designation',
+      'Location',
+      'Grade',
+      'Cost center',
+      'Manager',
+      'Manager code',
+    ];
     const cell = csvCell;
     const lines = rows.map((r) => {
-      const e = toEmployee(r);
+      const e = this.present(r);
       return [
-        e.employeeCode, e.firstName, e.lastName, e.workEmail, e.phone, e.status, e.employmentType, e.dateOfJoining,
-        e.department?.name, e.designation?.name, e.location?.name, e.grade?.name, e.costCenter?.code, e.manager?.name, e.manager?.employeeCode,
-      ].map(cell).join(',');
+        e.employeeCode,
+        e.firstName,
+        e.lastName,
+        e.workEmail,
+        e.phone,
+        e.status,
+        e.employmentType,
+        e.dateOfJoining,
+        e.department?.name,
+        e.designation?.name,
+        e.location?.name,
+        e.grade?.name,
+        e.costCenter?.code,
+        e.manager?.name,
+        e.manager?.employeeCode,
+      ]
+        .map(cell)
+        .join(',');
     });
     await this.audit.record({ action: 'employee.exported', entityType: 'Employee', summary: `${rows.length} employees exported`, metadata: { count: rows.length } });
     return [header.join(','), ...lines].join('\r\n');
@@ -450,8 +595,14 @@ export class EmployeesService {
     const rows = await Employee.findAll({
       where,
       attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'status', 'managerId'],
-      include: [{ model: Designation, attributes: ['id', 'name'] }, { model: Department, attributes: ['id', 'name'] }],
-      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
+      include: [
+        { model: Designation, attributes: ['id', 'name'] },
+        { model: Department, attributes: ['id', 'name'] },
+      ],
+      order: [
+        ['firstName', 'ASC'],
+        ['lastName', 'ASC'],
+      ],
       limit: 500,
     });
     const counts = rows.length
@@ -479,7 +630,7 @@ export class EmployeesService {
     const start = await this.findVisible(auth, 'employee.view', id);
     const chain: { id: string; name: string; employeeCode: string; designation: { id: string; name: string } | null }[] = [];
     const seen = new Set([start.id]);
-    for (let managerId = start.managerId; managerId && !seen.has(managerId) && chain.length < 50; ) {
+    for (let managerId = start.managerId; managerId && !seen.has(managerId) && chain.length < 50;) {
       seen.add(managerId);
       const m = await Employee.findByPk(managerId, {
         attributes: ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'managerId', 'departmentId'],
@@ -600,4 +751,3 @@ export class EmployeesService {
     }
   }
 }
-

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { AlertTriangle, Blocks, Building2, CalendarCheck, CalendarClock, CalendarX, Clock, Coins, Flag, HeartPulse, Home, Landmark, Layers, PauseCircle, Pencil, PiggyBank, Plus, Receipt, Scale, Sparkles, Trash2 } from '@lucide/vue';
-import { PROFESSIONAL_TAX_STATES, type TimesheetMissedAction } from '@contracts';
+import { AlertTriangle, BadgeCheck, Blocks, Building2, CalendarCheck, CalendarClock, CalendarX, Clock, Coins, Flag, HeartHandshake, HeartPulse, Home, Landmark, Layers, Mail, PauseCircle, Pencil, PiggyBank, Plus, Receipt, Scale, Sparkles, Trash2 } from '@lucide/vue';
+import { LABOUR_WELFARE_STATES, PROFESSIONAL_TAX_STATES, type DailyRateBasis, type PayslipPdfPassword, type TimesheetMissedAction } from '@contracts';
+import ExpensePolicyCard from '@/modules/payroll/components/ExpensePolicyCard.vue';
+import PayGroupsCard from '@/modules/payroll/components/PayGroupsCard.vue';
 import { MISSED_ACTION_LABELS, WEEKDAY_NAMES } from '@/modules/attendance/utils/timesheet-format';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import ComponentFormModal from '@/modules/payroll/components/ComponentFormModal.vue';
@@ -11,6 +13,7 @@ import type { SalaryComponentDef, SalaryStructure } from '@/modules/payroll/type
 import { lineRule } from '@/modules/payroll/utils/payroll-format';
 import { AppAddTile, AppAlert, AppBadge, AppButton, AppCard, AppDatePicker, AppEmptyState, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppStatStrip, AppSwitch, AppTabs, type StripItem } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
+import { useUnsavedGuard } from '@/shared/composables/use-unsaved-guard';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -108,6 +111,28 @@ const s = reactive({
   timesheetDueWeekday: 1,
   timesheetMissedAction: 'FLAG' as TimesheetMissedAction,
   timesheetAutoRemind: true,
+  /** '' = no approval step. */
+  salaryApprovalThresholdPct: '' as number | string,
+  lwfEnabled: false,
+  proofsFromMonth: null as number | null,
+  leaveEncashmentBasis: 'BASIC_26' as DailyRateBasis,
+  payslipEmailEnabled: false,
+  payslipPdfPassword: 'DOB' as PayslipPdfPassword,
+});
+const pdfPasswordOptions: { value: PayslipPdfPassword; label: string; description: string }[] = [
+  { value: 'DOB', label: 'Date of birth (DDMMYYYY)', description: 'Sent without a password when the date of birth is missing' },
+  { value: 'NONE', label: 'No password', description: '' },
+];
+const encashmentBasisOptions: { value: DailyRateBasis; label: string }[] = [
+  { value: 'BASIC_26', label: 'Monthly Basic ÷ 26' },
+  { value: 'BASIC_30', label: 'Monthly Basic ÷ 30' },
+  { value: 'GROSS_30', label: 'Monthly gross ÷ 30' },
+];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const proofMonthOptions = [1, 2, 3, 10, 11, 12].map((m) => ({ value: m, label: `${MONTHS[m - 1]} – March` }));
+const approvalOn = computed({
+  get: () => s.salaryApprovalThresholdPct !== '',
+  set: (on: boolean) => (s.salaryApprovalThresholdPct = on ? (settings.data.value?.salaryApprovalThresholdPct ?? 15) : ''),
 });
 const weekdayOptions = WEEKDAY_NAMES.map((label, value) => ({ value, label }));
 const missedOptions = [
@@ -121,7 +146,14 @@ const overtimeBasisOptions = [
 ];
 const fromSettings = () => {
   const v = settings.data.value!;
-  return { ...v, pfEstablishmentCode: v.pfEstablishmentCode ?? '', esiEmployerCode: v.esiEmployerCode ?? '', tan: v.tan ?? '', timesheetsFrom: v.timesheetsFrom ?? '' };
+  return {
+    ...v,
+    pfEstablishmentCode: v.pfEstablishmentCode ?? '',
+    esiEmployerCode: v.esiEmployerCode ?? '',
+    tan: v.tan ?? '',
+    timesheetsFrom: v.timesheetsFrom ?? '',
+    salaryApprovalThresholdPct: v.salaryApprovalThresholdPct ?? '',
+  };
 };
 watch(
   () => settings.data.value,
@@ -147,6 +179,12 @@ const FIELDS = [
   'timesheetDueWeekday',
   'timesheetMissedAction',
   'timesheetAutoRemind',
+  'salaryApprovalThresholdPct',
+  'lwfEnabled',
+  'proofsFromMonth',
+  'leaveEncashmentBasis',
+  'payslipEmailEnabled',
+  'payslipPdfPassword',
 ] as const;
 const dirty = computed(() => {
   if (!settings.data.value) return false;
@@ -154,6 +192,7 @@ const dirty = computed(() => {
   return FIELDS.some((k) => String(s[k] ?? '') !== String(saved[k] ?? ''));
 });
 const discard = () => Object.assign(s, fromSettings());
+useUnsavedGuard(dirty, { message: 'Your payroll settings are not saved yet. If you leave now, the changes will be lost.' });
 const ptOptions = PROFESSIONAL_TAX_STATES.map((p) => ({ value: p.code, label: p.name }));
 const savingSettings = ref(false);
 async function saveSettings() {
@@ -167,6 +206,7 @@ async function saveSettings() {
       esiEmployerCode: s.esiEmployerCode || null,
       tan: s.tan || null,
       timesheetsFrom: s.timesheetsFrom || undefined,
+      salaryApprovalThresholdPct: s.salaryApprovalThresholdPct === '' ? null : Number(s.salaryApprovalThresholdPct),
     });
     feedback.success('Payroll settings saved');
   } catch (e) {
@@ -333,9 +373,24 @@ const ruleTone = (calculation: string) => (calculation === 'BALANCE' ? 'bg-speci
               <p class="text-xs text-fg-muted">Supported: {{ PROFESSIONAL_TAX_STATES.map((p) => p.name).join(', ') }}. States without professional tax (e.g. Delhi) deduct nothing.</p>
             </div>
           </AppCard>
+          <AppCard title="Labour welfare fund" :icon="HeartHandshake" description="A small state contribution from employee and employer, collected in the months the state sets (half-yearly in June and December in many states).">
+            <div class="space-y-4">
+              <AppSwitch v-model="s.lwfEnabled" :disabled="!canConfigure" label="Deduct labour welfare fund" description="By the work location's state, falling back to the professional-tax default state." />
+              <p class="text-xs text-fg-muted">Supported: {{ LABOUR_WELFARE_STATES.map((p) => p.name).join(', ') }}. Rates follow the published notifications; check them when a state revises its rates.</p>
+            </div>
+          </AppCard>
           <AppCard title="Income tax & attendance" :icon="Landmark">
             <div class="space-y-4">
               <AppInput v-model="s.tan" :disabled="!canConfigure" label="TAN" placeholder="BLRA12345B" :maxlength="10" :error="fieldErrors.tan" />
+              <AppSelect
+                v-model="s.proofsFromMonth"
+                :disabled="!canConfigure"
+                label="Proofs required from"
+                :options="proofMonthOptions"
+                placeholder="Never (declarations count all year)"
+                help="From this month, monthly TDS uses only the investment proofs payroll has accepted."
+                :error="fieldErrors.proofsFromMonth"
+              />
               <AppSwitch
                 v-model="s.lopFromAttendance"
                 :disabled="!canConfigure"
@@ -349,6 +404,46 @@ const ruleTone = (calculation: string) => (calculation === 'BALANCE' ? 'bg-speci
             <div class="grid gap-3 sm:grid-cols-2">
               <AppInput v-model="s.overtimeMultiplier" :disabled="!canConfigure" type="number" :min="1" :max="5" :step="0.5" label="Rate" suffix="× hourly" help="The Factories Act sets twice the ordinary rate." :error="fieldErrors.overtimeMultiplier" />
               <AppSelect v-model="s.overtimeBasis" :disabled="!canConfigure" label="Hourly rate" :options="overtimeBasisOptions" :clearable="false" :error="fieldErrors.overtimeBasis" />
+            </div>
+          </AppCard>
+          <AppCard title="Leave encashment" :icon="CalendarCheck" description="Unused leave that HR approves for encashment is paid with the next payroll, as a taxable earning outside PF and ESI wages.">
+            <AppSelect v-model="s.leaveEncashmentBasis" class="max-w-sm" :disabled="!canConfigure" label="Pay per day" :options="encashmentBasisOptions" :clearable="false" :error="fieldErrors.leaveEncashmentBasis" />
+          </AppCard>
+          <AppCard title="Payslip emails" :icon="Mail" description="When a run is approved, everyone gets their payslip as a PDF by email, as well as in the app.">
+            <div class="space-y-4">
+              <AppSwitch v-model="s.payslipEmailEnabled" :disabled="!canConfigure" label="Email payslips on approval" description="Sent to each person's sign-in email; held salaries are not sent." />
+              <AppSelect
+                v-if="s.payslipEmailEnabled"
+                v-model="s.payslipPdfPassword"
+                class="max-w-sm"
+                :disabled="!canConfigure"
+                label="PDF password"
+                :options="pdfPasswordOptions"
+                :clearable="false"
+                :searchable="false"
+                :error="fieldErrors.payslipPdfPassword"
+              />
+            </div>
+          </AppCard>
+          <PayGroupsCard :can-configure="canConfigure" />
+          <ExpensePolicyCard class="lg:col-span-2" :can-configure="canConfigure" />
+          <AppCard title="Salary revisions" :icon="BadgeCheck" description="A second pair of eyes on large raises: the revision waits until someone other than the requester (and not the employee) approves it.">
+            <div class="space-y-4">
+              <AppSwitch v-model="approvalOn" :disabled="!canConfigure" label="Approve large raises" description="Approved performance increments skip this — they were approved in the review cycle." />
+              <AppInput
+                v-if="approvalOn"
+                v-model="s.salaryApprovalThresholdPct"
+                :disabled="!canConfigure"
+                type="number"
+                :min="0"
+                :max="500"
+                :step="0.5"
+                label="Raises above"
+                suffix="%"
+                help="Over the salary in force on the effective date. 0 sends every raise for approval."
+                :error="fieldErrors.salaryApprovalThresholdPct"
+              />
+              <p class="text-xs text-fg-muted">Approvers need “Approve salary revisions”. Raising or switching off the threshold needs it too.</p>
             </div>
           </AppCard>
           <AppCard

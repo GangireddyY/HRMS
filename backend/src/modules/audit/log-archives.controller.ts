@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, StreamableFile } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { CurrentAuth, RequirePermissions } from '../../common/auth/decorators';
+import { CurrentAuth, RequirePermissions, RequireStepUp } from '../../common/auth/decorators';
 import { CreateLogArchiveDto, LogArchiveListDto, PurgeLogArchiveDto } from './dto/log-archive.dto';
 import { LogArchivesService } from './log-archives.service';
 
@@ -35,6 +35,7 @@ export class LogArchivesController {
 
   @Get(':id/file')
   @RequirePermissions('audit.purge')
+  @RequireStepUp()
   async file(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
     const { archive, stream } = await this.archives.download(auth, id);
     return new StreamableFile(stream, { type: 'text/csv; charset=utf-8', length: archive.sizeBytes, disposition: attachment(archive.fileName) });
@@ -42,6 +43,7 @@ export class LogArchivesController {
 
   @Post(':id/purge')
   @RequirePermissions('audit.purge')
+  @RequireStepUp()
   @ApiOperation({ summary: 'Delete the archived records (the archive file must have been downloaded)' })
   purge(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PurgeLogArchiveDto) {
     return this.archives.purge(auth, id, dto.recordCount);

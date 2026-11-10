@@ -12,6 +12,7 @@ import { StorageService } from '../../infrastructure/storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { ReviewDocumentDto, UpdateDocumentDto, UploadDocumentDto } from './dto/employees.dto';
 import { EmployeeScopeService } from './employee-scope.service';
+import { fullName } from '../../common/utils/names';
 
 /** Hard cap while streaming the upload; anything between this and DOCUMENT_MAX_BYTES gets a friendly message. */
 export const DOCUMENT_UPLOAD_LIMIT_BYTES = DOCUMENT_MAX_BYTES + 1024 * 1024;
@@ -40,11 +41,16 @@ export function safeFileName(original: string, title: string, type: DocumentCont
     .replace(/\.[^.]*$/, '')
     .trim()
     .slice(0, 200);
-  const stem = base || title.replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, 200) || 'document';
+  const stem =
+    base ||
+    title
+      .replace(/[^\p{L}\p{N} _-]/gu, '')
+      .trim()
+      .slice(0, 200) ||
+    'document';
   return `${stem}.${EXTENSION[type]}`;
 }
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const today = () => new Date().toISOString().slice(0, 10);
 
 type Access = { employee: Employee; isSelf: boolean; canManage: boolean };
@@ -117,7 +123,13 @@ export class EmployeeDocumentsService {
           { transaction },
         );
         await this.audit.record(
-          { action: 'employee.document_uploaded', entityType: 'Employee', entityId: employee.id, summary: `Document "${dto.title}" uploaded`, metadata: { documentId: id, category: dto.category, contentType, byteSize: file.size } },
+          {
+            action: 'employee.document_uploaded',
+            entityType: 'Employee',
+            entityId: employee.id,
+            summary: `Document "${dto.title}" uploaded`,
+            metadata: { documentId: id, category: dto.category, contentType, byteSize: file.size },
+          },
           transaction,
         );
         return created;
@@ -150,7 +162,13 @@ export class EmployeeDocumentsService {
     await this.db.transaction(async (transaction) => {
       await doc.update({ status: dto.status, reviewNote: dto.note ?? null, reviewedAt: new Date(), reviewedById: auth.userId, updatedById: auth.userId }, { transaction });
       await this.audit.record(
-        { action: `employee.document_${dto.status === 'VERIFIED' ? 'verified' : 'rejected'}`, entityType: 'Employee', entityId: employeeId, summary: `Document "${doc.title}" ${dto.status.toLowerCase()}`, metadata: { documentId } },
+        {
+          action: `employee.document_${dto.status === 'VERIFIED' ? 'verified' : 'rejected'}`,
+          entityType: 'Employee',
+          entityId: employeeId,
+          summary: `Document "${doc.title}" ${dto.status.toLowerCase()}`,
+          metadata: { documentId },
+        },
         transaction,
       );
       if (doc.createdById && doc.createdById !== auth.userId) {
@@ -198,7 +216,14 @@ export class EmployeeDocumentsService {
     const until = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
     const rows = await EmployeeDocument.findAll({
       where: { [Op.and]: [scoped, { expiryDate: { [Op.lte]: until } }, { status: { [Op.ne]: 'REJECTED' } }] },
-      include: [{ model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'status'], where: { status: ['ACTIVE', 'ON_NOTICE'] }, include: [{ model: Department, attributes: ['id', 'name'] }] }],
+      include: [
+        {
+          model: Employee,
+          attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'status'],
+          where: { status: ['ACTIVE', 'ON_NOTICE'] },
+          include: [{ model: Department, attributes: ['id', 'name'] }],
+        },
+      ],
       order: [['expiryDate', 'ASC']],
       limit: 500,
     });

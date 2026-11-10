@@ -1,6 +1,22 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { Competency, CycleStatus, FeedbackStatus, HikeStatus, MeritGuideline, PipObjective, PipProgress, PipStatus, ReviewStage } from '../../contracts';
+import type {
+  Competency,
+  CycleStatus,
+  FeedbackStatus,
+  HikeStatus,
+  MeritGuideline,
+  OkrHealth,
+  OkrLevel,
+  OkrMetric,
+  OkrStatus,
+  OneOnOneItemKind,
+  OneOnOneStatus,
+  PipObjective,
+  PipProgress,
+  PipStatus,
+  ReviewStage,
+} from '../../contracts';
 import { Employee } from './people.models';
 
 export interface CompetencyRating {
@@ -35,6 +51,8 @@ export class PerformanceCycle extends Model<InferAttributes<PerformanceCycle>, I
   @Column(DataType.JSONB) meritMatrix: CreationOptional<MeritGuideline[] | null>;
   @Column(DataType.DECIMAL(5, 2)) hikeBudgetPercent: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) hikeEffectiveFrom: CreationOptional<string | null>;
+  /** Calibration target: percent of people at ratings 1 → 5 (sums to 100). */
+  @Column(DataType.JSONB) targetDistribution: CreationOptional<number[] | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
@@ -72,6 +90,10 @@ export class PerformanceReview extends Model<InferAttributes<PerformanceReview>,
   @Column(DataType.DATE) calibratedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) acknowledgedAt: CreationOptional<Date | null>;
   @Column(DataType.STRING(2000)) employeeResponse: CreationOptional<string | null>;
+  /** 1–3, for the 9-box (with the final rating as performance). */
+  @Column(DataType.SMALLINT) potential: CreationOptional<number | null>;
+  @Column(DataType.UUID) potentialSetById: CreationOptional<string | null>;
+  @Column(DataType.DATE) potentialSetAt: CreationOptional<Date | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
 
@@ -198,4 +220,106 @@ export class HikeRecommendation extends Model<InferAttributes<HikeRecommendation
 
   @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
   @BelongsTo(() => PerformanceReview, 'reviewId') review?: NonAttribute<PerformanceReview>;
+}
+
+/** An objective (OKR) for the company, a department or a person, aligned to a parent objective. */
+@Table({ tableName: 'okr_objectives', underscored: true })
+export class OkrObjective extends Model<InferAttributes<OkrObjective>, InferCreationAttributes<OkrObjective>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(200)) title: string;
+  @Column(DataType.STRING(2000)) description: CreationOptional<string | null>;
+  @Column(DataType.STRING(12)) level: OkrLevel;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) ownerEmployeeId: CreationOptional<string | null>;
+  @Column(DataType.UUID) departmentId: CreationOptional<string | null>;
+  @Column(DataType.UUID) parentId: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) periodStart: string;
+  @Column(DataType.DATEONLY) periodEnd: string;
+  @Column(DataType.STRING(8)) status: CreationOptional<OkrStatus>;
+  @Column(DataType.SMALLINT) progress: CreationOptional<number>;
+  @Column(DataType.STRING(10)) health: CreationOptional<OkrHealth | null>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'ownerEmployeeId') owner?: NonAttribute<Employee | null>;
+  @HasMany(() => OkrKeyResult, 'objectiveId') keyResults?: NonAttribute<OkrKeyResult[]>;
+}
+
+@Table({ tableName: 'okr_key_results', underscored: true })
+export class OkrKeyResult extends Model<InferAttributes<OkrKeyResult>, InferCreationAttributes<OkrKeyResult>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => OkrObjective) @Column(DataType.UUID) objectiveId: string;
+  @Column(DataType.STRING(200)) title: string;
+  @Column(DataType.STRING(10)) metric: OkrMetric;
+  @Column(DataType.DECIMAL(14, 2)) startValue: CreationOptional<string>;
+  @Column(DataType.DECIMAL(14, 2)) targetValue: string;
+  @Column(DataType.DECIMAL(14, 2)) currentValue: CreationOptional<string>;
+  @Column(DataType.STRING(20)) unit: CreationOptional<string | null>;
+  @Column(DataType.SMALLINT) weight: CreationOptional<number>;
+  @Column(DataType.SMALLINT) sortOrder: CreationOptional<number>;
+  @Column(DataType.DATE) lastCheckInAt: CreationOptional<Date | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
+@Table({ tableName: 'okr_check_ins', underscored: true, updatedAt: false })
+export class OkrCheckIn extends Model<InferAttributes<OkrCheckIn>, InferCreationAttributes<OkrCheckIn>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => OkrKeyResult) @Column(DataType.UUID) keyResultId: string;
+  @Column(DataType.DECIMAL(14, 2)) value: string;
+  @Column(DataType.STRING(10)) health: OkrHealth;
+  @Column(DataType.STRING(1000)) note: CreationOptional<string | null>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+}
+
+/** A 1:1 between a manager and one of their people: shared agenda and notes, the manager's private notes, actions. */
+@Table({ tableName: 'one_on_ones', underscored: true })
+export class OneOnOne extends Model<InferAttributes<OneOnOne>, InferCreationAttributes<OneOnOne>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) managerId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.DATE) scheduledAt: Date;
+  @Column(DataType.SMALLINT) durationMinutes: CreationOptional<number>;
+  @Column(DataType.STRING(10)) status: CreationOptional<OneOnOneStatus>;
+  @Column(DataType.TEXT) sharedNotes: CreationOptional<string | null>;
+  @Column(DataType.TEXT) managerNotes: CreationOptional<string | null>;
+  @Column(DataType.DATE) completedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'managerId') manager?: NonAttribute<Employee>;
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+  @HasMany(() => OneOnOneItem, 'meetingId') items?: NonAttribute<OneOnOneItem[]>;
+}
+
+@Table({ tableName: 'one_on_one_items', underscored: true, updatedAt: false })
+export class OneOnOneItem extends Model<InferAttributes<OneOnOneItem>, InferCreationAttributes<OneOnOneItem>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => OneOnOne) @Column(DataType.UUID) meetingId: string;
+  @Column(DataType.STRING(8)) kind: OneOnOneItemKind;
+  @Column(DataType.STRING(500)) text: string;
+  @Column(DataType.UUID) addedById: CreationOptional<string | null>;
+  @Column(DataType.UUID) ownerEmployeeId: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) dueDate: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) done: CreationOptional<boolean>;
+  @Column(DataType.DATE) doneAt: CreationOptional<Date | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
 }

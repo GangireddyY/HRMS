@@ -177,8 +177,11 @@ describe('Attendance: overtime, work from home, rosters and devices (e2e)', () =
     // Change a day, then clear two days back to the usual shift.
     await ctx.http().post(`${API}/attendance/roster/assign`).set(t.h).send({ employeeIds: [t.asha.employee.id], shiftId: morning.id, from: addDays(from, 2), to: addDays(from, 2) });
     await ctx.http().post(`${API}/attendance/roster/clear`).set(t.h).send({ employeeIds: [t.asha.employee.id], from: addDays(from, 3), to: addDays(from, 4) });
-    const usual = (await ctx.http().get(`${API}/attendance/shifts`).set(t.h)).body.data.find((s: { isDefault: boolean }) => s.isDefault)?.name ?? 'General (default)';
-    const expected = ['Morning', 'Morning', 'Morning', addDays(from, 3), addDays(from, 4), 'off'].map((x) => (x.startsWith('20') ? (weekday(x) === 0 || weekday(x) === 6 ? 'off' : usual) : x));
+    // Cleared days fall back to the usual shift, including its own weekly offs (which depend on today's date).
+    const usualShift = (await ctx.http().get(`${API}/attendance/shifts`).set(t.h)).body.data.find((s: { isDefault: boolean }) => s.isDefault) as { name: string; weeklyOffs: number[] } | undefined;
+    const usual = usualShift?.name ?? 'General (default)';
+    const offs = usualShift?.weeklyOffs ?? [0, 6];
+    const expected = ['Morning', 'Morning', 'Morning', addDays(from, 3), addDays(from, 4), 'off'].map((x) => (x.startsWith('20') ? (offs.includes(weekday(x)) ? 'off' : usual) : x));
     expect(await pattern(t.h, 'Asha Person')).toEqual(expected);
 
     // Rostered days off are not counted as leave.
@@ -217,7 +220,7 @@ describe('Attendance: overtime, work from home, rosters and devices (e2e)', () =
       { userCode: 'X9', timestamp: at(day, '09:00') },
     ];
     expect((await ctx.http().post(`${API}/attendance/device/punches`).send({ punches })).status).toBe(401);
-    expect((await ctx.http().post(`${API}/attendance/device/punches`).set('X-Device-Key', `${key.slice(0, -1)}x`).send({ punches })).status).toBe(401);
+    expect((await ctx.http().post(`${API}/attendance/device/punches`).set('X-Device-Key', `${key.slice(0, -1)}${key.endsWith('x') ? 'y' : 'x'}`).send({ punches })).status).toBe(401);
     const pushed = await ctx.http().post(`${API}/attendance/device/punches`).set('X-Device-Key', key).send({ punches });
     expect(pushed.status).toBe(201);
     expect(pushed.body.data).toMatchObject({ received: 5, accepted: 4, duplicates: 0, unknownUsers: ['X9'], skipped: [] });

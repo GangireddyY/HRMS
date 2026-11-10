@@ -40,6 +40,13 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => {
 const createOpen = ref(false);
 const period = ref<string | null>(monthOptions[0]!.value);
 const notes = ref('');
+/** '' = the main run (everyone without a pay group). */
+const payGroupId = ref('');
+const payGroups = useAsync(() => payrollApi.payGroups().catch(() => null));
+const groupOptions = computed(() => [
+  { value: '', label: 'Main payroll', description: payGroups.data.value ? `${payGroups.data.value.mainEmployees} people without a pay group` : undefined },
+  ...(payGroups.data.value?.groups ?? []).filter((g) => g.isActive).map((g) => ({ value: g.id, label: g.name, description: `${g.employees} ${g.employees === 1 ? 'person' : 'people'}` })),
+]);
 const creating = ref(false);
 const { formError, handle, reset } = useFormErrors();
 function openCreate(preset?: string) {
@@ -53,7 +60,7 @@ async function create() {
   creating.value = true;
   const [year, month] = period.value!.split('-').map(Number) as [number, number];
   try {
-    const run = await payrollApi.createRun({ year, month, notes: notes.value || null });
+    const run = await payrollApi.createRun({ year, month, payGroupId: payGroupId.value || null, notes: notes.value || null });
     createOpen.value = false;
     feedback.success(`Payroll for ${run.period} started`, run.calculatedAt ? `${run.employeeCount} employees calculated.` : undefined);
     await router.push(`/hr/payroll/runs/${run.id}`);
@@ -224,7 +231,7 @@ const HOW = [
                 <span class="text-xs leading-4 font-semibold text-fg tabular-nums">{{ tile(row).year }}</span>
               </div>
               <div class="min-w-0">
-                <p class="truncate font-medium text-fg">{{ row.period }}</p>
+                <p class="truncate font-medium text-fg">{{ row.period }}<span v-if="row.payGroup" class="font-normal text-fg-muted"> · {{ row.payGroup.name }}</span></p>
                 <p v-if="row.warningCount && row.status === 'DRAFT'" class="text-2xs text-warning-fg">{{ row.warningCount }} warning{{ row.warningCount === 1 ? '' : 's' }}</p>
               </div>
             </div>
@@ -287,6 +294,7 @@ const HOW = [
       <div class="space-y-4">
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppSelect v-model="period" label="Month" :options="monthOptions" :clearable="false" />
+        <AppSelect v-if="groupOptions.length > 1" v-model="payGroupId" label="Who" :options="groupOptions" :clearable="false" :searchable="false" />
         <AppTextarea v-model="notes" label="Notes" :rows="2" :maxlength="500" placeholder="Optional" />
       </div>
       <template #footer>

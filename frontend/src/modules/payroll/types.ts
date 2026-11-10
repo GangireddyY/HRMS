@@ -1,4 +1,4 @@
-import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '@contracts';
+import type { ClaimApprovalStep, ComponentCalculation, DailyRateBasis, ExpensePolicyRule, PayslipPdfPassword, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '@contracts';
 
 export interface PayrollSettings {
   pfEnabled: boolean;
@@ -17,8 +17,16 @@ export interface PayrollSettings {
   timesheetDueWeekday: number;
   timesheetMissedAction: TimesheetMissedAction;
   timesheetAutoRemind: boolean;
+  salaryApprovalThresholdPct: number | null;
+  lwfEnabled: boolean;
+  /** Calendar month from which tax uses accepted proofs only (null = declarations all year). */
+  proofsFromMonth: number | null;
+  leaveEncashmentBasis: DailyRateBasis;
+  payslipEmailEnabled: boolean;
+  payslipPdfPassword: PayslipPdfPassword;
   organizationState: string | null;
   organizationPtState: string | null;
+  organizationLwfState: string | null;
 }
 
 export interface SalaryComponentDef {
@@ -106,8 +114,35 @@ export interface SalaryRow {
 export interface SalaryHistory {
   employee: { id: string; name: string; employeeCode: string; dateOfJoining: string; status: string } | null;
   lockedThrough: string | null;
+  /** A raise above the approval threshold still being decided (not shown to the employee). */
+  pendingRevision: SalaryRevision | null;
   salaries: EmployeeSalary[];
 }
+
+export type SalaryRevisionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export interface SalaryRevision {
+  id: string;
+  employee: { id: string; name: string; employeeCode: string } | null;
+  structure: { id: string; name: string | null };
+  annualCtc: number;
+  previousCtc: number;
+  raisePercent: number;
+  effectiveFrom: string;
+  pfApplicable: boolean;
+  reason: string | null;
+  status: SalaryRevisionStatus;
+  requestedBy: string | null;
+  requestedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  mine: boolean;
+  canReview: boolean;
+}
+
+/** Setting a salary either applies it or, for a raise above the threshold, sends it for approval. */
+export type SalarySaveResult = EmployeeSalary | { pendingApproval: true; request: SalaryRevision };
 
 export interface SalaryInput {
   structureId: string;
@@ -134,11 +169,26 @@ export interface TaxDeclaration {
 
 export type TaxDeclarationInput = Omit<TaxDeclaration, 'employee' | 'financialYear' | 'updatedAt'>;
 
+export interface PayGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  employees: number;
+}
+export interface PayGroups {
+  /** People without a pay group (paid in the main run). */
+  mainEmployees: number;
+  groups: PayGroup[];
+}
+
 export interface PayrollRun {
   id: string;
   year: number;
   month: number;
   period: string;
+  /** null = the main run. */
+  payGroup: { id: string; name: string } | null;
   status: PayrollRunStatus;
   employeeCount: number;
   totalGross: number;
@@ -262,12 +312,27 @@ export interface Claim {
   description: string | null;
   receipt: { fileName: string; contentType: string; size: number } | null;
   status: ReimbursementStatus;
+  /** While pending: who it waits on. */
+  approvalStage: ClaimApprovalStep | null;
+  trail: { step: ClaimApprovalStep; decision: 'APPROVED' | 'REJECTED'; by: string | null; note: string | null; at: string }[];
   reviewedBy: string | null;
   reviewedAt: string | null;
   reviewNote: string | null;
   payroll: { id: string; period: string; status: PayrollRunStatus } | null;
   createdAt: string;
   permissions: { review: boolean; cancel: boolean };
+  /** Detail only: the category limits and the employee's total for the claim's month. */
+  policy?: { perClaimLimit: number | null; monthlyLimit: number | null; monthUsed: number; month: string };
+}
+
+export interface ExpensePolicyView {
+  categories: ExpensePolicyRule[];
+  financeApprovalAbove: number | null;
+}
+
+export interface ClaimUsage extends ExpensePolicyView {
+  month: string;
+  used: Record<ReimbursementCategory, number>;
 }
 
 export interface Instalment {

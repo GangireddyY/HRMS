@@ -30,9 +30,22 @@ export function presentLeaveType(t: LeaveType) {
     maxConsecutiveDays: t.maxConsecutiveDays,
     eligibleAfterDays: t.eligibleAfterDays,
     applicableGender: t.applicableGender,
+    compOffValidityDays: t.compOffValidityDays,
+    approvalLevels: t.approvalLevels,
+    secondApprovalMinDays: t.secondApprovalMinDays === null ? null : Number(t.secondApprovalMinDays),
+    locationIds: t.locationIds ?? null,
+    employmentTypes: t.employmentTypes ?? null,
+    gradeIds: t.gradeIds ?? null,
+    maxBalance: t.maxBalance === null ? null : Number(t.maxBalance),
+    encashMaxDays: t.encashMaxDays === null ? null : Number(t.encashMaxDays),
+    encashMinBalance: Number(t.encashMinBalance ?? 0),
     isActive: t.isActive,
   };
 }
+
+/** How many approvals a request of `days` needs under the type's policy. */
+export const approvalLevelsFor = (t: Pick<LeaveType, 'approvalLevels' | 'secondApprovalMinDays'>, days: number) =>
+  t.approvalLevels === 2 && (t.secondApprovalMinDays === null || days > Number(t.secondApprovalMinDays)) ? 2 : 1;
 
 /** Leave types (with their policy) and organization-wide leave settings. */
 @Injectable()
@@ -43,7 +56,12 @@ export class LeaveTypesService {
   ) {}
 
   async list() {
-    const rows = await LeaveType.findAll({ order: [['isActive', 'DESC'], ['name', 'ASC']] });
+    const rows = await LeaveType.findAll({
+      order: [
+        ['isActive', 'DESC'],
+        ['name', 'ASC'],
+      ],
+    });
     return rows.map(presentLeaveType);
   }
 
@@ -51,7 +69,10 @@ export class LeaveTypesService {
     const values = this.normalize(dto);
     const row = await this.guard(() =>
       this.db.transaction(async (transaction) => {
-        const created = await LeaveType.create({ ...values, code: dto.code, name: dto.name, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction });
+        const created = await LeaveType.create(
+          { ...values, code: dto.code, name: dto.name, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId },
+          { transaction },
+        );
         await this.audit.record({ action: 'leave_type.created', entityType: 'LeaveType', entityId: created.id, summary: `Leave type ${created.code} – ${created.name} created` }, transaction);
         return created;
       }),
@@ -70,7 +91,10 @@ export class LeaveTypesService {
     await this.guard(() =>
       this.db.transaction(async (transaction) => {
         await row.update({ ...values, ...(dto.code ? { code: dto.code } : {}), ...(dto.name ? { name: dto.name } : {}), updatedById: auth.userId }, { transaction });
-        await this.audit.record({ action: 'leave_type.updated', entityType: 'LeaveType', entityId: id, summary: `Leave type ${row.code} updated`, changes: diff(before, dto as Record<string, unknown>) }, transaction);
+        await this.audit.record(
+          { action: 'leave_type.updated', entityType: 'LeaveType', entityId: id, summary: `Leave type ${row.code} updated`, changes: diff(before, dto as Record<string, unknown>) },
+          transaction,
+        );
       }),
     );
     return presentLeaveType(row);
@@ -87,12 +111,17 @@ export class LeaveTypesService {
 
   /** Creates the recommended starter types that do not exist yet (by code); returns how many were added. */
   async addRecommended(auth: AuthContext) {
-    const existing = new Set((await LeaveType.findAll({ attributes: ['code'] })).map((t) => t.code));
-    const missing = RECOMMENDED_LEAVE_TYPES.filter((t) => !existing.has(t.code));
+    const rows = await LeaveType.findAll({ attributes: ['code', 'compOffValidityDays'] });
+    const existing = new Set(rows.map((t) => t.code));
+    const hasCompOff = rows.some((t) => t.compOffValidityDays !== null);
+    const missing = RECOMMENDED_LEAVE_TYPES.filter((t) => !existing.has(t.code) && !(hasCompOff && 'compOffValidityDays' in t));
     await this.db.transaction(async (transaction) => {
       for (const t of missing) {
         const carry = 'carryForwardLimit' in t ? t.carryForwardLimit : 0;
-        await LeaveType.create({ ...t, annualQuota: String(t.annualQuota), carryForwardLimit: String(carry), organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction });
+        await LeaveType.create(
+          { ...t, annualQuota: String(t.annualQuota), carryForwardLimit: String(carry), organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId },
+          { transaction },
+        );
       }
       if (missing.length) {
         await this.audit.record({ action: 'leave_type.recommended_added', entityType: 'LeaveType', summary: `Recommended leave types added: ${missing.map((t) => t.code).join(', ')}` }, transaction);
@@ -114,7 +143,12 @@ export class LeaveTypesService {
     await this.db.transaction(async (transaction) => {
       await Organization.update({ leaveYearStartMonth: dto.leaveYearStartMonth, updatedById: auth.userId }, { where: { id: auth.organizationId! }, transaction });
       await this.audit.record(
-        { action: 'leave.settings_updated', entityType: 'Organization', entityId: auth.organizationId!, changes: { leaveYearStartMonth: { from: org!.leaveYearStartMonth, to: dto.leaveYearStartMonth } } },
+        {
+          action: 'leave.settings_updated',
+          entityType: 'Organization',
+          entityId: auth.organizationId!,
+          changes: { leaveYearStartMonth: { from: org!.leaveYearStartMonth, to: dto.leaveYearStartMonth } },
+        },
         transaction,
       );
     });
@@ -128,7 +162,14 @@ export class LeaveTypesService {
     if (unlimited && ((dto.carryForwardLimit ?? 0) > 0 || dto.encashable)) issues.push({ field: 'unlimited', message: 'Unlimited types have no balance to carry forward or encash' });
     if (accrualFrequency !== 'NONE' && !(Number(dto.annualQuota) > 0)) issues.push({ field: 'annualQuota', message: 'Set the yearly quota (or choose "Granted by HR only")' });
     if (dto.allowNegativeBalance && unlimited) issues.push({ field: 'allowNegativeBalance', message: 'Unlimited types have no balance' });
+    const compOff = dto.compOffValidityDays ?? null;
+    if (compOff !== null && (unlimited || accrualFrequency !== 'NONE'))
+      issues.push({ field: 'compOffValidityDays', message: 'Comp-off is earned, not accrued: use "Granted by HR only" and keep a balance' });
+    const maxBalance = unlimited ? null : (dto.maxBalance ?? null);
+    if (maxBalance !== null && accrualFrequency !== 'NONE' && maxBalance < Number(dto.annualQuota) / 12)
+      issues.push({ field: 'maxBalance', message: "The cap is lower than one month's accrual" });
     if (issues.length) throw AppError.validation(issues);
+    const encashable = unlimited ? false : (dto.encashable ?? false);
     const out: Partial<LeaveType> = {
       description: dto.description ?? null,
       color: dto.color ?? '#6366f1',
@@ -138,7 +179,7 @@ export class LeaveTypesService {
       accrualFrequency,
       prorateOnJoining: dto.prorateOnJoining ?? true,
       carryForwardLimit: String(unlimited ? 0 : (dto.carryForwardLimit ?? 0)),
-      encashable: unlimited ? false : (dto.encashable ?? false),
+      encashable,
       allowHalfDay: dto.allowHalfDay ?? true,
       allowNegativeBalance: unlimited ? false : (dto.allowNegativeBalance ?? false),
       countNonWorkingDays: dto.countNonWorkingDays ?? false,
@@ -147,6 +188,15 @@ export class LeaveTypesService {
       maxConsecutiveDays: dto.maxConsecutiveDays ?? null,
       eligibleAfterDays: dto.eligibleAfterDays ?? 0,
       applicableGender: dto.applicableGender ?? null,
+      compOffValidityDays: compOff,
+      approvalLevels: dto.approvalLevels ?? 1,
+      secondApprovalMinDays: (dto.approvalLevels ?? 1) === 2 && dto.secondApprovalMinDays ? String(dto.secondApprovalMinDays) : null,
+      locationIds: dto.locationIds?.length ? [...new Set(dto.locationIds)] : null,
+      employmentTypes: dto.employmentTypes?.length ? [...new Set(dto.employmentTypes)] : null,
+      gradeIds: dto.gradeIds?.length ? [...new Set(dto.gradeIds)] : null,
+      maxBalance: maxBalance === null ? null : String(maxBalance),
+      encashMaxDays: encashable && dto.encashMaxDays ? String(dto.encashMaxDays) : null,
+      encashMinBalance: String(encashable ? (dto.encashMinBalance ?? 0) : 0),
       isActive: dto.isActive ?? true,
     };
     return out;
@@ -167,6 +217,7 @@ export class LeaveTypesService {
       return await fn();
     } catch (e) {
       if (e instanceof UniqueConstraintError) {
+        if (String(e.parent?.message ?? '').includes('one_comp_off')) throw AppError.validation([{ field: 'compOffValidityDays', message: 'Another leave type is already the comp-off type' }]);
         const field = String(e.parent?.message ?? '').includes('_code_') ? 'code' : 'name';
         throw AppError.validation([{ field, message: `A leave type with this ${field} already exists` }]);
       }

@@ -9,15 +9,18 @@ import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { containsPattern } from '../../common/utils/like';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Employee, OrganizationMembership, PayrollRun, ReimbursementClaim, User } from '../../database/models';
+import { Department, Employee, OrganizationMembership, PayrollRun, ReimbursementApproval, ReimbursementClaim, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { detectDocumentType, safeFileName } from '../employees/employee-documents.service';
+import { managerAndCover, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { ClaimDto, ClaimQueryDto, ReviewClaimDto } from './dto/payroll.dto';
+import { ExpensePolicyService } from './expense-policy.service';
 import { periodLabel } from './payroll-runs.service';
 import { SalariesService } from './salaries.service';
+import { fullName } from '../../common/utils/names';
 
 export interface UploadedReceipt {
   buffer: Buffer;
@@ -25,12 +28,13 @@ export interface UploadedReceipt {
   originalname: string;
 }
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const FINANCE = 'payroll.reimbursement.finance';
 
 /**
- * Reimbursement claims: employees claim expenses (with a receipt), an approver within `payroll.reimbursement.approve`
- * scope — never the claimant — approves or rejects, and approved claims are paid with the next payroll run.
+ * Reimbursement claims: employees claim expenses (with a receipt) within the expense policy, an approver within
+ * `payroll.reimbursement.approve` scope — never the claimant — approves or rejects, claims above the finance threshold
+ * also need finance's approval, and approved claims are paid with the next payroll run.
  */
 @Injectable()
 export class ReimbursementsService {
@@ -41,6 +45,7 @@ export class ReimbursementsService {
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
     private readonly salaries: SalariesService,
+    private readonly policy: ExpensePolicyService,
   ) {}
 
   async create(auth: AuthContext, dto: ClaimDto, file?: UploadedReceipt) {
@@ -50,6 +55,7 @@ export class ReimbursementsService {
     const today = await this.salaries.today(auth.organizationId!);
     if (dto.expenseDate > today) throw AppError.validation([{ field: 'expenseDate', message: "The expense date can't be in the future" }]);
     if (dto.expenseDate < self.dateOfJoining) throw AppError.validation([{ field: 'expenseDate', message: 'The expense is from before you joined' }]);
+    await this.policy.checkClaim(auth.organizationId!, dto.category, dto.amount, !!file);
 
     let receipt: { key: string; name: string; type: string; size: number } | null = null;
     if (file) {
@@ -61,6 +67,7 @@ export class ReimbursementsService {
     }
     try {
       const claim = await this.db.transaction(async (transaction) => {
+        await this.policy.checkMonthly(auth.organizationId!, self.id, dto.category, dto.expenseDate, dto.amount, transaction);
         const c = await ReimbursementClaim.create(
           {
             organizationId: auth.organizationId!,
@@ -78,9 +85,12 @@ export class ReimbursementsService {
           },
           { transaction },
         );
-        await this.audit.record({ action: 'payroll.claim_submitted', entityType: 'ReimbursementClaim', entityId: c.id, summary: `${self.employeeCode} claimed ${money(dto.amount)} for "${dto.title}"` }, transaction);
-        const managerUser = self.managerId ? await this.userOfEmployee(self.managerId) : null;
-        if (managerUser && managerUser !== auth.userId) {
+        await this.audit.record(
+          { action: 'payroll.claim_submitted', entityType: 'ReimbursementClaim', entityId: c.id, summary: `${self.employeeCode} claimed ${money(dto.amount)} for "${dto.title}"` },
+          transaction,
+        );
+        for (const managerUser of await managerAndCover(self.managerId, transaction)) {
+          if (managerUser === auth.userId) continue;
           await this.notifications.notify(
             managerUser,
             { organizationId: auth.organizationId, type: 'payroll.claim', title: `${fullName(self)} claimed ${money(dto.amount)}`, body: dto.title, link: '/hr/payroll/reimbursements' },
@@ -103,27 +113,34 @@ export class ReimbursementsService {
     if (view === 'mine') {
       if (!self) return new PaginatedResult([], paginationMeta(query, 0));
       conditions.push({ employeeId: self.id });
+    } else if (view === 'finance') {
+      if (!auth.permissions.has(FINANCE)) return new PaginatedResult([], paginationMeta(query, 0));
+      conditions.push({ status: 'PENDING', approvalStage: 'FINANCE' });
+      if (self) conditions.push({ employeeId: { [Op.ne]: self.id } });
     } else {
-      const scoped = auth.permissions.has('payroll.view') && view === 'all' ? {} : await this.scope.where(auth, 'payroll.reimbursement.approve', 'employeeId');
+      const broad = (auth.permissions.has('payroll.view') || auth.permissions.has(FINANCE)) && view === 'all';
+      const scoped = broad ? {} : await this.scope.where(auth, 'payroll.reimbursement.approve', 'employeeId');
       if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
       conditions.push(scoped);
       if (view === 'approve') {
-        conditions.push({ status: 'PENDING' });
+        conditions.push({ status: 'PENDING', approvalStage: 'MANAGER' });
         if (self) conditions.push({ employeeId: { [Op.ne]: self.id } });
       }
     }
-    if (query.status && view !== 'approve') conditions.push({ status: query.status });
+    if (query.status && view !== 'approve' && view !== 'finance') conditions.push({ status: query.status });
     if (query.search) conditions.push({ title: { [Op.iLike]: containsPattern(query.search) } });
     const { rows, count } = await ReimbursementClaim.findAndCountAll({
       where: { [Op.and]: conditions },
       include: [
         { model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'managerId', 'departmentId'], include: [{ model: Department, attributes: ['id', 'name'] }] },
         { model: PayrollRun, attributes: ['id', 'year', 'month', 'status'] },
+        { model: ReimbursementApproval, separate: true, order: [['createdAt', 'ASC']] },
       ],
       order: [['createdAt', 'DESC']],
+      distinct: true,
       ...paginationArgs(query),
     });
-    const reviewers = await this.names(rows.map((r) => r.reviewedById));
+    const reviewers = await this.names(rows.flatMap((r) => [r.reviewedById, ...(r.approvals ?? []).map((a) => a.decidedById)]));
     const out = [];
     for (const r of rows) out.push(await this.present(auth, r, reviewers, self?.id ?? null));
     return new PaginatedResult(out, paginationMeta(query, count));
@@ -131,7 +148,22 @@ export class ReimbursementsService {
 
   async get(auth: AuthContext, id: string) {
     const { claim, self } = await this.readable(auth, id);
-    return this.present(auth, claim, await this.names([claim.reviewedById]), self?.id ?? null);
+    const names = await this.names([claim.reviewedById, ...(claim.approvals ?? []).map((a) => a.decidedById)]);
+    const used = await this.policy.usage(claim.employeeId, claim.expenseDate);
+    const rule = (await this.policy.view(auth.organizationId!)).categories.find((c) => c.category === claim.category)!;
+    return {
+      ...(await this.present(auth, claim, names, self?.id ?? null)),
+      policy: { perClaimLimit: rule.perClaimLimit, monthlyLimit: rule.monthlyLimit, monthUsed: used[claim.category], month: claim.expenseDate.slice(0, 7) },
+    };
+  }
+
+  /** The caller's claimed amounts per category in a month (for the claim form's limits). */
+  async myUsage(auth: AuthContext, month: string) {
+    const self = await this.scope.self(auth);
+    if (!self) throw AppError.forbidden('Only employees can claim reimbursements');
+    const policy = await this.policy.view(auth.organizationId!);
+    const used = await this.policy.usage(self.id, `${month}-01`);
+    return { month, ...policy, used };
   }
 
   async approve(auth: AuthContext, id: string, dto: ReviewClaimDto) {
@@ -165,17 +197,43 @@ export class ReimbursementsService {
     return { stream, fileName: claim.receiptName!, contentType: claim.receiptType!, size: claim.receiptSize! };
   }
 
-  private async review(auth: AuthContext, id: string, status: 'APPROVED' | 'REJECTED', note: string | null) {
+  /**
+   * The manager step (`payroll.reimbursement.approve` covering the claimant), then — for claims above the finance
+   * threshold — the finance step (`payroll.reimbursement.finance`, someone other than the manager-step approver).
+   */
+  private async review(auth: AuthContext, id: string, decision: 'APPROVED' | 'REJECTED', note: string | null) {
     const claim = await ReimbursementClaim.findByPk(id, { include: [{ model: Employee }] });
     if (!claim) throw AppError.notFound('Claim');
     const self = await this.scope.self(auth);
     if (claim.employeeId === self?.id) throw AppError.forbidden("You can't review your own claim");
-    if (!(await this.scope.covers(auth, 'payroll.reimbursement.approve', claim.employee!))) throw AppError.notFound('Claim');
+    const step = claim.approvalStage;
+    if (step === 'MANAGER' && !(await this.scope.covers(auth, 'payroll.reimbursement.approve', claim.employee!))) {
+      if (claim.status === 'PENDING' && auth.permissions.has(FINANCE)) throw AppError.conflict('This claim is still waiting for the manager’s approval');
+      throw AppError.notFound('Claim');
+    }
     if (claim.status !== 'PENDING') throw AppError.conflict(`This claim is already ${claim.status.toLowerCase()}`);
+    if (step === 'FINANCE') {
+      if (!auth.permissions.has(FINANCE)) throw AppError.forbidden('This claim is waiting for the finance approval');
+      if (await this.approvedFirstBy(claim.id, auth.userId)) throw AppError.forbidden('Someone other than the first approver gives the finance approval');
+    }
+    const threshold = await this.policy.financeThreshold(auth.organizationId!);
+    const toFinance = decision === 'APPROVED' && step === 'MANAGER' && threshold !== null && Number(claim.amount) > threshold;
+    const amount = money(Number(claim.amount));
     await this.db.transaction(async (transaction) => {
-      await claim.update({ status, reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: note }, { transaction });
+      const locked = await ReimbursementClaim.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (locked!.status !== 'PENDING' || locked!.approvalStage !== step) throw AppError.conflict('This claim was just decided by someone else');
+      await ReimbursementApproval.create({ organizationId: auth.organizationId!, claimId: id, step, decision, decidedById: auth.userId, note }, { transaction });
+      if (toFinance) await locked!.update({ approvalStage: 'FINANCE' }, { transaction });
+      else await locked!.update({ status: decision, reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: note }, { transaction });
       await this.audit.record(
-        { action: status === 'APPROVED' ? 'payroll.claim_approved' : 'payroll.claim_rejected', entityType: 'ReimbursementClaim', entityId: id, summary: `Claim "${claim.title}" of ${claim.employee!.employeeCode} ${status.toLowerCase()}` },
+        {
+          action: toFinance ? 'payroll.claim_manager_approved' : decision === 'APPROVED' ? 'payroll.claim_approved' : 'payroll.claim_rejected',
+          entityType: 'ReimbursementClaim',
+          entityId: id,
+          summary: toFinance
+            ? `Claim "${claim.title}" of ${claim.employee!.employeeCode} (${amount}) approved by the manager; finance approval next`
+            : `Claim "${claim.title}" of ${claim.employee!.employeeCode} ${decision.toLowerCase()}${step === 'FINANCE' ? ' by finance' : ''}`,
+        },
         transaction,
       );
       const userId = await this.userOfEmployee(claim.employeeId);
@@ -185,15 +243,29 @@ export class ReimbursementsService {
           {
             organizationId: auth.organizationId,
             type: 'payroll.claim',
-            title: status === 'APPROVED' ? `Your claim "${claim.title}" was approved` : `Your claim "${claim.title}" was rejected`,
-            body: status === 'APPROVED' ? 'It will be paid with the next payroll.' : (note ?? undefined),
+            title: toFinance ? `Your claim "${claim.title}" was approved by your manager` : decision === 'APPROVED' ? `Your claim "${claim.title}" was approved` : `Your claim "${claim.title}" was rejected`,
+            body: toFinance ? 'Finance approves claims of this size next.' : decision === 'APPROVED' ? 'It will be paid with the next payroll.' : (note ?? undefined),
             link: '/me/reimbursements',
           },
           transaction,
         );
       }
+      if (toFinance) {
+        for (const financeUser of await usersWithPermission(FINANCE, transaction)) {
+          if (financeUser === auth.userId || financeUser === userId) continue;
+          await this.notifications.notify(
+            financeUser,
+            { organizationId: auth.organizationId, type: 'payroll.claim', title: `Finance approval needed: ${fullName(claim.employee!)} claimed ${amount}`, body: claim.title, link: '/hr/payroll/reimbursements?tab=finance' },
+            transaction,
+          );
+        }
+      }
     });
     return this.get(auth, id);
+  }
+
+  private async approvedFirstBy(claimId: string, userId: string): Promise<boolean> {
+    return (await ReimbursementApproval.count({ where: { claimId, step: 'MANAGER', decision: 'APPROVED', decidedById: userId } })) > 0;
   }
 
   /** The claimant, an approver covering them, or `payroll.view`. */
@@ -202,17 +274,25 @@ export class ReimbursementsService {
       include: [
         { model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'managerId', 'departmentId'], include: [{ model: Department, attributes: ['id', 'name'] }] },
         { model: PayrollRun, attributes: ['id', 'year', 'month', 'status'] },
+        { model: ReimbursementApproval, separate: true, order: [['createdAt', 'ASC']] },
       ],
     });
     if (!claim) throw AppError.notFound('Claim');
     const self = await this.scope.self(auth);
-    const allowed = claim.employeeId === self?.id || auth.permissions.has('payroll.view') || (await this.scope.covers(auth, 'payroll.reimbursement.approve', claim.employee!));
+    const allowed =
+      claim.employeeId === self?.id || auth.permissions.has('payroll.view') || auth.permissions.has(FINANCE) || (await this.scope.covers(auth, 'payroll.reimbursement.approve', claim.employee!));
     if (!allowed) throw AppError.notFound('Claim');
     return { claim, self };
   }
 
   private async present(auth: AuthContext, c: ReimbursementClaim, reviewers: Map<string, string>, selfId: string | null) {
-    const canReview = c.status === 'PENDING' && c.employeeId !== selfId && (await this.scope.covers(auth, 'payroll.reimbursement.approve', c.employee!));
+    const trail = c.approvals ?? [];
+    const canReview =
+      c.status === 'PENDING' &&
+      c.employeeId !== selfId &&
+      (c.approvalStage === 'FINANCE'
+        ? auth.permissions.has(FINANCE) && !trail.some((a) => a.step === 'MANAGER' && a.decision === 'APPROVED' && a.decidedById === auth.userId)
+        : await this.scope.covers(auth, 'payroll.reimbursement.approve', c.employee!));
     return {
       id: c.id,
       employee: c.employee ? { id: c.employee.id, name: fullName(c.employee), employeeCode: c.employee.employeeCode, department: c.employee.department?.name ?? null } : null,
@@ -223,6 +303,8 @@ export class ReimbursementsService {
       description: c.description,
       receipt: c.receiptKey ? { fileName: c.receiptName, contentType: c.receiptType, size: c.receiptSize } : null,
       status: c.status,
+      approvalStage: c.status === 'PENDING' ? c.approvalStage : null,
+      trail: trail.map((a) => ({ step: a.step, decision: a.decision, by: a.decidedById ? (reviewers.get(a.decidedById) ?? null) : null, note: a.note, at: a.createdAt })),
       reviewedBy: c.reviewedById ? (reviewers.get(c.reviewedById) ?? null) : null,
       reviewedAt: c.reviewedAt,
       reviewNote: c.reviewNote,

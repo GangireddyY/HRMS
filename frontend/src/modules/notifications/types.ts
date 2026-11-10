@@ -7,3 +7,9 @@ export interface NotificationRow {
   readAt: string | null;
   createdAt: string;
 }
+
+export interface NotificationEmailSettings {
+  email: boolean;
+  muted: string[];
+  categories: { key: string; label: string; description: string }[];
+}

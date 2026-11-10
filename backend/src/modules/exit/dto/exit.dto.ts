@@ -1,8 +1,10 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import {
+  BANK_FILE_FORMATS,
+  type BankFileFormat,
   CLEARANCE_DEPARTMENTS,
   CLEARANCE_STATUSES,
   DAILY_RATE_BASES,
@@ -102,6 +104,24 @@ export class ReturnSettlementDto {
 export class PaySettlementDto {
   @ApiProperty() @IsISO8601(DATE) paidOn!: string;
   @ApiProperty({ description: 'Bank transfer reference' }) @Transform(trim) @IsString() @Length(2, 120) reference!: string;
+}
+
+export class SettlementPayoutQueryDto {
+  @ApiPropertyOptional({ enum: ['APPROVED', 'PAID'], default: 'APPROVED', description: 'APPROVED = waiting to be paid' }) @IsOptional() @IsIn(['APPROVED', 'PAID']) status?: 'APPROVED' | 'PAID';
+}
+
+export class SettlementBankFileQueryDto {
+  @ApiPropertyOptional({ enum: BANK_FILE_FORMATS, default: 'GENERIC' }) @IsOptional() @IsIn(BANK_FILE_FORMATS) format?: BankFileFormat;
+  @ApiPropertyOptional({ description: 'Comma-separated settlement ids (default: every approved settlement)' })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').map((v) => v.trim()).filter(Boolean) : value))
+  @IsArray() @ArrayMaxSize(200) @IsUUID('4', { each: true }) ids?: string[];
+}
+
+export class BulkPaySettlementsDto {
+  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(200) @ArrayUnique() @IsUUID('4', { each: true }) ids!: string[];
+  @ApiProperty() @IsISO8601(DATE) paidOn!: string;
+  @ApiProperty({ description: 'Bank transfer (batch) reference' }) @Transform(trim) @IsString() @Length(2, 120) reference!: string;
 }
 
 export class LetterDraftQueryDto {

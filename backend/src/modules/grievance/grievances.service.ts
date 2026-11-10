@@ -20,6 +20,7 @@ import { addDays, zonedParts } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { Department, Designation, Employee, GrievanceAttachment, GrievanceCase, GrievanceEvent, GrievanceNote, Organization, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ctx } from '../../infrastructure/crypto/encrypted-fields';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { detectDocumentType, safeFileName } from '../employees/employee-documents.service';
@@ -118,13 +119,15 @@ export class GrievancesService {
     const c = await this.db.transaction(async (transaction) => {
       // Serializes reference numbering per organization.
       await Organization.findByPk(auth.organizationId!, { attributes: ['id'], transaction, lock: transaction.LOCK.NO_KEY_UPDATE });
+      const id = randomUUID();
       const created = await GrievanceCase.create(
         {
+          id,
           organizationId: auth.organizationId!,
           reference: await this.nextReference(posh, transaction),
           category: dto.category,
           subject: dto.subject,
-          detailsEncrypted: this.seal(details),
+          detailsEncrypted: this.seal(details, ctx.grievanceCase('details', id)),
           complainantId: self.id,
           respondentId: dto.respondentId ?? null,
           respondentName: dto.respondentName ?? null,
@@ -364,13 +367,13 @@ export class GrievancesService {
     await this.mutate(auth, id, 'manage', async (c, transaction) => {
       if (c.status === 'SUBMITTED') throw AppError.conflict('Acknowledge the case before resolving it');
       if (c.status !== 'IN_REVIEW' && c.status !== 'INVESTIGATING') throw AppError.conflict('Only an open case can be resolved');
-      if (isPosh(c.category) && dto.outcome === 'SETTLED' && !this.open<Details>(c.detailsEncrypted).conciliationRequested) {
+      if (isPosh(c.category) && dto.outcome === 'SETTLED' && !this.open<Details>(c.detailsEncrypted, ctx.grievanceCase('details', c.id)).conciliationRequested) {
         throw AppError.validation([{ field: 'outcome', message: 'A POSH complaint can only be settled by conciliation at the complainant’s request (section 10)' }]);
       }
       const from = c.status;
       const today = await organizationToday(c.organizationId);
       const resolution: Resolution = { summary: dto.summary, actions: dto.actions ?? null };
-      await c.update({ status: 'RESOLVED', outcome: dto.outcome, resolutionEncrypted: this.seal(resolution), resolvedAt: new Date(), resolvedOn: today, resolvedById: auth.userId, acceptedAt: null }, { transaction });
+      await c.update({ status: 'RESOLVED', outcome: dto.outcome, resolutionEncrypted: this.seal(resolution, ctx.grievanceCase('resolution', c.id)), resolvedAt: new Date(), resolvedOn: today, resolvedById: auth.userId, acceptedAt: null }, { transaction });
       await this.event(c, auth, 'RESOLVED', { from, to: 'RESOLVED', detail: `Outcome: ${OUTCOME_LABELS[dto.outcome]}` }, transaction);
       await this.record(c, 'resolved', 'resolved', transaction, { outcome: dto.outcome });
       await this.notifyComplainant(c, `Your case ${c.reference} has been resolved`, transaction);
@@ -546,7 +549,8 @@ export class GrievancesService {
   }
 
   private async addNoteRow(c: GrievanceCase, auth: AuthContext, fromComplainant: boolean, visibility: GrievanceVisibility, body: string, transaction: Transaction) {
-    await GrievanceNote.create({ organizationId: c.organizationId, caseId: c.id, authorUserId: auth.userId, fromComplainant, visibility, bodyEncrypted: this.encryption.encrypt(body) }, { transaction });
+    const id = randomUUID();
+    await GrievanceNote.create({ id, organizationId: c.organizationId, caseId: c.id, authorUserId: auth.userId, fromComplainant, visibility, bodyEncrypted: this.encryption.encrypt(body, ctx.grievanceNote(id)) }, { transaction });
   }
 
   private async event(c: GrievanceCase, auth: AuthContext, type: string, opts: { from?: GrievanceStatus; to?: GrievanceStatus; detail?: string; internal?: boolean }, transaction: Transaction) {
@@ -569,12 +573,12 @@ export class GrievancesService {
     return `${prefix}-${String(max + 1).padStart(4, '0')}`;
   }
 
-  private seal(value: Details | Resolution): string {
-    return this.encryption.encrypt(JSON.stringify(value));
+  private seal(value: Details | Resolution, context: string): string {
+    return this.encryption.encrypt(JSON.stringify(value), context);
   }
 
-  private open<T>(payload: string): T {
-    return JSON.parse(this.encryption.decrypt(payload)) as T;
+  private open<T>(payload: string, context: string): T {
+    return JSON.parse(this.encryption.decrypt(payload, context)) as T;
   }
 
   private async userNames(ids: (string | null | undefined)[]): Promise<Map<string, string>> {
@@ -618,8 +622,8 @@ export class GrievancesService {
     ]);
     const users = await this.userNames([full.assigneeUserId, full.resolvedById, ...notes.map((n) => n.authorUserId), ...files.map((f) => f.uploadedById), ...events.map((e) => e.actorUserId)]);
     const today = await organizationToday(full.organizationId);
-    const details = this.open<Details>(full.detailsEncrypted);
-    const resolution = full.resolutionEncrypted ? this.open<Resolution>(full.resolutionEncrypted) : null;
+    const details = this.open<Details>(full.detailsEncrypted, ctx.grievanceCase('details', full.id));
+    const resolution = full.resolutionEncrypted ? this.open<Resolution>(full.resolutionEncrypted, ctx.grievanceCase('resolution', full.id)) : null;
     const complainantName = full.complainant ? fullName(full.complainant) : 'Complainant';
     const author = (fromComplainant: boolean, userId: string | null) => (fromComplainant ? complainantName : userId ? (users.get(userId) ?? 'Former user') : 'Former user');
     const posh = isPosh(full.category);
@@ -648,7 +652,7 @@ export class GrievancesService {
       acceptedAt: full.acceptedAt,
       closedAt: full.closedAt,
       withdrawnAt: full.withdrawnAt,
-      notes: notes.map((n) => ({ id: n.id, author: author(n.fromComplainant, n.authorUserId), fromComplainant: n.fromComplainant, visibility: n.visibility, body: this.encryption.decrypt(n.bodyEncrypted), createdAt: n.createdAt })),
+      notes: notes.map((n) => ({ id: n.id, author: author(n.fromComplainant, n.authorUserId), fromComplainant: n.fromComplainant, visibility: n.visibility, body: this.encryption.decrypt(n.bodyEncrypted, ctx.grievanceNote(n.id)), createdAt: n.createdAt })),
       attachments: files.map((f) => ({ id: f.id, fileName: f.fileName, contentType: f.contentType, size: f.sizeBytes, visibility: f.visibility, fromComplainant: f.fromComplainant, uploadedBy: author(f.fromComplainant, f.uploadedById), createdAt: f.createdAt })),
       events: events.map((e) => ({ id: e.id, type: e.type, fromStatus: e.fromStatus, toStatus: e.toStatus, detail: e.detail, internal: e.internal, actor: e.actorUserId ? (users.get(e.actorUserId) ?? 'Former user') : null, createdAt: e.createdAt })),
       permissions: access.complainant

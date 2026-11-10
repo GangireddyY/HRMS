@@ -37,8 +37,90 @@ export const LEAVE_MAX_SPAN_DAYS = 366;
  * every value can be changed afterwards.
  */
 export const RECOMMENDED_LEAVE_TYPES = [
-  { code: 'CL', name: 'Casual leave', color: '#0ea5e9', isPaid: true, annualQuota: 12, accrualFrequency: 'YEARLY', prorateOnJoining: true, carryForwardLimit: 0, allowHalfDay: true, minNoticeDays: 1, maxBackdatedDays: 3, maxConsecutiveDays: 3 },
-  { code: 'SL', name: 'Sick leave', color: '#f43f5e', isPaid: true, annualQuota: 12, accrualFrequency: 'YEARLY', prorateOnJoining: true, carryForwardLimit: 0, allowHalfDay: true, minNoticeDays: 0, maxBackdatedDays: 7, maxConsecutiveDays: null },
-  { code: 'EL', name: 'Earned leave', color: '#10b981', isPaid: true, annualQuota: 15, accrualFrequency: 'MONTHLY', prorateOnJoining: true, carryForwardLimit: 30, encashable: true, allowHalfDay: false, minNoticeDays: 7, maxBackdatedDays: 0, maxConsecutiveDays: null },
-  { code: 'LOP', name: 'Leave without pay', color: '#64748b', isPaid: false, annualQuota: 0, accrualFrequency: 'NONE', unlimited: true, allowHalfDay: true, minNoticeDays: 0, maxBackdatedDays: 7, maxConsecutiveDays: null },
+  {
+    code: 'CL',
+    name: 'Casual leave',
+    color: '#0ea5e9',
+    isPaid: true,
+    annualQuota: 12,
+    accrualFrequency: 'YEARLY',
+    prorateOnJoining: true,
+    carryForwardLimit: 0,
+    allowHalfDay: true,
+    minNoticeDays: 1,
+    maxBackdatedDays: 3,
+    maxConsecutiveDays: 3,
+  },
+  {
+    code: 'SL',
+    name: 'Sick leave',
+    color: '#f43f5e',
+    isPaid: true,
+    annualQuota: 12,
+    accrualFrequency: 'YEARLY',
+    prorateOnJoining: true,
+    carryForwardLimit: 0,
+    allowHalfDay: true,
+    minNoticeDays: 0,
+    maxBackdatedDays: 7,
+    maxConsecutiveDays: null,
+  },
+  {
+    code: 'EL',
+    name: 'Earned leave',
+    color: '#10b981',
+    isPaid: true,
+    annualQuota: 15,
+    accrualFrequency: 'MONTHLY',
+    prorateOnJoining: true,
+    carryForwardLimit: 30,
+    encashable: true,
+    allowHalfDay: false,
+    minNoticeDays: 7,
+    maxBackdatedDays: 0,
+    maxConsecutiveDays: null,
+  },
+  {
+    code: 'LOP',
+    name: 'Leave without pay',
+    color: '#64748b',
+    isPaid: false,
+    annualQuota: 0,
+    accrualFrequency: 'NONE',
+    unlimited: true,
+    allowHalfDay: true,
+    minNoticeDays: 0,
+    maxBackdatedDays: 7,
+    maxConsecutiveDays: null,
+  },
+  // Credited by approved comp-off requests; the balance carries over and each credit expires on its own.
+  {
+    code: 'CO',
+    name: 'Compensatory off',
+    color: '#8b5cf6',
+    isPaid: true,
+    annualQuota: 0,
+    accrualFrequency: 'NONE',
+    prorateOnJoining: false,
+    carryForwardLimit: 366,
+    allowHalfDay: true,
+    minNoticeDays: 1,
+    maxBackdatedDays: 3,
+    maxConsecutiveDays: null,
+    compOffValidityDays: 90,
+  },
 ] as const;
+
+/** A comp-off is earned on a public holiday (that isn't optional) or a weekly / rostered day off. */
+export const COMP_OFF_DAY_KINDS = ['HOLIDAY', 'WEEKLY_OFF'] as const;
+export type CompOffDayKind = (typeof COMP_OFF_DAY_KINDS)[number];
+
+/** How far back someone can ask for comp-off for a day they worked. */
+export const COMP_OFF_REQUEST_WINDOW_DAYS = 30;
+
+/** PENDING → APPROVED (days leave the balance) → PAID by the next payroll run; or REJECTED / CANCELLED. */
+export const LEAVE_ENCASHMENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'PAID'] as const;
+export type LeaveEncashmentStatus = (typeof LEAVE_ENCASHMENT_STATUSES)[number];
+
+/** Local time from which the nightly job brings accruals, carry-forward and expiry up to date (minutes after midnight). */
+export const LEAVE_ACCRUAL_JOB_FROM_MINUTES = 60;

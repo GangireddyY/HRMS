@@ -1,28 +1,20 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsISO8601, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsBoolean,
-  IsIn,
-  IsInt,
-  IsISO8601,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Length,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-  ValidateNested,
-} from 'class-validator';
-import {
+  ADJUSTMENT_CATEGORIES,
   ADVANCE_MAX_TENURE_MONTHS,
+  BANK_FILE_FORMATS,
+  BONUS_BASES,
   COMPONENT_CALCULATIONS,
+  DAILY_RATE_BASES,
+  PAYSLIP_PDF_PASSWORDS,
+  type AdjustmentCategory,
+  type BankFileFormat,
+  type BonusBasis,
+  type DailyRateBasis,
+  type PayslipPdfPassword,
   LOAN_MAX_INTEREST_RATE,
   LOAN_MAX_PRINCIPAL,
   LOAN_MAX_TENURE_MONTHS,
@@ -33,8 +25,12 @@ import {
   PROFESSIONAL_TAX_STATES,
   REIMBURSEMENT_CATEGORIES,
   REIMBURSEMENT_STATUSES,
+  TAX_PROOF_SECTIONS,
+  TAX_PROOF_STATUSES,
   TAX_REGIMES,
   TIMESHEET_MISSED_ACTIONS,
+  type TaxProofSection,
+  type TaxProofStatus,
   type ComponentCalculation,
   type LoanStatus,
   type LoanType,
@@ -51,7 +47,14 @@ import { emptyToNull, emptyToNullUpper, optionalNullable, trim, upper } from '..
 const DATE = { strict: true, strictSeparator: true };
 const MAX_AMOUNT = 1_000_000_000;
 /** Non-negative amount with up to two decimals (defaults to 0 when omitted). */
-const Amount = () => applyDecorators(IsOptional(), Type(() => Number), IsNumber({ maxDecimalPlaces: 2 }), Min(0), Max(MAX_AMOUNT));
+const Amount = () =>
+  applyDecorators(
+    IsOptional(),
+    Type(() => Number),
+    IsNumber({ maxDecimalPlaces: 2 }),
+    Min(0),
+    Max(MAX_AMOUNT),
+  );
 const queryBoolean = ({ value }: { value: unknown }) => (value === 'true' || value === true ? true : value === 'false' || value === false ? false : value);
 const PT_CODES = PROFESSIONAL_TAX_STATES.map((s) => s.code);
 
@@ -63,24 +66,71 @@ export class PayrollSettingsDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() esiEnabled?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() ptEnabled?: boolean;
   @ApiPropertyOptional({ nullable: true, enum: PT_CODES, description: 'Professional tax state when the work location has none' })
-  @Transform(emptyToNullUpper) @optionalNullable @IsIn(PT_CODES) ptState?: string | null;
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @IsIn(PT_CODES)
+  ptState?: string | null;
   @ApiPropertyOptional({ description: 'Loss of pay from attendance absences as well as unpaid leave (the month must be closed)' })
-  @IsOptional() @IsBoolean() lopFromAttendance?: boolean;
+  @IsOptional()
+  @IsBoolean()
+  lopFromAttendance?: boolean;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNullUpper) @optionalNullable @IsString() @MaxLength(30) pfEstablishmentCode?: string | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNullUpper) @optionalNullable @IsString() @MaxLength(30) esiEmployerCode?: string | null;
   @ApiPropertyOptional({ nullable: true, description: 'Tax deduction account number, e.g. BLRA12345B' })
-  @Transform(emptyToNullUpper) @optionalNullable @Matches(/^[A-Z]{4}[0-9]{5}[A-Z]$/, { message: 'tan must look like BLRA12345B' }) tan?: string | null;
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @Matches(/^[A-Z]{4}[0-9]{5}[A-Z]$/, { message: 'tan must look like BLRA12345B' })
+  tan?: string | null;
   @ApiPropertyOptional({ description: 'Overtime is paid at this multiple of the hourly rate (Factories Act: twice)', default: 2 })
-  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 1 }) @Min(1) @Max(5) overtimeMultiplier?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(1)
+  @Max(5)
+  overtimeMultiplier?: number;
   @ApiPropertyOptional({ enum: OVERTIME_BASES, description: 'Hourly rate = monthly Basic or gross ÷ 26 days ÷ 8 hours' }) @IsOptional() @IsIn(OVERTIME_BASES) overtimeBasis?: OvertimeBasis;
   @ApiPropertyOptional({ description: 'Everyone submits a weekly timesheet, reviewed before payroll' }) @IsOptional() @IsBoolean() timesheetsRequired?: boolean;
   @ApiPropertyOptional({ example: '2026-11-09', description: 'First week that needs a timesheet (moved to its Monday); defaults to the week the rule is switched on' })
-  @IsOptional() @IsISO8601({ strict: true, strictSeparator: true }) timesheetsFrom?: string;
-  @ApiPropertyOptional({ description: 'Due on this weekday after the week ends (0 = Sunday … 6 = Saturday)', default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(6) timesheetDueWeekday?: number;
+  @IsOptional()
+  @IsISO8601({ strict: true, strictSeparator: true })
+  timesheetsFrom?: string;
+  @ApiPropertyOptional({ description: 'Due on this weekday after the week ends (0 = Sunday … 6 = Saturday)', default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  timesheetDueWeekday?: number;
   @ApiPropertyOptional({ enum: TIMESHEET_MISSED_ACTIONS, description: 'FLAG: warn on the payslip; LOP: working days of the week are unpaid; HOLD: hold the salary in the run' })
-  @IsOptional() @IsIn(TIMESHEET_MISSED_ACTIONS) timesheetMissedAction?: TimesheetMissedAction;
+  @IsOptional()
+  @IsIn(TIMESHEET_MISSED_ACTIONS)
+  timesheetMissedAction?: TimesheetMissedAction;
   @ApiPropertyOptional({ description: 'Remind people on the due day (9:00) and the day after; managers get a summary of their team', default: true })
-  @IsOptional() @IsBoolean() timesheetAutoRemind?: boolean;
+  @IsOptional()
+  @IsBoolean()
+  timesheetAutoRemind?: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 15,
+    description: 'Raises above this percent need approval by someone with employee.salary.approve; null = no approval step. Raising or removing it needs that permission too',
+  })
+  @optionalNullable
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(500)
+  salaryApprovalThresholdPct?: number | null;
+  @ApiPropertyOptional({ description: 'Deduct the labour welfare fund of the work location’s state (in the months it is collected)' }) @IsOptional() @IsBoolean() lwfEnabled?: boolean;
+  @ApiPropertyOptional({ nullable: true, example: 1, description: 'From this calendar month to March, income tax uses accepted proofs only (e.g. 1 = January); null = declarations all year' })
+  @optionalNullable
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  proofsFromMonth?: number | null;
+  @ApiPropertyOptional({ enum: DAILY_RATE_BASES, description: 'Daily rate for leave encashed while in service' }) @IsOptional() @IsIn(DAILY_RATE_BASES) leaveEncashmentBasis?: DailyRateBasis;
+  @ApiPropertyOptional({ description: 'Email each employee their payslip PDF when a run is approved' }) @IsOptional() @IsBoolean() payslipEmailEnabled?: boolean;
+  @ApiPropertyOptional({ enum: PAYSLIP_PDF_PASSWORDS, description: 'DOB = the PDF opens with the date of birth (DDMMYYYY)' }) @IsOptional() @IsIn(PAYSLIP_PDF_PASSWORDS) payslipPdfPassword?: PayslipPdfPassword;
 }
 
 // ---- Components & structures -------------------------------------------------------------------
@@ -102,7 +152,12 @@ export class StructureLineDto {
   @ApiProperty() @IsUUID() componentId!: string;
   @ApiProperty({ enum: COMPONENT_CALCULATIONS }) @IsIn(COMPONENT_CALCULATIONS) calculation!: ComponentCalculation;
   @ApiPropertyOptional({ nullable: true, description: 'Percentage (0–100) or monthly amount; omitted for BALANCE' })
-  @optionalNullable @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_AMOUNT) value?: number | null;
+  @optionalNullable
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(MAX_AMOUNT)
+  value?: number | null;
 }
 
 export class StructureDto {
@@ -110,7 +165,12 @@ export class StructureDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(300) description?: string | null;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
   @ApiProperty({ type: [StructureLineDto] })
-  @IsArray() @ArrayMinSize(2) @ArrayMaxSize(30) @ValidateNested({ each: true }) @Type(() => StructureLineDto) lines!: StructureLineDto[];
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => StructureLineDto)
+  lines!: StructureLineDto[];
 }
 
 export class UpdateStructureDto extends PartialType(StructureDto) {}
@@ -128,6 +188,22 @@ export class SalaryDto extends SalaryPreviewDto {
   @ApiPropertyOptional({ nullable: true, example: 'Annual revision' }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(300) reason?: string | null;
 }
 
+export class SalaryRevisionQueryDto {
+  @ApiPropertyOptional({ enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'ALL'], default: 'PENDING' })
+  @IsOptional()
+  @IsIn(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'ALL'])
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'ALL';
+}
+
+export class ReviewSalaryRevisionDto {
+  @ApiPropertyOptional({ nullable: true, description: 'Required when rejecting' })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(500)
+  note?: string | null;
+}
+
 export class SalaryListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() departmentId?: string;
   @ApiPropertyOptional({ description: 'Only active employees without a salary' }) @IsOptional() @Transform(queryBoolean) @IsBoolean() missing?: boolean;
@@ -137,7 +213,44 @@ export class SalaryListQueryDto extends PaginationQueryDto {
 
 export class FinancialYearQueryDto {
   @ApiPropertyOptional({ description: 'Starting year of the financial year (2026 = FY 2026-27); defaults to the current one' })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(2000) @Max(2100) fy?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  fy?: number;
+}
+
+export class UploadProofDto {
+  @ApiPropertyOptional({ description: 'Financial year (defaults to the current one)' }) @IsOptional() @Type(() => Number) @IsInt() @Min(2000) @Max(2100) fy?: number;
+  @ApiProperty({ enum: TAX_PROOF_SECTIONS }) @IsIn(TAX_PROOF_SECTIONS) section!: TaxProofSection;
+  @ApiProperty({ example: 'PPF deposit, SBI' }) @Transform(trim) @IsString() @Length(3, 200) description!: string;
+  @ApiProperty({ example: 50000 }) @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(MAX_AMOUNT) amount!: number;
+}
+
+export class ProofQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(2000) @Max(2100) fy?: number;
+  @ApiPropertyOptional({ enum: TAX_PROOF_STATUSES }) @IsOptional() @IsIn(TAX_PROOF_STATUSES) status?: TaxProofStatus;
+}
+
+export class AcceptProofDto {
+  @ApiPropertyOptional({ description: 'Accepted amount (defaults to the amount claimed)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(MAX_AMOUNT)
+  amount?: number;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+
+export class RejectProofDto {
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 500) note!: string;
+}
+
+export class Tds24qQueryDto {
+  @ApiProperty({ example: 2026 }) @Type(() => Number) @IsInt() @Min(2000) @Max(2100) fy!: number;
+  @ApiProperty({ enum: ['Q1', 'Q2', 'Q3', 'Q4'] }) @IsIn(['Q1', 'Q2', 'Q3', 'Q4']) quarter!: 'Q1' | 'Q2' | 'Q3' | 'Q4';
 }
 
 export class TaxDeclarationDto {
@@ -157,12 +270,40 @@ export class TaxDeclarationDto {
 export class CreateRunDto {
   @ApiProperty() @Type(() => Number) @IsInt() @Min(2000) @Max(2100) year!: number;
   @ApiProperty() @Type(() => Number) @IsInt() @Min(1) @Max(12) month!: number;
+  @ApiPropertyOptional({ nullable: true, description: 'Run for a pay group; empty = the main run (everyone without a pay group)' }) @Transform(emptyToNull) @optionalNullable @IsUUID() payGroupId?: string | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) notes?: string | null;
 }
 
 export class RunQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(2000) @Max(2100) year?: number;
   @ApiPropertyOptional({ enum: PAYROLL_RUN_STATUSES }) @IsOptional() @IsIn(PAYROLL_RUN_STATUSES) status?: PayrollRunStatus;
+}
+
+export class PayGroupDto {
+  @ApiProperty({ example: 'Contractors' }) @Transform(trim) @IsString() @Length(2, 80) name!: string;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(300) description?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+}
+export class UpdatePayGroupDto extends PartialType(PayGroupDto) {}
+
+export class AssignPayGroupDto {
+  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(500) @IsUUID('all', { each: true }) employeeIds!: string[];
+  @ApiPropertyOptional({ nullable: true, description: 'null = back to the main run' }) @Transform(emptyToNull) @optionalNullable @IsUUID() payGroupId?: string | null;
+}
+
+export class BonusPayoutDto {
+  @ApiProperty({ example: 'Diwali bonus' }) @Transform(trim) @IsString() @Length(2, 100) label!: string;
+  @ApiProperty({ enum: ['BONUS', 'INCENTIVE'] }) @IsIn(['BONUS', 'INCENTIVE']) category!: 'BONUS' | 'INCENTIVE';
+  @ApiProperty({ enum: BONUS_BASES, description: 'FIXED = the same amount each; PERCENT_OF_* = % of the monthly Basic or gross; STATUTORY = Payment of Bonus Act' })
+  @IsIn(BONUS_BASES)
+  basis!: BonusBasis;
+  @ApiProperty({ description: 'Amount (FIXED) or percentage (others; 8.33–20 for STATUTORY)' }) @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) @Max(MAX_AMOUNT) value!: number;
+  @ApiPropertyOptional({ type: [String], description: 'Only these employees (default: everyone in the run)' }) @IsOptional() @IsArray() @ArrayMaxSize(5000) @IsUUID('all', { each: true }) employeeIds?: string[];
+  @ApiPropertyOptional({ default: true }) @IsOptional() @IsBoolean() taxable?: boolean;
+}
+
+export class BankFileQueryDto {
+  @ApiPropertyOptional({ enum: BANK_FILE_FORMATS, default: 'GENERIC' }) @IsOptional() @IsIn(BANK_FILE_FORMATS) format?: BankFileFormat;
 }
 
 export class RunPayslipQueryDto extends PaginationQueryDto {
@@ -183,7 +324,12 @@ export class PayRunDto {
 
 export class UpdatePayslipDto {
   @ApiPropertyOptional({ nullable: true, description: 'Loss-of-pay days replacing the attendance figure (half days allowed); null = from attendance' })
-  @optionalNullable @Type(() => Number) @IsNumber() @Min(0) @Max(31) lopOverride?: number | null;
+  @optionalNullable
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(31)
+  lopOverride?: number | null;
   @ApiPropertyOptional({ description: 'Hold: leave the employee out of this run' }) @IsOptional() @IsBoolean() excluded?: boolean;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(300) excludeReason?: string | null;
 }
@@ -194,6 +340,7 @@ export class AdjustmentDto {
   @ApiProperty({ example: 'Performance bonus' }) @Transform(trim) @IsString() @Length(2, 100) label!: string;
   @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(MAX_AMOUNT) amount!: number;
   @ApiPropertyOptional({ default: true, description: 'Earnings only: counts as taxable salary' }) @IsOptional() @IsBoolean() taxable?: boolean;
+  @ApiPropertyOptional({ enum: ADJUSTMENT_CATEGORIES, default: 'OTHER' }) @IsOptional() @IsIn(ADJUSTMENT_CATEGORIES) category?: AdjustmentCategory;
 }
 
 // ---- Reimbursements ------------------------------------------------------------------------------
@@ -207,8 +354,24 @@ export class ClaimDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(1000) description?: string | null;
 }
 
+export class ExpensePolicyRuleDto {
+  @ApiProperty({ enum: REIMBURSEMENT_CATEGORIES }) @IsIn(REIMBURSEMENT_CATEGORIES) category!: ReimbursementCategory;
+  @ApiPropertyOptional({ default: true }) @IsOptional() @IsBoolean() allowed?: boolean;
+  @ApiPropertyOptional({ nullable: true }) @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(10_000_000) perClaimLimit?: number | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(100_000_000) monthlyLimit?: number | null;
+  @ApiPropertyOptional({ nullable: true, description: '0 = always; null = never' })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(10_000_000) receiptRequiredAbove?: number | null;
+}
+
+export class ExpensePolicyDto {
+  @ApiProperty({ type: [ExpensePolicyRuleDto] }) @IsArray() @ArrayMaxSize(REIMBURSEMENT_CATEGORIES.length) @ValidateNested({ each: true }) @Type(() => ExpensePolicyRuleDto) categories!: ExpensePolicyRuleDto[];
+  @ApiPropertyOptional({ nullable: true, description: 'Claims above this amount also need a finance approval (null = one approval)' })
+  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(10_000_000) financeApprovalAbove?: number | null;
+}
+
 export class ClaimQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional({ enum: ['mine', 'approve', 'all'], default: 'mine' }) @IsOptional() @IsIn(['mine', 'approve', 'all']) view?: 'mine' | 'approve' | 'all';
+  @ApiPropertyOptional({ enum: ['mine', 'approve', 'finance', 'all'], default: 'mine', description: 'approve = waiting on you as manager; finance = waiting on the finance approval' })
+  @IsOptional() @IsIn(['mine', 'approve', 'finance', 'all']) view?: 'mine' | 'approve' | 'finance' | 'all';
   @ApiPropertyOptional({ enum: REIMBURSEMENT_STATUSES }) @IsOptional() @IsIn(REIMBURSEMENT_STATUSES) status?: ReimbursementStatus;
 }
 
@@ -231,9 +394,21 @@ export class CreateLoanDto extends LoanRequestDto {
 }
 
 export class ApproveLoanDto {
-  @ApiPropertyOptional({ description: 'Approve a smaller amount than requested' }) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1000) @Max(LOAN_MAX_PRINCIPAL) amount?: number;
+  @ApiPropertyOptional({ description: 'Approve a smaller amount than requested' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(1000)
+  @Max(LOAN_MAX_PRINCIPAL)
+  amount?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(LOAN_MAX_TENURE_MONTHS) tenureMonths?: number;
-  @ApiPropertyOptional({ description: 'Yearly interest on the reducing balance (loans only)', default: 0 }) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(LOAN_MAX_INTEREST_RATE) interestRate?: number;
+  @ApiPropertyOptional({ description: 'Yearly interest on the reducing balance (loans only)', default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(LOAN_MAX_INTEREST_RATE)
+  interestRate?: number;
   @ApiProperty({ description: 'First month payroll deducts the instalment' }) @Type(() => Number) @IsInt() @Min(2000) @Max(2100) startYear!: number;
   @ApiProperty() @Type(() => Number) @IsInt() @Min(1) @Max(12) startMonth!: number;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(1000) note?: string | null;

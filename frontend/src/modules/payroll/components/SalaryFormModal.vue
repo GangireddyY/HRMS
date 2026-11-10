@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { ARREARS_MAX_MONTHS } from '@contracts';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
+import { formatDate } from '@/shared/utils/format';
 import SalaryBreakdownTable from '@/modules/payroll/components/SalaryBreakdownTable.vue';
-import type { EmployeeSalary, SalaryBreakdown } from '@/modules/payroll/types';
+import type { EmployeeSalary, SalaryBreakdown, SalarySaveResult } from '@/modules/payroll/types';
 import { AppAlert, AppButton, AppCheckbox, AppDatePicker, AppInput, AppModal, AppSelect, AppSkeleton } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
@@ -15,18 +17,36 @@ const props = defineProps<{
   current: EmployeeSalary | null;
   lockedThrough: string | null;
 }>();
-const emit = defineEmits<{ close: []; saved: [s: EmployeeSalary] }>();
+const emit = defineEmits<{ close: []; saved: [s: SalarySaveResult] }>();
 
 const structures = useAsync(() => payrollApi.structures(), { immediate: false });
+/** Only for the approval hint; people who can revise but not view payroll settings just don't see it. */
+const settings = useAsync(() => payrollApi.settings().catch(() => null), { immediate: false });
+const threshold = computed(() => settings.data.value?.salaryApprovalThresholdPct ?? null);
+const raisePct = computed(() => {
+  const from = props.current?.annualCtc ?? 0;
+  const to = Number(form.annualCtc);
+  return from > 0 && to > 0 ? ((to - from) / from) * 100 : null;
+});
+const needsApproval = computed(() => threshold.value !== null && raisePct.value !== null && raisePct.value > threshold.value);
 const { fieldErrors, formError, handle, reset } = useFormErrors();
 const form = reactive({ structureId: null as string | null, annualCtc: '' as number | string, effectiveFrom: undefined as string | undefined, pfApplicable: true, reason: '' });
 const saving = ref(false);
 
+/** A first salary starts after the last processed month; a revision can go back ARREARS_MAX_MONTHS (paid as arrears). */
 const minDate = computed(() => {
   if (!props.employee) return undefined;
-  const afterLock = props.lockedThrough ? new Date(new Date(`${props.lockedThrough}T00:00:00`).getTime() + 86_400_000).toISOString().slice(0, 10) : null;
-  return afterLock && afterLock > props.employee.dateOfJoining ? afterLock : props.employee.dateOfJoining;
+  const lock = props.lockedThrough;
+  let floor: string | null = null;
+  if (lock && !props.current) floor = new Date(new Date(`${lock}T00:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
+  else if (lock) {
+    const [y, m] = lock.split('-').map(Number) as [number, number];
+    const back = y * 12 + (m - 1) - (ARREARS_MAX_MONTHS - 1);
+    floor = `${Math.floor(back / 12)}-${String((back % 12) + 1).padStart(2, '0')}-01`;
+  }
+  return floor && floor > props.employee.dateOfJoining ? floor : props.employee.dateOfJoining;
 });
+const backDated = computed(() => !!props.lockedThrough && !!form.effectiveFrom && form.effectiveFrom <= props.lockedThrough);
 
 watch(
   () => props.open,
@@ -36,6 +56,7 @@ watch(
     preview.value = null;
     previewError.value = null;
     if (!structures.data.value) void structures.run();
+    if (props.current && !settings.data.value) void settings.run();
     Object.assign(form, {
       structureId: props.current?.structure.id ?? null,
       annualCtc: props.current?.annualCtc ?? '',
@@ -119,7 +140,13 @@ async function save() {
         <AppInput v-model="form.reason" label="Reason" placeholder="e.g. Annual revision, promotion" :maxlength="300" />
       </div>
       <AppCheckbox v-model="form.pfApplicable" label="Member of provident fund (PF)" description="Untick only for employees excluded from PF (e.g. joined with Basic above ₹15,000 and never a PF member)." />
-      <p v-if="lockedThrough" class="text-xs text-fg-muted">Payroll is processed up to {{ lockedThrough }}; pay any arrears before that as an adjustment in the next run.</p>
+      <AppAlert v-if="needsApproval" tone="info" title="Needs approval">
+        A {{ raisePct!.toFixed(1) }}% raise is above your organization's {{ threshold }}% threshold, so it's sent to someone with approval rights and takes effect once they approve it.
+      </AppAlert>
+      <AppAlert v-if="backDated" tone="info" title="Back-dated: arrears are paid automatically">
+        Payroll is processed up to {{ formatDate(lockedThrough) }}. The difference for the months already paid is worked out and paid as "Salary arrears" in the next payroll run.
+      </AppAlert>
+      <p v-else-if="lockedThrough" class="text-xs text-fg-muted">Payroll is processed up to {{ formatDate(lockedThrough) }}.{{ current ? ` A revision can be back-dated up to ${ARREARS_MAX_MONTHS} months; arrears are paid in the next run.` : '' }}</p>
       <div class="rounded-xl bg-surface-muted/40 p-4 ring-1 ring-line">
         <p class="mb-2 text-sm font-medium text-fg">Breakdown</p>
         <AppSkeleton v-if="previewing && !preview" :lines="4" />
@@ -130,7 +157,7 @@ async function save() {
     </form>
     <template #footer>
       <AppButton variant="secondary" @click="emit('close')">Cancel</AppButton>
-      <AppButton type="submit" form="salary-form" :loading="saving" :disabled="!canSave">Save salary</AppButton>
+      <AppButton type="submit" form="salary-form" :loading="saving" :disabled="!canSave">{{ needsApproval ? 'Send for approval' : 'Save salary' }}</AppButton>
     </template>
   </AppModal>
 </template>

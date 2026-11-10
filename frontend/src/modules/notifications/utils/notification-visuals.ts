@@ -26,6 +26,7 @@ import {
   Wallet,
 } from '@lucide/vue';
 import type { NotificationRow } from '@/modules/notifications/types';
+import { appLocale } from '@/core/locale/locale';
 
 export type NotificationTone = 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'special' | 'neutral';
 
@@ -93,19 +94,19 @@ export function needsAction(n: Pick<NotificationRow, 'title' | 'body' | 'readAt'
 }
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' });
-const fullDate = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-const clock = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+// Created per call: the region can change while the app is open.
+const weekday = (d: Date) => new Intl.DateTimeFormat(appLocale(), { weekday: 'long' }).format(d);
+const fullDate = (d: Date) => new Intl.DateTimeFormat(appLocale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(d);
 
-export const notificationTime = (iso: string) => clock.format(new Date(iso));
+export const notificationTime = (iso: string) => new Intl.DateTimeFormat(appLocale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 
 function dayLabel(d: Date, now = new Date()): string {
   const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const days = Math.round((start(now) - start(d)) / 86_400_000);
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  if (days > 1 && days < 7) return weekday.format(d);
-  return fullDate.format(d);
+  if (days > 1 && days < 7) return weekday(d);
+  return fullDate(d);
 }
 
 /** Groups notifications (already newest first) by calendar day: Today, Yesterday, weekday names, then dates. */

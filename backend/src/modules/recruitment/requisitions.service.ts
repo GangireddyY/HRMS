@@ -11,8 +11,8 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { RequisitionDto, RequisitionQueryDto, ReviewRequisitionDto, UpdateRequisitionDto } from './dto/recruitment.dto';
+import { fullName } from '../../common/utils/names';
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const ref = (r: { id: string; name: string } | null | undefined) => (r ? { id: r.id, name: r.name } : null);
 const num = (v: string | null) => (v === null ? null : Number(v));
 
@@ -53,7 +53,10 @@ export class RequisitionsService {
     const { rows, count } = await JobRequisition.findAndCountAll({
       where: { [Op.and]: filters },
       include: INCLUDE,
-      order: [[literal(`CASE WHEN "JobRequisition"."status" = 'PENDING_APPROVAL' THEN 0 ELSE 1 END`), 'ASC'], ['createdAt', 'DESC']],
+      order: [
+        [literal(`CASE WHEN "JobRequisition"."status" = 'PENDING_APPROVAL' THEN 0 ELSE 1 END`), 'ASC'],
+        ['createdAt', 'DESC'],
+      ],
       distinct: true,
       ...paginationArgs(query),
     });
@@ -91,7 +94,10 @@ export class RequisitionsService {
         },
         { transaction },
       );
-      await this.audit.record({ action: 'requisition.created', entityType: 'JobRequisition', entityId: created.id, summary: `Requisition ${created.code} – ${created.title} ${dto.submit ? 'submitted' : 'drafted'}` }, transaction);
+      await this.audit.record(
+        { action: 'requisition.created', entityType: 'JobRequisition', entityId: created.id, summary: `Requisition ${created.code} – ${created.title} ${dto.submit ? 'submitted' : 'drafted'}` },
+        transaction,
+      );
       return created;
     });
     return this.get(auth, r.id);
@@ -113,7 +119,10 @@ export class RequisitionsService {
         },
         { transaction },
       );
-      await this.audit.record({ action: submit ? 'requisition.submitted' : 'requisition.updated', entityType: 'JobRequisition', entityId: id, summary: `Requisition ${r.code} ${submit ? 'submitted' : 'updated'}` }, transaction);
+      await this.audit.record(
+        { action: submit ? 'requisition.submitted' : 'requisition.updated', entityType: 'JobRequisition', entityId: id, summary: `Requisition ${r.code} ${submit ? 'submitted' : 'updated'}` },
+        transaction,
+      );
     });
     return this.get(auth, id);
   }
@@ -242,7 +251,11 @@ export class RequisitionsService {
   private async present(auth: AuthContext, rows: JobRequisition[]) {
     const jobIds = rows.map((r) => r.job?.id).filter((x): x is string => !!x);
     const counts = jobIds.length
-      ? ((await JobApplication.findAll({ where: { jobId: jobIds }, attributes: ['jobId', 'stage', [fn('COUNT', col('id')), 'count']], group: ['jobId', 'stage'], raw: true })) as unknown as { jobId: string; stage: string; count: string }[])
+      ? ((await JobApplication.findAll({ where: { jobId: jobIds }, attributes: ['jobId', 'stage', [fn('COUNT', col('id')), 'count']], group: ['jobId', 'stage'], raw: true })) as unknown as {
+          jobId: string;
+          stage: string;
+          count: string;
+        }[])
       : [];
     const userIds = [...new Set(rows.flatMap((r) => [r.requestedById, r.reviewedById]).filter((x): x is string => !!x))];
     const users = new Map((userIds.length ? await User.findAll({ where: { id: userIds }, attributes: ['id', 'firstName', 'lastName'] }) : []).map((u) => [u.id, fullName(u)]));
@@ -270,9 +283,7 @@ export class RequisitionsService {
         reviewedAt: r.reviewedAt,
         reviewNote: r.reviewNote,
         createdAt: r.createdAt,
-        job: r.job
-          ? { id: r.job.id, status: r.job.status, pipeline: Object.fromEntries(counts.filter((c) => c.jobId === r.job!.id).map((c) => [c.stage, Number(c.count)])) }
-          : null,
+        job: r.job ? { id: r.job.id, status: r.job.status, pipeline: Object.fromEntries(counts.filter((c) => c.jobId === r.job!.id).map((c) => [c.stage, Number(c.count)])) } : null,
         permissions: {
           edit: ['DRAFT', 'REJECTED'].includes(r.status) && (r.requestedById === auth.userId || auth.permissions.has('recruitment.manage')),
           decide: r.status === 'PENDING_APPROVAL' && (await this.canApprove(auth, r)),

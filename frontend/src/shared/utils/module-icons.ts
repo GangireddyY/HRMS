@@ -7,7 +7,10 @@ import {
   DoorOpen,
   FileCheck2,
   GraduationCap,
+  Headset,
   HeartHandshake,
+  Laptop,
+  Luggage,
   Megaphone,
   MessageSquareWarning,
   Rocket,
@@ -35,4 +38,7 @@ export const MODULE_ICONS: Record<ModuleKey, Component> = {
   compliance: FileCheck2,
   exit: DoorOpen,
   reports: ChartColumn,
+  assets: Laptop,
+  helpdesk: Headset,
+  travel: Luggage,
 };

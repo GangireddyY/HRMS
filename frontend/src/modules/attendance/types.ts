@@ -7,6 +7,7 @@ import type {
   OfficialHolidayKind,
   OvertimeStatus,
   RegularizationStatus,
+  ShiftSwapStatus,
   TimesheetEntry,
   TimesheetMissedAction,
   TimesheetStatus,
@@ -26,6 +27,25 @@ export interface AttendanceRecord {
   source: AttendanceSource;
   workMode: WorkMode;
   note: string | null;
+  /** A photo was taken at punch-in. */
+  hasPhoto?: boolean;
+}
+
+export interface ShiftSwap {
+  id: string;
+  workDate: string;
+  requester: { id: string; name: string; employeeCode: string; shift: { id: string; name: string; startTime: string; endTime: string } | null };
+  colleague: { id: string; name: string; employeeCode: string; shift: { id: string; name: string; startTime: string; endTime: string } | null };
+  reason: string;
+  status: ShiftSwapStatus;
+  colleagueNote: string | null;
+  colleagueRespondedAt: string | null;
+  reviewNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  onBehalfOf: string | null;
+  permissions: { respond: boolean; cancel: boolean; review: boolean };
 }
 
 export interface ShiftSummary {
@@ -52,6 +72,10 @@ export interface TodayAttendance {
   workFromHome?: boolean;
   /** Punch-ins must come from within the radius of the office. */
   geofence?: { location: string; radiusMetres: number } | null;
+  /** Punch-ins must come from the office network; whether this connection is on it. */
+  officeNetwork?: { location: string; onNetwork: boolean } | null;
+  /** Punch-ins need a camera photo. */
+  photoRequired?: boolean;
   record?: AttendanceRecord | null;
   openRecord?: AttendanceRecord | null;
   periodClosed?: boolean;
@@ -288,6 +312,16 @@ export interface Holiday {
   date: string;
   name: string;
   isOptional: boolean;
+  /** Empty = every location. */
+  locationIds: string[];
+  locations: { id: string; name: string }[];
+}
+
+export interface HolidayInput {
+  date: string;
+  name: string;
+  isOptional: boolean;
+  locationIds?: string[];
 }
 
 export interface OfficialHoliday {

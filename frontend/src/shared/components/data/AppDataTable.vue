@@ -1,8 +1,11 @@
 <script setup lang="ts" generic="Row extends Record<string, any>">
 import { computed, inject, ref, watch } from 'vue';
 import { routerKey, type Router } from 'vue-router';
-import { ArrowDown, ArrowUp, ArrowUpDown, FilterX, LayoutGrid, Rows3, SearchX } from '@lucide/vue';
+import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Download, FilterX, LayoutGrid, Rows3, SearchX } from '@lucide/vue';
+import { t } from '@/core/i18n/i18n';
 import AppButton from '@/shared/components/forms/AppButton.vue';
+import AppDropdown from '@/shared/components/layout/AppDropdown.vue';
+import { downloadCsv, toCsv } from '@/shared/utils/csv';
 import type { PaginationMeta } from '@contracts';
 import AppPagination from '@/shared/components/data/AppPagination.vue';
 import AppSegmented from '@/shared/components/forms/AppSegmented.vue';
@@ -35,8 +38,24 @@ const props = withDefaults(
     grid?: boolean;
     /** Remembers the chosen layout; defaults to the page's route plus the caption. */
     layoutKey?: string;
+    /** Offer "Export CSV" with this file name; `exportRows` loads everything matching (default: the rows shown). */
+    exportFile?: string;
+    exportRows?: () => Promise<Row[]>;
+    /** Let people hide columns (remembered per table; the first column always shows). */
+    columnChooser?: boolean;
   }>(),
-  { rowKey: (row: Row) => String(row.id), emptyTitle: 'No records found', clickable: false, canSelect: () => true, selectLabel: undefined, grid: true, layoutKey: undefined },
+  {
+    rowKey: (row: Row) => String(row.id),
+    emptyTitle: 'No records found',
+    clickable: false,
+    canSelect: () => true,
+    selectLabel: undefined,
+    grid: true,
+    layoutKey: undefined,
+    exportFile: undefined,
+    exportRows: undefined,
+    columnChooser: false,
+  },
 );
 
 const emit = defineEmits<{ 'update:sort': [sort: string]; page: [page: number]; retry: []; rowClick: [row: Row]; clear: [] }>();
@@ -132,22 +151,59 @@ const layoutOptions = [
   { value: 'grid' as const, label: 'Grid', icon: LayoutGrid },
 ];
 const hasSortMenu = computed(() => sortOptions.value.length > 0 && props.rows.length > 1);
+const hasTools = computed(() => !!props.exportFile || props.columnChooser);
 /** Small screens already show rows as cards, so the switch is for wider screens; the sort menu shows when headers don't. */
-const toolbarClass = computed(() => [
-  !hasSortMenu.value && 'max-md:hidden',
-  !props.grid && !(hasSortMenu.value && layout.value === 'grid') && 'md:hidden',
-]);
+const toolbarClass = computed(() =>
+  hasTools.value ? [] : [!hasSortMenu.value && 'max-md:hidden', !props.grid && !(hasSortMenu.value && layout.value === 'grid') && 'md:hidden'],
+);
+
+// ---- Columns shown ----------------------------------------------------------------------------------------------
+const columnsKey = computed(() => `hrms.columns.${storageKey.value.slice('hrms.layout.'.length)}`);
+const readHidden = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(columnsKey.value) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+};
+const hidden = ref<string[]>(props.columnChooser ? readHidden() : []);
+watch(columnsKey, () => (hidden.value = props.columnChooser ? readHidden() : []));
+const choosable = computed(() => props.columns.slice(1).filter((c) => c.label));
+function toggleColumn(key: string) {
+  hidden.value = hidden.value.includes(key) ? hidden.value.filter((k) => k !== key) : [...hidden.value, key];
+  try {
+    if (hidden.value.length) localStorage.setItem(columnsKey.value, JSON.stringify(hidden.value));
+    else localStorage.removeItem(columnsKey.value);
+  } catch {
+    // Private mode: lasts for this page only.
+  }
+}
+const visibleColumns = computed(() => props.columns.filter((c, i) => i === 0 || !hidden.value.includes(c.key)));
+
+// ---- Export ----------------------------------------------------------------------------------------------------
+const exporting = ref(false);
+async function exportCsv() {
+  if (!props.exportFile) return;
+  exporting.value = true;
+  try {
+    const rows = props.exportRows ? await props.exportRows() : props.rows;
+    downloadCsv(props.exportFile, toCsv(visibleColumns.value as TableColumn<Record<string, unknown>>[], rows as Record<string, unknown>[]));
+  } finally {
+    exporting.value = false;
+  }
+}
+
 /** In a card: the first column is the title, labelled columns are details, unlabelled ones (actions) the footer. */
-const titleColumn = computed(() => props.columns[0]);
-const detailColumns = computed(() => props.columns.slice(1).filter((c) => c.label));
-const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.label));
+const titleColumn = computed(() => visibleColumns.value[0]);
+const detailColumns = computed(() => visibleColumns.value.slice(1).filter((c) => c.label));
+const actionColumns = computed(() => visibleColumns.value.slice(1).filter((c) => !c.label));
 </script>
 
 <template>
   <div class="overflow-hidden">
     <AppErrorState v-if="error && !loading" :error="error" @retry="emit('retry')" />
     <template v-else>
-      <div v-if="hasSortMenu || grid" :class="['flex items-center gap-3 border-b border-line px-3 py-2', toolbarClass]">
+      <div v-if="hasSortMenu || grid || hasTools" :class="['flex items-center gap-3 border-b border-line px-3 py-2', toolbarClass]">
         <div v-if="hasSortMenu" :class="['flex min-w-0 flex-1 items-center gap-2 text-xs text-fg-muted', layout === 'table' && 'md:hidden']">
           <span class="shrink-0 font-medium" aria-hidden="true">Sort by</span>
           <AppSelect
@@ -162,7 +218,19 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
             @update:model-value="(v) => v && emit('update:sort', v)"
           />
         </div>
-        <AppSegmented v-if="grid" v-model="layout" class="ms-auto w-40 shrink-0 max-md:hidden" size="sm" :options="layoutOptions" :label="caption ? `${caption} layout` : 'Layout'" />
+        <div v-if="hasTools" :class="['flex shrink-0 items-center gap-1', !(hasSortMenu && layout !== 'table') && 'ms-auto max-md:ms-auto', hasSortMenu && layout === 'table' && 'md:ms-auto']">
+          <AppDropdown v-if="columnChooser && choosable.length" width="w-56" :label="t('table.columns')">
+            <template #trigger="{ toggle }">
+              <AppButton size="sm" variant="ghost" :icon="Columns3" @click="toggle">{{ t('table.columns') }}</AppButton>
+            </template>
+            <label v-for="c in choosable" :key="c.key" class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-muted" @click.stop>
+              <input type="checkbox" class="accent-brand-600" :checked="!hidden.includes(c.key)" @change="toggleColumn(c.key)" />
+              {{ c.label }}
+            </label>
+          </AppDropdown>
+          <AppButton v-if="exportFile" size="sm" variant="ghost" :icon="Download" :loading="exporting" :disabled="!rows.length" @click="exportCsv">{{ t('table.export') }}</AppButton>
+        </div>
+        <AppSegmented v-if="grid" v-model="layout" :class="['w-40 shrink-0 max-md:hidden', !hasTools && 'ms-auto']" size="sm" :options="layoutOptions" :label="caption ? `${caption} layout` : 'Layout'" />
       </div>
       <div v-if="selectable && selected.length" class="flex flex-wrap items-center gap-2 border-b border-line bg-accent-soft px-4 py-2" role="region" aria-label="Bulk actions">
         <p class="me-auto text-sm font-medium text-accent-fg" aria-live="polite">{{ selected.length }} selected</p>
@@ -259,7 +327,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
                 />
               </th>
               <th
-                v-for="col in columns"
+                v-for="col in visibleColumns"
                 :key="col.key"
                 role="columnheader"
                 scope="col"
@@ -285,7 +353,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
             <template v-if="loading && rows.length === 0">
               <tr v-for="i in 5" :key="`s${i}`" role="row" class="max-md:block max-md:space-y-2 max-md:px-4 max-md:py-3">
                 <td v-if="selectable" role="cell" class="w-10 ps-4 pe-0 max-md:hidden" />
-                <td v-for="col in columns" :key="col.key" role="cell" class="h-11 px-4 py-2 max-md:block max-md:h-auto max-md:p-0">
+                <td v-for="col in visibleColumns" :key="col.key" role="cell" class="h-11 px-4 py-2 max-md:block max-md:h-auto max-md:p-0">
                   <div class="skeleton h-3.5 rounded-full" :style="{ width: `${50 + ((i * 17 + col.key.length * 7) % 45)}%` }" />
                 </td>
               </tr>
@@ -314,7 +382,7 @@ const actionColumns = computed(() => props.columns.slice(1).filter((c) => !c.lab
                   @change="toggleRow(row)"
                 />
               </td>
-              <td v-for="(col, i) in columns" :key="col.key" role="cell" :data-label="col.label" :class="cellClass(col, i)">
+              <td v-for="(col, i) in visibleColumns" :key="col.key" role="cell" :data-label="col.label" :class="cellClass(col, i)">
                 <slot :name="`cell-${col.key}`" :row="row">{{ col.value ? col.value(row) : row[col.key] }}</slot>
               </td>
             </tr>

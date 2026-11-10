@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { getPermission, PLATFORM_PERMISSIONS, PlatformPermission } from '../../../contracts';
 import type { Request } from 'express';
 import {
+  AUTHENTICATED_KEY,
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
   PLATFORM_PERMISSIONS_KEY,
@@ -35,6 +36,10 @@ export class PermissionsGuard implements CanActivate {
 
     const required = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, targets);
     const requireTenant = this.reflector.getAllAndOverride<boolean>(REQUIRE_TENANT_KEY, targets);
+    // Fail closed: a route that declares no access rule is refused instead of being open to every signed-in user.
+    if (!platform?.length && !required?.length && !requireTenant && !this.reflector.getAllAndOverride<boolean>(AUTHENTICATED_KEY, targets)) {
+      throw AppError.forbidden('This route does not declare who may use it');
+    }
 
     if (required?.length || requireTenant) {
       if (!auth.organizationId) throw AppError.forbidden('No active organization for this session');
@@ -46,7 +51,8 @@ export class PermissionsGuard implements CanActivate {
       if (!auth.features.has(def.module)) {
         throw new AppError('FEATURE_NOT_ENTITLED', 'This module is not included in your organization subscription');
       }
-      if (!auth.permissions.has(key)) throw AppError.forbidden();
+      // A delegated approval only reaches the delegator's people; services check that through EmployeeScopeService.
+      if (!auth.permissions.has(key) && !auth.delegated?.some((d) => d.permission === key)) throw AppError.forbidden();
     }
     return true;
   }

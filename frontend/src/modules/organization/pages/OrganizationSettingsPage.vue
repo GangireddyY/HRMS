@@ -10,6 +10,7 @@ import {
   FileClock,
   Globe,
   KeyRound,
+  KeySquare,
   LockKeyhole,
   MapPin,
   Palette,
@@ -23,6 +24,7 @@ import type { SecurityPolicy } from '@/modules/organization/types';
 import OrganizationBrandColor from '@/modules/organization/components/OrganizationBrandColor.vue';
 import OrganizationLogoUploader from '@/modules/organization/components/OrganizationLogoUploader.vue';
 import OrganizationProfileForm from '@/modules/organization/components/OrganizationProfileForm.vue';
+import SsoSettingsCard from '@/modules/organization/components/SsoSettingsCard.vue';
 import { AppAlert, AppBadge, AppButton, AppErrorState, AppInput, AppPageHeader, AppSkeleton, AppSwitch } from '@/shared/components';
 import { apiAssetUrl } from '@/core/http/http-client';
 import { useAsync } from '@/shared/composables/use-async';
@@ -188,6 +190,7 @@ const nav: { title: string; items: NavItem[] }[] = [
       { id: 'lockout', label: 'Account lockout', icon: LockKeyhole },
       { id: 'sessions', label: 'Sessions', icon: Timer },
       { id: 'mfa', label: 'Two-factor', icon: ShieldCheck },
+      ...(auth.can('organization.security.manage') ? [{ id: 'sso', label: 'Single sign-on', icon: KeySquare }] : []),
     ],
   },
   {
@@ -505,6 +508,8 @@ if (wanted) {
             </form>
           </div>
         </section>
+
+        <SsoSettingsCard v-if="auth.can('organization.security.manage')" :id="anchorId('sso')" class="scroll-mt-20 lg:scroll-mt-4" />
 
         <!-- Subscription -->
         <section class="card" aria-labelledby="subscription-title">

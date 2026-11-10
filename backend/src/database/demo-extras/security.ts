@@ -46,8 +46,14 @@ async function mistypedPassword(kit: Kit) {
  */
 async function lockout(kit: Kit) {
   if (await has(kit, ISHAAN, 'LOCKED')) return 'skipped';
+  // Wrong guesses never reveal the lock (only the right password does), so the database says when it tripped.
+  const isLocked = async () => (await kit.sql<{ n: number }>(`SELECT count(*)::int AS n FROM users WHERE lower(email) = lower(:email) AND locked_until > now()`, { email: ISHAAN }))[0]!.n > 0;
   let locked = false;
-  for (let i = 0; i < 12 && !locked; i++) locked = (await attempt(kit, ISHAAN, `Wrong-guess-${i}`, FIREFOX)).includes('ACCOUNT_LOCKED');
+  for (let i = 0; i < 12 && !locked; i++) {
+    await attempt(kit, ISHAAN, `Wrong-guess-${i}`, FIREFOX);
+    locked = await isLocked();
+  }
   if (!locked) throw new Error('The account never locked; check the organization lockout policy');
+  await attempt(kit, ISHAAN, 'Wrong-guess-while-locked', FIREFOX);
   await kit.sql(`UPDATE users SET locked_until = NULL, failed_login_count = 0 WHERE lower(email) = lower(:email)`, { email: ISHAAN });
 }

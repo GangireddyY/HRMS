@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Check, CircleAlert, FilePen, Hourglass, House, Lock, Timer, X } from '@lucide/vue';
+import { ArrowLeftRight, Check, CircleAlert, FilePen, Hourglass, House, Lock, Timer, X } from '@lucide/vue';
 import type { OvertimeStatus, RegularizationStatus } from '@contracts';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import OvertimeGridCard from '@/modules/attendance/components/OvertimeGridCard.vue';
 import RegularizationGridCard from '@/modules/attendance/components/RegularizationGridCard.vue';
+import ShiftSwapApprovals from '@/modules/attendance/components/ShiftSwapApprovals.vue';
 import WorkFromHomeGridCard from '@/modules/attendance/components/WorkFromHomeGridCard.vue';
 import type { Overtime, Regularization, WorkFromHome } from '@/modules/attendance/types';
 import { OVERTIME_LABELS, REGULARIZATION_LABELS, dateRange, formatMinutes, formatTime, monthLabel, overtimeTone, regularizationTone } from '@/modules/attendance/utils/attendance-format';
@@ -19,7 +20,7 @@ import { fetchAllPages } from '@/shared/utils/fetch-all';
 import { formatDate } from '@/shared/utils/format';
 import { runBulk } from '@/shared/utils/bulk';
 
-/** Attendance approvals for people in scope: regularizations, work from home and overtime, oldest first. */
+/** Attendance approvals for people in scope: regularizations, work from home, overtime and shift swaps, oldest first. */
 const route = useRoute();
 const router = useRouter();
 const feedback = useFeedbackStore();
@@ -52,19 +53,21 @@ const otTable = useTable(oldestFirst((q: TableQuery & { status?: OvertimeStatus 
 
 /** Pending totals for the tab counts, whatever status each tab is filtered to. */
 const pending = useAsync(async () => {
-  const [r, w, o] = await Promise.all([
+  const [r, w, o, s] = await Promise.all([
     attendanceApi.regularizations({ view: 'team', status: 'PENDING', pageSize: 1 }),
     attendanceApi.workFromHome({ view: 'team', status: 'PENDING', pageSize: 1 }),
     attendanceApi.overtime({ view: 'team', status: 'PENDING', pageSize: 1 }),
+    attendanceApi.swaps({ view: 'team', status: 'PENDING', pageSize: 1 }),
   ]);
-  return { regularizations: r.meta.total, wfh: w.meta.total, overtime: o.meta.total };
+  return { regularizations: r.meta.total, wfh: w.meta.total, overtime: o.meta.total, swaps: s.meta.total };
 });
-const totalPending = computed(() => (pending.data.value ? pending.data.value.regularizations + pending.data.value.wfh + pending.data.value.overtime : 0));
+const totalPending = computed(() => (pending.data.value ? pending.data.value.regularizations + pending.data.value.wfh + pending.data.value.overtime + pending.data.value.swaps : 0));
 
 const tabs = computed(() => [
   { key: 'regularizations', label: 'Corrections', icon: FilePen, count: pending.data.value?.regularizations ?? null },
   { key: 'wfh', label: 'Work from home', icon: House, count: pending.data.value?.wfh ?? null },
   { key: 'overtime', label: 'Overtime', icon: Timer, count: pending.data.value?.overtime ?? null },
+  { key: 'swaps', label: 'Shift swaps', icon: ArrowLeftRight, count: pending.data.value?.swaps ?? null },
 ]);
 const tab = computed({
   get: () => (tabs.value.some((t) => t.key === route.query.tab) ? String(route.query.tab) : 'regularizations'),
@@ -199,7 +202,7 @@ async function submit() {
 
 <template>
   <div>
-    <AppPageHeader title="Attendance approvals" description="Corrections, work-from-home days and overtime of the people in your scope, oldest first.">
+    <AppPageHeader title="Attendance approvals" description="Corrections, work-from-home days, overtime and shift swaps of the people in your scope, oldest first.">
       <template #badges>
         <AppBadge v-if="totalPending" tone="warning" dot>{{ totalPending }} waiting</AppBadge>
         <AppBadge v-else-if="pending.data.value" tone="success" dot>All caught up</AppBadge>
@@ -373,7 +376,7 @@ async function submit() {
       </AppCard>
 
       <!-- Overtime -->
-      <AppCard v-else :padded="false">
+      <AppCard v-else-if="tab === 'overtime'" :padded="false">
         <div class="flex flex-wrap items-center gap-2 border-b border-line/70 px-4 py-2">
           <p v-if="otTable.filters.status === 'PENDING' && otQueue.open" class="me-auto flex flex-wrap items-center gap-2 text-xs text-fg-muted">
             <span class="font-medium text-fg">{{ plural(otQueue.open, 'overtime claim') }} to review</span>
@@ -457,6 +460,8 @@ async function submit() {
           </template>
         </AppDataTable>
       </AppCard>
+
+      <ShiftSwapApprovals v-else @changed="pending.run()" />
     </AppTabs>
 
     <AppModal :open="!!reviewing" :title="title" :description="description" size="sm" dialog @close="reviewing = null">

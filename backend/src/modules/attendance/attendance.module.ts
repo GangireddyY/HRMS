@@ -11,6 +11,7 @@ import { OfficialHolidaysService } from './official-holidays.service';
 import { OvertimeService } from './overtime.service';
 import { RegularizationService } from './regularization.service';
 import { RosterService } from './roster.service';
+import { ShiftSwapsService } from './shift-swaps.service';
 import { TimesheetReminderJob } from './timesheet-reminder.job';
 import { TimesheetsController } from './timesheets.controller';
 import { TimesheetsService } from './timesheets.service';
@@ -29,6 +30,7 @@ import { WorkFromHomeService } from './work-from-home.service';
     OvertimeService,
     WorkFromHomeService,
     RosterService,
+    ShiftSwapsService,
     DevicesService,
     TimesheetsService,
     TimesheetReminderJob,

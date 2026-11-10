@@ -3,8 +3,9 @@ import { col, fn, Op, UniqueConstraintError, type Transaction } from 'sequelize'
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
-import { AttendanceRecord, Employee, Holiday, Shift } from '../../database/models';
+import { AttendanceRecord, Employee, Holiday, Location, Shift } from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
+import { holidayClash, knownLocations } from './attendance-rules.service';
 import type { CreateHolidayDto, CreateShiftDto, UpdateHolidayDto, UpdateShiftDto } from './dto/attendance.dto';
 
 const toTime = (v: string | undefined) => (v ? `${v}:00` : undefined);
@@ -40,8 +41,18 @@ export class AttendanceConfigService {
 
   async listShifts() {
     const [shifts, counts] = await Promise.all([
-      Shift.findAll({ order: [['isDefault', 'DESC'], ['name', 'ASC']] }),
-      Employee.findAll({ attributes: ['shiftId', [fn('COUNT', col('id')), 'count']], where: { shiftId: { [Op.ne]: null }, status: ['ACTIVE', 'ON_NOTICE'] }, group: ['shiftId'], raw: true }) as unknown as Promise<{ shiftId: string; count: string }[]>,
+      Shift.findAll({
+        order: [
+          ['isDefault', 'DESC'],
+          ['name', 'ASC'],
+        ],
+      }),
+      Employee.findAll({
+        attributes: ['shiftId', [fn('COUNT', col('id')), 'count']],
+        where: { shiftId: { [Op.ne]: null }, status: ['ACTIVE', 'ON_NOTICE'] },
+        group: ['shiftId'],
+        raw: true,
+      }) as unknown as Promise<{ shiftId: string; count: string }[]>,
     ]);
     const byShift = new Map(counts.map((c) => [c.shiftId, Number(c.count)]));
     const unassigned = await Employee.count({ where: { shiftId: null, status: ['ACTIVE', 'ON_NOTICE'] } });
@@ -98,31 +109,65 @@ export class AttendanceConfigService {
     });
   }
 
-  listHolidays(year: number) {
-    return Holiday.findAll({ where: { date: { [Op.between]: [`${year}-01-01`, `${year}-12-31`] } }, order: [['date', 'ASC']] });
+  async listHolidays(year: number) {
+    const rows = await Holiday.findAll({ where: { date: { [Op.between]: [`${year}-01-01`, `${year}-12-31`] } }, order: [['date', 'ASC']] });
+    const names = await this.locationNames(rows.flatMap((h) => h.locationIds ?? []));
+    return rows.map((h) => this.presentHoliday(h, names));
   }
 
   async createHoliday(auth: AuthContext, dto: CreateHolidayDto) {
-    return this.holidayGuard(() =>
+    const holiday = await this.holidayGuard(() =>
       this.db.transaction(async (transaction) => {
-        const holiday = await Holiday.create({ ...dto, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction });
-        await this.audit.record({ action: 'holiday.created', entityType: 'Holiday', entityId: holiday.id, summary: `Holiday "${holiday.name}" on ${holiday.date}` }, transaction);
-        return holiday;
+        const locationIds = await knownLocations(dto.locationIds, transaction);
+        await this.assertNoClash(dto.date, locationIds, transaction);
+        const created = await Holiday.create({ ...dto, locationIds, organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction });
+        await this.audit.record(
+          {
+            action: 'holiday.created',
+            entityType: 'Holiday',
+            entityId: created.id,
+            summary: `Holiday "${created.name}" on ${created.date}${locationIds.length ? ` (${locationIds.length} location${locationIds.length === 1 ? '' : 's'})` : ''}`,
+          },
+          transaction,
+        );
+        return created;
       }),
     );
+    return this.presentHoliday(holiday, await this.locationNames(holiday.locationIds));
   }
 
   async updateHoliday(auth: AuthContext, id: string, dto: UpdateHolidayDto) {
     const holiday = await Holiday.findByPk(id);
     if (!holiday) throw AppError.notFound('Holiday');
     const before = holiday.get({ plain: true, clone: true }) as Record<string, unknown>;
-    return this.holidayGuard(() =>
+    await this.holidayGuard(() =>
       this.db.transaction(async (transaction) => {
-        await holiday.update({ ...dto, updatedById: auth.userId }, { transaction });
+        const locationIds = dto.locationIds ? await knownLocations(dto.locationIds, transaction) : holiday.locationIds;
+        await this.assertNoClash(dto.date ?? holiday.date, locationIds, transaction, id);
+        await holiday.update({ ...dto, locationIds, updatedById: auth.userId }, { transaction });
         await this.audit.record({ action: 'holiday.updated', entityType: 'Holiday', entityId: id, changes: diff(before, dto as Record<string, unknown>) }, transaction);
-        return holiday;
       }),
     );
+    return this.presentHoliday(holiday, await this.locationNames(holiday.locationIds));
+  }
+
+  private async assertNoClash(date: string, locationIds: string[], transaction: Transaction, excludeId?: string) {
+    const clash = await holidayClash(date, locationIds, transaction, excludeId);
+    if (!clash) return;
+    const message =
+      clash.locationIds?.length && locationIds.length ? `"${clash.name}" is already a holiday on this date at one of these locations` : `"${clash.name}" is already a holiday on this date`;
+    throw AppError.validation([{ field: locationIds.length ? 'locationIds' : 'date', message }]);
+  }
+
+  private async locationNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids)];
+    if (!unique.length) return new Map();
+    return new Map((await Location.findAll({ where: { id: unique }, attributes: ['id', 'name'] })).map((l) => [l.id, l.name]));
+  }
+
+  private presentHoliday(h: Holiday, names: Map<string, string>) {
+    const locationIds = (h.locationIds ?? []).filter((id) => names.has(id));
+    return { id: h.id, date: h.date, name: h.name, isOptional: h.isOptional, locationIds, locations: locationIds.map((id) => ({ id, name: names.get(id)! })) };
   }
 
   async removeHoliday(id: string): Promise<void> {
@@ -157,7 +202,7 @@ export class AttendanceConfigService {
     try {
       return await fn();
     } catch (e) {
-      if (e instanceof UniqueConstraintError) throw AppError.validation([{ field: 'date', message: 'There is already a holiday on this date' }]);
+      if (e instanceof UniqueConstraintError) throw AppError.validation([{ field: 'date', message: 'There is already a company-wide holiday on this date' }]);
       throw e;
     }
   }

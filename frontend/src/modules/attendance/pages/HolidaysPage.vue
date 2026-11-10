@@ -1,12 +1,29 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { ChevronLeft, ChevronRight, Landmark, Pencil, Plus, Trash2 } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, Landmark, MapPin, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import HolidayGridCard from '@/modules/attendance/components/HolidayGridCard.vue';
 import ImportHolidaysModal from '@/modules/attendance/components/ImportHolidaysModal.vue';
 import type { Holiday } from '@/modules/attendance/types';
-import { WEEKDAY_SHORT } from '@/modules/attendance/utils/attendance-format';
-import { AppAlert, AppBadge, AppButton, AppCard, AppDataTable, AppDatePicker, AppErrorState, AppInput, AppMiniMonth, AppModal, AppPageHeader, AppSegmented, AppSwitch, type TableColumn } from '@/shared/components';
+import { holidayWhere, WEEKDAY_SHORT } from '@/modules/attendance/utils/attendance-format';
+import { structureApi } from '@/modules/people/api/people.api';
+import {
+  AppAlert,
+  AppBadge,
+  AppButton,
+  AppCard,
+  AppDataTable,
+  AppDatePicker,
+  AppErrorState,
+  AppInput,
+  AppMiniMonth,
+  AppModal,
+  AppMultiPick,
+  AppPageHeader,
+  AppSegmented,
+  AppSwitch,
+  type TableColumn,
+} from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useAuthStore } from '@/core/auth/auth.store';
@@ -24,19 +41,31 @@ const columns = computed<TableColumn<Holiday>[]>(() => [
   { key: 'date', label: 'Date' },
   { key: 'name', label: 'Holiday' },
   { key: 'type', label: 'Type' },
+  { key: 'where', label: 'Observed at', exportValue: (h) => (h.locations.length ? h.locations.map((l) => l.name).join(', ') : 'All locations') },
   ...(canManage.value ? [{ key: 'actions', label: '', align: 'right' as const }] : []),
 ]);
+
+const locations = useAsync(() => structureApi.locations(), { immediate: false });
+const locationOptions = computed(() => (locations.data.value ?? []).filter((l) => l.isActive !== false).map((l) => ({ value: l.id, label: l.name })));
+const hasLocations = computed(() => (locations.data.value?.length ?? 0) > 1);
+watch(
+  canManage,
+  (can) => {
+    if (can && !locations.data.value) void locations.run();
+  },
+  { immediate: true },
+);
 
 const open = ref(false);
 const editing = ref<Holiday | null>(null);
 const saving = ref(false);
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const form = reactive({ date: undefined as string | undefined, name: '', isOptional: false });
+const form = reactive({ date: undefined as string | undefined, name: '', isOptional: false, locationIds: [] as string[] });
 
 function edit(h: Holiday | null) {
   reset();
   editing.value = h;
-  Object.assign(form, h ? { date: h.date, name: h.name, isOptional: h.isOptional } : { date: undefined, name: '', isOptional: false });
+  Object.assign(form, h ? { date: h.date, name: h.name, isOptional: h.isOptional, locationIds: [...h.locationIds] } : { date: undefined, name: '', isOptional: false, locationIds: [] });
   open.value = true;
 }
 
@@ -44,7 +73,7 @@ async function save() {
   reset();
   saving.value = true;
   try {
-    const body = { date: form.date ?? '', name: form.name, isOptional: form.isOptional };
+    const body = { date: form.date ?? '', name: form.name, isOptional: form.isOptional, locationIds: form.locationIds };
     if (editing.value) await attendanceApi.updateHoliday(editing.value.id, body);
     else await attendanceApi.createHoliday(body);
     open.value = false;
@@ -88,7 +117,16 @@ const nextId = computed(() => (holidays.data.value ?? []).filter((h) => h.date >
 const months = computed(() => Array.from({ length: 12 }, (_, i) => `${year.value}-${String(i + 1).padStart(2, '0')}`));
 const PUBLIC = 'var(--status-special)';
 const OPTIONAL = 'var(--status-neutral)';
-const marks = computed(() => new Map((holidays.data.value ?? []).map((h) => [h.date, { color: h.isOptional ? OPTIONAL : PUBLIC, title: `${h.name}${h.isOptional ? ' (optional)' : ''}` }])));
+/** One mark per date; a date can hold holidays for different locations. */
+const marks = computed(() => {
+  const out = new Map<string, { color: string; title: string }>();
+  for (const h of holidays.data.value ?? []) {
+    const title = `${h.name}${h.isOptional ? ' (optional)' : ''}${h.locations.length ? ` · ${holidayWhere(h)}` : ''}`;
+    const prev = out.get(h.date);
+    out.set(h.date, { color: prev && prev.color === PUBLIC ? PUBLIC : h.isOptional ? OPTIONAL : PUBLIC, title: prev ? `${prev.title}\n${title}` : title });
+  }
+  return out;
+});
 /** In the year view a holiday opens for editing and, for planners, any other day starts a new holiday on it. */
 function onDay(iso: string) {
   const h = (holidays.data.value ?? []).find((x) => x.date === iso);
@@ -103,7 +141,7 @@ function onDay(iso: string) {
 
 <template>
   <div>
-    <AppPageHeader title="Holidays" description="Public holidays are non-working days in attendance; optional holidays are shown but remain working days.">
+    <AppPageHeader title="Holidays" description="Public holidays are non-working days in attendance; optional holidays are shown but remain working days. A holiday can apply to every location or only some.">
       <template #actions>
         <div class="flex items-center gap-1">
           <AppButton size="sm" variant="ghost" :icon="ChevronLeft" aria-label="Previous year" @click="year--" />
@@ -143,6 +181,12 @@ function onDay(iso: string) {
         <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span> <span class="text-xs text-fg-muted">{{ weekdayOf(row.date) }}</span></template>
         <template #cell-name="{ row }"><span class="font-medium text-fg">{{ row.name }}</span></template>
         <template #cell-type="{ row }"><AppBadge :tone="row.isOptional ? 'neutral' : 'violet'">{{ row.isOptional ? 'Optional' : 'Public holiday' }}</AppBadge></template>
+        <template #cell-where="{ row }">
+          <span v-if="!row.locations.length" class="text-sm text-fg-muted">All locations</span>
+          <span v-else class="flex flex-wrap gap-1">
+            <AppBadge v-for="l in row.locations" :key="l.id" tone="neutral" size="sm"><MapPin :size="11" aria-hidden="true" />{{ l.name }}</AppBadge>
+          </span>
+        </template>
         <template #cell-actions="{ row }">
           <div class="flex justify-end gap-1">
             <AppButton size="sm" variant="ghost" :icon="Pencil" :aria-label="`Edit ${row.name}`" @click="edit(row)" />
@@ -159,6 +203,15 @@ function onDay(iso: string) {
         <AppDatePicker v-model="form.date" label="Date" required :error="fieldErrors.date" />
         <AppInput v-model="form.name" label="Name" required placeholder="e.g. Independence Day" :error="fieldErrors.name" />
         <AppSwitch v-model="form.isOptional" label="Optional holiday" description="Shown on calendars but still a working day." />
+        <AppMultiPick
+          v-if="hasLocations || form.locationIds.length"
+          v-model="form.locationIds"
+          label="Observed at"
+          placeholder="Every location"
+          help="Regional holidays apply only to people working at these locations. Leave empty for a company-wide holiday."
+          :options="locationOptions"
+          :error="fieldErrors.locationIds"
+        />
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="open = false">Cancel</AppButton>
@@ -166,6 +219,6 @@ function onDay(iso: string) {
       </template>
     </AppModal>
 
-    <ImportHolidaysModal v-if="canManage" :open="importOpen" :year="year" @close="importOpen = false" @imported="onImported" />
+    <ImportHolidaysModal v-if="canManage" :open="importOpen" :year="year" :locations="locationOptions" @close="importOpen = false" @imported="onImported" />
   </div>
 </template>

@@ -8,17 +8,23 @@
  */
 import { loadEnvFile } from './env-file';
 import { createMigrationStorage, createMigrator } from './migrator';
+import { grantRuntimeRole } from './runtime-role';
 import { createSequelize, databaseConnectionFromEnv } from './sequelize';
 
 async function main(): Promise<void> {
   loadEnvFile();
   const command = process.argv[2] ?? 'up';
-  const sequelize = createSequelize(databaseConnectionFromEnv(), { withModels: false });
+  const sequelize = createSequelize(databaseConnectionFromEnv(process.env, { migration: true }), { withModels: false });
   const migrator = createMigrator(sequelize, { info: () => undefined, warn: console.warn, error: console.error });
   try {
     if (command === 'up') {
       const applied = await migrator.up();
       console.log(applied.length ? `Applied: ${applied.map((m) => m.name).join(', ')}` : 'No pending migrations');
+      const { DB_MIGRATION_USER: owner, DB_USER: runtime, DB_PASSWORD: password } = process.env;
+      if (owner && runtime && password && owner !== runtime) {
+        const outcome = await grantRuntimeRole(sequelize, runtime, password);
+        console.log(`Runtime role "${runtime}" ${outcome === 'created' ? 'created with' : 'granted'} row access`);
+      }
     } else if (command === 'down') {
       const reverted = await migrator.down();
       console.log(reverted.length ? `Reverted: ${reverted.map((m) => m.name).join(', ')}` : 'Nothing to revert');

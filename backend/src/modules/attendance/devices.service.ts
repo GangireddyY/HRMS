@@ -52,7 +52,12 @@ export class DevicesService {
     const locations = new Map((await Location.findAll({ where: { id: devices.map((d) => d.locationId).filter((x): x is string => !!x) }, attributes: ['id', 'name'] })).map((l) => [l.id, l.name]));
     const since = new Date(Date.now() - 86_400_000);
     const counts = devices.length
-      ? ((await AttendancePunch.findAll({ attributes: ['deviceId', [fn('COUNT', col('id')), 'count']], where: { deviceId: devices.map((d) => d.id), createdAt: { [Op.gte]: since } }, group: ['deviceId'], raw: true })) as unknown as { deviceId: string; count: string }[])
+      ? ((await AttendancePunch.findAll({
+          attributes: ['deviceId', [fn('COUNT', col('id')), 'count']],
+          where: { deviceId: devices.map((d) => d.id), createdAt: { [Op.gte]: since } },
+          group: ['deviceId'],
+          raw: true,
+        })) as unknown as { deviceId: string; count: string }[])
       : [];
     const byDevice = new Map(counts.map((c) => [c.deviceId, Number(c.count)]));
     return devices.map((d) => ({ ...this.present(d), location: d.locationId ? { id: d.locationId, name: locations.get(d.locationId) ?? '' } : null, punchesLast24h: byDevice.get(d.id) ?? 0 }));
@@ -63,7 +68,18 @@ export class DevicesService {
     const k = newKey();
     const device = await this.guard(() =>
       this.db.transaction(async (transaction) => {
-        const d = await AttendanceDevice.create({ organizationId: auth.organizationId!, name: dto.name, locationId: dto.locationId ?? null, serialNumber: dto.serialNumber ?? null, keyPrefix: k.prefix, keyHash: k.hash, createdById: auth.userId }, { transaction });
+        const d = await AttendanceDevice.create(
+          {
+            organizationId: auth.organizationId!,
+            name: dto.name,
+            locationId: dto.locationId ?? null,
+            serialNumber: dto.serialNumber ?? null,
+            keyPrefix: k.prefix,
+            keyHash: k.hash,
+            createdById: auth.userId,
+          },
+          { transaction },
+        );
         await this.audit.record({ action: 'attendance.device_added', entityType: 'AttendanceDevice', entityId: d.id, summary: `Device "${d.name}" added` }, transaction);
         return d;
       }),
@@ -76,8 +92,24 @@ export class DevicesService {
     if (dto.locationId !== undefined) await this.checkLocation(dto.locationId);
     await this.guard(() =>
       this.db.transaction(async (transaction) => {
-        await d.update({ ...(dto.name !== undefined ? { name: dto.name } : {}), ...(dto.locationId !== undefined ? { locationId: dto.locationId } : {}), ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}), ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}) }, { transaction });
-        await this.audit.record({ action: dto.isActive === false ? 'attendance.device_deactivated' : 'attendance.device_updated', entityType: 'AttendanceDevice', entityId: id, summary: `Device "${d.name}" ${dto.isActive === false ? 'deactivated' : 'updated'}` }, transaction);
+        await d.update(
+          {
+            ...(dto.name !== undefined ? { name: dto.name } : {}),
+            ...(dto.locationId !== undefined ? { locationId: dto.locationId } : {}),
+            ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
+            ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+          },
+          { transaction },
+        );
+        await this.audit.record(
+          {
+            action: dto.isActive === false ? 'attendance.device_deactivated' : 'attendance.device_updated',
+            entityType: 'AttendanceDevice',
+            entityId: id,
+            summary: `Device "${d.name}" ${dto.isActive === false ? 'deactivated' : 'updated'}`,
+          },
+          transaction,
+        );
       }),
     );
     return this.present(d);
@@ -109,7 +141,10 @@ export class DevicesService {
     try {
       await this.db.transaction(async (transaction) => {
         await employee.update({ biometricCode: code, updatedById: auth.userId }, { transaction });
-        await this.audit.record({ action: 'attendance.biometric_code_set', entityType: 'Employee', entityId: employeeId, summary: `Device user number of ${employee.employeeCode} ${code ? `set to ${code}` : 'removed'}` }, transaction);
+        await this.audit.record(
+          { action: 'attendance.biometric_code_set', entityType: 'Employee', entityId: employeeId, summary: `Device user number of ${employee.employeeCode} ${code ? `set to ${code}` : 'removed'}` },
+          transaction,
+        );
       });
     } catch (e) {
       if (e instanceof UniqueConstraintError) throw AppError.validation([{ field: 'biometricCode', message: 'Another employee already has this device user number' }]);
@@ -205,11 +240,15 @@ export class DevicesService {
         const checkInAt = candidatesIn.length ? new Date(Math.min(...candidatesIn.map((d) => d.getTime()))) : null;
         if (!checkInAt) return;
         // With AUTO punches, the latest one is the punch-out once there is more than one punch on the day.
-        const candidatesOut = [...outs, ...(autos.length > 1 || (autos.length && record?.checkInAt) ? autos : []), ...(record?.checkOutAt ? [record.checkOutAt] : [])].filter((d) => d.getTime() - checkInAt.getTime() >= 60_000);
+        const candidatesOut = [...outs, ...(autos.length > 1 || (autos.length && record?.checkInAt) ? autos : []), ...(record?.checkOutAt ? [record.checkOutAt] : [])].filter(
+          (d) => d.getTime() - checkInAt.getTime() >= 60_000,
+        );
         const checkOutAt = candidatesOut.length ? new Date(Math.max(...candidatesOut.map((d) => d.getTime()))) : null;
         const outcome = await this.rules.evaluate(ctx, workDate, checkInAt, checkOutAt, transaction);
         const values = { ...outcome, checkInAt, checkOutAt, deviceId: device.id, source: 'DEVICE' as const };
-        const saved = record ? await record.update(values, { transaction }) : await AttendanceRecord.create({ ...values, organizationId: device.organizationId, employeeId: employee.id, workDate }, { transaction });
+        const saved = record
+          ? await record.update(values, { transaction })
+          : await AttendanceRecord.create({ ...values, organizationId: device.organizationId, employeeId: employee.id, workDate }, { transaction });
         await this.overtime.sync(saved, transaction);
       });
     }
@@ -229,7 +268,16 @@ export class DevicesService {
   }
 
   private present(d: AttendanceDevice) {
-    return { id: d.id, name: d.name, locationId: d.locationId, serialNumber: d.serialNumber, keyHint: `hrmsd_${d.keyPrefix}_…`, isActive: d.isActive, lastSeenAt: d.lastSeenAt, createdAt: d.createdAt };
+    return {
+      id: d.id,
+      name: d.name,
+      locationId: d.locationId,
+      serialNumber: d.serialNumber,
+      keyHint: `hrmsd_${d.keyPrefix}_…`,
+      isActive: d.isActive,
+      lastSeenAt: d.lastSeenAt,
+      createdAt: d.createdAt,
+    };
   }
 
   private async guard<T>(fn: () => Promise<T>): Promise<T> {

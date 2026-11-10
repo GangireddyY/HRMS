@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue';
 import { useRouter } from 'vue-router';
-import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, CircleCheck, FilePen, Fingerprint, House, MonitorSmartphone, Pencil, Timer, TimerOff, UserX } from '@lucide/vue';
+import { AlarmClock, CalendarDays, Camera, ChevronLeft, ChevronRight, CircleCheck, FilePen, Fingerprint, House, MonitorSmartphone, Pencil, Timer, TimerOff, UserX } from '@lucide/vue';
+import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import type { AttendanceSource } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
@@ -16,6 +17,14 @@ import { useTable } from '@/shared/composables/use-table';
 
 /** Daily attendance of everyone in scope: a live board for today (or any past day) that filters the register below. */
 const router = useRouter();
+const feedback = useFeedbackStore();
+async function openPhoto(recordId: string) {
+  try {
+    await attendanceApi.openPhoto(recordId);
+  } catch (e) {
+    feedback.error('Could not open the photo', e);
+  }
+}
 const date = ref<string | undefined>(undefined);
 const summary = ref<DailySummary | null>(null);
 const resolvedDate = ref<string | null>(null);
@@ -248,6 +257,15 @@ const SOURCE: Record<AttendanceSource, { icon: Component; label: string }> = {
           <span v-if="row.record?.checkInAt" class="inline-flex items-center gap-1.5 tabular-nums">
             {{ formatTime(row.record.checkInAt) }}
             <component :is="SOURCE[row.record.source].icon" :size="12" class="text-fg-subtle" :aria-label="SOURCE[row.record.source].label" role="img" />
+            <button
+              v-if="row.record.hasPhoto"
+              type="button"
+              class="rounded p-0.5 text-fg-subtle transition hover:text-accent-fg focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none"
+              :aria-label="`Punch-in photo of ${row.employee.name}`"
+              @click.stop="openPhoto(row.record.id)"
+            >
+              <Camera :size="12" aria-hidden="true" />
+            </button>
           </span>
           <span v-else-if="row.status === 'UPCOMING'" class="text-xs text-fg-subtle tabular-nums">Due {{ row.shift.startTime }}</span>
           <span v-else class="text-fg-subtle">—</span>

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ForeignKeyConstraintError, UniqueConstraintError, type Transaction } from 'sequelize';
-import { professionalTaxState, weekStartOf, type TimesheetMissedAction } from '../../contracts';
+import { labourWelfareState, professionalTaxState, weekStartOf, type DailyRateBasis, type PayslipPdfPassword, type TimesheetMissedAction } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { zonedParts } from '../../common/utils/zoned-time';
@@ -27,6 +27,12 @@ export type EffectiveSettings = {
   timesheetDueWeekday: number;
   timesheetMissedAction: TimesheetMissedAction;
   timesheetAutoRemind: boolean;
+  salaryApprovalThresholdPct: number | null;
+  lwfEnabled: boolean;
+  proofsFromMonth: number | null;
+  leaveEncashmentBasis: DailyRateBasis;
+  payslipEmailEnabled: boolean;
+  payslipPdfPassword: PayslipPdfPassword;
 };
 
 const DEFAULTS: EffectiveSettings = {
@@ -46,6 +52,12 @@ const DEFAULTS: EffectiveSettings = {
   timesheetDueWeekday: 1,
   timesheetMissedAction: 'FLAG',
   timesheetAutoRemind: true,
+  salaryApprovalThresholdPct: null,
+  lwfEnabled: false,
+  proofsFromMonth: null,
+  leaveEncashmentBasis: 'BASIC_26',
+  payslipEmailEnabled: false,
+  payslipPdfPassword: 'DOB',
 };
 
 /** Recommended starting point (created only on request): Basic at half the CTC, HRA at half of Basic, the rest as a special allowance. */
@@ -89,6 +101,12 @@ export class PayrollConfigService {
       timesheetDueWeekday: s.timesheetDueWeekday,
       timesheetMissedAction: s.timesheetMissedAction,
       timesheetAutoRemind: s.timesheetAutoRemind,
+      salaryApprovalThresholdPct: s.salaryApprovalThresholdPct === null ? null : Number(s.salaryApprovalThresholdPct),
+      lwfEnabled: s.lwfEnabled,
+      proofsFromMonth: s.proofsFromMonth,
+      leaveEncashmentBasis: s.leaveEncashmentBasis,
+      payslipEmailEnabled: s.payslipEmailEnabled,
+      payslipPdfPassword: s.payslipPdfPassword,
     };
   }
 
@@ -99,19 +117,34 @@ export class PayrollConfigService {
   /** Settings with the organization's own state as the professional-tax fallback (for display). */
   async settingsView(auth: AuthContext) {
     const [settings, org] = await Promise.all([this.settings(auth.organizationId!), Organization.findByPk(auth.organizationId!, { attributes: ['state'] })]);
-    return { ...settings, organizationState: org?.state ?? null, organizationPtState: professionalTaxState(org?.state)?.code ?? null };
+    return {
+      ...settings,
+      organizationState: org?.state ?? null,
+      organizationPtState: professionalTaxState(org?.state)?.code ?? null,
+      organizationLwfState: labourWelfareState(org?.state)?.name ?? null,
+    };
   }
 
   async updateSettings(auth: AuthContext, dto: PayrollSettingsDto) {
     const before = await this.settings(auth.organizationId!);
     const next = { ...before, ...Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined)) } as EffectiveSettings;
     if (next.timesheetsFrom) next.timesheetsFrom = weekStartOf(next.timesheetsFrom);
+    // Loosening the salary approval step is itself a checker decision, or a reviser could switch it off and proceed.
+    const loosened = before.salaryApprovalThresholdPct !== null && (next.salaryApprovalThresholdPct === null || next.salaryApprovalThresholdPct > before.salaryApprovalThresholdPct);
+    if (loosened && !auth.permissions.has('employee.salary.approve')) {
+      throw AppError.forbidden('Raising or removing the salary approval threshold needs the "Approve salary revisions" permission');
+    }
     // Switching timesheets on starts from the current week, so earlier weeks never count as missed.
     if (next.timesheetsRequired && (!before.timesheetsRequired || !next.timesheetsFrom) && !dto.timesheetsFrom) {
       next.timesheetsFrom = weekStartOf(zonedParts(new Date(), await this.organizationTimeZone(auth.organizationId!)).date);
     }
     await this.db.transaction(async (transaction) => {
-      const values = { ...next, overtimeMultiplier: String(next.overtimeMultiplier), updatedById: auth.userId };
+      const values = {
+        ...next,
+        overtimeMultiplier: String(next.overtimeMultiplier),
+        salaryApprovalThresholdPct: next.salaryApprovalThresholdPct === null ? null : String(next.salaryApprovalThresholdPct),
+        updatedById: auth.userId,
+      };
       const row = await PayrollSettings.findByPk(auth.organizationId!, { transaction, lock: transaction.LOCK.UPDATE });
       if (row) await row.update(values, { transaction });
       else await PayrollSettings.create({ organizationId: auth.organizationId!, ...values }, { transaction });
@@ -123,7 +156,13 @@ export class PayrollConfigService {
   // ---- Components ------------------------------------------------------------------------------
 
   async components() {
-    const rows = await SalaryComponentDef.findAll({ order: [['isActive', 'DESC'], ['role', 'ASC NULLS LAST'], ['name', 'ASC']] });
+    const rows = await SalaryComponentDef.findAll({
+      order: [
+        ['isActive', 'DESC'],
+        ['role', 'ASC NULLS LAST'],
+        ['name', 'ASC'],
+      ],
+    });
     return rows.map(presentComponent);
   }
 
@@ -147,7 +186,10 @@ export class PayrollConfigService {
     try {
       await this.db.transaction(async (transaction) => {
         await c.update({ ...dto, updatedById: auth.userId }, { transaction });
-        await this.audit.record({ action: 'payroll.component_updated', entityType: 'SalaryComponent', entityId: id, summary: `Salary component ${c.code} updated`, changes: diff(before, presentComponent(c)) }, transaction);
+        await this.audit.record(
+          { action: 'payroll.component_updated', entityType: 'SalaryComponent', entityId: id, summary: `Salary component ${c.code} updated`, changes: diff(before, presentComponent(c)) },
+          transaction,
+        );
       });
     } catch (e) {
       throw this.componentConflict(e);
@@ -172,7 +214,9 @@ export class PayrollConfigService {
   private componentConflict(e: unknown): unknown {
     if (e instanceof UniqueConstraintError) {
       const fields = Object.keys(e.fields ?? {});
-      return fields.includes('role') ? AppError.conflict('Another component already has this role (one Basic and one HRA per organization)') : AppError.conflict('A component with this code already exists');
+      return fields.includes('role')
+        ? AppError.conflict('Another component already has this role (one Basic and one HRA per organization)')
+        : AppError.conflict('A component with this code already exists');
     }
     return e;
   }
@@ -181,7 +225,13 @@ export class PayrollConfigService {
 
   async structures() {
     const [rows, used] = await Promise.all([
-      SalaryStructure.findAll({ include: [{ model: SalaryStructureLine, include: [{ model: SalaryComponentDef }] }], order: [['isActive', 'DESC'], ['name', 'ASC']] }),
+      SalaryStructure.findAll({
+        include: [{ model: SalaryStructureLine, include: [{ model: SalaryComponentDef }] }],
+        order: [
+          ['isActive', 'DESC'],
+          ['name', 'ASC'],
+        ],
+      }),
       EmployeeSalary.findAll({ attributes: ['structureId'], group: ['structureId'], raw: true }),
     ]);
     const usedIds = new Set(used.map((u) => u.structureId));
@@ -202,7 +252,13 @@ export class PayrollConfigService {
       description: s.description,
       isActive: s.isActive,
       inUse,
-      lines: lines.map((l) => ({ id: l.id, componentId: l.componentId, component: l.component ? presentComponent(l.component) : null, calculation: l.calculation, value: l.value === null ? null : Number(l.value) })),
+      lines: lines.map((l) => ({
+        id: l.id,
+        componentId: l.componentId,
+        component: l.component ? presentComponent(l.component) : null,
+        calculation: l.calculation,
+        value: l.value === null ? null : Number(l.value),
+      })),
     };
   }
 
@@ -251,7 +307,15 @@ export class PayrollConfigService {
     if (dto.lines) await this.validateLines(dto.lines);
     try {
       await this.db.transaction(async (transaction) => {
-        await s.update({ ...(dto.name !== undefined ? { name: dto.name } : {}), ...(dto.description !== undefined ? { description: dto.description } : {}), ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}), updatedById: auth.userId }, { transaction });
+        await s.update(
+          {
+            ...(dto.name !== undefined ? { name: dto.name } : {}),
+            ...(dto.description !== undefined ? { description: dto.description } : {}),
+            ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+            updatedById: auth.userId,
+          },
+          { transaction },
+        );
         if (dto.lines) {
           await SalaryStructureLine.destroy({ where: { structureId: id }, transaction });
           await this.writeLines(auth, id, dto.lines, transaction);
@@ -286,7 +350,16 @@ export class PayrollConfigService {
         ids[c.code] = found ? found.id : (await SalaryComponentDef.create({ organizationId: auth.organizationId!, ...c, createdById: auth.userId, updatedById: auth.userId }, { transaction })).id;
       }
       if (!(await SalaryStructure.count({ where: { name: 'Standard' }, transaction }))) {
-        const s = await SalaryStructure.create({ organizationId: auth.organizationId!, name: 'Standard', description: 'Basic 50% of CTC, HRA 50% of Basic, special allowance as the balance.', createdById: auth.userId, updatedById: auth.userId }, { transaction });
+        const s = await SalaryStructure.create(
+          {
+            organizationId: auth.organizationId!,
+            name: 'Standard',
+            description: 'Basic 50% of CTC, HRA 50% of Basic, special allowance as the balance.',
+            createdById: auth.userId,
+            updatedById: auth.userId,
+          },
+          { transaction },
+        );
         await this.writeLines(
           auth,
           s.id,
@@ -331,7 +404,8 @@ export class PayrollConfigService {
         issues.push({ field: `lines.${i}.value`, message: `${c.name}: a percentage must be between 0 and 100` });
       }
       if (l.calculation === 'BALANCE' && c.pfWage) issues.push({ field: `lines.${i}.componentId`, message: `${c.name} counts towards PF wages, so it can't be the balancing component` });
-      if (c.role === 'BASIC' && (l.calculation === 'PERCENT_OF_BASIC' || l.calculation === 'BALANCE')) issues.push({ field: `lines.${i}.calculation`, message: 'Basic must be a percentage of CTC or a fixed amount' });
+      if (c.role === 'BASIC' && (l.calculation === 'PERCENT_OF_BASIC' || l.calculation === 'BALANCE'))
+        issues.push({ field: `lines.${i}.calculation`, message: 'Basic must be a percentage of CTC or a fixed amount' });
     });
     if (lines.filter((l) => l.calculation === 'BALANCE').length !== 1) issues.push({ field: 'lines', message: 'Exactly one component must be the balance' });
     if (!lines.some((l) => components.get(l.componentId)?.role === 'BASIC')) issues.push({ field: 'lines', message: 'Include the Basic component' });

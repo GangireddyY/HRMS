@@ -8,7 +8,9 @@ import type {
   InterviewMode,
   InterviewStatus,
   JobStatus,
+  OfferApprovalStatus,
   OfferStatus,
+  PrejoiningDocumentCategory,
   RequisitionReason,
   RequisitionStatus,
 } from '../../contracts';
@@ -105,6 +107,8 @@ export class Candidate extends Model<InferAttributes<Candidate>, InferCreationAt
   @Column(DataType.INTEGER) resumeSize: CreationOptional<number | null>;
   @Column(DataType.DATE) resumeUploadedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) consentAt: CreationOptional<Date | null>;
+  /** Anonymized after the retention period (or on request). */
+  @Column(DataType.DATE) erasedAt: CreationOptional<Date | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
@@ -208,6 +212,24 @@ export class Offer extends Model<InferAttributes<Offer>, InferCreationAttributes
   @Column(DataType.DATE) releasedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) respondedAt: CreationOptional<Date | null>;
   @Column(DataType.STRING(500)) declineReason: CreationOptional<string | null>;
+  @Column(DataType.STRING(12)) approvalStatus: CreationOptional<OfferApprovalStatus>;
+  @Column(DataType.DATE) approvalRequestedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) approvalRequestedById: CreationOptional<string | null>;
+  @Column(DataType.UUID) approvedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) approvedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(500)) approvalNote: CreationOptional<string | null>;
+  /** The letter as released (what the candidate signs) and its SHA-256. */
+  @Column(DataType.TEXT) letterHtml: CreationOptional<string | null>;
+  @Column(DataType.CHAR(64)) letterHash: CreationOptional<string | null>;
+  @Column(DataType.CHAR(64)) portalTokenHash: CreationOptional<string | null>;
+  @Column(DataType.DATE) portalExpiresAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(200)) signedName: CreationOptional<string | null>;
+  @Column(DataType.DATE) signedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(64)) signedIp: CreationOptional<string | null>;
+  @Column(DataType.STRING(300)) signedUserAgent: CreationOptional<string | null>;
+  /** Pre-joining details from the candidate (encrypted JSON). */
+  @Column(DataType.TEXT) prejoiningEncrypted: CreationOptional<string | null>;
+  @Column(DataType.DATE) prejoiningSubmittedAt: CreationOptional<Date | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
@@ -217,4 +239,38 @@ export class Offer extends Model<InferAttributes<Offer>, InferCreationAttributes
   @BelongsTo(() => Designation, 'designationId') designation?: NonAttribute<Designation | null>;
   @BelongsTo(() => Department, 'departmentId') department?: NonAttribute<Department | null>;
   @BelongsTo(() => Location, 'locationId') location?: NonAttribute<Location | null>;
+  @HasMany(() => OfferDocument, 'offerId') documents?: NonAttribute<OfferDocument[]>;
+}
+
+/** A document the candidate uploaded before joining; copied to the employee's documents on hire. */
+@Table({ tableName: 'offer_documents', underscored: true, updatedAt: false })
+export class OfferDocument extends Model<InferAttributes<OfferDocument>, InferCreationAttributes<OfferDocument>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Offer) @Column(DataType.UUID) offerId: string;
+  @Column(DataType.STRING(30)) category: PrejoiningDocumentCategory;
+  @Column(DataType.STRING(200)) title: string;
+  @Column(DataType.STRING(255)) fileName: string;
+  @Column(DataType.STRING(100)) contentType: string;
+  @Column(DataType.INTEGER) byteSize: number;
+  @Column(DataType.CHAR(64)) checksum: string;
+  @Column(DataType.STRING(500)) storageKey: string;
+  @CreatedAt createdAt: CreationOptional<Date>;
+}
+
+/** The organization's letter template per kind (the offer letter). */
+@Table({ tableName: 'letter_templates', underscored: true })
+export class LetterTemplate extends Model<InferAttributes<LetterTemplate>, InferCreationAttributes<LetterTemplate>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(20)) kind: 'OFFER';
+  @Column(DataType.STRING(200)) subject: string;
+  @Column(DataType.TEXT) body: string;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
 }

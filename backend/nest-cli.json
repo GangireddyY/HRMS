@@ -5,6 +5,12 @@
   "compilerOptions": {
     "tsConfigPath": "tsconfig.build.json",
     "deleteOutDir": true,
-    "assets": [{ "include": "database/migrations/*.sql", "outDir": "dist" }]
+    "assets": [{ "include": "database/migrations/*.sql", "outDir": "dist" }],
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": { "dtoFileNameSuffix": [".dto.ts"], "classValidatorShim": true, "introspectComments": true }
+      }
+    ]
   }
 }

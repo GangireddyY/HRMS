@@ -20,6 +20,7 @@ import {
   ManagerAssessmentDto,
   PipDto,
   PipQueryDto,
+  PotentialDto,
   ReassignReviewerDto,
   ReturnGoalsDto,
   ReviewQueryDto,
@@ -102,6 +103,14 @@ export class PerformanceController {
   @ApiOperation({ summary: 'Show completed reviews (ratings, manager comments, anonymous feedback) to employees' })
   release(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
     return this.cycles.release(auth, id);
+  }
+
+  @Get('cycles/:id/calibration')
+  @RequirePermissions('performance.configure')
+  @ApiOperation({ summary: 'Rating spread of completed reviews against the target curve, and the 9-box' })
+  calibration(@Param('id', UUID) id: string, @Query('departmentId') departmentId?: string) {
+    if (departmentId !== undefined && !/^[0-9a-f-]{36}$/i.test(departmentId)) throw AppError.validation([{ field: 'departmentId', message: 'Invalid department' }]);
+    return this.cycles.calibration(id, departmentId);
   }
 
   @Post('cycles/:id/close')
@@ -190,6 +199,14 @@ export class PerformanceController {
   @RequirePermissions('performance.configure')
   calibrate(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: CalibrateDto) {
     return this.reviews.calibrate(auth, id, dto);
+  }
+
+  @Put('reviews/:id/potential')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Set potential (1 low, 2 medium, 3 high) for the 9-box; HR or the reviewer' })
+  potential(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: PotentialDto) {
+    requireAny(auth, 'performance.configure', 'performance.review');
+    return this.reviews.setPotential(auth, id, dto);
   }
 
   @Post('reviews/:id/acknowledge')

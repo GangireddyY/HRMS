@@ -22,6 +22,9 @@ import {
 } from 'class-validator';
 import {
   DEVICE_BATCH_MAX,
+  PUNCH_PHOTO_MAX_BYTES,
+  SHIFT_SWAP_STATUSES,
+  type ShiftSwapStatus,
   HOLIDAY_COUNTRIES,
   HOLIDAY_IMPORT_MAX,
   OVERTIME_STATUSES,
@@ -56,11 +59,23 @@ export class CreateShiftDto {
   @ApiPropertyOptional({ default: 480 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1440) fullDayMinutes?: number;
 
   @ApiPropertyOptional({ type: [Number], example: [0, 6], description: '0 = Sunday … 6 = Saturday' })
-  @IsOptional() @IsArray() @ArrayMaxSize(6) @ArrayUnique() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
   weeklyOffs?: number[];
 
   @ApiPropertyOptional({ default: false, description: 'Count overtime on this shift' }) @IsOptional() @IsBoolean() overtimeEnabled?: boolean;
-  @ApiPropertyOptional({ default: 540, description: 'Worked minutes after which overtime starts on working days' }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1440) overtimeAfterMinutes?: number;
+  @ApiPropertyOptional({ default: 540, description: 'Worked minutes after which overtime starts on working days' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  overtimeAfterMinutes?: number;
   @ApiPropertyOptional({ default: 30, description: 'Shorter overtime is not counted' }) @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(480) overtimeMinMinutes?: number;
 
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isDefault?: boolean;
@@ -76,6 +91,12 @@ export class CreateHolidayDto {
   @ApiProperty({ example: '2026-08-15' }) @IsISO8601(DATE) date!: string;
   @Transform(trim) @IsString() @Length(2, 120) name!: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isOptional?: boolean;
+  @ApiPropertyOptional({ type: [String], description: 'Locations that observe it; empty or missing = every location' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  locationIds?: string[];
 }
 export class UpdateHolidayDto extends PartialType(CreateHolidayDto) {}
 
@@ -84,20 +105,55 @@ const HOLIDAY_COUNTRY_CODES = Object.keys(HOLIDAY_COUNTRIES) as HolidayCountry[]
 export class OfficialHolidaysQueryDto {
   @ApiProperty({ example: 2027 }) @Type(() => Number) @IsInt() @Min(2000) @Max(2100) year!: number;
   @ApiPropertyOptional({ enum: HOLIDAY_COUNTRY_CODES, description: "Defaults to the organization's country" })
-  @IsOptional() @IsIn(HOLIDAY_COUNTRY_CODES) country?: HolidayCountry;
+  @IsOptional()
+  @IsIn(HOLIDAY_COUNTRY_CODES)
+  country?: HolidayCountry;
 }
 
 export class ImportHolidaysDto {
   @ApiPropertyOptional({ enum: HOLIDAY_COUNTRY_CODES, description: 'Where the holidays came from (for the audit log)' })
-  @IsOptional() @IsIn(HOLIDAY_COUNTRY_CODES) country?: HolidayCountry;
+  @IsOptional()
+  @IsIn(HOLIDAY_COUNTRY_CODES)
+  country?: HolidayCountry;
+  @ApiPropertyOptional({ type: [String], description: 'Locations the imported holidays apply to (default: every location); a holiday can also set its own' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  locationIds?: string[];
   @ApiProperty({ type: [CreateHolidayDto] })
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(HOLIDAY_IMPORT_MAX) @ValidateNested({ each: true }) @Type(() => CreateHolidayDto)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(HOLIDAY_IMPORT_MAX)
+  @ValidateNested({ each: true })
+  @Type(() => CreateHolidayDto)
   holidays!: CreateHolidayDto[];
 }
 
 export class PunchDto {
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @Type(() => Number) @IsNumber() @Min(-90) @Max(90) latitude?: number;
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) longitude?: number;
+  @ApiPropertyOptional({ description: 'Camera photo as a data URL (data:image/jpeg;base64,…), when the location asks for one' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(Math.ceil((PUNCH_PHOTO_MAX_BYTES * 4) / 3) + 64)
+  photo?: string;
+}
+
+export class ShiftSwapDto {
+  @ApiProperty({ description: 'The colleague who works your shift (you work theirs)' }) @IsUUID() colleagueId!: string;
+  @ApiProperty({ example: '2026-11-20' }) @IsISO8601({ strict: true, strictSeparator: true }) workDate!: string;
+  @ApiProperty() @Transform(trim) @IsString() @Length(3, 500) reason!: string;
+}
+
+export class ShiftSwapResponseDto {
+  @ApiProperty() @IsBoolean() accept!: boolean;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+
+export class ShiftSwapQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: ['mine', 'team'], default: 'mine', description: 'team = swaps you can approve' }) @IsOptional() @IsIn(['mine', 'team']) view?: 'mine' | 'team';
+  @ApiPropertyOptional({ enum: SHIFT_SWAP_STATUSES }) @IsOptional() @IsIn(SHIFT_SWAP_STATUSES) status?: ShiftSwapStatus;
 }
 
 export class CalendarQueryDto {
@@ -107,13 +163,15 @@ export class CalendarQueryDto {
 
 export class DailyQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ example: '2026-11-05', description: 'Defaults to today (organization time zone)' })
-  @IsOptional() @IsISO8601(DATE)
+  @IsOptional()
+  @IsISO8601(DATE)
   date?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsUUID() departmentId?: string;
 
   @ApiPropertyOptional({ enum: ['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'LATE', 'REMOTE'] })
-  @IsOptional() @IsIn(['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'LATE', 'REMOTE'])
+  @IsOptional()
+  @IsIn(['PRESENT', 'HALF_DAY', 'ABSENT', 'IN_PROGRESS', 'MISSED_PUNCH', 'ON_LEAVE', 'LATE', 'REMOTE'])
   status?: string;
 }
 
@@ -262,5 +320,10 @@ export class DevicePunchesDto {
 }
 
 export class BiometricCodeDto {
-  @ApiPropertyOptional({ nullable: true, example: '1042' }) @Transform(emptyToNull) @optionalNullable @IsString() @Matches(/^[A-Za-z0-9_-]{1,30}$/, { message: 'Use up to 30 letters, digits, - or _' }) biometricCode?: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '1042' })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{1,30}$/, { message: 'Use up to 30 letters, digits, - or _' })
+  biometricCode?: string | null;
 }

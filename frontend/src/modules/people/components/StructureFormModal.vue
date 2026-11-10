@@ -28,6 +28,9 @@ const form = reactive({
   latitude: '' as string | number,
   longitude: '' as string | number,
   geofenceRadiusM: '' as string | number,
+  /** One network per line. */
+  allowedNetworks: '',
+  punchPhotoRequired: false,
   isActive: true,
 });
 
@@ -51,6 +54,8 @@ watch(
       latitude: r.latitude ?? '',
       longitude: r.longitude ?? '',
       geofenceRadiusM: r.geofenceRadiusM ?? '',
+      allowedNetworks: (r.allowedNetworks ?? []).join('\n'),
+      punchPhotoRequired: r.punchPhotoRequired ?? false,
       isActive: r.isActive ?? true,
     });
   },
@@ -68,7 +73,24 @@ function body(): Record<string, unknown> {
   if (props.kind === 'grades') return { ...common, code: form.code, level: form.level === '' ? null : Number(form.level), description: form.description };
   if (props.kind === 'cost-centers') return { ...common, code: form.code, description: form.description };
   const num = (v: string | number) => (v === '' || v === null ? null : Number(v));
-  return { ...common, code: form.code, addressLine1: form.addressLine1, city: form.city, state: form.state, country: form.country, timezone: form.timezone, latitude: num(form.latitude), longitude: num(form.longitude), geofenceRadiusM: num(form.geofenceRadiusM) };
+  const networks = form.allowedNetworks
+    .split(/[\n,]/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return {
+    ...common,
+    code: form.code,
+    addressLine1: form.addressLine1,
+    city: form.city,
+    state: form.state,
+    country: form.country,
+    timezone: form.timezone,
+    latitude: num(form.latitude),
+    longitude: num(form.longitude),
+    geofenceRadiusM: num(form.geofenceRadiusM),
+    allowedNetworks: networks.length ? networks : null,
+    punchPhotoRequired: form.punchPhotoRequired,
+  };
 }
 const locating = ref(false);
 function useMyPosition() {
@@ -128,6 +150,18 @@ async function save() {
             <AppInput v-model="form.geofenceRadiusM" label="Radius" type="number" :min="25" :max="50000" suffix="m" :error="fieldErrors.geofenceRadiusM" />
           </div>
           <AppButton class="mt-3" size="sm" variant="secondary" :loading="locating" @click="useMyPosition">Use my current position</AppButton>
+        </fieldset>
+        <fieldset class="space-y-3 rounded-xl border border-line p-4">
+          <legend class="px-1 text-sm font-medium text-fg">Punch-in checks</legend>
+          <AppTextarea
+            v-model="form.allowedNetworks"
+            label="Office networks"
+            :rows="3"
+            placeholder="One per line, e.g. 203.0.113.0/24 or 198.51.100.7"
+            help="Web punch-ins must come from one of these public IP addresses or ranges (except on work-from-home days). Leave empty to allow any network."
+            :error="fieldErrors.allowedNetworks"
+          />
+          <AppSwitch v-model="form.punchPhotoRequired" label="Photo with every punch-in" description="People here take a photo with the camera when they punch in on the web; managers and HR can see it." />
         </fieldset>
       </template>
       <AppTextarea v-if="kind !== 'locations'" v-model="form.description" label="Description" :rows="2" :maxlength="500" :error="fieldErrors.description" />

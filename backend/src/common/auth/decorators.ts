@@ -32,6 +32,22 @@ export const RequireTenant = () => SetMetadata(REQUIRE_TENANT_KEY, true);
  */
 export const AllowRestrictedSession = () => SetMetadata(ALLOW_RESTRICTED_SESSION_KEY, true);
 
+export const AUTHENTICATED_KEY = 'auth:authenticated';
+/**
+ * Any signed-in user, for their own account only (profile, sessions, MFA, notifications). Declares the decision
+ * explicitly; every route must carry one of Public, RequirePermissions, RequirePlatformPermissions, RequireTenant or this.
+ */
+export const Authenticated = () => SetMetadata(AUTHENTICATED_KEY, true);
+
+export const STEP_UP_KEY = 'auth:stepUp';
+/** Minutes a step-up (fresh MFA code or password) stays valid for sensitive actions. */
+export const STEP_UP_MINUTES = 15;
+/**
+ * Sensitive action (decrypted exports, deleting the audit trail): the user must have re-confirmed their identity in
+ * the last few minutes; otherwise the API answers STEP_UP_REQUIRED and the app asks for a code or password.
+ */
+export const RequireStepUp = () => SetMetadata(STEP_UP_KEY, true);
+
 export const CurrentAuth = createParamDecorator((_data: unknown, ctx: ExecutionContext): AuthContext => {
   const req = ctx.switchToHttp().getRequest<Request>();
   if (!req.auth) throw new AppError('UNAUTHENTICATED', 'Authentication required');

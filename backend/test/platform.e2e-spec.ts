@@ -1,5 +1,5 @@
 import { Plan, Role } from '../src/database/models';
-import { PASSWORD, API, RAW, TestContext, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, tokenFromMail, uniqueEmail } from './helpers';
+import { PASSWORD, API, RAW, TestContext, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, tokenFromMail, totp, uniqueEmail } from './helpers';
 
 describe('Platform administration (e2e)', () => {
   let ctx: TestContext;
@@ -14,10 +14,26 @@ describe('Platform administration (e2e)', () => {
     await ctx.close();
   });
 
+  /** A signed-in super admin who has enrolled two-factor authentication (required for platform staff). */
   async function superAdmin() {
     const user = await createUser(ctx, { email: uniqueEmail('root'), firstName: 'Platform', lastName: 'Operator', platformRole: 'SUPER_ADMIN' });
-    return login(ctx, user.email);
+    const s = await login(ctx, user.email);
+    const setup = await ctx.http().post(`${API}/auth/mfa/setup`).set(bearer(s.accessToken));
+    expect(setup.status).toBe(200);
+    expect((await ctx.http().post(`${API}/auth/mfa/enable`).set(bearer(s.accessToken)).send({ code: totp(setup.body.data.secret) })).status).toBe(200);
+    return s;
   }
+
+  it('requires super admins to set up two-factor authentication before platform access', async () => {
+    const user = await createUser(ctx, { email: uniqueEmail('root'), platformRole: 'SUPER_ADMIN' });
+    const s = await login(ctx, user.email);
+    expect(s.body.data.context.mfaSetupRequired).toBe(true);
+    const blocked = await ctx.http().get(`${API}/platform/dashboard`).set(bearer(s.accessToken));
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error.code).toBe('MFA_SETUP_REQUIRED');
+    const status = await ctx.http().get(`${API}/auth/mfa`).set(bearer(s.accessToken));
+    expect(status.body.data.required).toBe(true);
+  });
 
   it('gives super admins platform access without a tenant context', async () => {
     const s = await superAdmin();

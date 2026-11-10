@@ -1,22 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { literal, Op, type Transaction, type WhereOptions } from 'sequelize';
-import { LEAVE_MAX_SPAN_DAYS, type LeaveSession } from '../../contracts';
+import { APPROVAL_LEVEL_LABELS, LEAVE_MAX_SPAN_DAYS, type LeaveSession } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { addDays, monthRange } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
-import { AttendancePeriod, Department, Employee, Holiday, LeaveLedgerEntry, LeaveRequest, LeaveType, User } from '../../database/models';
+import { AttendancePeriod, Department, Employee, Holiday, LeaveLedgerEntry, LeaveRequest, LeaveType, Location, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { AttendanceRulesService } from '../attendance/attendance-rules.service';
+import { AttendanceRulesService, holidayAppliesAt } from '../attendance/attendance-rules.service';
+import { managerAndCover, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { ApplyLeaveDto, CancelLeaveDto, LeaveCalendarQueryDto, LeaveQuoteDto, LeaveRequestQueryDto, RejectLeaveDto, ReviewLeaveDto } from './dto/leave.dto';
 import { appliesTo, LEAVE_EMPLOYEE_ATTRS, LeaveBalanceService, type LeaveYearContext } from './leave-balance.service';
+import { approvalLevelsFor } from './leave-types.service';
 import { countLeaveDays, leaveYearOf, leaveYearRange, sessionsOverlap, type CountedDay } from './leave-policy';
+import { fullName } from '../../common/utils/names';
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const plural = (n: number, w = 'day') => `${n} ${w}${n === 1 ? '' : 's'}`;
 const daysBetween = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86_400_000);
 
@@ -36,7 +38,7 @@ export interface LeaveQuote {
 }
 
 const REQUEST_INCLUDE = [
-  { model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'departmentId'], include: [{ model: Department, attributes: ['id', 'name'] }] },
+  { model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'departmentId', 'managerId'], include: [{ model: Department, attributes: ['id', 'name'] }] },
   { model: LeaveType, attributes: ['id', 'code', 'name', 'color', 'isPaid'] },
 ];
 
@@ -87,6 +89,7 @@ export class LeaveRequestsService {
           days: String(again.days),
           reason: dto.reason,
           requestedById: auth.userId,
+          approvalLevels: approvalLevelsFor(type, again.days),
         },
         { transaction },
       );
@@ -97,8 +100,8 @@ export class LeaveRequestsService {
       return created;
     });
 
-    const approver = await this.managerUserId(employee);
-    if (approver) {
+    for (const approver of await managerAndCover(employee.managerId)) {
+      if (approver === auth.userId) continue;
       await this.notifications.notify(approver, {
         organizationId: auth.organizationId,
         type: 'leave.request',
@@ -116,15 +119,31 @@ export class LeaveRequestsService {
     const { request, employee, type } = await this.forReview(auth, id);
     await this.assertMonthsOpen(request.startDate, request.endDate);
     await this.balances.ensure(auth.organizationId!, [employee], request.leaveYear);
+    const step = { level: request.approvalLevel, userId: auth.userId, name: (await this.actorName(auth.userId)) ?? 'Approver', at: new Date().toISOString(), note: dto.note ?? null };
+    const final = request.approvalLevel >= request.approvalLevels;
     await this.db.transaction(async (transaction) => {
       await this.balances.lockEmployee(employee.id, transaction);
       const fresh = await LeaveRequest.findByPk(id, { transaction });
-      if (fresh!.status !== 'PENDING') throw AppError.conflict(`This request is already ${fresh!.status.toLowerCase()}`);
+      if (fresh!.status !== 'PENDING' || fresh!.approvalLevel !== request.approvalLevel) throw AppError.conflict('This request changed meanwhile; refresh and try again');
       if (!type.unlimited && !type.allowNegativeBalance) {
         const available = await this.balances.available(employee, type, request.leaveYear, request.id, transaction);
         if (available < Number(request.days)) {
           throw AppError.conflict(`${fullName(employee)} has only ${plural(available)} of ${type.name.toLowerCase()} left, so ${plural(Number(request.days))} cannot be approved.`);
         }
+      }
+      const trail = [...(fresh!.approvalTrail ?? []), step];
+      if (!final) {
+        await fresh!.update({ approvalLevel: request.approvalLevel + 1, approvalTrail: trail }, { transaction });
+        await this.audit.record(
+          {
+            action: 'leave.approved_level',
+            entityType: 'LeaveRequest',
+            entityId: id,
+            summary: `${type.code} ${this.range(request)} for ${fullName(employee)} approved at level ${step.level}; waiting for ${APPROVAL_LEVEL_LABELS[step.level + 1]}`,
+          },
+          transaction,
+        );
+        return;
       }
       await LeaveLedgerEntry.create(
         {
@@ -141,20 +160,33 @@ export class LeaveRequestsService {
         },
         { transaction },
       );
-      await fresh!.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
+      await fresh!.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null, approvalTrail: trail }, { transaction });
       await this.audit.record({ action: 'leave.approved', entityType: 'LeaveRequest', entityId: id, summary: `${type.code} ${this.range(request)} for ${fullName(employee)} approved` }, transaction);
     });
-    await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved`, dto.note);
+    if (final) {
+      await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved`, dto.note);
+      return this.get(id);
+    }
+    const next = APPROVAL_LEVEL_LABELS[step.level + 1]!;
+    await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved by ${step.name}; ${next} approves next`, dto.note);
+    // The next level: people who approve leave department- or organization-wide (not the one who just approved).
+    for (const userId of await usersWithPermission('leave.approve', undefined, ['DEPARTMENT', 'ORGANIZATION'])) {
+      if (userId === auth.userId || userId === request.requestedById) continue;
+      await this.notifications.notify(userId, {
+        organizationId: auth.organizationId,
+        type: 'leave.request',
+        title: `${fullName(employee)}'s ${type.name.toLowerCase()} (${plural(Number(request.days))}) needs ${next} approval`,
+        body: `${this.range(request)}. Approved by ${step.name}.`,
+        link: '/hr/leave/requests',
+      });
+    }
     return this.get(id);
   }
 
   async reject(auth: AuthContext, id: string, dto: RejectLeaveDto) {
-    const { request, employee, type } = await this.forReview(auth, id);
+    const { request, employee, type } = await this.forReview(auth, id, 'reject');
     await this.db.transaction(async (transaction) => {
-      const [count] = await LeaveRequest.update(
-        { status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note },
-        { where: { id, status: 'PENDING' }, transaction },
-      );
+      const [count] = await LeaveRequest.update({ status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note }, { where: { id, status: 'PENDING' }, transaction });
       if (!count) throw AppError.conflict('This request is no longer pending');
       await this.audit.record({ action: 'leave.rejected', entityType: 'LeaveRequest', entityId: id, summary: `${type.code} ${this.range(request)} for ${fullName(employee)} rejected` }, transaction);
     });
@@ -210,7 +242,12 @@ export class LeaveRequestsService {
         );
       }
       await this.audit.record(
-        { action: 'leave.cancelled', entityType: 'LeaveRequest', entityId: id, summary: `${type.code} ${this.range(request)} for ${fullName(employee)} cancelled${wasApproved ? ' (days returned)' : ''}` },
+        {
+          action: 'leave.cancelled',
+          entityType: 'LeaveRequest',
+          entityId: id,
+          summary: `${type.code} ${this.range(request)} for ${fullName(employee)} cancelled${wasApproved ? ' (days returned)' : ''}`,
+        },
         transaction,
       );
     });
@@ -255,12 +292,23 @@ export class LeaveRequestsService {
     const { rows, count } = await LeaveRequest.findAndCountAll({
       where: { [Op.and]: filters },
       include: REQUEST_INCLUDE,
-      order: [[literal(`CASE WHEN "LeaveRequest"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'], ['startDate', view === 'mine' ? 'DESC' : 'ASC'], ['createdAt', 'DESC']],
+      order: [
+        [literal(`CASE WHEN "LeaveRequest"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'],
+        ['startDate', view === 'mine' ? 'DESC' : 'ASC'],
+        ['createdAt', 'DESC'],
+      ],
       distinct: true,
       ...paginationArgs(query),
     });
     const names = await this.actorNames(rows);
-    return new PaginatedResult(rows.map((r) => this.present(r, names, self?.id)), paginationMeta(query, count));
+    const reviewable = new Map<string, boolean>();
+    if (view === 'team') {
+      for (const r of rows) if (r.status === 'PENDING' && r.employee) reviewable.set(r.id, !(await this.levelBlock(auth, r, r.employee)));
+    }
+    return new PaginatedResult(
+      rows.map((r) => ({ ...this.present(r, names, self?.id), canApprove: reviewable.get(r.id) ?? false, onBehalfOf: r.employee ? this.scope.delegatedBy(auth, 'leave.approve', r.employee) : null })),
+      paginationMeta(query, count),
+    );
   }
 
   /** Approved and pending leave in a month, within leave.view scope, with holidays. */
@@ -268,13 +316,24 @@ export class LeaveRequestsService {
     const [year, month] = query.month.split('-').map(Number) as [number, number];
     const { from, to, days } = monthRange(year, month);
     const holidays = await Holiday.findAll({ where: { date: { [Op.between]: [from, to] } }, order: [['date', 'ASC']] });
+    const locationIds = [...new Set(holidays.flatMap((h) => h.locationIds ?? []))];
+    const locationNames = new Map(locationIds.length ? (await Location.findAll({ where: { id: locationIds }, attributes: ['id', 'name'] })).map((l) => [l.id, l.name]) : []);
     const scoped = await this.scope.where(auth, 'leave.view', 'employeeId');
-    const base = { month: query.month, days, holidays: holidays.map((h) => ({ date: h.date, name: h.name, isOptional: h.isOptional })) };
+    const base = {
+      month: query.month,
+      days,
+      holidays: holidays.map((h) => ({ date: h.date, name: h.name, isOptional: h.isOptional, locations: (h.locationIds ?? []).map((id) => locationNames.get(id)).filter((n): n is string => !!n) })),
+    };
     if (!scoped) return { ...base, entries: [] };
     const rows = await LeaveRequest.findAll({
       where: { [Op.and]: [scoped, { status: ['PENDING', 'APPROVED'] }, { startDate: { [Op.lte]: to } }, { endDate: { [Op.gte]: from } }] },
       include: [
-        { model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'departmentId'], include: [{ model: Department, attributes: ['id', 'name'] }], ...(query.departmentId ? { where: { departmentId: query.departmentId } } : {}) },
+        {
+          model: Employee,
+          attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'departmentId'],
+          include: [{ model: Department, attributes: ['id', 'name'] }],
+          ...(query.departmentId ? { where: { departmentId: query.departmentId } } : {}),
+        },
         { model: LeaveType, attributes: ['id', 'code', 'name', 'color', 'isPaid'] },
       ],
       order: [['startDate', 'ASC']],
@@ -298,15 +357,7 @@ export class LeaveRequestsService {
 
   // ---- Rules -----------------------------------------------------------------------------------
 
-  private async evaluate(
-    auth: AuthContext,
-    employee: Employee,
-    type: LeaveType,
-    dto: LeaveQuoteDto,
-    ctx: LeaveYearContext,
-    excludeRequestId?: string,
-    transaction?: Transaction,
-  ): Promise<LeaveQuote> {
+  private async evaluate(auth: AuthContext, employee: Employee, type: LeaveType, dto: LeaveQuoteDto, ctx: LeaveYearContext, excludeRequestId?: string, transaction?: Transaction): Promise<LeaveQuote> {
     const issues: Issue[] = [];
     const startSession: LeaveSession = dto.startSession ?? 'FULL';
     const endSession: LeaveSession = dto.startDate === dto.endDate ? startSession : (dto.endSession ?? 'FULL');
@@ -314,7 +365,8 @@ export class LeaveRequestsService {
     const empty: LeaveQuote = { days: 0, breakdown: [], leaveYear, available: null, remainingAfter: null, issues };
 
     if (dto.endDate < dto.startDate) return { ...empty, issues: [{ field: 'endDate', message: 'The end date is before the start date' }] };
-    if (daysBetween(dto.startDate, dto.endDate) >= LEAVE_MAX_SPAN_DAYS) return { ...empty, issues: [{ field: 'endDate', message: 'A request can cover at most a year; split it into several requests' }] };
+    if (daysBetween(dto.startDate, dto.endDate) >= LEAVE_MAX_SPAN_DAYS)
+      return { ...empty, issues: [{ field: 'endDate', message: 'A request can cover at most a year; split it into several requests' }] };
     if (!type.isActive) issues.push({ field: 'leaveTypeId', message: `${type.name} is no longer available` });
     if (!appliesTo(type, employee)) issues.push({ field: 'leaveTypeId', message: `${type.name} does not apply to you` });
     if (!type.allowHalfDay && (startSession !== 'FULL' || endSession !== 'FULL')) issues.push({ field: 'startSession', message: `${type.name} cannot be taken in half days` });
@@ -333,20 +385,26 @@ export class LeaveRequestsService {
     if (dto.startDate < employee.dateOfJoining) issues.push({ field: 'startDate', message: 'The start date is before your date of joining' });
     if (employee.exitDate && dto.endDate > employee.exitDate) issues.push({ field: 'endDate', message: `Your last working day is ${employee.exitDate}` });
     const eligibleFrom = addDays(employee.dateOfJoining, type.eligibleAfterDays);
-    if (type.eligibleAfterDays && dto.startDate < eligibleFrom) issues.push({ field: 'leaveTypeId', message: `${type.name} can be used from ${eligibleFrom} (${type.eligibleAfterDays} days after joining)` });
+    if (type.eligibleAfterDays && dto.startDate < eligibleFrom)
+      issues.push({ field: 'leaveTypeId', message: `${type.name} can be used from ${eligibleFrom} (${type.eligibleAfterDays} days after joining)` });
     if (dto.startDate >= ctx.today) {
       const notice = daysBetween(ctx.today, dto.startDate);
       if (notice < type.minNoticeDays) issues.push({ field: 'startDate', message: `${type.name} needs ${plural(type.minNoticeDays)}' notice (earliest ${addDays(ctx.today, type.minNoticeDays)})` });
     } else {
       const back = daysBetween(dto.startDate, ctx.today);
       if (back > type.maxBackdatedDays) {
-        issues.push({ field: 'startDate', message: type.maxBackdatedDays ? `${type.name} can be applied for up to ${plural(type.maxBackdatedDays)} after the fact` : `${type.name} cannot be applied for past dates` });
+        issues.push({
+          field: 'startDate',
+          message: type.maxBackdatedDays ? `${type.name} can be applied for up to ${plural(type.maxBackdatedDays)} after the fact` : `${type.name} cannot be applied for past dates`,
+        });
       }
     }
 
     // Days.
     const empCtx = await this.rules.context(auth.organizationId!, employee, { from: dto.startDate, to: dto.endDate });
-    const holidayRows = await Holiday.findAll({ where: { date: { [Op.between]: [dto.startDate, dto.endDate] }, isOptional: false }, attributes: ['date'], transaction });
+    const holidayRows = (await Holiday.findAll({ where: { date: { [Op.between]: [dto.startDate, dto.endDate] }, isOptional: false }, attributes: ['date', 'locationIds'], transaction })).filter((h) =>
+      holidayAppliesAt(h, employee.locationId),
+    );
     const restDays = new Set<string>();
     for (let d = dto.startDate; d <= dto.endDate; d = addDays(d, 1)) if (this.rules.isRestDay(empCtx, d)) restDays.add(d);
     const { days, breakdown } = countLeaveDays(dto.startDate, dto.endDate, startSession, endSession, {
@@ -360,12 +418,19 @@ export class LeaveRequestsService {
 
     // Overlaps with other pending or approved leave.
     const others = await LeaveRequest.findAll({
-      where: { employeeId: employee.id, status: ['PENDING', 'APPROVED'], startDate: { [Op.lte]: dto.endDate }, endDate: { [Op.gte]: dto.startDate }, ...(excludeRequestId ? { id: { [Op.ne]: excludeRequestId } } : {}) },
+      where: {
+        employeeId: employee.id,
+        status: ['PENDING', 'APPROVED'],
+        startDate: { [Op.lte]: dto.endDate },
+        endDate: { [Op.gte]: dto.startDate },
+        ...(excludeRequestId ? { id: { [Op.ne]: excludeRequestId } } : {}),
+      },
       include: [{ model: LeaveType, attributes: ['code'] }],
       transaction,
     });
     const clash = others.find((o) => sessionsOverlap(o, { startDate: dto.startDate, endDate: dto.endDate, startSession, endSession }));
-    if (clash) issues.push({ field: 'startDate', message: `You already have ${clash.status === 'PENDING' ? 'a pending' : 'approved'} ${clash.leaveType?.code ?? ''} request for ${this.range(clash)}` });
+    if (clash)
+      issues.push({ field: 'startDate', message: `You already have ${clash.status === 'PENDING' ? 'a pending' : 'approved'} ${clash.leaveType?.code ?? ''} request for ${this.range(clash)}` });
 
     // Closed attendance months (payroll inputs are locked).
     const closed = await this.closedMonths(dto.startDate, dto.endDate);
@@ -385,7 +450,8 @@ export class LeaveRequestsService {
 
   private async closedMonths(from: string, to: string): Promise<string[]> {
     const months: { year: number; month: number }[] = [];
-    for (let d = `${from.slice(0, 7)}-01`; d <= to; d = addDays(monthRange(Number(d.slice(0, 4)), Number(d.slice(5, 7))).to, 1)) months.push({ year: Number(d.slice(0, 4)), month: Number(d.slice(5, 7)) });
+    for (let d = `${from.slice(0, 7)}-01`; d <= to; d = addDays(monthRange(Number(d.slice(0, 4)), Number(d.slice(5, 7))).to, 1))
+      months.push({ year: Number(d.slice(0, 4)), month: Number(d.slice(5, 7)) });
     const rows = await AttendancePeriod.findAll({ where: { [Op.or]: months }, attributes: ['year', 'month'] });
     return rows.map((r) => `${r.year}-${String(r.month).padStart(2, '0')}`);
   }
@@ -409,7 +475,8 @@ export class LeaveRequestsService {
     return type;
   }
 
-  private async forReview(auth: AuthContext, id: string) {
+  /** Any approver in scope can reject; approving also has to fit the request's current level. */
+  private async forReview(auth: AuthContext, id: string, action: 'approve' | 'reject' = 'approve') {
     const request = await LeaveRequest.findByPk(id, { include: [{ model: LeaveType }] });
     if (!request) throw AppError.notFound('Leave request');
     const employee = await Employee.findByPk(request.employeeId, { attributes: LEAVE_EMPLOYEE_ATTRS });
@@ -417,7 +484,26 @@ export class LeaveRequestsService {
     const self = await this.scope.self(auth);
     if (self?.id === employee.id) throw AppError.forbidden('You cannot review your own leave');
     if (request.status !== 'PENDING') throw AppError.conflict(`This request is already ${request.status.toLowerCase()}`);
+    const blocked = action === 'approve' ? await this.levelBlock(auth, request, employee) : null;
+    if (blocked) throw AppError.forbidden(blocked);
     return { request, employee, type: request.leaveType! };
+  }
+
+  /**
+   * Why the caller can't decide at the request's current level (null = they can): after the first level, someone with
+   * department- or organization-wide reach who hasn't approved it already.
+   */
+  private async levelBlock(auth: AuthContext, request: LeaveRequest, employee: Pick<Employee, 'id' | 'managerId' | 'departmentId'>): Promise<string | null> {
+    if (request.approvalLevel <= 1) return null;
+    const label = APPROVAL_LEVEL_LABELS[request.approvalLevel] ?? 'the next level';
+    if ((request.approvalTrail ?? []).some((s) => s.userId === auth.userId)) return `You approved the earlier level; ${label} has to approve this one`;
+    if (!(await this.scope.coversBroadly(auth, 'leave.approve', employee))) return `This request is waiting for ${label} approval`;
+    return null;
+  }
+
+  private async actorName(userId: string): Promise<string | null> {
+    const u = await User.findByPk(userId, { attributes: ['firstName', 'lastName'] });
+    return u ? fullName(u) : null;
   }
 
   private async get(id: string) {
@@ -446,6 +532,12 @@ export class LeaveRequestsService {
       cancelReason: r.cancelReason,
       createdAt: r.createdAt,
       isOwn: selfId ? r.employeeId === selfId : undefined,
+      approval: {
+        level: r.approvalLevel,
+        levels: r.approvalLevels,
+        awaiting: r.status === 'PENDING' ? (APPROVAL_LEVEL_LABELS[r.approvalLevel] ?? null) : null,
+        trail: (r.approvalTrail ?? []).map((s) => ({ level: s.level, name: s.name, at: s.at, note: s.note })),
+      },
     };
   }
 

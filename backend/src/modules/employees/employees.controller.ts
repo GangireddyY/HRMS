@@ -14,6 +14,7 @@ import {
   ImportEmployeesQueryDto,
   LifecycleActionDto,
   OrgChartQueryDto,
+  ReviewBankChangeDto,
   ReviewDocumentDto,
   SensitiveDetailsDto,
   UpdateDocumentDto,
@@ -28,6 +29,7 @@ import { DOCUMENT_UPLOAD_LIMIT_BYTES, EmployeeDocumentsService, type UploadedDoc
 import { EmployeeImportService, IMPORT_FILE_MAX_BYTES } from './employee-import.service';
 import { EmployeeProfileService } from './employee-profile.service';
 import { EmployeesService } from './employees.service';
+import { BankDetailsService } from './bank-details.service';
 
 const UUID = new ParseUUIDPipe();
 
@@ -43,9 +45,30 @@ export class EmployeesController {
     private readonly profile: EmployeeProfileService,
     private readonly documents: EmployeeDocumentsService,
     private readonly importer: EmployeeImportService,
+    private readonly bank: BankDetailsService,
   ) {}
 
   // Static routes first so they are not captured by ":id".
+
+  @Get('bank-changes')
+  @RequirePermissions('employee.view', 'employee.sensitive.view')
+  @ApiOperation({ summary: 'Salary bank account changes waiting for a second approval' })
+  bankChanges(@CurrentAuth() auth: AuthContext) {
+    return this.bank.list(auth);
+  }
+
+  @Post('bank-changes/:changeId/approve')
+  @RequirePermissions('employee.view', 'employee.update', 'employee.sensitive.view')
+  @ApiOperation({ summary: 'Approve a bank account change (not the requester, not the employee)' })
+  approveBankChange(@CurrentAuth() auth: AuthContext, @Param('changeId', UUID) changeId: string) {
+    return this.bank.approve(auth, changeId);
+  }
+
+  @Post('bank-changes/:changeId/reject')
+  @RequirePermissions('employee.view', 'employee.update', 'employee.sensitive.view')
+  rejectBankChange(@CurrentAuth() auth: AuthContext, @Param('changeId', UUID) changeId: string, @Body() dto: ReviewBankChangeDto) {
+    return this.bank.reject(auth, changeId, dto.note);
+  }
 
   @Get('me')
   @RequireTenant()

@@ -1,6 +1,7 @@
 import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
+import { MAX_ALLOWED_NETWORKS } from '../../../contracts';
 import { emptyToNull, emptyToNullUpper, optionalNullable, trim } from '../../../common/validation/transforms';
 import { IsTimeZone } from '../../../common/validation/validators';
 
@@ -85,6 +86,19 @@ export class CreateLocationDto {
   @ApiPropertyOptional({ nullable: true, description: 'Web punch-ins further away than this (metres) are refused, except on work-from-home days' })
   @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(25) @Max(50000)
   geofenceRadiusM?: number | null;
+
+  @ApiPropertyOptional({ type: [String], nullable: true, description: 'Office networks (IP addresses or CIDR ranges) web punch-ins must come from; empty = anywhere. Work-from-home days are exempt.' })
+  @Transform(({ value }) => (Array.isArray(value) && !value.length ? null : value))
+  @optionalNullable
+  @IsArray()
+  @ArrayMaxSize(MAX_ALLOWED_NETWORKS)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  allowedNetworks?: string[] | null;
+
+  @ApiPropertyOptional({ description: 'Web punch-ins need a photo taken with the camera' })
+  @IsOptional() @IsBoolean()
+  punchPhotoRequired?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional() @IsBoolean()

@@ -1,0 +1,22 @@
+/** English interface text (the source catalog). Keys are `area.thing`; plurals are "one|other". */
+export const en = {
+  'shell.offline': "You're offline. What's on screen stays available; punches are saved on this device and sent when you're back.",
+  'shell.notifications': 'Notifications',
+  'shell.notificationsUnread': 'Notifications, {count} unread|Notifications, {count} unread',
+  'search.placeholder': 'Search people, pages, actions…',
+  'search.noResults': 'No results',
+  'search.searching': 'Searching…',
+  'search.hintMove': '↑ ↓ to move',
+  'search.hintOpen': '↵ to open',
+  'search.hintClose': 'Esc to close',
+  'table.export': 'Export CSV',
+  'table.columns': 'Columns',
+  'table.views': 'Views',
+  'table.saveView': 'Save current view…',
+  'table.viewName': 'Name this view',
+  'table.deleteView': 'Delete view {name}',
+  'table.results': '{count} result|{count} results',
+  'common.retry': 'Try again',
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
+} as const;

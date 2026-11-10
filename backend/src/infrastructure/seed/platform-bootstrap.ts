@@ -30,7 +30,7 @@ export const DEFAULT_PLANS: PlanSeed[] = [
     maxUsers: 500,
     monthlyPrice: 24999,
     sortOrder: 2,
-    features: ['employee', 'attendance', 'leave', 'engagement', 'recruitment', 'onboarding', 'payroll', 'performance', 'training', 'compliance', 'exit', 'reports'],
+    features: ['employee', 'attendance', 'leave', 'engagement', 'recruitment', 'onboarding', 'payroll', 'performance', 'training', 'compliance', 'exit', 'reports', 'assets', 'helpdesk'],
   },
   {
     code: 'enterprise',
@@ -39,7 +39,7 @@ export const DEFAULT_PLANS: PlanSeed[] = [
     maxUsers: null,
     monthlyPrice: null,
     sortOrder: 3,
-    features: ['employee', 'recruitment', 'onboarding', 'attendance', 'leave', 'payroll', 'performance', 'training', 'engagement', 'grievance', 'benefits', 'compliance', 'exit', 'reports'],
+    features: ['employee', 'recruitment', 'onboarding', 'attendance', 'leave', 'payroll', 'performance', 'training', 'engagement', 'grievance', 'benefits', 'compliance', 'exit', 'reports', 'assets', 'helpdesk', 'travel'],
   },
 ];
 

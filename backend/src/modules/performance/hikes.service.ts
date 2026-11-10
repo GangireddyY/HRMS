@@ -223,7 +223,7 @@ export class HikesService {
         continue;
       }
       try {
-        const salary = await this.salaries.create(auth, rec.employeeId, {
+        const salary = await this.salaries.createApproved(auth, rec.employeeId, {
           structureId: latest.structureId,
           annualCtc: increasedCtc(Number(latest.annualCtc), Number(rec.percent)),
           effectiveFrom: cycle.hikeEffectiveFrom,

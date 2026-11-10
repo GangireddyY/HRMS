@@ -1,9 +1,12 @@
-import { AuditLog, LogArchive, Notification } from './activity.models';
+import { AuditLog, LogArchive, Notification, PrivacySettings } from './activity.models';
+import { BankDetailChange } from './bank.models';
 import {
   AttendanceDevice,
   AttendanceOvertime,
   AttendancePeriod,
   AttendancePunch,
+
+  ShiftSwap,
   AttendanceRecord,
   AttendanceRegularization,
   Holiday,
@@ -13,49 +16,59 @@ import {
   WorkFromHomeRequest,
   Timesheet,
 } from './attendance.models';
-import { LeaveLedgerEntry, LeaveRequest, LeaveType } from './leave.models';
+import { CompOffRequest, LeaveEncashment, LeaveLedgerEntry, LeaveRequest, LeaveType } from './leave.models';
 import { OnboardingCase, OnboardingTask, OnboardingTemplate, OnboardingTemplateTask, ProbationReview } from './onboarding.models';
 import {
   EmployeeLoan,
   EmployeeLoanRepayment,
   EmployeeSalary,
   PayrollAdjustment,
+  PayGroup,
   PayrollRun,
   PayrollSettings,
   Payslip,
+  ReimbursementApproval,
   ReimbursementClaim,
+  ExpensePolicy,
   SalaryComponentDef,
+  SalaryRevisionRequest,
   SalaryStructure,
   SalaryStructureLine,
+  TaxDeclarationProof,
   TaxDeclarationRecord,
 } from './payroll.models';
-import { HikeRecommendation, PerformanceCycle, PerformanceFeedback, PerformanceGoal, PerformancePip, PerformanceReview, PipCheckIn } from './performance.models';
+import {
+  HikeRecommendation,
+  OkrCheckIn,
+  OkrKeyResult,
+  OkrObjective,
+  OneOnOne,
+  OneOnOneItem,
+  PerformanceCycle,
+  PerformanceFeedback,
+  PerformanceGoal,
+  PerformancePip,
+  PerformanceReview,
+  PipCheckIn,
+} from './performance.models';
 import { Announcement, AnnouncementResponse, Recognition, RecognitionRecipient, Suggestion, Survey, SurveyParticipant, SurveyQuestionRecord, SurveyResponse } from './engagement.models';
 import { GrievanceAttachment, GrievanceCase, GrievanceEvent, GrievanceNote } from './grievance.models';
 import { BenefitEnrollment, BenefitEnrollmentDependent, BenefitPlan, BenefitPlanOption } from './benefits.models';
 import { ComplianceFiling, ComplianceObligation, Policy, PolicyAcknowledgement, PolicyVersion } from './compliance.models';
 import { AlumniProfile, ExitCase, ExitClearanceItem, ExitLetter, ExitSettlement } from './exit.models';
 import { DesignationSkill, EmployeeSkill, Skill, TrainingAttempt, TrainingCourse, TrainingCourseSkill, TrainingEnrollment, TrainingQuestion, TrainingSession } from './training.models';
-import { ApplicationEvent, Candidate, Interview, InterviewPanelist, JobApplication, JobOpening, JobRequisition, Offer } from './recruitment.models';
+import { ApplicationEvent, Candidate, Interview, InterviewPanelist, JobApplication, JobOpening, JobRequisition, LetterTemplate, Offer, OfferDocument } from './recruitment.models';
 import { ActionToken, LoginEvent, MfaRecoveryCode, PasswordHistory, RefreshToken, User, UserAvatar, UserSession } from './identity.models';
 import { Feature, Organization, OrganizationFeature, OrganizationLogo, OrganizationMembership, OrganizationSecurityPolicy, Plan, PlanFeature } from './organization.models';
-import {
-  CostCenter,
-  Department,
-  Designation,
-  Employee,
-  EmployeeDocument,
-  EmployeeEducation,
-  EmployeeExperience,
-  EmployeeFamilyMember,
-  EmployeeLifecycleEvent,
-  Grade,
-  Location,
-} from './people.models';
-import { MembershipRole, Permission, Role, RolePermission } from './rbac.models';
+import { CostCenter, Department, Designation, Employee, EmployeeDocument, EmployeeEducation, EmployeeExperience, EmployeeFamilyMember, EmployeeLifecycleEvent, Grade, Location } from './people.models';
+import { ApprovalDelegation, MembershipRole, Permission, Role, RolePermission } from './rbac.models';
+import { Asset, AssetAssignment, AssetRequest, HelpdeskMessage, HelpdeskTicket, TravelRequest } from './services.models';
+import { OrganizationSsoConfig, SsoLoginState } from './sso.models';
+import { ApiKey, WebhookDelivery, WebhookEndpoint } from './integration.models';
 
 export * from './activity.models';
 export * from './attendance.models';
+export * from './bank.models';
 export * from './identity.models';
 export * from './leave.models';
 export * from './onboarding.models';
@@ -71,6 +84,9 @@ export * from './exit.models';
 export * from './organization.models';
 export * from './people.models';
 export * from './rbac.models';
+export * from './services.models';
+export * from './sso.models';
+export * from './integration.models';
 
 export const ALL_MODELS = [
   User,
@@ -89,12 +105,19 @@ export const ALL_MODELS = [
   OrganizationSecurityPolicy,
   OrganizationLogo,
   OrganizationMembership,
+  OrganizationSsoConfig,
+  SsoLoginState,
+  ApiKey,
+  WebhookEndpoint,
+  WebhookDelivery,
   Permission,
   Role,
   RolePermission,
   MembershipRole,
+  ApprovalDelegation,
   AuditLog,
   LogArchive,
+  PrivacySettings,
   Notification,
   Department,
   Designation,
@@ -115,13 +138,19 @@ export const ALL_MODELS = [
   AttendanceOvertime,
   WorkFromHomeRequest,
   Timesheet,
+  BankDetailChange,
   ShiftRotation,
   ShiftAssignment,
   AttendanceDevice,
   AttendancePunch,
+
+  ShiftSwap,
   LeaveType,
   LeaveRequest,
   LeaveLedgerEntry,
+  CompOffRequest,
+
+  LeaveEncashment,
   OnboardingTemplate,
   OnboardingTemplateTask,
   OnboardingCase,
@@ -135,16 +164,23 @@ export const ALL_MODELS = [
   Interview,
   InterviewPanelist,
   Offer,
+  OfferDocument,
+  LetterTemplate,
   PayrollSettings,
   SalaryComponentDef,
   SalaryStructure,
   SalaryStructureLine,
   EmployeeSalary,
+  SalaryRevisionRequest,
   TaxDeclarationRecord,
+  TaxDeclarationProof,
   PayrollRun,
   Payslip,
   PayrollAdjustment,
+  PayGroup,
   ReimbursementClaim,
+  ReimbursementApproval,
+  ExpensePolicy,
   EmployeeLoan,
   EmployeeLoanRepayment,
   PerformanceCycle,
@@ -154,6 +190,16 @@ export const ALL_MODELS = [
   PerformancePip,
   PipCheckIn,
   HikeRecommendation,
+
+  OkrObjective,
+
+  OkrKeyResult,
+
+  OkrCheckIn,
+
+  OneOnOne,
+
+  OneOnOneItem,
   TrainingCourse,
   TrainingQuestion,
   TrainingSession,
@@ -190,6 +236,12 @@ export const ALL_MODELS = [
   ExitSettlement,
   ExitLetter,
   AlumniProfile,
+  Asset,
+  AssetAssignment,
+  AssetRequest,
+  HelpdeskTicket,
+  HelpdeskMessage,
+  TravelRequest,
 ];
 
 /**
@@ -199,12 +251,17 @@ export const ALL_MODELS = [
  */
 export const TENANT_MODELS = [
   OrganizationSecurityPolicy,
+  OrganizationSsoConfig,
+  ApiKey,
+  WebhookEndpoint,
+  WebhookDelivery,
   OrganizationLogo,
   OrganizationFeature,
   OrganizationMembership,
   Role,
   RolePermission,
   MembershipRole,
+  ApprovalDelegation,
   Department,
   Designation,
   Location,
@@ -224,13 +281,19 @@ export const TENANT_MODELS = [
   AttendanceOvertime,
   WorkFromHomeRequest,
   Timesheet,
+  BankDetailChange,
   ShiftRotation,
   ShiftAssignment,
   AttendanceDevice,
   AttendancePunch,
+
+  ShiftSwap,
   LeaveType,
   LeaveRequest,
   LeaveLedgerEntry,
+  CompOffRequest,
+
+  LeaveEncashment,
   OnboardingTemplate,
   OnboardingTemplateTask,
   OnboardingCase,
@@ -244,16 +307,23 @@ export const TENANT_MODELS = [
   Interview,
   InterviewPanelist,
   Offer,
+  OfferDocument,
+  LetterTemplate,
   PayrollSettings,
   SalaryComponentDef,
   SalaryStructure,
   SalaryStructureLine,
   EmployeeSalary,
+  SalaryRevisionRequest,
   TaxDeclarationRecord,
+  TaxDeclarationProof,
   PayrollRun,
   Payslip,
   PayrollAdjustment,
+  PayGroup,
   ReimbursementClaim,
+  ReimbursementApproval,
+  ExpensePolicy,
   EmployeeLoan,
   EmployeeLoanRepayment,
   PerformanceCycle,
@@ -263,6 +333,16 @@ export const TENANT_MODELS = [
   PerformancePip,
   PipCheckIn,
   HikeRecommendation,
+
+  OkrObjective,
+
+  OkrKeyResult,
+
+  OkrCheckIn,
+
+  OneOnOne,
+
+  OneOnOneItem,
   TrainingCourse,
   TrainingQuestion,
   TrainingSession,
@@ -299,7 +379,14 @@ export const TENANT_MODELS = [
   ExitSettlement,
   ExitLetter,
   AlumniProfile,
+  Asset,
+  AssetAssignment,
+  AssetRequest,
+  HelpdeskTicket,
+  HelpdeskMessage,
+  TravelRequest,
   LogArchive,
+  PrivacySettings,
   // Nullable organization_id (platform-level rows exist); written with explicit organization ids.
   AuditLog,
   LoginEvent,

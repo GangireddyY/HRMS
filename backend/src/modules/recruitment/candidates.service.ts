@@ -15,6 +15,7 @@ import { StorageService } from '../../infrastructure/storage/storage.service';
 import type { CandidateDto, CandidateQueryDto, UpdateCandidateDto } from './dto/recruitment.dto';
 import { parseResume } from './resume-parser';
 import { resumeText } from './resume-text';
+import { fullName } from '../../common/utils/names';
 
 export interface UploadedResume {
   buffer: Buffer;
@@ -23,7 +24,6 @@ export interface UploadedResume {
 }
 
 const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const num = (v: string | null) => (v === null ? null : Number(v));
 const digits = (p: string | null | undefined) => (p ?? '').replace(/\D/g, '').slice(-10);
 
@@ -76,11 +76,24 @@ export class CandidatesService {
     if (query.source) filters.push({ source: query.source });
     if (query.search) {
       const p = containsPattern(query.search);
-      filters.push({ [Op.or]: [{ firstName: { [Op.iLike]: p } }, { lastName: { [Op.iLike]: p } }, { email: { [Op.iLike]: p } }, { phone: { [Op.iLike]: p } }, { currentCompany: { [Op.iLike]: p } }, { currentTitle: { [Op.iLike]: p } }, where(cast(col('Candidate.skills'), 'text'), { [Op.iLike]: p })] });
+      filters.push({
+        [Op.or]: [
+          { firstName: { [Op.iLike]: p } },
+          { lastName: { [Op.iLike]: p } },
+          { email: { [Op.iLike]: p } },
+          { phone: { [Op.iLike]: p } },
+          { currentCompany: { [Op.iLike]: p } },
+          { currentTitle: { [Op.iLike]: p } },
+          where(cast(col('Candidate.skills'), 'text'), { [Op.iLike]: p }),
+        ],
+      });
     }
     const { rows, count } = await Candidate.findAndCountAll({
       where: { [Op.and]: filters },
-      include: [{ model: Employee, as: 'referredBy', attributes: ['id', 'firstName', 'lastName'] }, { model: JobApplication, attributes: ['id', 'stage', 'jobId'], include: [{ model: JobOpening, attributes: ['id', 'title'] }] }],
+      include: [
+        { model: Employee, as: 'referredBy', attributes: ['id', 'firstName', 'lastName'] },
+        { model: JobApplication, attributes: ['id', 'stage', 'jobId'], include: [{ model: JobOpening, attributes: ['id', 'title'] }] },
+      ],
       order: [['createdAt', 'DESC']],
       distinct: true,
       ...paginationArgs(query),
@@ -94,7 +107,10 @@ export class CandidatesService {
   async get(id: string) {
     const c = await this.find(id);
     const apps = await JobApplication.findAll({ where: { candidateId: id }, include: [{ model: JobOpening, attributes: ['id', 'title', 'status'] }], order: [['createdAt', 'DESC']] });
-    return { ...presentCandidate(c), applications: apps.map((a) => ({ id: a.id, stage: a.stage, stageChangedAt: a.stageChangedAt, job: { id: a.job!.id, title: a.job!.title, status: a.job!.status } })) };
+    return {
+      ...presentCandidate(c),
+      applications: apps.map((a) => ({ id: a.id, stage: a.stage, stageChangedAt: a.stageChangedAt, job: { id: a.job!.id, title: a.job!.title, status: a.job!.status } })),
+    };
   }
 
   /** Existing candidates with the same email or phone (last 10 digits). */
@@ -118,9 +134,15 @@ export class CandidatesService {
     if (dto.jobId && (!job || job.status !== 'OPEN')) throw AppError.validation([{ field: 'jobId', message: 'The job is not open' }]);
     try {
       const c = await this.db.transaction(async (transaction) => {
-        const created = await Candidate.create({ ...this.values(dto), organizationId: auth.organizationId!, email: dto.email, firstName: dto.firstName, lastName: dto.lastName, createdById: auth.userId, updatedById: auth.userId }, { transaction });
+        const created = await Candidate.create(
+          { ...this.values(dto), organizationId: auth.organizationId!, email: dto.email, firstName: dto.firstName, lastName: dto.lastName, createdById: auth.userId, updatedById: auth.userId },
+          { transaction },
+        );
         if (job) await this.addApplication(auth.organizationId!, job.id, created.id, created.source, auth.userId, transaction);
-        await this.audit.record({ action: 'candidate.created', entityType: 'Candidate', entityId: created.id, summary: `Candidate ${fullName(created)} added${job ? ` to "${job.title}"` : ''}` }, transaction);
+        await this.audit.record(
+          { action: 'candidate.created', entityType: 'Candidate', entityId: created.id, summary: `Candidate ${fullName(created)} added${job ? ` to "${job.title}"` : ''}` },
+          transaction,
+        );
         return created;
       });
       return this.get(c.id);
@@ -135,7 +157,16 @@ export class CandidatesService {
     if (dto.email && dto.email !== c.email && (await Candidate.count({ where: { email: dto.email } }))) throw AppError.conflict('Another candidate already uses this email');
     const { jobId: _ignored, ...rest } = dto;
     await this.db.transaction(async (transaction) => {
-      await c.update({ ...this.values(rest), ...(rest.email ? { email: rest.email } : {}), ...(rest.firstName ? { firstName: rest.firstName } : {}), ...(rest.lastName ? { lastName: rest.lastName } : {}), updatedById: auth.userId }, { transaction });
+      await c.update(
+        {
+          ...this.values(rest),
+          ...(rest.email ? { email: rest.email } : {}),
+          ...(rest.firstName ? { firstName: rest.firstName } : {}),
+          ...(rest.lastName ? { lastName: rest.lastName } : {}),
+          updatedById: auth.userId,
+        },
+        { transaction },
+      );
       await this.audit.record({ action: 'candidate.updated', entityType: 'Candidate', entityId: id, summary: `Candidate ${fullName(c)} updated` }, transaction);
     });
     return this.get(id);
@@ -167,12 +198,25 @@ export class CandidatesService {
     const skills = text ? parseResume(text, await this.skillNames(transaction)).skills : [];
     const key = `organizations/${organizationId}/candidates/${candidate.id}/resumes/${randomUUID()}`;
     const ext = type === 'application/pdf' ? 'pdf' : 'docx';
-    const stem = (file!.originalname.split(/[\\/]/).pop() ?? '').replace(/[\u0000-\u001f\u007f"<>:|?*]/g, '').replace(/\.[^.]*$/, '').trim().slice(0, 200) || `${fullName(candidate)} resume`;
+    const stem =
+      (file!.originalname.split(/[\\/]/).pop() ?? '')
+        .replace(/[\u0000-\u001f\u007f"<>:|?*]/g, '')
+        .replace(/\.[^.]*$/, '')
+        .trim()
+        .slice(0, 200) || `${fullName(candidate)} resume`;
     await this.storage.put(key, file!.buffer, type);
     const previous = candidate.resumeKey;
     try {
       await candidate.update(
-        { resumeKey: key, resumeFileName: `${stem}.${ext}`, resumeContentType: type, resumeSize: file!.size, resumeUploadedAt: new Date(), ...(skills.length ? { skills } : {}), ...(auth ? { updatedById: auth.userId } : {}) },
+        {
+          resumeKey: key,
+          resumeFileName: `${stem}.${ext}`,
+          resumeContentType: type,
+          resumeSize: file!.size,
+          resumeUploadedAt: new Date(),
+          ...(skills.length ? { skills } : {}),
+          ...(auth ? { updatedById: auth.userId } : {}),
+        },
         { transaction },
       );
     } catch (e) {

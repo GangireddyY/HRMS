@@ -64,7 +64,10 @@ export class OvertimeService {
         { model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode'] },
         { model: AttendanceRecord, attributes: ['id', 'checkInAt', 'checkOutAt', 'workedMinutes'] },
       ],
-      order: [[literal(`CASE WHEN "AttendanceOvertime"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'], ['workDate', 'DESC']],
+      order: [
+        [literal(`CASE WHEN "AttendanceOvertime"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'],
+        ['workDate', 'DESC'],
+      ],
       ...paginationArgs(query),
     });
     const [reviewers, runs] = await Promise.all([this.names(rows.map((r) => r.reviewedById)), this.runs(rows.map((r) => r.payrollRunId))]);
@@ -79,7 +82,10 @@ export class OvertimeService {
       const minutes = dto.minutes ?? o.minutes;
       if (minutes > o.minutes) throw AppError.validation([{ field: 'minutes', message: `Can't be more than the ${o.minutes} minutes worked` }]);
       await o.update({ status: 'APPROVED', approvedMinutes: minutes, reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
-      await this.audit.record({ action: 'attendance.overtime_approved', entityType: 'AttendanceOvertime', entityId: o.id, summary: `${hours(minutes)} overtime of ${fullName(employee)} on ${o.workDate} approved` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.overtime_approved', entityType: 'AttendanceOvertime', entityId: o.id, summary: `${hours(minutes)} overtime of ${fullName(employee)} on ${o.workDate} approved` },
+        transaction,
+      );
       await this.tell(employee, `${hours(minutes)} overtime on ${o.workDate} approved`, 'It will be paid with the next payroll.', transaction);
     });
     return this.get(auth, id);
@@ -89,14 +95,22 @@ export class OvertimeService {
     if (!dto.note || dto.note.trim().length < 3) throw AppError.validation([{ field: 'note', message: 'Give a reason' }]);
     await this.review(auth, id, async (o, employee, transaction) => {
       await o.update({ status: 'REJECTED', approvedMinutes: null, reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note }, { transaction });
-      await this.audit.record({ action: 'attendance.overtime_rejected', entityType: 'AttendanceOvertime', entityId: o.id, summary: `Overtime of ${fullName(employee)} on ${o.workDate} not approved` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.overtime_rejected', entityType: 'AttendanceOvertime', entityId: o.id, summary: `Overtime of ${fullName(employee)} on ${o.workDate} not approved` },
+        transaction,
+      );
       await this.tell(employee, `Overtime on ${o.workDate} was not approved`, dto.note ?? undefined, transaction);
     });
     return this.get(auth, id);
   }
 
   private async get(auth: AuthContext, id: string) {
-    const o = (await AttendanceOvertime.findByPk(id, { include: [{ model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode'] }, { model: AttendanceRecord, attributes: ['id', 'checkInAt', 'checkOutAt', 'workedMinutes'] }] }))!;
+    const o = (await AttendanceOvertime.findByPk(id, {
+      include: [
+        { model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode'] },
+        { model: AttendanceRecord, attributes: ['id', 'checkInAt', 'checkOutAt', 'workedMinutes'] },
+      ],
+    }))!;
     const self = await this.scope.self(auth);
     return this.present(o, await this.names([o.reviewedById]), await this.runs([o.payrollRunId]), self?.id ?? null);
   }
@@ -105,7 +119,10 @@ export class OvertimeService {
     await this.db.transaction(async (transaction) => {
       const o = await AttendanceOvertime.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
       if (!o) throw AppError.notFound('Overtime');
-      const employee = (await Employee.findByPk(o.employeeId, { attributes: ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId'], transaction }))!;
+      const employee = (await Employee.findByPk(o.employeeId, {
+        attributes: ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId'],
+        transaction,
+      }))!;
       if (!(await this.scope.covers(auth, 'attendance.regularize.approve', employee))) throw AppError.notFound('Overtime');
       if (auth.membershipId && employee.membershipId === auth.membershipId) throw AppError.forbidden("You can't review your own overtime");
       if (o.status !== 'PENDING') throw AppError.conflict(`This overtime is already ${o.status.toLowerCase()}`);

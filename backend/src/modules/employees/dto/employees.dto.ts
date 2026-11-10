@@ -1,24 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  ArrayUnique,
-  IsArray,
-  IsBoolean,
-  IsEmail,
-  IsIn,
-  IsInt,
-  IsISO8601,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Length,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import {
   AADHAAR_PATTERN,
   BLOOD_GROUPS,
@@ -56,7 +38,8 @@ const lowerEmail = ({ value }: { value: unknown }) => {
 
 export class EmployeeListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: EMPLOYEE_STATUSES })
-  @IsOptional() @IsIn(EMPLOYEE_STATUSES)
+  @IsOptional()
+  @IsIn(EMPLOYEE_STATUSES)
   status?: EmployeeStatus;
 
   @ApiPropertyOptional() @IsOptional() @IsUUID() departmentId?: string;
@@ -67,36 +50,51 @@ export class EmployeeListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() costCenterId?: string;
 
   @ApiPropertyOptional({ enum: EMPLOYMENT_TYPES })
-  @IsOptional() @IsIn(EMPLOYMENT_TYPES)
+  @IsOptional()
+  @IsIn(EMPLOYMENT_TYPES)
   employmentType?: EmploymentType;
 }
 
 export class CreateEmployeeDto {
   @ApiPropertyOptional({ nullable: true, description: 'Generated (EMP-0001…) when omitted' })
-  @Transform(emptyToNullUpper) @optionalNullable @Matches(/^[A-Z0-9][A-Z0-9_/-]{0,29}$/, { message: 'employeeCode may contain letters, numbers, -, _ and / (max 30)' })
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @Matches(/^[A-Z0-9][A-Z0-9_/-]{0,29}$/, { message: 'employeeCode may contain letters, numbers, -, _ and / (max 30)' })
   employeeCode?: string | null;
 
   @ApiProperty() @Transform(trim) @IsString() @Length(1, 100) firstName!: string;
   @ApiProperty() @Transform(trim) @IsString() @Length(1, 100) lastName!: string;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(lowerEmail) @optionalNullable @IsEmail() @MaxLength(254)
+  @Transform(lowerEmail)
+  @optionalNullable
+  @IsEmail()
+  @MaxLength(254)
   workEmail?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(lowerEmail) @optionalNullable @IsEmail() @MaxLength(254)
+  @Transform(lowerEmail)
+  @optionalNullable
+  @IsEmail()
+  @MaxLength(254)
   personalEmail?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @Matches(PHONE, { message: 'phone must be a valid phone number' })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @Matches(PHONE, { message: 'phone must be a valid phone number' })
   phone?: string | null;
 
   @ApiPropertyOptional({ nullable: true, example: '1994-05-21' })
-  @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsISO8601(DATE)
   dateOfBirth?: string | null;
 
   @ApiPropertyOptional({ enum: GENDERS, nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsIn(GENDERS)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsIn(GENDERS)
   gender?: Gender | null;
 
   @ApiProperty({ example: '2026-01-15' })
@@ -104,7 +102,8 @@ export class CreateEmployeeDto {
   dateOfJoining!: string;
 
   @ApiPropertyOptional({ enum: EMPLOYMENT_TYPES })
-  @IsOptional() @IsIn(EMPLOYMENT_TYPES)
+  @IsOptional()
+  @IsIn(EMPLOYMENT_TYPES)
   employmentType?: EmploymentType;
 
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsUUID() departmentId?: string | null;
@@ -113,57 +112,83 @@ export class CreateEmployeeDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsUUID() managerId?: string | null;
 
   @ApiPropertyOptional({ nullable: true, description: 'Assigned shift; empty = the organization default' })
-  @Transform(emptyToNull) @optionalNullable @IsUUID()
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsUUID()
   shiftId?: string | null;
 
   @ApiPropertyOptional({ nullable: true, description: 'Link to an existing user account in the organization' })
-  @Transform(emptyToNull) @optionalNullable @IsUUID()
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsUUID()
   membershipId?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsISO8601(DATE)
   probationEndDate?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(500)
   address?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(120)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(120)
   emergencyContactName?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @Matches(PHONE, { message: 'emergencyContactPhone must be a valid phone number' })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @Matches(PHONE, { message: 'emergencyContactPhone must be a valid phone number' })
   emergencyContactPhone?: string | null;
 
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsUUID() gradeId?: string | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsUUID() costCenterId?: string | null;
 
   @ApiPropertyOptional({ enum: MARITAL_STATUSES, nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsIn(MARITAL_STATUSES)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsIn(MARITAL_STATUSES)
   maritalStatus?: MaritalStatus | null;
 
   @ApiPropertyOptional({ enum: BLOOD_GROUPS, nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsIn(BLOOD_GROUPS)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsIn(BLOOD_GROUPS)
   bloodGroup?: BloodGroup | null;
 
   @ApiPropertyOptional({ nullable: true, description: 'ISO 3166-1 alpha-2', example: 'IN' })
-  @Transform(emptyToNullUpper) @optionalNullable @Matches(/^[A-Z]{2}$/, { message: 'nationality must be a 2-letter country code' })
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @Matches(/^[A-Z]{2}$/, { message: 'nationality must be a 2-letter country code' })
   nationality?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(500)
   permanentAddress?: string | null;
 
   @ApiPropertyOptional({ nullable: true, minimum: 0, maximum: 365 })
-  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(0) @Max(365)
+  @Transform(({ value }) => (value === '' ? null : value))
+  @optionalNullable
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(365)
   noticePeriodDays?: number | null;
 }
 
 /** Profile fields; placement (department, designation, location, manager, grade, cost center, status) changes go through lifecycle actions. */
-export class UpdateEmployeeDto extends PartialType(
-  OmitType(CreateEmployeeDto, ['departmentId', 'designationId', 'locationId', 'managerId', 'gradeId', 'costCenterId'] as const),
-) {}
+export class UpdateEmployeeDto extends PartialType(OmitType(CreateEmployeeDto, ['departmentId', 'designationId', 'locationId', 'managerId', 'gradeId', 'costCenterId'] as const)) {}
 
 /** Fields an employee may change on their own record (self.profile.update). */
 export class UpdateMyEmployeeDto extends PartialType(
@@ -172,7 +197,11 @@ export class UpdateMyEmployeeDto extends PartialType(
 
 export class CreateFromMembersDto {
   @ApiProperty({ type: [String], description: 'Organization users to create employee records for' })
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(200) @ArrayUnique() @IsUUID('all', { each: true })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(200)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
   membershipIds!: string[];
 }
 
@@ -193,45 +222,72 @@ export class LifecycleActionDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsUUID() costCenterId?: string | null;
 
   @ApiPropertyOptional({ enum: EMPLOYEE_STATUSES })
-  @IsOptional() @IsIn(EMPLOYEE_STATUSES)
+  @IsOptional()
+  @IsIn(EMPLOYEE_STATUSES)
   status?: EmployeeStatus;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(500)
   note?: string | null;
 }
 
 export class SensitiveDetailsDto {
   @ApiPropertyOptional({ nullable: true, example: 'ABCDE1234F' })
-  @Transform(emptyToNullUpper) @optionalNullable @Matches(PAN_PATTERN, { message: 'pan must look like ABCDE1234F' })
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @Matches(PAN_PATTERN, { message: 'pan must look like ABCDE1234F' })
   pan?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @Matches(UAN_PATTERN, { message: 'uan must be 12 digits' })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @Matches(UAN_PATTERN, { message: 'uan must be 12 digits' })
   uan?: string | null;
 
+  @ApiPropertyOptional({ nullable: true, description: 'ESIC insurance (IP) number, 10 or 17 digits' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s-]/g, '') || null : value))
+  @optionalNullable
+  @Matches(/^(\d{10}|\d{17})$/, { message: 'esiNumber must be 10 or 17 digits' })
+  esiNumber?: string | null;
+
   @ApiPropertyOptional({ nullable: true })
-  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\s/g, '') || null : value)) @optionalNullable @Matches(/^[0-9]{6,18}$/, { message: 'bankAccountNumber must be 6–18 digits' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\s/g, '') || null : value))
+  @optionalNullable
+  @Matches(/^[0-9]{6,18}$/, { message: 'bankAccountNumber must be 6–18 digits' })
   bankAccountNumber?: string | null;
 
   @ApiPropertyOptional({ nullable: true, example: 'HDFC0001234' })
-  @Transform(emptyToNullUpper) @optionalNullable @Matches(IFSC_PATTERN, { message: 'bankIfsc must look like HDFC0001234' })
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @Matches(IFSC_PATTERN, { message: 'bankIfsc must look like HDFC0001234' })
   bankIfsc?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(100)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(100)
   bankName?: string | null;
 
   @ApiPropertyOptional({ nullable: true, description: '12-digit Aadhaar number' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s-]/g, '') || null : value)) @optionalNullable @Matches(AADHAAR_PATTERN, { message: 'aadhaar must be a valid 12-digit Aadhaar number' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s-]/g, '') || null : value))
+  @optionalNullable
+  @Matches(AADHAAR_PATTERN, { message: 'aadhaar must be a valid 12-digit Aadhaar number' })
   aadhaar?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNullUpper) @optionalNullable @Matches(PASSPORT_PATTERN, { message: 'passportNumber must be 6–12 letters and digits' })
+  @Transform(emptyToNullUpper)
+  @optionalNullable
+  @Matches(PASSPORT_PATTERN, { message: 'passportNumber must be 6–12 letters and digits' })
   passportNumber?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsISO8601(DATE)
   passportExpiry?: string | null;
 }
 
@@ -244,15 +300,21 @@ export class FamilyMemberDto {
   relationship!: FamilyRelationship;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsISO8601(DATE)
   dateOfBirth?: string | null;
 
   @ApiPropertyOptional({ enum: GENDERS, nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsIn(GENDERS)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsIn(GENDERS)
   gender?: Gender | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @Matches(PHONE, { message: 'phone must be a valid phone number' })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @Matches(PHONE, { message: 'phone must be a valid phone number' })
   phone?: string | null;
 
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isDependent?: boolean;
@@ -266,21 +328,37 @@ export class EducationDto {
   @ApiProperty({ example: 'B.Tech' }) @Transform(trim) @IsString() @Length(1, 120) qualification!: string;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(120)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(120)
   specialization?: string | null;
 
   @ApiProperty() @Transform(trim) @IsString() @Length(2, 200) institution!: string;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(1950) @Max(2100)
+  @Transform(({ value }) => (value === '' ? null : value))
+  @optionalNullable
+  @Type(() => Number)
+  @IsInt()
+  @Min(1950)
+  @Max(2100)
   startYear?: number | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(1950) @Max(2100)
+  @Transform(({ value }) => (value === '' ? null : value))
+  @optionalNullable
+  @Type(() => Number)
+  @IsInt()
+  @Min(1950)
+  @Max(2100)
   endYear?: number | null;
 
   @ApiPropertyOptional({ nullable: true, description: 'Grade, percentage or CGPA' })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(30)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(30)
   score?: string | null;
 }
 
@@ -291,11 +369,17 @@ export class ExperienceDto {
   @ApiProperty({ example: '2023-12-31' }) @IsISO8601(DATE) endDate!: string;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(120)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(120)
   location?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(500)
   description?: string | null;
 }
 
@@ -305,7 +389,8 @@ export class UpdateExperienceDto extends PartialType(ExperienceDto) {}
 
 export class OrgChartQueryDto {
   @ApiPropertyOptional({ description: 'Direct reports of this employee (default: the top of the visible hierarchy)' })
-  @IsOptional() @IsUUID()
+  @IsOptional()
+  @IsUUID()
   managerId?: string;
 }
 
@@ -318,11 +403,21 @@ export class UploadDocumentDto {
   @ApiProperty() @Transform(trim) @IsString() @Length(2, 200) title!: string;
 
   @ApiPropertyOptional({ nullable: true, example: '2030-12-31' })
-  @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsISO8601(DATE)
   expiryDate?: string | null;
 }
 
 export class UpdateDocumentDto extends PartialType(UploadDocumentDto) {}
+
+export class ReviewBankChangeDto {
+  @ApiPropertyOptional({ nullable: true, description: 'Required when rejecting' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string | null;
+}
 
 export class ReviewDocumentDto {
   @ApiProperty({ enum: ['VERIFIED', 'REJECTED'] })
@@ -330,18 +425,27 @@ export class ReviewDocumentDto {
   status!: 'VERIFIED' | 'REJECTED';
 
   @ApiPropertyOptional({ nullable: true, description: 'Required when rejecting' })
-  @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500)
+  @Transform(emptyToNull)
+  @optionalNullable
+  @IsString()
+  @MaxLength(500)
   note?: string | null;
 }
 
 export class ExpiringDocumentsQueryDto {
   @ApiPropertyOptional({ minimum: 0, maximum: 365, default: 30, description: 'Include documents expiring within this many days (expired ones are always included)' })
-  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(365)
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(365)
   days?: number;
 }
 
 export class ImportEmployeesQueryDto {
   @ApiPropertyOptional({ description: 'true = validate only and report problems; nothing is saved' })
-  @IsOptional() @Transform(({ value }) => value === true || value === 'true' || value === '1') @IsBoolean()
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
   dryRun?: boolean;
 }

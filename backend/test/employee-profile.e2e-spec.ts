@@ -1,4 +1,7 @@
+import { createCipheriv, randomBytes } from 'node:crypto';
 import { AuditLog, Employee, EmployeeDocument, Notification } from '../src/database/models';
+import { reencryptAll } from '../src/database/reencrypt';
+import { EncryptionService } from '../src/infrastructure/crypto/encryption.service';
 import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n');
@@ -30,6 +33,38 @@ describe('Employee profile, documents, import and hierarchy (e2e)', () => {
     expect(res.status).toBe(201);
     return { user, employee: res.body.data, h: bearer((await login(ctx, user.email)).accessToken) };
   }
+
+  it('changes a salary bank account only after a second person approves (maker-checker)', async () => {
+    const { organization, h } = await adminSession();
+    const asha = await person(organization.id, h, ['employee'], { workEmail: 'asha.bank@example.test' });
+    const second = await person(organization.id, h, ['org_admin']);
+    const url = `${API}/employees/${asha.employee.id}/sensitive`;
+
+    // The first account is applied directly; the employee is told.
+    const first = await ctx.http().put(url).set(h).send({ bankAccountNumber: '111122223333', bankIfsc: 'HDFC0001234', bankName: 'HDFC Bank' });
+    expect(first.status).toBe(200);
+    expect(first.body.data).toMatchObject({ bankAccountNumber: '111122223333', pendingBankChange: null });
+    expect(ctx.mail.outbox.some((m) => m.to === 'asha.bank@example.test' && m.text.includes('ending 3333'))).toBe(true);
+
+    // Replacing it creates a request; payroll keeps the current account.
+    const change = await ctx.http().put(url).set(h).send({ bankAccountNumber: '999988887777', bankIfsc: 'ICIC0004321', bankName: 'ICICI Bank', pan: 'ABCDE1234F' });
+    expect(change.status).toBe(200);
+    expect(change.body.data).toMatchObject({ bankAccountNumber: '111122223333', pan: 'ABCDE1234F', pendingBankChange: { accountLast4: '7777', ifsc: 'ICIC0004321', canReview: false } });
+    const changeId = change.body.data.pendingBankChange.id;
+
+    // Neither the requester nor the employee can approve it.
+    expect((await ctx.http().post(`${API}/employees/bank-changes/${changeId}/approve`).set(h)).status).toBe(403);
+    expect((await ctx.http().post(`${API}/employees/bank-changes/${changeId}/approve`).set(asha.h)).status).toBe(403);
+
+    const queue = await ctx.http().get(`${API}/employees/bank-changes`).set(second.h);
+    expect(queue.body.data).toEqual([expect.objectContaining({ id: changeId, accountLast4: '7777', canReview: true })]);
+    expect((await ctx.http().post(`${API}/employees/bank-changes/${changeId}/approve`).set(second.h)).status).toBe(201);
+    const after = await ctx.http().get(url).set(h);
+    expect(after.body.data).toMatchObject({ bankAccountNumber: '999988887777', bankIfsc: 'ICIC0004321', pendingBankChange: null });
+    const actions = (await AuditLog.findAll({ where: { entityId: asha.employee.id }, ...RAW })).map((a) => a.action);
+    expect(actions).toEqual(expect.arrayContaining(['employee.bank_change_requested', 'employee.bank_change_approved']));
+    expect(ctx.mail.outbox.some((m) => m.to === 'asha.bank@example.test' && m.text.includes('changed to one ending 7777'))).toBe(true);
+  });
 
   it('manages grades and cost centers and records them through lifecycle actions', async () => {
     const { h } = await adminSession();
@@ -102,9 +137,54 @@ describe('Employee profile, documents, import and hierarchy (e2e)', () => {
     const saved = await ctx.http().put(`${API}/employees/${e.id}/sensitive`).set(h).send({ aadhaar: '2345 6789 0123', passportNumber: 'z1234567', passportExpiry: '2031-01-01' });
     expect(saved.body.data).toMatchObject({ aadhaar: '234567890123', passportNumber: 'Z1234567', passportExpiry: '2031-01-01' });
     const row = await Employee.findByPk(e.id, RAW);
-    expect(row!.aadhaarEncrypted).toMatch(/^v1:/);
+    expect(row!.aadhaarEncrypted).toMatch(/^k1:/);
     expect(row!.passportEncrypted).not.toContain('Z1234567');
     expect(row!.aadhaarLast4).toBe('0123');
+  });
+
+  it('stores contact details encrypted, bound to the employee', async () => {
+    const { h } = await adminSession();
+    const contact = { address: '4 Residency Road, Bengaluru', permanentAddress: '9 Temple St, Mysuru', emergencyContactName: 'Meena Rao', emergencyContactPhone: '+91 98450 00000' };
+    const e = (await ctx.http().post(`${API}/employees`).set(h).send({ firstName: 'Kiran', lastName: 'Rao', dateOfJoining: '2025-02-03', ...contact })).body.data;
+    expect(e).toMatchObject(contact);
+    const other = (await ctx.http().post(`${API}/employees`).set(h).send({ firstName: 'Lata', lastName: 'Iyer', dateOfJoining: '2025-02-03', address: 'Old plain address' })).body.data;
+    const row = await Employee.findByPk(e.id, RAW);
+    for (const v of [row!.address, row!.permanentAddress, row!.emergencyContactName, row!.emergencyContactPhone]) expect(v).toMatch(/^k1:/);
+    expect(row!.address).not.toContain('Residency');
+    // Values written before encryption (plain text) still read until the re-encrypt job converts them.
+    await Employee.update({ address: 'Legacy plain address' }, { where: { id: other.id }, ...RAW });
+    expect((await ctx.http().get(`${API}/employees/${other.id}`).set(h)).body.data.address).toBe('Legacy plain address');
+    // Ciphertext moved to another employee's row doesn't decrypt there.
+    await Employee.update({ address: row!.address }, { where: { id: other.id }, ...RAW });
+    expect((await ctx.http().get(`${API}/employees/${other.id}`).set(h)).status).toBe(500);
+    const updated = await ctx.http().patch(`${API}/employees/${other.id}`).set(h).send({ address: 'New Street 5' });
+    expect(updated.body.data.address).toBe('New Street 5');
+  });
+
+  it('re-encrypts legacy values (earlier format, plain contact details) with the current key and context', async () => {
+    const { h } = await adminSession();
+    const e = (await ctx.http().post(`${API}/employees`).set(h).send({ firstName: 'Old', lastName: 'Record', dateOfJoining: '2025-02-03' })).body.data;
+    const crypto = ctx.app.get(EncryptionService);
+    // Earlier format: v1, no context.
+    const key = Buffer.from(process.env.DATA_ENCRYPTION_KEY!, 'base64');
+    const iv = randomBytes(12);
+    const c = createCipheriv('aes-256-gcm', key, iv);
+    const data = Buffer.concat([c.update('ABCDE1234F', 'utf8'), c.final()]);
+    const legacyPan = ['v1', iv.toString('base64'), c.getAuthTag().toString('base64'), data.toString('base64')].join(':');
+    await Employee.update({ panEncrypted: legacyPan, address: 'Plain street 1' }, { where: { id: e.id }, ...RAW });
+
+    const dry = await reencryptAll(ctx.db.sequelize, crypto, { dryRun: true });
+    expect(dry.filter((r) => r.rewritten).map((r) => r.field).sort()).toEqual(['employees.address', 'employees.pan_encrypted']);
+    expect((await Employee.findByPk(e.id, RAW))!.panEncrypted).toBe(legacyPan);
+    const results = await reencryptAll(ctx.db.sequelize, crypto);
+    expect(results.every((r) => r.failed === 0)).toBe(true);
+    const row = (await Employee.findByPk(e.id, RAW))!;
+    expect(row.panEncrypted).toMatch(/^k1:/);
+    expect(row.address).toMatch(/^k1:/);
+    expect((await ctx.http().get(`${API}/employees/${e.id}/sensitive`).set(h)).body.data.pan).toBe('ABCDE1234F');
+    expect((await ctx.http().get(`${API}/employees/${e.id}`).set(h)).body.data.address).toBe('Plain street 1');
+    // Nothing left to do on a second run.
+    expect((await reencryptAll(ctx.db.sequelize, crypto)).every((r) => r.rewritten === 0)).toBe(true);
   });
 
   it('uploads, verifies and serves documents with access control', async () => {
@@ -117,6 +197,13 @@ describe('Employee profile, documents, import and hierarchy (e2e)', () => {
     const fake = await ctx.http().post(url).set(me.h).field('category', 'IDENTITY').field('title', 'PAN card').attach('file', Buffer.from('<html>not a pdf</html>'), 'pan.pdf');
     expect(fake.status).toBe(422);
     expect((await ctx.http().post(url).set(me.h).field('category', 'IDENTITY').field('title', 'PAN card').attach('file', Buffer.concat([PDF, Buffer.alloc(10 * 1024 * 1024)]), 'big.pdf')).status).toBe(422);
+    // Malware (the EICAR test signature inside a valid PDF) is blocked before storage, and audited.
+    const eicar = Buffer.concat([PDF, Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*')]);
+    const infected = await ctx.http().post(url).set(me.h).field('category', 'IDENTITY').field('title', 'PAN card').attach('file', eicar, 'pan.pdf');
+    expect(infected.status).toBe(422);
+    expect(infected.body.error.code).toBe('FILE_REJECTED');
+    expect(await EmployeeDocument.count({ where: { employeeId: me.employee.id }, ...RAW })).toBe(0);
+    expect(await AuditLog.count({ where: { organizationId: organization.id, action: 'security.upload_blocked' }, ...RAW })).toBe(1);
 
     const mine = await ctx.http().post(url).set(me.h).field('category', 'IDENTITY').field('title', 'PAN card').field('expiryDate', '2020-01-01').attach('file', PDF, '../../etc/pan card.exe');
     expect(mine.status).toBe(201);

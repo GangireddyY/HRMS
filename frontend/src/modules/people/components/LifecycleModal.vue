@@ -7,6 +7,7 @@ import { LIFECYCLE_LABELS, employeeStatusOptions } from '@/modules/people/utils/
 import { AppAlert, AppButton, AppDatePicker, AppModal, AppSelect, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { localToday } from '@/shared/utils/dates';
 
 const props = defineProps<{ open: boolean; employee: EmployeeDetail; action: LifecycleAction }>();
 const emit = defineEmits<{ close: []; saved: [employee: EmployeeDetail] }>();
@@ -18,7 +19,7 @@ const grades = useAsync(() => structureApi.grades());
 const costCenters = useAsync(() => structureApi.costCenters());
 const managers = useAsync(() => employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }));
 
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const { fieldErrors, formError, handle, reset } = useFormErrors();
 const saving = ref(false);
 const form = reactive({

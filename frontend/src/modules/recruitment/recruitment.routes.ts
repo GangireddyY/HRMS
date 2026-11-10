@@ -15,6 +15,12 @@ export const recruitmentHrRoutes: RouteRecordRaw[] = [
   { path: 'recruitment/applications/:id', name: 'hr-application', component: () => import('./pages/ApplicationPage.vue'), meta: { title: 'Application', access: view } },
   { path: 'recruitment/candidates', name: 'hr-candidates', component: () => import('./pages/CandidatesPage.vue'), meta: { title: 'Candidates', access: view } },
   { path: 'recruitment/candidates/:id', name: 'hr-candidate', component: () => import('./pages/CandidatePage.vue'), meta: { title: 'Candidate', access: view } },
+  {
+    path: 'recruitment/offer-letter',
+    name: 'hr-offer-letter',
+    component: () => import('./pages/OfferLetterSettingsPage.vue'),
+    meta: { title: 'Offers & letters', access: { permissions: ['recruitment.offer.manage'], feature: 'recruitment' } },
+  },
 ];
 
 /** My Workspace (/me): interviews where the user is a panelist. */
@@ -26,4 +32,5 @@ export const recruitmentSelfRoutes: RouteRecordRaw[] = [
 export const careersRoutes: RouteRecordRaw[] = [
   { path: '/careers/:slug', name: 'careers', component: () => import('./pages/CareersPage.vue'), meta: { title: 'Careers', public: true } },
   { path: '/careers/:slug/jobs/:jobId', name: 'careers-job', component: () => import('./pages/CareerJobPage.vue'), meta: { title: 'Careers', public: true } },
+  { path: '/offer/:token', name: 'offer-portal', component: () => import('./pages/OfferPortalPage.vue'), meta: { title: 'Your offer', public: true } },
 ];

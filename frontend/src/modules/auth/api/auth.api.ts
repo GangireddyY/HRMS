@@ -1,5 +1,5 @@
 import type { AccessContext, AppearancePreferences, AuthUser, LoginResult, PasswordPolicy, TokenRefreshResult } from '@contracts';
-import { http, type ListQuery } from '@/core/http/http-client';
+import { API_BASE, http, type ListQuery } from '@/core/http/http-client';
 import type { LoginEventRow } from '@/modules/audit/types';
 import type { MfaSetup, MfaStatus, SessionRow, TokenInspection } from '../types';
 
@@ -7,6 +7,15 @@ export const authApi = {
   login: (body: { email: string; password: string; organizationId?: string }) => http.post<LoginResult>('/auth/login', body, { anonymous: true }),
   verifyMfa: (body: { challengeToken: string; code?: string; recoveryCode?: string }) => http.post<LoginResult>('/auth/mfa/verify', body, { anonymous: true }),
   refresh: () => http.post<TokenRefreshResult>('/auth/refresh', {}, { anonymous: true }),
+  ssoDiscover: (email: string) =>
+    http.post<{ organizationSlug: string; organizationName: string; buttonLabel: string; required: boolean } | null>('/auth/sso/discover', { email }, { anonymous: true }),
+  /** Full-page navigation to the organization's identity provider (comes back signed in). */
+  ssoStartUrl: (slug: string, opts: { email?: string; returnTo?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.email) q.set('email', opts.email);
+    if (opts.returnTo) q.set('returnTo', opts.returnTo);
+    return `${API_BASE}/auth/sso/start/${encodeURIComponent(slug)}${q.size ? `?${q}` : ''}`;
+  },
   logout: () => http.post<{ loggedOut: boolean }>('/auth/logout', {}, { anonymous: true }),
   forgotPassword: (email: string) => http.post<{ message: string }>('/auth/forgot-password', { email }, { anonymous: true }),
   inspectToken: (token: string, purpose: 'PASSWORD_RESET' | 'INVITATION') => http.post<TokenInspection>('/auth/tokens/inspect', { token, purpose }, { anonymous: true }),

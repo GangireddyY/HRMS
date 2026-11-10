@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch, type Component } from 'vue';
+import { computed, nextTick, reactive, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Briefcase, Building2, Check, CircleAlert, HeartPulse, Info, KeyRound, MapPinHouse, Phone, Save, UserRound } from '@lucide/vue';
 import type { BloodGroup, EmploymentType, Gender, MaritalStatus } from '@contracts';
@@ -12,10 +12,12 @@ import { COUNTRY_OPTIONS } from '@/shared/utils/options';
 import { AppAlert, AppAvatar, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppInput, AppPageHeader, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { useUnsavedGuard } from '@/shared/composables/use-unsaved-guard';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
-import { formatDate } from '@/shared/utils/format';
+import { formatDate } from '@/shared/utils/format';
 import { profileCover } from '@/shared/utils/profile-cover';
+import { localToday } from '@/shared/utils/dates';
 
 /** Add or edit an employee record: grouped sections, a live preview with what's still missing, and a sticky save bar. */
 const route = useRoute();
@@ -46,7 +48,7 @@ const form = reactive({
   phone: '',
   dateOfBirth: undefined as string | undefined,
   gender: null as Gender | null,
-  dateOfJoining: new Date().toISOString().slice(0, 10) as string | undefined,
+  dateOfJoining: localToday() as string | undefined,
   employmentType: 'FULL_TIME' as EmploymentType,
   probationEndDate: undefined as string | undefined,
   departmentId: null as string | null,
@@ -96,7 +98,14 @@ watch(existing.data, (e) => {
     noticePeriodDays: e.noticePeriodDays ?? '',
   });
   sameAddress.value = !e.permanentAddress;
+  void nextTick(() => (baseline.value = snapshotForm()));
 });
+
+/** What the user has changed since the page opened (or the record loaded). */
+const snapshotForm = () => JSON.stringify({ ...form, sameAddress: sameAddress.value });
+const baseline = ref(snapshotForm());
+const dirty = computed(() => snapshotForm() !== baseline.value);
+const guard = useUnsavedGuard(dirty, { message: 'The employee details you entered are not saved yet. If you leave now, they will be lost.' });
 
 // Picking a user account fills in the name and work email when they are still empty.
 watch(
@@ -163,6 +172,7 @@ async function save() {
   try {
     const saved = isEdit.value ? await employeesApi.update(id.value!, body()) : await employeesApi.create(body());
     feedback.success(isEdit.value ? 'Employee updated' : 'Employee added', isEdit.value ? undefined : `${saved.fullName} · ${saved.employeeCode}`);
+    guard.allowLeave();
     await router.push(`/hr/employees/${saved.id}`);
   } catch (e) {
     handle(e, 'Could not save employee');
@@ -171,7 +181,7 @@ async function save() {
   }
 }
 
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const canSave = computed(() => !!form.firstName.trim() && !!form.lastName.trim() && !!form.dateOfJoining);
 
 // ---- Helpers shown beside the fields -------------------------------------------------------------------------

@@ -32,7 +32,16 @@ export class CareersService {
     return this.forOrganization(slug, async (org) => {
       const jobs = await JobOpening.findAll({
         where: { status: 'OPEN', isPublic: true, [Op.or]: [{ closesOn: null }, { closesOn: { [Op.gte]: new Date().toISOString().slice(0, 10) } }] },
-        include: [{ model: JobRequisition, attributes: ['id', 'employmentType', 'departmentId', 'locationId'], include: [{ model: Department, attributes: ['id', 'name'] }, { model: Location, attributes: ['id', 'name'] }] }],
+        include: [
+          {
+            model: JobRequisition,
+            attributes: ['id', 'employmentType', 'departmentId', 'locationId'],
+            include: [
+              { model: Department, attributes: ['id', 'name'] },
+              { model: Location, attributes: ['id', 'name'] },
+            ],
+          },
+        ],
         order: [['openedAt', 'DESC']],
         limit: 200,
       });
@@ -76,11 +85,20 @@ export class CareersService {
         }
         if (await JobApplication.count({ where: { jobId: job.id, candidateId: candidate.id }, transaction })) return null;
         const app = await this.candidates.addApplication(org.id, job.id, candidate.id, 'CAREERS', null, transaction);
-        await this.audit.record({ organizationId: org.id, action: 'application.received', entityType: 'JobApplication', entityId: app.id, summary: `Careers application for "${job.title}"` }, transaction);
+        await this.audit.record(
+          { organizationId: org.id, action: 'application.received', entityType: 'JobApplication', entityId: app.id, summary: `Careers application for "${job.title}"` },
+          transaction,
+        );
         return app;
       });
       if (created && job.createdById) {
-        await this.notifications.notify(job.createdById, { organizationId: org.id, type: 'recruitment.application', title: `New application for ${job.title}`, body: `${dto.firstName} ${dto.lastName}`, link: `/hr/recruitment/jobs/${job.id}` });
+        await this.notifications.notify(job.createdById, {
+          organizationId: org.id,
+          type: 'recruitment.application',
+          title: `New application for ${job.title}`,
+          body: `${dto.firstName} ${dto.lastName}`,
+          link: `/hr/recruitment/jobs/${job.id}`,
+        });
       }
       return RECEIVED;
     });
@@ -101,7 +119,16 @@ export class CareersService {
   private async publicJob(jobId: string): Promise<JobOpening> {
     const j = await JobOpening.findOne({
       where: { id: jobId, status: 'OPEN', isPublic: true, [Op.or]: [{ closesOn: null }, { closesOn: { [Op.gte]: new Date().toISOString().slice(0, 10) } }] },
-      include: [{ model: JobRequisition, attributes: ['id', 'employmentType', 'departmentId', 'locationId'], include: [{ model: Department, attributes: ['id', 'name'] }, { model: Location, attributes: ['id', 'name'] }] }],
+      include: [
+        {
+          model: JobRequisition,
+          attributes: ['id', 'employmentType', 'departmentId', 'locationId'],
+          include: [
+            { model: Department, attributes: ['id', 'name'] },
+            { model: Location, attributes: ['id', 'name'] },
+          ],
+        },
+      ],
     });
     if (!j) throw AppError.notFound('Job');
     return j;

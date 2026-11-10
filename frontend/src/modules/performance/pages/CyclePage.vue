@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { AlertCircle, BarChart3, CalendarDays, Check, Circle, Eye, FilterX, Lock, Pencil, Rocket, Settings2, Trash2, TrendingUp, UserPlus, UsersRound } from '@lucide/vue';
+import { AlertCircle, BarChart3, CalendarDays, Check, Circle, Eye, FilterX, Grid3x3, Lock, Pencil, Rocket, Settings2, Trash2, TrendingUp, UserPlus, UsersRound } from '@lucide/vue';
 import type { ReviewStage } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import ColleaguePicker from '@/modules/performance/components/ColleaguePicker.vue';
@@ -312,6 +312,7 @@ const isOverdue = (r: ReviewRow) => !!r.due && r.due < today;
                 </li>
               </ul>
               <p v-if="!rated" class="mt-3 rounded-md bg-surface-muted/70 px-3 py-2 text-xs text-fg-muted">Ratings appear here as managers complete their reviews.</p>
+              <AppButton v-if="canConfigure && c.status !== 'DRAFT'" class="mt-3 w-full" size="sm" variant="secondary" :icon="Grid3x3" :to="`/hr/performance/cycles/${c.id}/calibration`">Calibration & 9-box</AppButton>
             </AppCard>
 
             <AppCard title="Key dates" :icon="CalendarDays">

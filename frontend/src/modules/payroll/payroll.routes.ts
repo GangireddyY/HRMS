@@ -10,14 +10,21 @@ export const payrollHrRoutes: RouteRecordRaw[] = [
   { path: 'payroll/payslips/:id', name: 'hr-payslip', component: () => import('./pages/PayslipPage.vue'), meta: { title: 'Payslip', access: view } },
   { path: 'payroll/salaries', name: 'hr-salaries', component: () => import('./pages/SalariesPage.vue'), meta: { title: 'Salaries', access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } } },
   {
+    path: 'payroll/salary-revisions',
+    name: 'hr-salary-revisions',
+    component: () => import('./pages/SalaryRevisionsPage.vue'),
+    meta: { title: 'Salary revisions', access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } },
+  },
+  {
     path: 'payroll/reimbursements',
     name: 'hr-reimbursements',
     component: () => import('./pages/ReimbursementsPage.vue'),
-    meta: { title: 'Reimbursements', access: { permissions: ['payroll.reimbursement.approve', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
+    meta: { title: 'Reimbursements', access: { permissions: ['payroll.reimbursement.approve', 'payroll.reimbursement.finance', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
   },
   { path: 'payroll/setup', name: 'hr-payroll-setup', component: () => import('./pages/PayrollSetupPage.vue'), meta: { title: 'Payroll setup', access: { permissions: ['payroll.configure', 'payroll.view'], feature: 'payroll' } } },
   { path: 'payroll/loans', name: 'hr-loans', component: () => import('./pages/LoansPage.vue'), meta: { title: 'Loans & advances', access: loanHandlers } },
   { path: 'payroll/loans/:id', name: 'hr-loan', component: () => import('./pages/LoanPage.vue'), meta: { title: 'Loan', access: loanHandlers } },
+  { path: 'payroll/tax', name: 'hr-payroll-tax', component: () => import('./pages/TaxCompliancePage.vue'), meta: { title: 'Tax proofs & returns', access: { permissions: ['payroll.process'], feature: 'payroll' } } },
 ];
 
 /** My Workspace (/me): payslips, salary & tax declaration, reimbursement claims. */

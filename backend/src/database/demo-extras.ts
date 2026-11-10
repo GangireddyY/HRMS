@@ -5,8 +5,9 @@
  * too, right after creating the demo organizations.
  */
 import 'reflect-metadata';
-import { loadEnvFile } from './env-file';
+import { loadEnvFile, refuseDemoDataInProduction } from './env-file';
 loadEnvFile();
+refuseDemoDataInProduction('db:seed:demo-extras');
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

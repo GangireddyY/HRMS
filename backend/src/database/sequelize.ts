@@ -15,18 +15,21 @@ export interface DatabaseConnection {
 /**
  * Reads DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD and DB_SSL from the environment.
  * Used by CLIs (migrations) that run without the Nest config module; the API validates the same keys in config/env.ts.
+ * With `{ migration: true }`, DB_MIGRATION_USER / DB_MIGRATION_PASSWORD (the schema owner) are used when set, so the
+ * API itself can run as a least-privilege role that can't alter tables or disable the audit trail's triggers.
  */
-export function databaseConnectionFromEnv(env: NodeJS.ProcessEnv = process.env): DatabaseConnection {
+export function databaseConnectionFromEnv(env: NodeJS.ProcessEnv = process.env, opts: { migration?: boolean } = {}): DatabaseConnection {
   const missing = ['DB_NAME', 'DB_USER', 'DB_PASSWORD'].filter((key) => !env[key]);
   if (missing.length) throw new Error(`Missing database configuration: ${missing.join(', ')}`);
   const port = Number(env.DB_PORT || 5432);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`Invalid DB_PORT "${env.DB_PORT}"`);
+  const owner = opts.migration && env.DB_MIGRATION_USER;
   return {
     host: env.DB_HOST || 'localhost',
     port,
     name: env.DB_NAME!,
-    user: env.DB_USER!,
-    password: env.DB_PASSWORD!,
+    user: owner ? env.DB_MIGRATION_USER! : env.DB_USER!,
+    password: owner ? (env.DB_MIGRATION_PASSWORD ?? '') : env.DB_PASSWORD!,
     ssl: env.DB_SSL === 'true' || env.DB_SSL === '1',
   };
 }

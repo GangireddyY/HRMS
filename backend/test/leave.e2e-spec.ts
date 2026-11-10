@@ -173,7 +173,7 @@ describe('Leave (e2e)', () => {
 
     // Closing a month locks leave changes in it.
     const lastMonth = lastWorkdayBefore(`${today.slice(0, 7)}-01`);
-    const late = (await ctx.http().post(`${API}/leave/types`).set(h).send({ code: 'CO', name: 'Compensatory off', annualQuota: 5, accrualFrequency: 'YEARLY', maxBackdatedDays: 90 })).body.data;
+    const late = (await ctx.http().post(`${API}/leave/types`).set(h).send({ code: 'XO', name: 'Extra off', annualQuota: 5, accrualFrequency: 'YEARLY', maxBackdatedDays: 90 })).body.data;
     const co = (await ctx.http().post(`${API}/leave/requests`).set(me.h).send({ leaveTypeId: late.id, startDate: lastMonth, endDate: lastMonth, reason: 'Worked on Sunday' })).body.data;
     expect((await ctx.http().post(`${API}/leave/requests/${co.id}/approve`).set(h).send({})).status).toBe(201);
     const [y, m] = lastMonth.split('-').map(Number);

@@ -72,6 +72,18 @@ export class LogArchive extends Model<InferAttributes<LogArchive>, InferCreation
   purgedBy?: NonAttribute<User | null>;
 }
 
+/** Retention schedules for personal data (DPDP); defaults apply until an organization saves its own. */
+@Table({ tableName: 'privacy_settings', underscored: true })
+export class PrivacySettings extends Model<InferAttributes<PrivacySettings>, InferCreationAttributes<PrivacySettings>> {
+  @PrimaryKey @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.SMALLINT) exitedRetentionYears: CreationOptional<number>;
+  @Column(DataType.SMALLINT) candidateRetentionMonths: CreationOptional<number>;
+  @Column(DataType.DATE) candidatesPurgedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
 @Table({ tableName: 'notifications', underscored: true, updatedAt: false })
 export class Notification extends Model<InferAttributes<Notification>, InferCreationAttributes<Notification>> {
   @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)

@@ -42,6 +42,13 @@ interface AuthHooks {
   /** Returns true when a new access token was obtained. */
   refresh(): Promise<boolean>;
   onSessionEnded(): void;
+  /** Asks the user to re-confirm their identity for a sensitive action; true when they did (the request is retried). */
+  stepUp?(message: string): Promise<boolean>;
+}
+
+/** Resolves when the user re-confirmed their identity after STEP_UP_REQUIRED. */
+async function confirmStepUp(status: number, payload: { error?: ApiErrorBody } | null): Promise<boolean> {
+  return status === 403 && payload?.error?.code === 'STEP_UP_REQUIRED' && !!hooks?.stepUp && (await hooks.stepUp(payload.error.message ?? ''));
 }
 
 let hooks: AuthHooks | null = null;
@@ -57,7 +64,11 @@ interface RequestOptions {
   /** Do not attach the token or attempt refresh (auth endpoints). */
   anonymous?: boolean;
   signal?: AbortSignal;
+  /** Set on the first attempt of a write and kept for its retries (refresh, step-up), so the server runs it once. */
+  idempotencyKey?: string;
 }
+
+const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function buildUrl(path: string, query?: Query): string {
   const params = new URLSearchParams();
@@ -94,13 +105,18 @@ function toApiError(status: number, err: ApiErrorBody | undefined): ApiError {
   return new ApiError(status, 'BAD_REQUEST', `The request couldn't be completed (error ${status}). Please try again.`);
 }
 
-async function send(method: string, path: string, opts: RequestOptions, isRetry = false): Promise<{ data: unknown; meta?: PaginationMeta }> {
+async function send(method: string, path: string, opts: RequestOptions, isRetry = false, steppedUp = false): Promise<{ data: unknown; meta?: PaginationMeta }> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   const isForm = opts.body instanceof FormData;
   // The browser sets the multipart boundary itself for FormData bodies.
   if (opts.body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
   const token = opts.anonymous ? null : hooks?.getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (!opts.anonymous && WRITES.has(method)) {
+    // randomUUID needs a secure context (https or localhost); plain-http LAN testing falls back to random values.
+    opts.idempotencyKey ??= typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+    headers['Idempotency-Key'] = opts.idempotencyKey;
+  }
 
   let res: Response;
   try {
@@ -124,10 +140,19 @@ async function send(method: string, path: string, opts: RequestOptions, isRetry 
   const error = toApiError(res.status, payload?.error);
 
   if (res.status === 401 && !opts.anonymous && hooks) {
-    if (!isRetry && (await hooks.refresh())) return send(method, path, opts, true);
+    if (!isRetry && (await hooks.refresh())) return send(method, path, opts, true, steppedUp);
     hooks.onSessionEnded();
   }
+  if (!steppedUp && (await confirmStepUp(res.status, payload))) return send(method, path, opts, isRetry, true);
   throw error;
+}
+
+/** A long-lived authenticated GET (server-sent events); refreshes the session once on 401. */
+export async function openStream(path: string, signal: AbortSignal): Promise<Response> {
+  const request = () => fetch(buildUrl(path), { headers: { Accept: 'text/event-stream', Authorization: `Bearer ${hooks?.getToken() ?? ''}` }, credentials: 'same-origin', signal });
+  let res = await request();
+  if (res.status === 401 && hooks && (await hooks.refresh())) res = await request();
+  return res;
 }
 
 export const http = {
@@ -163,7 +188,12 @@ export const http = {
       throw new ApiError(0, 'NETWORK_ERROR', 'Unable to reach the server. Check your connection and try again.');
     }
     if (res.ok) return res.blob();
-    const payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
+    let payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
+    if (await confirmStepUp(res.status, payload)) {
+      res = await request();
+      if (res.ok) return res.blob();
+      payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
+    }
     throw toApiError(res.status, payload?.error);
   },
   /** multipart/form-data upload of a single file, with optional text fields and query parameters. */
@@ -201,8 +231,12 @@ export async function downloadFile(path: string, query: Query | undefined, fallb
     throw new ApiError(0, 'NETWORK_ERROR', 'Unable to reach the server. Check your connection and try again.');
   }
   if (!res.ok) {
-    const payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
-    throw toApiError(res.status, payload?.error);
+    let payload = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
+    if (await confirmStepUp(res.status, payload)) {
+      res = await request();
+      payload = res.ok ? null : res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null;
+    }
+    if (!res.ok) throw toApiError(res.status, payload?.error);
   }
   const name = dispositionName(res.headers.get('content-disposition')) ?? fallbackName;
   const url = URL.createObjectURL(await res.blob());
@@ -211,6 +245,24 @@ export async function downloadFile(path: string, query: Query | undefined, fallb
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Opens an authenticated printable document (HTML from the API, e.g. Form 16) in a new tab. The tab is opened first so
+ * pop-up blockers allow it, then pointed at the downloaded copy.
+ */
+export async function openDocument(path: string, query?: Query): Promise<void> {
+  const tab = window.open('', '_blank');
+  try {
+    const blob = await http.download(path, query);
+    const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: 'text/html' }));
+    if (tab) tab.location.href = url;
+    else window.location.assign(url);
+    setTimeout(() => URL.revokeObjectURL(url), 120_000);
+  } catch (e) {
+    tab?.close();
+    throw e;
+  }
 }
 
 /** Resolves an API-relative asset path (e.g. an organization logo) to a URL usable in <img src>. */

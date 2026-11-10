@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { APPEARANCE_PREFERENCE_KEYS, type AccessContext, type AppearancePreferences, type LoginResult, type OrganizationSummary, type PasswordPolicy } from '../../contracts';
+import { APPEARANCE_PREFERENCE_KEYS, type AccessContext, type AppearancePreferences, type DelegatedGrant, type LoginResult, type OrganizationSummary, type PasswordPolicy } from '../../contracts';
 import { literal, type Transaction } from 'sequelize';
 import { AppConfig } from '../../config/app-config.service';
 import type { AuthContext } from '../../common/auth/auth-context';
@@ -16,8 +16,10 @@ import {
   MembershipRole,
   Organization,
   OrganizationMembership,
+  OrganizationSsoConfig,
   Plan,
   RefreshToken,
+  Role,
   User,
   UserSession,
 } from '../../database/models';
@@ -66,6 +68,17 @@ const CROSS_TENANT = { skipTenantScope: true } as const;
 
 const withSecrets = () => User.scope('withSecrets');
 
+/** One entry per person being covered for, with the approvals taken over. */
+function actingFor(grants: DelegatedGrant[]): AccessContext['actingFor'] {
+  const by = new Map<string, AccessContext['actingFor'][number]>();
+  for (const g of grants) {
+    const entry = by.get(g.delegatorMembershipId) ?? { name: g.delegatorName, endsOn: g.endsOn, permissions: [] };
+    entry.permissions.push(g.permission);
+    by.set(g.delegatorMembershipId, entry);
+  }
+  return [...by.values()];
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -91,12 +104,15 @@ export class AuthService {
     const user = await withSecrets().findOne({ where: { email: dto.email } });
     const policy = user ? await this.policies.forUser(user.id) : DEFAULT_SECURITY_POLICY;
 
+    // The password is always checked (same timing for known and unknown accounts). Only someone who knows the password
+    // learns an account is locked: a wrong guess against a locked account looks like any other wrong guess.
+    const passwordOk = await this.hasher.verify(user?.passwordHash, dto.password);
     if (user?.lockedUntil && user.lockedUntil > new Date()) {
       await this.recordLogin('LOCKED', dto.email, meta, { userId: user.id, reason: 'account_locked' });
-      throw new AppError('ACCOUNT_LOCKED', 'Account temporarily locked due to repeated failed sign-in attempts. Try again later or reset your password.');
+      if (passwordOk) throw new AppError('ACCOUNT_LOCKED', 'Account temporarily locked due to repeated failed sign-in attempts. Try again later or reset your password.');
+      throw new AppError('INVALID_CREDENTIALS', 'Invalid email or password');
     }
 
-    const passwordOk = await this.hasher.verify(user?.passwordHash, dto.password);
     if (!user || !passwordOk) {
       if (user) await this.registerFailure(user, policy.lockout, meta, 'invalid_password');
       else await this.recordLogin('FAILURE', dto.email, meta, { reason: 'unknown_user' });
@@ -109,6 +125,10 @@ export class AuthService {
     }
 
     const organizationId = await this.pickOrganization(user, dto.organizationId);
+    if (organizationId && (await this.ssoRequired(user.id, organizationId))) {
+      await this.recordLogin('FAILURE', dto.email, meta, { userId: user.id, organizationId, reason: 'sso_required' });
+      throw new AppError('SSO_REQUIRED', 'Your organization signs in with single sign-on. Choose "Sign in with SSO".');
+    }
 
     if (user.mfaEnabled) {
       if (user.failedLoginCount > 0) await user.update({ failedLoginCount: 0 });
@@ -178,10 +198,19 @@ export class AuthService {
 
   // ── Password recovery & invitations ─────────────────────────────────────
 
+  /**
+   * Answers the same way, and as fast, whether or not the account exists: the reset is issued in the background
+   * (awaited only in tests so integration tests can read the email).
+   */
   async forgotPassword(email: string): Promise<void> {
     const user = await User.findOne({ where: { email } });
     if (!user || user.status !== 'ACTIVE') return;
+    const work = this.issuePasswordReset(user);
+    if (this.config.isTest) await work;
+    else work.catch((e: unknown) => this.logger.error(`Password reset for user ${user.id} failed`, (e as Error).stack));
+  }
 
+  private async issuePasswordReset(user: User): Promise<void> {
     const raw = generateToken();
     await this.db.transaction(async (transaction) => {
       await ActionToken.update({ usedAt: new Date() }, { where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null }, transaction });
@@ -435,7 +464,28 @@ export class AuthService {
 
   // ── Internals ────────────────────────────────────────────────────────────
 
-  private async completeLogin(user: User, organizationId: string | null, meta: ClientMeta, mfaVerified: boolean): Promise<AuthOutcome<LoginResult>> {
+  /**
+   * Completes a sign-in the organization's identity provider vouched for (SSO). The provider just verified the
+   * person, so the session also counts as a fresh step-up.
+   */
+  async completeSsoLogin(userId: string, organizationId: string, meta: ClientMeta): Promise<AuthOutcome<LoginResult>> {
+    const user = await withSecrets().findByPk(userId);
+    if (!user || user.status !== 'ACTIVE') throw new AppError('ACCOUNT_DISABLED', 'Your account is disabled. Contact your administrator.');
+    const org = await this.pickOrganization(user, organizationId);
+    return this.completeLogin(user, org, meta, true, true);
+  }
+
+  /** SSO is required for the member (organization admins keep their password as a fallback). */
+  private async ssoRequired(userId: string, organizationId: string): Promise<boolean> {
+    const config = await OrganizationSsoConfig.findOne({ where: { organizationId, enabled: true, required: true }, attributes: ['organizationId'], ...CROSS_TENANT });
+    if (!config) return false;
+    const membership = await OrganizationMembership.findOne({ where: { userId, organizationId }, attributes: ['id'], ...CROSS_TENANT });
+    if (!membership) return false;
+    const admin = await MembershipRole.count({ where: { membershipId: membership.id }, include: [{ model: Role, where: { key: 'org_admin' }, attributes: [] }], ...CROSS_TENANT });
+    return admin === 0;
+  }
+
+  private async completeLogin(user: User, organizationId: string | null, meta: ClientMeta, mfaVerified: boolean, stepUp = false): Promise<AuthOutcome<LoginResult>> {
     const policy = await this.policies.forOrganization(organizationId);
     const created = await this.sessions.create({
       userId: user.id,
@@ -445,6 +495,7 @@ export class AuthService {
       mfaVerified,
       limits: policy.session,
     });
+    if (stepUp) await UserSession.update({ stepUpAt: new Date() }, { where: { id: created.session.id } });
     await User.update(
       { lastLoginAt: new Date(), lastOrganizationId: organizationId ?? user.lastOrganizationId, failedLoginCount: 0, lockedUntil: null },
       { where: { id: user.id } },
@@ -566,11 +617,7 @@ export class AuthService {
 
   private async notifySecurity(user: Pick<User, 'id' | 'email' | 'firstName'>, event: string): Promise<void> {
     await this.notifications.notify(user.id, { type: 'security', title: event, link: '/me/security' });
-    try {
-      await this.mail.send(securityAlertEmail(user.email, user.firstName, event));
-    } catch (e) {
-      this.logger.error(`Failed to send security alert to user ${user.id}`, (e as Error).stack);
-    }
+    await this.mail.queue(securityAlertEmail(user.email, user.firstName, event));
   }
 
   private toAuthUser(user: User): AccessContext['user'] {
@@ -593,13 +640,13 @@ export class AuthService {
     const memberships = await OrganizationMembership.findAll({
       where: { userId, status: 'ACTIVE' },
       attributes: ['id'],
-      include: [{ model: Organization, where: { status: 'ACTIVE' }, attributes: ['id', 'name', 'slug', 'status', 'logoUrl', 'brandColor'] }],
+      include: [{ model: Organization, where: { status: 'ACTIVE' }, attributes: ['id', 'name', 'slug', 'status', 'logoUrl', 'brandColor', 'currency'] }],
       order: [['organization', 'name', 'ASC']],
       ...CROSS_TENANT,
     });
     const organizations: OrganizationSummary[] = memberships.map((m) => {
       const o = m.organization!;
-      return { id: o.id, name: o.name, slug: o.slug, status: o.status, logoUrl: o.logoUrl, brandColor: o.brandColor };
+      return { id: o.id, name: o.name, slug: o.slug, status: o.status, logoUrl: o.logoUrl, brandColor: o.brandColor, currency: o.currency };
     });
 
     let resolved: Awaited<ReturnType<AccessService['resolve']>> | null = null;
@@ -617,10 +664,11 @@ export class AuthService {
       activeOrganization: resolved ? (organizations.find((o) => o.id === organizationId) ?? null) : null,
       organizations,
       roles: resolved?.roles ?? [],
-      permissions: Object.fromEntries(resolved?.permissions ?? []),
+      permissions: { ...Object.fromEntries((resolved?.delegated ?? []).map((d) => [d.permission, d.scope])), ...Object.fromEntries(resolved?.permissions ?? []) },
+      actingFor: actingFor(resolved?.delegated ?? []),
       platformPermissions: platformPermissionsFor(user.platformRole),
       features: [...(resolved?.features ?? [])],
-      mfaSetupRequired: policy.mfaRequired && !user.mfaEnabled,
+      mfaSetupRequired: this.policies.mfaRequiredFor(policy, user) && !user.mfaEnabled,
       passwordExpired: isPasswordExpired(user.passwordChangedAt, policy.password.maxAgeDays),
       idleTimeoutMinutes: policy.session.idleTimeoutMinutes,
     };

@@ -46,12 +46,7 @@ const OLD_REGIME: RegimeRules = {
   standardDeduction: 50_000,
   slabs: (age) => {
     const exempt = age >= 80 ? 5 * L : age >= 60 ? 3 * L : 2.5 * L;
-    return [
-      { upTo: exempt, rate: 0 },
-      ...(exempt < 5 * L ? [{ upTo: 5 * L, rate: 0.05 }] : []),
-      { upTo: 10 * L, rate: 0.2 },
-      { upTo: null, rate: 0.3 },
-    ];
+    return [{ upTo: exempt, rate: 0 }, ...(exempt < 5 * L ? [{ upTo: 5 * L, rate: 0.05 }] : []), { upTo: 10 * L, rate: 0.2 }, { upTo: null, rate: 0.3 }];
   },
   rebateIncomeLimit: 5 * L,
   rebateMax: 12_500,

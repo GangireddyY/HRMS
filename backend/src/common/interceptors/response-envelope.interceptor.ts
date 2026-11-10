@@ -10,10 +10,14 @@ export class PaginatedResult<T> {
   ) {}
 }
 
+/** Nest's marker for @Sse() handlers (their events are sent as they are). */
+const SSE_METADATA = '__sse__';
+
 /** Wraps controller return values in the standard success envelope. */
 @Injectable()
 export class ResponseEnvelopeInterceptor implements NestInterceptor {
-  intercept(_context: ExecutionContext, next: CallHandler): Observable<unknown> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (Reflect.getMetadata(SSE_METADATA, context.getHandler())) return next.handle();
     return next.handle().pipe(
       map((value): unknown => {
         if (value instanceof StreamableFile) return value;

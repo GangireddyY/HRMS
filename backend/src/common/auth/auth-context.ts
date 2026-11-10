@@ -1,4 +1,4 @@
-import type { ModuleKey, PermissionScope, PlatformRole } from '../../contracts';
+import type { DelegatedGrant, ModuleKey, PermissionScope, PlatformRole } from '../../contracts';
 
 /** Authenticated principal attached to each request by the JwtAuthGuard. */
 export interface AuthContext {
@@ -11,6 +11,8 @@ export interface AuthContext {
   membershipId: string | null;
   roleIds: string[];
   permissions: Map<string, PermissionScope>;
+  /** Approvals held on behalf of someone who is away; scoped to their team, not the caller's (see EmployeeScopeService). */
+  delegated?: DelegatedGrant[];
   features: Set<ModuleKey>;
   mfaSetupRequired: boolean;
   passwordExpired: boolean;

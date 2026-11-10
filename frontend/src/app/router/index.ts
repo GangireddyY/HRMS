@@ -3,6 +3,7 @@ import { isAllowed, type AccessRule, type AccessSubject } from '@/core/navigatio
 import { homePath } from '@/core/navigation/workspaces';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { installFormPages } from '@/shared/composables/use-form-page';
+import { installRouteEffects } from './route-effects';
 import { routes } from './routes';
 
 declare module 'vue-router' {
@@ -18,12 +19,16 @@ declare module 'vue-router' {
   }
 }
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'HRMS';
+
 export const router = createRouter({
   history: createWebHistory(),
   routes,
+  // The window doesn't scroll in the shell (#main does; see route-effects); keep the window at the top.
   scrollBehavior: () => ({ top: 0 }),
 });
 installFormPages(router);
+installRouteEffects(router, APP_NAME);
 
 function subjectFrom(auth: ReturnType<typeof useAuthStore>): AccessSubject {
   return { can: auth.can, hasFeature: auth.hasFeature, canPlatform: auth.canPlatform, hasOrganization: !!auth.organization };
@@ -50,8 +55,6 @@ router.beforeEach(async (to) => {
   }
   return true;
 });
-
-const APP_NAME = import.meta.env.VITE_APP_NAME || 'HRMS';
 
 router.afterEach((to) => {
   document.title = to.meta.title ? `${to.meta.title} · ${APP_NAME}` : APP_NAME;

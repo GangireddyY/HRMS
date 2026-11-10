@@ -1,5 +1,5 @@
 import { LeaveRequest, LeaveType, ReimbursementClaim } from '../src/database/models';
-import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
+import { API, PASSWORD, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n');
 type Line = { code: string; amount: number };
@@ -83,6 +83,59 @@ describe('Payroll (e2e)', () => {
     expect((await ctx.http().get(`${API}/payroll/salaries`).set(s.ravi.h)).status).toBe(403);
   });
 
+  it('sends raises above the approval threshold to a second person', async () => {
+    const s = await setup();
+    const revise = (annualCtc: number, effectiveFrom: string) =>
+      ctx.http().post(`${API}/payroll/employees/${s.asha.employee.id}/salaries`).set(s.pm.h).send({ structureId: s.structure.id, annualCtc, effectiveFrom, reason: 'Revision' });
+    const history = async () => (await ctx.http().get(`${API}/payroll/employees/${s.asha.employee.id}/salaries`).set(s.pm.h)).body.data;
+    expect((await revise(600000, '2026-04-01')).status).toBe(201);
+
+    // The payroll manager configures payroll, but loosening the approval step is the checker's call.
+    expect((await ctx.http().put(`${API}/payroll/settings`).set(s.pm.h).send({ salaryApprovalThresholdPct: 10 })).status).toBe(200);
+    const loosen = await ctx.http().put(`${API}/payroll/settings`).set(s.pm.h).send({ salaryApprovalThresholdPct: null });
+    expect(loosen.status).toBe(403);
+
+    // Within the threshold: applied directly. Above it: a request, not a salary.
+    const small = await revise(650000, '2026-10-01');
+    expect(small.status).toBe(201);
+    expect(small.body.data.annualCtc).toBe(650000);
+    const big = await revise(800000, '2026-12-01');
+    expect(big.status).toBe(201);
+    expect(big.body.data).toMatchObject({ pendingApproval: true, request: { status: 'PENDING', previousCtc: 650000, annualCtc: 800000, mine: true, canReview: false } });
+    expect(big.body.data.request.raisePercent).toBeCloseTo(23.08, 2);
+    expect((await history()).salaries).toHaveLength(2);
+    expect((await history()).pendingRevision).toMatchObject({ id: big.body.data.request.id });
+    expect((await ctx.http().get(`${API}/payroll/me/salary`).set(s.asha.h)).body.data.pendingRevision).toBeNull();
+    expect((await revise(900000, '2027-01-01')).status).toBe(409);
+
+    // Neither the requester (no permission) nor the employee may approve; finance can.
+    const id = big.body.data.request.id;
+    expect((await ctx.http().post(`${API}/payroll/salary-revisions/${id}/approve`).set(s.pm.h).send({})).status).toBe(403);
+    const queue = (await ctx.http().get(`${API}/payroll/salary-revisions`).set(s.finance.h)).body.data;
+    expect(queue).toEqual([expect.objectContaining({ id, canReview: true, requestedBy: expect.any(String) })]);
+    const approved = await ctx.http().post(`${API}/payroll/salary-revisions/${id}/approve`).set(s.finance.h).send({});
+    expect(approved.status).toBe(201);
+    expect(approved.body.data).toMatchObject({ status: 'APPROVED', reviewedBy: expect.any(String) });
+    const after = await history();
+    expect(after.pendingRevision).toBeNull();
+    expect(after.salaries.map((x: { annualCtc: number }) => x.annualCtc)).toEqual([800000, 650000, 600000]);
+    expect((await ctx.http().post(`${API}/payroll/salary-revisions/${id}/approve`).set(s.finance.h).send({})).status).toBe(409);
+
+    // Rejection needs a reason; the requester can withdraw instead.
+    const next = (await revise(1200000, '2027-01-01')).body.data.request;
+    expect((await ctx.http().post(`${API}/payroll/salary-revisions/${next.id}/reject`).set(s.finance.h).send({})).status).toBe(422);
+    const rejected = await ctx.http().post(`${API}/payroll/salary-revisions/${next.id}/reject`).set(s.finance.h).send({ note: 'Above the band for the role' });
+    expect(rejected.body.data).toMatchObject({ status: 'REJECTED', reviewNote: 'Above the band for the role' });
+    const third = (await revise(1000000, '2027-02-01')).body.data.request;
+    expect((await ctx.http().post(`${API}/payroll/salary-revisions/${third.id}/cancel`).set(s.finance.h).send({})).status).toBe(403);
+    expect((await ctx.http().post(`${API}/payroll/salary-revisions/${third.id}/cancel`).set(s.pm.h).send({})).status).toBe(201);
+    expect((await history()).salaries).toHaveLength(3);
+
+    // The admin (who holds the approval permission) may switch the step off.
+    expect((await ctx.http().put(`${API}/payroll/settings`).set(s.h).send({ salaryApprovalThresholdPct: null })).status).toBe(200);
+    expect((await revise(2000000, '2027-03-01')).body.data.annualCtc).toBe(2000000);
+  });
+
   it('runs payroll with loss of pay, PF, ESI, professional tax and TDS, approved by someone else', async () => {
     const s = await setup();
     const salary = (id: string, annualCtc: number, effectiveFrom: string) => ctx.http().post(`${API}/payroll/employees/${id}/salaries`).set(s.pm.h).send({ structureId: s.structure.id, annualCtc, effectiveFrom });
@@ -109,7 +162,7 @@ describe('Payroll (e2e)', () => {
     expect([line(asha.deductions, 'PF'), line(asha.deductions, 'PT'), line(asha.deductions, 'TDS'), line(asha.deductions, 'ESI')]).toEqual([1800, 200, 11272, undefined]);
     expect([line(asha.employerContributions, 'EPF'), line(asha.employerContributions, 'EPS')]).toEqual([550, 1250]);
     expect(asha.netPay).toBe(178321);
-    expect(asha.employee).toMatchObject({ pan: 'AB•••1234F', uan: '••••••••0400', bank: { accountLast4: '9012', ifsc: 'HDFC0001234' } });
+    expect(asha.employee).toMatchObject({ pan: '••••••234F', uan: '••••••••0400', bank: { accountLast4: '9012', ifsc: 'HDFC0001234' } });
 
     // Ravi joined on the 16th: half a month, covered by ESI (gross under ₹21,000), no professional tax state.
     let ravi = (await ctx.http().get(`${API}/payroll/payslips/${slipOf(s.ravi.employee.id)}`).set(s.pm.h)).body.data;
@@ -138,8 +191,14 @@ describe('Payroll (e2e)', () => {
     expect((await ctx.http().get(`${API}/payroll/payslips/${asha.id}`).set(s.asha.h)).body.data.tax).toMatchObject({ regime: 'NEW', thisMonth: 11272 });
     expect((await ctx.http().get(`${API}/payroll/payslips/${asha.id}`).set(s.ravi.h)).status).toBe(404);
 
-    // Exports: the bank file (disbursers only) and the PF ECR.
+    // Exports: the bank file (disbursers only) and the PF ECR, both after re-confirming identity (step-up).
     expect((await ctx.http().get(`${API}/payroll/runs/${runId}/bank-file`).set(s.pm.h)).status).toBe(403);
+    const unconfirmed = await ctx.http().get(`${API}/payroll/runs/${runId}/bank-file`).set(s.finance.h);
+    expect(unconfirmed.status).toBe(403);
+    expect(unconfirmed.body.error.code).toBe('STEP_UP_REQUIRED');
+    expect((await ctx.http().post(`${API}/auth/step-up`).set(s.finance.h).send({ password: 'wrong-password' })).status).toBe(401);
+    expect((await ctx.http().post(`${API}/auth/step-up`).set(s.finance.h).send({ password: PASSWORD })).status).toBe(200);
+    expect((await ctx.http().post(`${API}/auth/step-up`).set(s.pm.h).send({ password: PASSWORD })).status).toBe(200);
     const bank = await ctx.http().get(`${API}/payroll/runs/${runId}/bank-file`).set(s.finance.h);
     expect(bank.text).toContain('123456789012,HDFC0001234,HDFC Bank,178321.00,SALARY SEP 2026');
     expect(bank.text.split('\r\n').filter(Boolean)).toHaveLength(2);
@@ -151,8 +210,8 @@ describe('Payroll (e2e)', () => {
     const paid = await ctx.http().post(`${API}/payroll/runs/${runId}/pay`).set(s.finance.h).send({ paymentReference: 'NEFT-0930' });
     expect(paid.body.data).toMatchObject({ status: 'PAID', paymentReference: 'NEFT-0930' });
 
-    // Processed months are locked for salary changes.
-    expect((await salary(s.asha.employee.id, 2600000, '2026-09-20')).status).toBe(422);
+    // Revisions can reach back into processed months (paid as arrears) only up to 12 months.
+    expect((await salary(s.asha.employee.id, 2600000, '2025-08-01')).status).toBe(422);
     // Other tenants see nothing.
     const other = await createOrgWithAdmin(ctx);
     const oh = bearer((await login(ctx, other.admin.email)).accessToken);

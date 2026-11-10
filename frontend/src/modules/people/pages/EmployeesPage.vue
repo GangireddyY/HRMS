@@ -25,6 +25,7 @@ import {
   AppErrorState,
   AppPageHeader,
   AppPagination,
+  AppSavedViews,
   AppSearchInput,
   AppSegmented,
   AppSelect,
@@ -53,6 +54,7 @@ const table = useTable((q) => employeesApi.list(q), {
     departmentId: undefined as string | undefined,
     employmentType: undefined as EmploymentType | undefined,
   },
+  views: 'employees',
 });
 const scope = computed(() => auth.context?.permissions['employee.view']);
 const showCalendar = computed(() => auth.can('leave.view', 'TEAM') && auth.hasFeature('leave'));
@@ -208,7 +210,15 @@ async function exportCsv() {
           <span v-if="table.filters.departmentId">· {{ departmentOptions.find((d) => d.value === table.filters.departmentId)?.label }}</span>
           <span v-if="table.filters.employmentType">· {{ EMPLOYMENT_TYPE_LABELS[table.filters.employmentType] }}</span>
           <AppButton v-if="table.isFiltered.value" class="ms-auto" size="xs" variant="ghost" :icon="FilterX" @click="table.clearFilters()">Clear filters</AppButton>
-          <div v-if="view === 'grid' && table.rows.value.length > 1" :class="['flex items-center gap-2 max-md:hidden', !table.isFiltered.value && 'ms-auto']">
+          <AppSavedViews
+            :class="!table.isFiltered.value && 'ms-auto'"
+            :views="table.views.value"
+            :can-save="table.isFiltered.value"
+            @apply="table.applyView"
+            @save="table.saveView"
+            @delete="table.deleteView"
+          />
+          <div v-if="view === 'grid' && table.rows.value.length > 1" class="flex items-center gap-2 max-md:hidden">
             <span class="font-medium" aria-hidden="true">Sort by</span>
             <AppSelect
               :model-value="sortOptions.some((o) => o.value === table.sort.value) ? table.sort.value : undefined"
@@ -261,6 +271,7 @@ async function exportCsv() {
           v-model:sort="table.sort.value"
           :class="view === 'grid' && 'md:hidden'"
           :grid="false"
+          column-chooser
           :columns="columns"
           :rows="table.rows.value"
           :loading="table.loading.value"

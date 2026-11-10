@@ -3,6 +3,7 @@ import { appLocale } from '@/core/locale/locale';
 import { computed } from 'vue';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import AppButton from '@/shared/components/forms/AppButton.vue';
+import { localToday } from '@/shared/utils/dates';
 
 /**
  * Month grid in the style of a calendar app: hairline cells, the day number in a circle (filled for today), days of
@@ -29,10 +30,6 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ select: [iso: string]; prev: []; next: []; today: [] }>();
 
-const localToday = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 const todayIso = computed(() => props.today ?? localToday());
 const addDays = (iso: string, n: number) => {
   const d = new Date(`${iso}T00:00:00Z`);

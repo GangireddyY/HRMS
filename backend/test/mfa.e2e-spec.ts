@@ -37,7 +37,7 @@ describe('Multi-factor authentication (e2e)', () => {
     expect(recoveryCodes).toHaveLength(10);
     const user = await User.scope('withSecrets').findByPk(admin.id, { rejectOnEmpty: true });
     expect(user.mfaEnabled).toBe(true);
-    expect(user.mfaSecretEnc).toMatch(/^v1:/);
+    expect(user.mfaSecretEnc).toMatch(/^k1:/);
     expect(user.mfaSecretEnc).not.toContain(secret);
 
     const status = await ctx.http().get(`${API}/auth/mfa`).set(bearer(s.accessToken));

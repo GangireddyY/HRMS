@@ -28,7 +28,7 @@ function parseValue(value: string): unknown {
  */
 export function useTable<Row, F extends Query = Query>(
   fetcher: (q: TableQuery & F) => Promise<Page<Row>>,
-  options: { pageSize?: number; sort?: string; filters?: F; immediate?: boolean; url?: string | boolean; scope?: string[] } = {},
+  options: { pageSize?: number; sort?: string; filters?: F; immediate?: boolean; url?: string | boolean; scope?: string[]; /** Enables saved views under this key. */ views?: string } = {},
 ) {
   const router = options.url === false ? null : inject<Router | null>(routerKey, null);
   const prefix = typeof options.url === 'string' && options.url ? `${options.url}.` : '';
@@ -158,7 +158,52 @@ export function useTable<Row, F extends Query = Query>(
     for (const [k, v] of Object.entries(defaults)) if (!scope.has(k)) (filters as Record<string, unknown>)[k] = v;
   }
 
+  // ---- Saved views: named combinations of search, filters and sort, kept on this device per list --------------------
+  const viewsKey = options.views ? `hrms.views.${options.views}` : null;
+  const readViews = (): SavedView[] => {
+    if (!viewsKey) return [];
+    try {
+      return JSON.parse(localStorage.getItem(viewsKey) ?? '[]') as SavedView[];
+    } catch {
+      return [];
+    }
+  };
+  const views = ref<SavedView[]>(readViews());
+  const persistViews = () => {
+    if (!viewsKey) return;
+    try {
+      if (views.value.length) localStorage.setItem(viewsKey, JSON.stringify(views.value));
+      else localStorage.removeItem(viewsKey);
+    } catch {
+      // Private mode: the views last for this page only.
+    }
+  };
+  function saveView(name: string) {
+    const view: SavedView = { name: name.trim().slice(0, 40), search: search.value.trim(), sort: sort.value, filters: { ...(filters as Record<string, unknown>) } };
+    if (!view.name) return;
+    views.value = [...views.value.filter((v) => v.name !== view.name), view].slice(-12);
+    persistViews();
+  }
+  function applyView(name: string) {
+    const v = views.value.find((x) => x.name === name);
+    if (!v) return;
+    for (const k of Object.keys(defaults)) (filters as Record<string, unknown>)[k] = k in v.filters ? v.filters[k] : defaults[k];
+    sort.value = v.sort ?? options.sort;
+    search.value = v.search;
+  }
+  function deleteView(name: string) {
+    views.value = views.value.filter((v) => v.name !== name);
+    persistViews();
+  }
+
   if (options.immediate !== false) void load();
 
-  return { rows, meta, loading, error, page, pageSize, sort, search, filters, isFiltered, load, setPage, clearFilters };
+  return { rows, meta, loading, error, page, pageSize, sort, search, filters, isFiltered, load, setPage, clearFilters, views, saveView, applyView, deleteView };
+}
+
+export interface SavedView {
+  name: string;
+  search: string;
+  sort?: string;
+  filters: Record<string, unknown>;
 }

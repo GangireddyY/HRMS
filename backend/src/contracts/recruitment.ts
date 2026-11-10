@@ -29,6 +29,50 @@ export type FeedbackRecommendation = (typeof FEEDBACK_RECOMMENDATIONS)[number];
 export const OFFER_STATUSES = ['DRAFT', 'RELEASED', 'ACCEPTED', 'DECLINED', 'WITHDRAWN'] as const;
 export type OfferStatus = (typeof OFFER_STATUSES)[number];
 
+/** Approval before release: required by the organization's setting, and always above the requisition's budget. */
+export const OFFER_APPROVAL_STATUSES = ['NOT_REQUIRED', 'PENDING', 'APPROVED', 'REJECTED'] as const;
+export type OfferApprovalStatus = (typeof OFFER_APPROVAL_STATUSES)[number];
+
+/** Documents candidates upload in the pre-joining portal. */
+export const PREJOINING_DOCUMENT_CATEGORIES = ['IDENTITY', 'ADDRESS', 'EDUCATION', 'EXPERIENCE', 'CERTIFICATION', 'MEDICAL', 'OTHER'] as const;
+export type PrejoiningDocumentCategory = (typeof PREJOINING_DOCUMENT_CATEGORIES)[number];
+export const PREJOINING_MAX_DOCUMENTS = 15;
+
+/** Placeholders the offer letter template can use, e.g. {{candidate_name}}. */
+export const OFFER_LETTER_PLACEHOLDERS = {
+  candidate_name: 'Full name of the candidate',
+  candidate_first_name: 'First name',
+  designation: 'Designation offered',
+  department: 'Department',
+  location: 'Work location',
+  employment_type: 'Full time, contract…',
+  annual_ctc: 'Annual cost to company (formatted)',
+  joining_date: 'Date of joining',
+  offer_expiry: 'Accept by',
+  organization_name: 'Your organization',
+  today: 'Date the offer is released',
+} as const;
+
+export const DEFAULT_OFFER_LETTER = {
+  subject: 'Offer of employment – {{designation}}',
+  body: `Dear {{candidate_first_name}},
+
+We are delighted to offer you the position of **{{designation}}** in our {{department}} team at {{organization_name}}, based in {{location}}.
+
+- Annual cost to company: **{{annual_ctc}}**
+- Date of joining: **{{joining_date}}**
+- Employment type: {{employment_type}}
+
+Your detailed compensation structure, benefits and policies will be shared with you on joining. This offer is subject to satisfactory background and reference checks.
+
+Please confirm your acceptance by signing below before {{offer_expiry}}.
+
+We look forward to welcoming you.
+
+Warm regards,
+Human Resources, {{organization_name}}`,
+};
+
 /** Resumes: PDF or Word (.docx), detected from the file contents. */
 export const RESUME_CONTENT_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'] as const;
 export type ResumeContentType = (typeof RESUME_CONTENT_TYPES)[number];

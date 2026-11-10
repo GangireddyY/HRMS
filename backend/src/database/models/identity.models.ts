@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Scopes, DefaultScope, Table, UpdatedAt } from 'sequelize-typescript';
-import type { AppearancePreferences, PlatformRole, UserStatus } from '../../contracts';
+import type { AppearancePreferences, NotificationSettings, PlatformRole, UserStatus } from '../../contracts';
 import { Organization, OrganizationMembership } from './organization.models';
 
 export type ActionTokenPurpose = 'PASSWORD_RESET' | 'INVITATION';
@@ -74,6 +74,10 @@ export class User extends Model<InferAttributes<User>, InferCreationAttributes<U
   /** Appearance choices that follow the user across devices. */
   @Column(DataType.JSONB)
   preferences: CreationOptional<AppearancePreferences>;
+
+  /** Which notifications are also emailed (see contracts/notifications). */
+  @Column(DataType.JSONB)
+  notificationSettings: CreationOptional<NotificationSettings>;
 
   @ForeignKey(() => Organization) @Column(DataType.UUID)
   lastOrganizationId: CreationOptional<string | null>;
@@ -165,6 +169,10 @@ export class UserSession extends Model<InferAttributes<UserSession>, InferCreati
 
   @Column(DataType.BOOLEAN)
   mfaVerified: CreationOptional<boolean>;
+
+  /** When the user last re-confirmed their identity (MFA code or password) for a sensitive action. */
+  @Column(DataType.DATE)
+  stepUpAt: CreationOptional<Date | null>;
 
   @CreatedAt
   createdAt: CreationOptional<Date>;

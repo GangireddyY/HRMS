@@ -6,12 +6,14 @@ import { HOLIDAY_COUNTRIES, type HolidayCountry, type OfficialHolidayKind } from
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import type { OfficialHoliday, OfficialHolidays } from '@/modules/attendance/types';
 import { WEEKDAY_SHORT } from '@/modules/attendance/utils/attendance-format';
-import { AppAlert, AppBadge, AppButton, AppEmptyState, AppErrorState, AppModal, AppSegmented, AppSelect, AppSkeleton, AppSwitch } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppEmptyState, AppErrorState, AppModal, AppMultiPick, AppSegmented, AppSelect, AppSkeleton, AppSwitch } from '@/shared/components';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
 
 /** Pick which of a country's official holidays the organization gives, as days off or optional holidays. */
-const props = defineProps<{ open: boolean; year: number }>();
+const props = defineProps<{ open: boolean; year: number; locations?: { value: string; label: string }[] }>();
+/** Empty = every location; otherwise the imported holidays apply only there (e.g. a state's holidays for its offices). */
+const applyTo = ref<string[]>([]);
 const emit = defineEmits<{ close: []; imported: [year: number] }>();
 const feedback = useFeedbackStore();
 
@@ -69,6 +71,7 @@ watch(
     if (!open) return;
     data.value = null;
     year.value = props.year;
+    applyTo.value = [];
     showObservances.value = false;
     void load();
   },
@@ -117,10 +120,12 @@ async function importSelected() {
   if (!holidays.length) return;
   importing.value = true;
   try {
-    const result = await attendanceApi.importHolidays({ country: country.value, holidays });
+    const result = await attendanceApi.importHolidays({ country: country.value, locationIds: applyTo.value, holidays });
     feedback.success(
       `${result.created} holiday${result.created === 1 ? '' : 's'} added`,
-      result.skipped ? `${result.skipped} date${result.skipped === 1 ? ' already had' : 's already had'} a holiday and ${result.skipped === 1 ? 'was' : 'were'} left as is.` : undefined,
+      result.skipped
+        ? `${result.skipped} date${result.skipped === 1 ? ' already had' : 's already had'} a holiday${applyTo.value.length ? ' at those locations' : ''} and ${result.skipped === 1 ? 'was' : 'were'} left as is.`
+        : undefined,
     );
     emit('imported', year.value);
   } catch (e) {
@@ -146,6 +151,14 @@ async function importSelected() {
         <AppSelect v-model="country" :options="countryOptions" label="Country" :clearable="false" :disabled="loading" />
         <AppSelect v-model="year" :options="yearOptions" label="Year" :clearable="false" :searchable="false" :disabled="loading" />
       </div>
+      <AppMultiPick
+        v-if="(locations?.length ?? 0) > 1"
+        v-model="applyTo"
+        label="Holidays apply at"
+        placeholder="Every location"
+        help="Pick offices to import regional (state) holidays only for the people working there."
+        :options="locations ?? []"
+      />
 
       <AppAlert v-if="data" tone="info">
         Dates come from the public holiday calendar for {{ data.countryName }}. Moon-based festivals can be marked <em>tentative</em> and may move by a day once the government notifies the final date, so review them before the year starts.
@@ -173,7 +186,7 @@ async function importSelected() {
                     type="checkbox"
                     class="h-4 w-4 shrink-0 cursor-pointer accent-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
                     :checked="chosen.has(keyOf(h))"
-                    :disabled="!!h.existing"
+                    :disabled="!!h.existing && !applyTo.length"
                     @change="toggle(h, ($event.target as HTMLInputElement).checked)"
                   />
                   <span class="w-24 shrink-0 text-sm tabular-nums">

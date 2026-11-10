@@ -3,6 +3,7 @@ import { DEFAULT_PASSWORD_POLICY, PasswordPolicy, strictestPolicy, validatePassw
 import { Op, type Transaction } from 'sequelize';
 import { AppError } from '../../common/errors/app-error';
 import { OrganizationMembership, OrganizationSecurityPolicy, PasswordHistory, User } from '../../database/models';
+import { AppConfig } from '../../config/app-config.service';
 import { PasswordHasher } from '../../infrastructure/crypto/password-hasher.service';
 import type { SessionLimits } from './session.service';
 
@@ -81,7 +82,15 @@ export function isPasswordExpired(passwordChangedAt: Date | null, maxAgeDays: nu
  */
 @Injectable()
 export class SecurityPolicyService {
-  constructor(private readonly hasher: PasswordHasher) {}
+  constructor(
+    private readonly hasher: PasswordHasher,
+    private readonly config: AppConfig,
+  ) {}
+
+  /** Two-factor sign-in is required by any of the user's organizations, and always for platform staff. */
+  mfaRequiredFor(policy: EffectiveSecurityPolicy, user: { platformRole?: string | null }): boolean {
+    return policy.mfaRequired || (!!user.platformRole && this.config.get('PLATFORM_MFA_REQUIRED'));
+  }
 
   async forOrganization(organizationId: string | null): Promise<EffectiveSecurityPolicy> {
     if (!organizationId) return DEFAULT_SECURITY_POLICY;

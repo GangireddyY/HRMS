@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Bell } from '@lucide/vue';
+import { liveConnected, onLiveUpdate, startLiveUpdates } from '@/core/realtime/live-updates';
 import { notificationsApi } from '@/modules/notifications/api/notifications.api';
 import type { NotificationRow } from '@/modules/notifications/types';
 import { AppDropdown } from '@/shared/components';
@@ -60,11 +61,31 @@ async function markAll() {
   }
 }
 
+// Live: the stream says when something arrives. Fallback: poll, but only while the tab is visible.
+let debounce: ReturnType<typeof setTimeout> | undefined;
+const refreshSoon = () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => void refreshCount(), 300);
+};
+const onVisible = () => document.visibilityState === 'visible' && refreshSoon();
+let stopLive: (() => void) | undefined;
+let offUpdate: (() => void) | undefined;
 onMounted(() => {
   void refreshCount();
-  timer = setInterval(() => void refreshCount(), POLL_MS);
+  stopLive = startLiveUpdates();
+  offUpdate = onLiveUpdate(refreshSoon);
+  timer = setInterval(() => {
+    if (!liveConnected.value && document.visibilityState === 'visible') void refreshCount();
+  }, POLL_MS);
+  document.addEventListener('visibilitychange', onVisible);
 });
-onBeforeUnmount(() => clearInterval(timer));
+onBeforeUnmount(() => {
+  clearInterval(timer);
+  clearTimeout(debounce);
+  offUpdate?.();
+  stopLive?.();
+  document.removeEventListener('visibilitychange', onVisible);
+});
 </script>
 
 <template>

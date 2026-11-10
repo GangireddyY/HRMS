@@ -118,6 +118,14 @@ describe('Exits (e2e)', () => {
     expect((await ctx.http().post(`${API}/exits/${id}/settlement/pay`).set(t.fin.h).send({ paidOn: days(1), reference: 'UTR1' })).status).toBe(422);
     expect((await ctx.http().post(`${API}/exits/${id}/settlement/pay`).set(t.fin.h).send({ paidOn: days(0), reference: 'UTR20261106' })).body.data).toMatchObject({ status: 'PAID', paymentReference: 'UTR20261106' });
 
+    // Registered assets still with the employee hold up completion until they come back.
+    const asset = (await ctx.http().post(`${API}/assets`).set(t.hr.h).send({ name: 'ThinkPad', category: 'LAPTOP' })).body.data;
+    await ctx.http().post(`${API}/assets/${asset.id}/assign`).set(t.hr.h).send({ employeeId: t.asha.employee.id });
+    const held = (await ctx.http().get(`${API}/exits/${id}`).set(t.hr.h)).body.data;
+    expect(held).toMatchObject({ assetsHeld: [{ tag: asset.tag }], permissions: { complete: false, completeBlocker: expect.stringContaining(asset.tag) } });
+    expect((await ctx.http().post(`${API}/exits/${id}/complete`).set(t.hr.h).send({})).status).toBe(409);
+    await ctx.http().post(`${API}/assets/${asset.id}/return`).set(t.hr.h).send({ condition: 'GOOD' });
+
     // Completed on the last working day: the employee has exited.
     const done = await ctx.http().post(`${API}/exits/${id}/complete`).set(t.hr.h).send({});
     expect(done.body.data).toMatchObject({ status: 'COMPLETED', completedBy: 'Hema Person' });

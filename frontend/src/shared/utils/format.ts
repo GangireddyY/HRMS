@@ -1,3 +1,4 @@
+import { appCurrency } from '@/core/locale/currency';
 import { appLocale } from '@/core/locale/locale';
 const dateTime = new Intl.DateTimeFormat(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 const dateOnly = new Intl.DateTimeFormat(appLocale(), { dateStyle: 'medium' });
@@ -45,7 +46,7 @@ export function humanize(value: string): string {
   return value.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function formatMoney(amount: number | null | undefined, currency = 'INR'): string {
+export function formatMoney(amount: number | null | undefined, currency = appCurrency()): string {
   if (amount === null || amount === undefined) return 'Custom';
   return new Intl.NumberFormat(appLocale(), { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 }

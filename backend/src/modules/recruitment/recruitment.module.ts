@@ -7,12 +7,13 @@ import { CareersService } from './careers.service';
 import { JobsService } from './jobs.service';
 import { OffersService } from './offers.service';
 import { PipelineService } from './pipeline.service';
-import { CareersController, RecruitmentController } from './recruitment.controller';
+import { OfferPortalService } from './offer-portal.service';
+import { CareersController, OfferPortalController, RecruitmentController } from './recruitment.controller';
 import { RequisitionsService } from './requisitions.service';
 
 @Module({
   imports: [EmployeesModule, OnboardingModule, RbacModule],
-  controllers: [RecruitmentController, CareersController],
-  providers: [RequisitionsService, JobsService, CandidatesService, PipelineService, OffersService, CareersService],
+  controllers: [RecruitmentController, CareersController, OfferPortalController],
+  providers: [RequisitionsService, JobsService, CandidatesService, PipelineService, OffersService, CareersService, OfferPortalService],
 })
 export class RecruitmentModule {}

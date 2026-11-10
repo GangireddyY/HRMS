@@ -34,6 +34,45 @@ describe('http client', () => {
     expect(page.meta.totalPages).toBe(3);
   });
 
+  it('asks for a step-up on STEP_UP_REQUIRED and retries once confirmed', async () => {
+    const stepUp = vi.fn<(m: string) => Promise<boolean>>().mockResolvedValue(true);
+    configureHttpAuth({ getToken: () => token, refresh, onSessionEnded, stepUp });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json(403, { success: false, error: { code: 'STEP_UP_REQUIRED', message: 'Enter your password to continue.' } }))
+      .mockResolvedValueOnce(json(200, { success: true, data: { ok: true } }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(http.get('/payroll/runs/1/bank-file')).resolves.toEqual({ ok: true });
+    expect(stepUp).toHaveBeenCalledWith('Enter your password to continue.');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // Cancelled: the original error surfaces and nothing is retried.
+    stepUp.mockResolvedValue(false);
+    fetchMock.mockResolvedValueOnce(json(403, { success: false, error: { code: 'STEP_UP_REQUIRED', message: 'Enter your password to continue.' } }));
+    const err = (await http.get('/payroll/runs/1/bank-file').catch((e) => e)) as ApiError;
+    expect(err.code).toBe('STEP_UP_REQUIRED');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('sends one idempotency key per write and keeps it for the retry after a refresh', async () => {
+    refresh.mockImplementation(async () => {
+      token = 'new';
+      return true;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json(401, { success: false, error: { code: 'UNAUTHENTICATED', message: 'Expired' } }))
+      .mockResolvedValueOnce(json(201, { success: true, data: { id: 7 } }))
+      .mockResolvedValueOnce(json(201, { success: true, data: { id: 8 } }));
+    vi.stubGlobal('fetch', fetchMock);
+    await http.post('/leave/requests', { days: 1 });
+    await http.post('/leave/requests', { days: 1 });
+    const keys = fetchMock.mock.calls.map(([, init]) => (init as RequestInit & { headers: Record<string, string> }).headers['Idempotency-Key']);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[0]);
+  });
+
   it('maps failures to ApiError with field details', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(422, { success: false, error: { code: 'VALIDATION_FAILED', message: 'Validation failed', details: [{ field: 'email', message: 'email must be an email' }], requestId: 'r1' } })));
     const err = (await http.post('/x', {}).catch((e) => e)) as ApiError;

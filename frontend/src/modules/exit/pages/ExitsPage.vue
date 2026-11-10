@@ -113,6 +113,7 @@ function countdown(e: ExitSummary): { text: string; cls: string } | null {
   <div class="space-y-4">
     <AppPageHeader title="Exits" description="Resignations, notice periods, clearance and full & final settlements.">
       <template #actions>
+        <AppButton v-if="auth.can('payroll.settlement.manage')" variant="secondary" :icon="Wallet" to="/hr/exits/settlements">Settlement payouts</AppButton>
         <AppButton v-if="auth.can('exit.manage') || auth.can('exit.view')" variant="secondary" :icon="GraduationCap" to="/hr/alumni">Alumni</AppButton>
         <AppButton v-if="auth.can('exit.manage')" :icon="Plus" @click="recording = true">Record exit</AppButton>
       </template>

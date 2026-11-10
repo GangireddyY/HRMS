@@ -6,6 +6,7 @@ import AvatarUploader from '@/modules/account/components/AvatarUploader.vue';
 import MyEmploymentCard from '@/modules/people/components/MyEmploymentCard.vue';
 import { AppAlert, AppBadge, AppButton, AppCard, AppInput, AppPageHeader } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { useUnsavedGuard } from '@/shared/composables/use-unsaved-guard';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDateTime } from '@/shared/utils/format';
@@ -28,6 +29,7 @@ watch(
 );
 
 const dirty = computed(() => !!auth.user && (form.firstName !== auth.user.firstName || form.lastName !== auth.user.lastName || form.phone !== (auth.user.phone ?? '')));
+useUnsavedGuard(dirty);
 
 async function save() {
   reset();

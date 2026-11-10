@@ -83,12 +83,17 @@ describe('Authentication (e2e)', () => {
       for (let i = 0; i < 5; i++) {
         await ctx.http().post(`${API}/auth/login`).send({ email: admin.email, password: 'Wrong-Password-1' });
       }
+      // A wrong guess against the locked account looks like any other wrong guess (no account enumeration)…
+      const guess = await ctx.http().post(`${API}/auth/login`).send({ email: admin.email, password: 'Wrong-Password-2' });
+      expect(guess.status).toBe(401);
+      expect(guess.body.error.code).toBe('INVALID_CREDENTIALS');
+      // …only the right password learns that the account is locked.
       const locked = await ctx.http().post(`${API}/auth/login`).send({ email: admin.email, password: PASSWORD });
       expect(locked.status).toBe(423);
       expect(locked.body.error.code).toBe('ACCOUNT_LOCKED');
 
       const events = await LoginEvent.findAll({ where: { userId: admin.id }, order: [['createdAt', 'ASC']], ...RAW });
-      expect(events.map((e) => e.outcome)).toEqual(['FAILURE', 'FAILURE', 'FAILURE', 'FAILURE', 'LOCKED', 'LOCKED']);
+      expect(events.map((e) => e.outcome)).toEqual(['FAILURE', 'FAILURE', 'FAILURE', 'FAILURE', 'LOCKED', 'LOCKED', 'LOCKED']);
       expect(await AuditLog.count({ where: { action: 'auth.account_locked', entityId: admin.id }, ...RAW })).toBe(1);
     });
 

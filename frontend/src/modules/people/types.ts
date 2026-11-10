@@ -65,6 +65,8 @@ export interface Location {
   latitude: string | null;
   longitude: string | null;
   geofenceRadiusM: number | null;
+  allowedNetworks?: string[] | null;
+  punchPhotoRequired?: boolean;
   isActive: boolean;
   employeeCount: number;
 }
@@ -131,12 +133,35 @@ export interface LifecycleEvent {
 export interface SensitiveDetails {
   pan: string | null;
   uan: string | null;
+  esiNumber: string | null;
   bankAccountNumber: string | null;
   bankIfsc: string | null;
   bankName: string | null;
   aadhaar: string | null;
   passportNumber: string | null;
   passportExpiry: string | null;
+  /** A change to an existing salary account waits for a second person's approval. */
+  pendingBankChange: PendingBankChange | null;
+}
+
+export interface PendingBankChange {
+  id: string;
+  accountLast4: string | null;
+  ifsc: string | null;
+  bankName: string | null;
+  requestedBy: string | null;
+  requestedAt: string;
+  canReview: boolean;
+}
+
+export interface BankChangeRequest {
+  id: string;
+  employee: { id: string; name: string; employeeCode: string } | null;
+  accountLast4: string | null;
+  ifsc: string | null;
+  bankName: string | null;
+  requestedAt: string;
+  canReview: boolean;
 }
 
 export interface FamilyMember {

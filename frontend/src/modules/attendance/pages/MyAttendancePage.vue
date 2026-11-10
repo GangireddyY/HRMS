@@ -6,14 +6,17 @@ import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import AttendanceCalendarView from '@/modules/attendance/components/AttendanceCalendar.vue';
 import DayEditModal from '@/modules/attendance/components/DayEditModal.vue';
 import PunchCard from '@/modules/attendance/components/PunchCard.vue';
+import ShiftSwapCard from '@/modules/attendance/components/ShiftSwapCard.vue';
 import WorkFromHomeModal from '@/modules/attendance/components/WorkFromHomeModal.vue';
 import type { CalendarDay } from '@/modules/attendance/types';
+import { dismissPunchCorrection, punchCorrections, type PunchCorrection } from '@/modules/attendance/utils/offline-punches';
 import { OVERTIME_LABELS, REGULARIZATION_LABELS, currentMonth, dateRange, formatMinutes, formatTime, monthLabel, overtimeTone, regularizationTone, shiftMonth } from '@/modules/attendance/utils/attendance-format';
-import { AppBadge, AppButton, AppCard, AppEmptyState, AppErrorState, AppPageHeader, AppSegmented, AppSkeleton } from '@/shared/components';
+import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppErrorState, AppPageHeader, AppSegmented, AppSkeleton } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
+import { localToday } from '@/shared/utils/dates';
 
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
@@ -51,6 +54,28 @@ function onSelect(day: CalendarDay) {
     return;
   }
   selected.value = day;
+}
+
+// Punches saved offline and recorded late (see PunchCard): offer a correction with the time they were made.
+const corrections = ref<PunchCorrection[]>(auth.user ? punchCorrections(auth.user.id) : []);
+const refreshCorrections = () => (corrections.value = auth.user ? punchCorrections(auth.user.id) : []);
+function onPunchChanged() {
+  refreshCorrections();
+  void calendar.run();
+}
+function dismissCorrection(at: string) {
+  if (auth.user) dismissPunchCorrection(auth.user.id, at);
+  refreshCorrections();
+}
+async function requestCorrection(c: PunchCorrection) {
+  if (c.date.slice(0, 7) !== month.value) {
+    month.value = c.date.slice(0, 7);
+    await calendar.run();
+  }
+  const day = calendar.data.value?.days.find((d) => d.date === c.date);
+  if (!day) return feedback.info('That day is no longer in your calendar.');
+  dismissCorrection(c.at);
+  onSelect(day);
 }
 
 async function onRequested() {
@@ -113,7 +138,18 @@ const tileOf = (iso: string) => {
 <template>
   <div class="space-y-4">
     <AppPageHeader title="My attendance" description="Punch in and out, check your month and request corrections." />
-    <PunchCard @changed="calendar.run()" />
+    <PunchCard @changed="onPunchChanged" />
+    <AppAlert v-for="c in corrections" :key="c.at" tone="warning" title="A punch was sent late">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          You punched {{ c.kind === 'IN' ? 'in' : 'out' }} at {{ c.time }} on {{ formatDate(c.date) }} while offline; it was recorded at {{ formatTime(c.recordedAt, calendar.data.value?.timeZone) }}, when the connection came back. Ask for the time to be corrected.
+        </span>
+        <span class="flex gap-2">
+          <AppButton size="sm" variant="ghost" @click="dismissCorrection(c.at)">Dismiss</AppButton>
+          <AppButton v-if="canRequest" size="sm" @click="requestCorrection(c)">Request correction</AppButton>
+        </span>
+      </div>
+    </AppAlert>
 
     <!-- Month at a glance -->
     <section v-if="calendar.data.value && summary" class="card overflow-hidden" aria-labelledby="month-glance">
@@ -254,7 +290,9 @@ const tileOf = (iso: string) => {
       </section>
     </div>
 
+    <ShiftSwapCard v-if="auth.can('attendance.mark') && calendar.data.value" :self-id="calendar.data.value.employee.id" />
+
     <DayEditModal :open="!!selected" :day="selected" mode="regularize" :time-zone="calendar.data.value?.timeZone ?? 'UTC'" @close="selected = null" @saved="onRequested" />
-    <WorkFromHomeModal :open="askingWfh" :today="calendar.data.value?.today ?? new Date().toISOString().slice(0, 10)" @close="askingWfh = false" @saved="onWfh" />
+    <WorkFromHomeModal :open="askingWfh" :today="calendar.data.value?.today ?? localToday()" @close="askingWfh = false" @saved="onWfh" />
   </div>
 </template>

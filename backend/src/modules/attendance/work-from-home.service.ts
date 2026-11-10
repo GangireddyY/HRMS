@@ -9,7 +9,7 @@ import { addDays } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { AttendanceRecord, Employee, User, WorkFromHomeRequest } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { fullName, userIdsOf } from '../employees/employee-people';
+import { fullName, managerAndCover } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AttendanceRulesService } from './attendance-rules.service';
@@ -40,19 +40,36 @@ export class WorkFromHomeService {
     const today = this.rules.today(ctx.timeZone);
     if (dto.endDate < dto.startDate) throw AppError.validation([{ field: 'endDate', message: "The last day can't be before the first" }]);
     if (addDays(dto.startDate, WFH_MAX_DAYS - 1) < dto.endDate) throw AppError.validation([{ field: 'endDate', message: `Ask for at most ${WFH_MAX_DAYS} days at a time` }]);
-    if (dto.startDate < addDays(today, -REGULARIZATION_WINDOW_DAYS)) throw AppError.validation([{ field: 'startDate', message: `Requests are accepted for the last ${REGULARIZATION_WINDOW_DAYS} days at most` }]);
+    if (dto.startDate < addDays(today, -REGULARIZATION_WINDOW_DAYS))
+      throw AppError.validation([{ field: 'startDate', message: `Requests are accepted for the last ${REGULARIZATION_WINDOW_DAYS} days at most` }]);
     if (dto.endDate > addDays(today, 90)) throw AppError.validation([{ field: 'endDate', message: 'Ask at most three months ahead' }]);
     if (dto.startDate < self.dateOfJoining) throw AppError.validation([{ field: 'startDate', message: 'This is before your date of joining' }]);
     await this.rules.assertOpen(dto.startDate);
     await this.rules.assertOpen(dto.endDate);
     const id = await this.db.transaction(async (transaction) => {
-      const clash = await WorkFromHomeRequest.findOne({ where: { employeeId: self.id, status: ['PENDING', 'APPROVED'], startDate: { [Op.lte]: dto.endDate }, endDate: { [Op.gte]: dto.startDate } }, transaction });
+      const clash = await WorkFromHomeRequest.findOne({
+        where: { employeeId: self.id, status: ['PENDING', 'APPROVED'], startDate: { [Op.lte]: dto.endDate }, endDate: { [Op.gte]: dto.startDate } },
+        transaction,
+      });
       if (clash) throw AppError.conflict(`You already have ${clash.status === 'PENDING' ? 'a pending' : 'an approved'} request for ${range(clash)}`);
-      const r = await WorkFromHomeRequest.create({ organizationId: auth.organizationId!, employeeId: self.id, startDate: dto.startDate, endDate: dto.endDate, reason: dto.reason, requestedById: auth.userId }, { transaction });
+      const r = await WorkFromHomeRequest.create(
+        { organizationId: auth.organizationId!, employeeId: self.id, startDate: dto.startDate, endDate: dto.endDate, reason: dto.reason, requestedById: auth.userId },
+        { transaction },
+      );
       await this.audit.record({ action: 'attendance.wfh_requested', entityType: 'WorkFromHomeRequest', entityId: r.id, summary: `Work from home requested for ${range(r)}` }, transaction);
-      const managerUser = self.managerId ? (await userIdsOf([self.managerId], transaction)).get(self.managerId) : undefined;
-      if (managerUser && managerUser !== auth.userId) {
-        await this.notifications.notify(managerUser, { organizationId: auth.organizationId, type: 'attendance.wfh', title: `${fullName(self)} asked to work from home (${range(r)})`, body: dto.reason, link: '/hr/attendance/regularizations?tab=wfh' }, transaction);
+      for (const managerUser of await managerAndCover(self.managerId, transaction)) {
+        if (managerUser === auth.userId) continue;
+        await this.notifications.notify(
+          managerUser,
+          {
+            organizationId: auth.organizationId,
+            type: 'attendance.wfh',
+            title: `${fullName(self)} asked to work from home (${range(r)})`,
+            body: dto.reason,
+            link: '/hr/attendance/regularizations?tab=wfh',
+          },
+          transaction,
+        );
       }
       return r.id;
     });
@@ -75,11 +92,17 @@ export class WorkFromHomeService {
     const { rows, count } = await WorkFromHomeRequest.findAndCountAll({
       where: { [Op.and]: filters },
       include: [{ model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode'] }],
-      order: [[literal(`CASE WHEN "WorkFromHomeRequest"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'], ['startDate', 'DESC']],
+      order: [
+        [literal(`CASE WHEN "WorkFromHomeRequest"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'],
+        ['startDate', 'DESC'],
+      ],
       ...paginationArgs(query),
     });
     const reviewers = await this.names(rows.map((r) => r.reviewedById));
-    return new PaginatedResult(rows.map((r) => this.present(r, reviewers, self?.id ?? null)), paginationMeta(query, count));
+    return new PaginatedResult(
+      rows.map((r) => this.present(r, reviewers, self?.id ?? null)),
+      paginationMeta(query, count),
+    );
   }
 
   async approve(auth: AuthContext, id: string, dto: ReviewDto) {
@@ -87,7 +110,10 @@ export class WorkFromHomeService {
       await r.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
       // Days already punched become remote days.
       await AttendanceRecord.update({ workMode: 'REMOTE' }, { where: { employeeId: r.employeeId, workDate: { [Op.between]: [r.startDate, r.endDate] } }, transaction });
-      await this.audit.record({ action: 'attendance.wfh_approved', entityType: 'WorkFromHomeRequest', entityId: id, summary: `Work from home of ${fullName(employee)} for ${range(r)} approved` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.wfh_approved', entityType: 'WorkFromHomeRequest', entityId: id, summary: `Work from home of ${fullName(employee)} for ${range(r)} approved` },
+        transaction,
+      );
       await this.tell(r, `Work from home for ${range(r)} approved`, dto.note ?? undefined, auth, transaction);
     });
     return this.get(auth, id);
@@ -97,7 +123,10 @@ export class WorkFromHomeService {
     if (!dto.note || dto.note.trim().length < 3) throw AppError.validation([{ field: 'note', message: 'Give a reason' }]);
     await this.review(auth, id, async (r, employee, transaction) => {
       await r.update({ status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note }, { transaction });
-      await this.audit.record({ action: 'attendance.wfh_rejected', entityType: 'WorkFromHomeRequest', entityId: id, summary: `Work from home of ${fullName(employee)} for ${range(r)} rejected` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.wfh_rejected', entityType: 'WorkFromHomeRequest', entityId: id, summary: `Work from home of ${fullName(employee)} for ${range(r)} rejected` },
+        transaction,
+      );
       await this.tell(r, `Work from home for ${range(r)} was not approved`, dto.note ?? undefined, auth, transaction);
     });
     return this.get(auth, id);
@@ -127,7 +156,10 @@ export class WorkFromHomeService {
     await this.db.transaction(async (transaction) => {
       const r = await WorkFromHomeRequest.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
       if (!r) throw AppError.notFound('Request');
-      const employee = (await Employee.findByPk(r.employeeId, { attributes: ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId'], transaction }))!;
+      const employee = (await Employee.findByPk(r.employeeId, {
+        attributes: ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId'],
+        transaction,
+      }))!;
       if (!(await this.scope.covers(auth, 'attendance.regularize.approve', employee))) throw AppError.notFound('Request');
       if (auth.membershipId && employee.membershipId === auth.membershipId) throw AppError.forbidden("You can't review your own request");
       if (r.status !== 'PENDING') throw AppError.conflict(`This request is already ${r.status.toLowerCase()}`);

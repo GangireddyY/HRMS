@@ -1,17 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { Op, type Transaction } from 'sequelize';
-import { SETTLEMENT_DUE_WORKING_DAYS } from '../../contracts';
+import { BANK_FILE_FORMAT_LABELS, SETTLEMENT_DUE_WORKING_DAYS, type BankFileFormat } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
 import { Department, Designation, Employee, EmployeeLoan, EmployeeLoanRepayment, EmployeeSalary, ExitCase, ExitClearanceItem, ExitSettlement, LeaveLedgerEntry, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ctx as fields } from '../../infrastructure/crypto/encrypted-fields';
+import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { fullName, organizationToday, userIdsOf } from '../employees/employee-people';
+import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { LeaveBalanceService } from '../leave/leave-balance.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { bankCsv, type BankPayment } from '../payroll/bank-layouts';
 import { closeRepaidLoans, loanBalances } from '../payroll/loan-balances';
 import type { SalaryComponent } from '../payroll/payroll-engine';
-import type { CalculateSettlementDto, PaySettlementDto, ReturnSettlementDto } from './dto/exit.dto';
+import type { BulkPaySettlementsDto, CalculateSettlementDto, PaySettlementDto, ReturnSettlementDto } from './dto/exit.dto';
 import { addWorkingDays, gratuityEligibility, gratuityYears, noticeShortfall, serviceLength, settlementLines } from './exit-rules';
 import { ExitsService } from './exits.service';
 
@@ -38,6 +42,8 @@ export class SettlementsService {
     private readonly exits: ExitsService,
     private readonly leave: LeaveBalanceService,
     private readonly notifications: NotificationsService,
+    private readonly crypto: EncryptionService,
+    private readonly scope: EmployeeScopeService,
   ) {}
 
   async get(auth: AuthContext, caseId: string) {
@@ -188,6 +194,106 @@ export class SettlementsService {
       if (userId) await this.notifications.notify(userId, { organizationId: c.organizationId, type: 'exit.settlement', title: 'Your full & final settlement has been paid', body: `Reference ${dto.reference}.`, link: '/me/exit' }, transaction);
     });
     return this.get(auth, caseId);
+  }
+
+  /** Settlements approved and waiting to be paid (or already paid), with whether each has bank details for the file. */
+  async payouts(auth: AuthContext, status: 'APPROVED' | 'PAID' = 'APPROVED') {
+    const rows = await this.payable(auth, { status });
+    const today = await organizationToday(auth.organizationId!);
+    const items = rows
+      .map(({ s, e }) => ({
+        id: s.id,
+        caseId: s.caseId,
+        employee: { id: e.id, name: fullName(e), employeeCode: e.employeeCode, department: e.department?.name ?? null },
+        netPayable: Number(s.netPayable),
+        dueOn: s.dueOn,
+        overdue: s.status !== 'PAID' && today > s.dueOn,
+        approvedAt: s.approvedAt,
+        paidOn: s.paidOn,
+        paymentReference: s.paymentReference,
+        bank: e.bankAccountEncrypted && e.bankIfsc ? { ifsc: e.bankIfsc.toUpperCase(), name: e.bankName } : null,
+      }))
+      .sort((a, b) => (status === 'PAID' ? (b.paidOn ?? '').localeCompare(a.paidOn ?? '') : a.dueOn.localeCompare(b.dueOn)));
+    return {
+      items,
+      summary: {
+        count: items.length,
+        total: Math.round(items.reduce((n, i) => n + i.netPayable, 0) * 100) / 100,
+        overdue: items.filter((i) => i.overdue).length,
+        withoutBank: items.filter((i) => !i.bank && i.netPayable > 0).length,
+      },
+    };
+  }
+
+  /**
+   * Bank transfer file for approved settlements (the chosen ones, or all), in a bank's bulk layout. Account numbers
+   * are decrypted, so the export is audited; settlements without bank details or with nothing to pay are skipped.
+   */
+  async bankFile(auth: AuthContext, ids: string[] | undefined, format: BankFileFormat = 'GENERIC') {
+    const rows = await this.payable(auth, { status: 'APPROVED', ids });
+    if (ids?.length && rows.length !== ids.length) throw AppError.conflict('Some of the chosen settlements are no longer waiting to be paid');
+    const payments: BankPayment[] = [];
+    let skipped = 0;
+    for (const { s, e } of rows) {
+      if (!e.bankAccountEncrypted || !e.bankIfsc || Number(s.netPayable) <= 0) {
+        skipped++;
+        continue;
+      }
+      payments.push({ name: fullName(e), code: e.employeeCode, account: this.crypto.decrypt(e.bankAccountEncrypted, fields.employee('bank_account', e.id)), ifsc: e.bankIfsc.toUpperCase(), bank: e.bankName ?? '', amount: Number(s.netPayable).toFixed(2) });
+    }
+    if (!payments.length) throw AppError.conflict('None of these settlements can be paid by bank transfer (bank details missing or nothing to pay)');
+    const today = await organizationToday(auth.organizationId!);
+    await this.audit.record({
+      action: 'exit.settlement_bank_file_exported',
+      entityType: 'ExitSettlement',
+      entityId: rows[0]!.s.id,
+      summary: `Settlement transfer file (${BANK_FILE_FORMAT_LABELS[format]}) exported (${payments.length} payments, ₹${payments.reduce((n, p) => n + Number(p.amount), 0).toLocaleString('en-IN')})`,
+      metadata: { settlements: rows.map((r) => r.s.id), payments: payments.length, skipped, format },
+    });
+    const suffix = format === 'GENERIC' ? '' : `-${format.toLowerCase()}`;
+    return { fileName: `settlement-payouts-${today}${suffix}.csv`, content: bankCsv(payments, format, 'FULL AND FINAL SETTLEMENT', today), skipped };
+  }
+
+  /** Marks several approved settlements paid with one (batch) reference; each one is notified. */
+  async payMany(auth: AuthContext, dto: BulkPaySettlementsDto) {
+    const settlements = await ExitSettlement.findAll({ where: { id: dto.ids }, attributes: ['id', 'caseId'] });
+    const caseOf = new Map(settlements.map((s) => [s.id, s.caseId]));
+    const failed: { id: string; reason: string }[] = [];
+    let paid = 0;
+    for (const id of dto.ids) {
+      const caseId = caseOf.get(id);
+      if (!caseId) {
+        failed.push({ id, reason: 'Settlement not found' });
+        continue;
+      }
+      try {
+        await this.pay(auth, caseId, { paidOn: dto.paidOn, reference: dto.reference });
+        paid++;
+      } catch (e) {
+        failed.push({ id, reason: e instanceof Error ? e.message : 'Could not be marked paid' });
+      }
+    }
+    return { paid, failed };
+  }
+
+  /** Settlements the caller settles (never their own exit), with the employee's bank fields. */
+  private async payable(auth: AuthContext, where: { status: 'APPROVED' | 'PAID'; ids?: string[] }) {
+    const settlements = await ExitSettlement.findAll({ where: { status: where.status, ...(where.ids?.length ? { id: where.ids } : {}) }, limit: 500, order: [['dueOn', 'ASC']] });
+    if (!settlements.length) return [];
+    const cases = new Map((await ExitCase.findAll({ where: { id: settlements.map((s) => s.caseId) }, attributes: ['id', 'employeeId'] })).map((c) => [c.id, c]));
+    const employees = new Map(
+      (
+        await Employee.findAll({
+          where: { id: [...cases.values()].map((c) => c.employeeId) },
+          attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'membershipId', 'bankAccountEncrypted', 'bankIfsc', 'bankName', 'departmentId'],
+          include: [{ model: Department, attributes: ['id', 'name'] }],
+        })
+      ).map((e) => [e.id, e]),
+    );
+    const self = await this.scope.self(auth);
+    return settlements
+      .map((s) => ({ s, e: employees.get(cases.get(s.caseId)?.employeeId ?? '')! }))
+      .filter((r) => !!r.e && r.e.id !== self?.id);
   }
 
   private async mutate(auth: AuthContext, caseId: string, fn: (s: ExitSettlement, c: ExitCase, transaction: Transaction) => Promise<void>) {

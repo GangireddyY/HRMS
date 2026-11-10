@@ -6,10 +6,12 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  Crosshair,
   Flag,
   Hourglass,
   LifeBuoy,
   MessageSquareText,
+  MessagesSquare,
   Send,
   Target,
   TrendingUp,
@@ -27,6 +29,7 @@ import { useAsync } from '@/shared/composables/use-async';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
+import { localToday } from '@/shared/utils/dates';
 
 /** Self-service performance: the current review and what to do next, goals, feedback colleagues asked for, and any improvement plan. */
 const auth = useAuthStore();
@@ -37,7 +40,7 @@ const requests = useAsync(() => performanceApi.myFeedback(), { immediate: canGiv
 const pips = useAsync(() => performanceApi.pips({ view: 'mine', pageSize: 20 }));
 const open = computed(() => (requests.data.value ?? []).filter((r) => r.open));
 const past = computed(() => (requests.data.value ?? []).filter((r) => !r.open));
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 
 // ---- Current review --------------------------------------------------------------------------------------------
 const rows = computed(() => reviews.data.value?.items ?? []);
@@ -192,7 +195,12 @@ const pastTone = (f: FeedbackRequest) => (f.status === 'SUBMITTED' ? 'success' :
 
 <template>
   <div class="space-y-4">
-    <AppPageHeader title="Performance" description="Your review and goals, feedback colleagues asked you for, and any improvement plan." />
+    <AppPageHeader title="Performance" description="Your review and goals, feedback colleagues asked you for, and any improvement plan.">
+      <template #actions>
+        <AppButton variant="secondary" :icon="Crosshair" to="/me/performance/okrs">OKRs</AppButton>
+        <AppButton variant="secondary" :icon="MessagesSquare" to="/me/performance/one-on-ones">1:1s</AppButton>
+      </template>
+    </AppPageHeader>
 
     <AppSkeleton v-if="reviews.loading.value && !reviews.data.value" :lines="6" />
     <AppErrorState v-else-if="reviews.error.value" :error="reviews.error.value" title="Could not load your reviews" @retry="reviews.run" />

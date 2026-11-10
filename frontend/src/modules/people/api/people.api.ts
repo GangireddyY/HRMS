@@ -1,6 +1,7 @@
 import type { DocumentCategory } from '@contracts';
 import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
 import type {
+  BankChangeRequest,
   CostCenter,
   Department,
   Designation,
@@ -68,7 +69,10 @@ export const employeesApi = {
   reportingChain: (id: string) => http.get<{ id: string; name: string; employeeCode: string; designation: { id: string; name: string } | null }[]>(`/employees/${id}/reporting-chain`),
   orgChart: (managerId?: string) => http.get<OrgChartNode[]>('/employees/org-chart', { managerId }),
   sensitive: (id: string) => http.get<SensitiveDetails>(`/employees/${id}/sensitive`),
-  updateSensitive: (id: string, body: Partial<SensitiveDetails>) => http.put<SensitiveDetails>(`/employees/${id}/sensitive`, body),
+  updateSensitive: (id: string, body: Partial<Omit<SensitiveDetails, 'pendingBankChange'>>) => http.put<SensitiveDetails>(`/employees/${id}/sensitive`, body),
+  bankChanges: () => http.get<BankChangeRequest[]>('/employees/bank-changes'),
+  approveBankChange: (changeId: string) => http.post<{ id: string }>(`/employees/bank-changes/${changeId}/approve`),
+  rejectBankChange: (changeId: string, note: string) => http.post<{ id: string }>(`/employees/bank-changes/${changeId}/reject`, { note }),
   linkableMembers: () => http.get<LinkableMember[]>('/employees/linkable-members'),
   createFromMembers: (membershipIds: string[]) =>
     http.post<{ created: number; employees: { id: string; employeeCode: string; fullName: string; membershipId: string }[] }>('/employees/from-members', { membershipIds }),

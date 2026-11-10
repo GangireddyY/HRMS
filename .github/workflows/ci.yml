@@ -23,8 +23,15 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U hrms -d hrms_test" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       CI: 'true'
+      # Runs the shared rate-limit counter test against a real Redis.
+      REDIS_TEST_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +47,16 @@ jobs:
         run: |
           npm ci --prefix backend
           npm ci --prefix frontend
+
+      - name: Audit production dependencies
+        run: |
+          npm --prefix backend audit --omit=dev --audit-level=high
+          npm --prefix frontend audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: |
+          npm --prefix backend run lint
+          npm --prefix frontend run lint
 
       - name: Create test environment (ephemeral secrets)
         run: |
@@ -75,13 +92,22 @@ jobs:
           npm --prefix backend run typecheck
           npm --prefix frontend run typecheck
 
-      - name: Migrations (up, down, up)
+      - name: Migrations (up, roll back all, up)
         working-directory: backend
         env:
           NODE_ENV: test
         run: |
           npm run db:migrate
-          npm run db:migrate:down && npm run db:migrate:down && npm run db:migrate:down
+          max=$(( $(ls src/database/migrations/*.up.sql | wc -l) + 1 ))
+          for i in $(seq 1 "$max"); do
+            out=$(npm run --silent db:migrate:down)
+            echo "$out"
+            if grep -q 'Nothing to revert' <<<"$out"; then break; fi
+            if [ "$i" -eq "$max" ]; then echo "::error::Migrations were not fully rolled back after $max down steps"; exit 1; fi
+          done
+          status=$(npm run --silent db:migrate:status)
+          echo "$status"
+          grep -q '^Executed (0):' <<<"$status" || { echo "::error::Migrations still applied after full rollback"; exit 1; }
           npm run db:migrate
 
       - name: Backend unit tests

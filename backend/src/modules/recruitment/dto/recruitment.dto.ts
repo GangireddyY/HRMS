@@ -24,14 +24,22 @@ import {
 } from 'class-validator';
 import {
   APPLICATION_STAGES,
+  BLOOD_GROUPS,
   CANDIDATE_SKILLS_MAX,
   CANDIDATE_SOURCES,
   EMPLOYMENT_TYPES,
   FEEDBACK_RECOMMENDATIONS,
+  GENDERS,
   INTERVIEW_MODES,
   JOB_STATUSES,
+  MARITAL_STATUSES,
+  PREJOINING_DOCUMENT_CATEGORIES,
   REQUISITION_REASONS,
   REQUISITION_STATUSES,
+  type BloodGroup,
+  type Gender,
+  type MaritalStatus,
+  type PrejoiningDocumentCategory,
   type ApplicationStage,
   type CandidateSource,
   type EmploymentType,
@@ -57,7 +65,15 @@ const skillList = ({ value }: { value: unknown }) => {
   return [...seen.values()];
 };
 /** Optional, nullable amount with up to two decimals. */
-const Money = () => applyDecorators(Transform(({ value }) => (value === '' ? null : value)), optionalNullable, Type(() => Number), IsNumber({ maxDecimalPlaces: 2 }), Min(0), Max(1_000_000_000_000));
+const Money = () =>
+  applyDecorators(
+    Transform(({ value }) => (value === '' ? null : value)),
+    optionalNullable,
+    Type(() => Number),
+    IsNumber({ maxDecimalPlaces: 2 }),
+    Min(0),
+    Max(1_000_000_000_000),
+  );
 const lowerEmail = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
 
 // ---- Requisitions ------------------------------------------------------------------------------
@@ -81,7 +97,9 @@ export class UpdateRequisitionDto extends PartialType(RequisitionDto) {}
 
 export class RequisitionQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: ['mine', 'approve', 'all'], default: 'all', description: 'mine = raised by you; approve = waiting for your decision; all = everything you can see' })
-  @IsOptional() @IsIn(['mine', 'approve', 'all']) view?: 'mine' | 'approve' | 'all';
+  @IsOptional()
+  @IsIn(['mine', 'approve', 'all'])
+  view?: 'mine' | 'approve' | 'all';
   @ApiPropertyOptional({ enum: REQUISITION_STATUSES }) @IsOptional() @IsIn(REQUISITION_STATUSES) status?: RequisitionStatus;
 }
 
@@ -120,7 +138,14 @@ export class CandidateDto {
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @Matches(PHONE, { message: 'phone must be a valid phone number' }) phone?: string | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(150) currentCompany?: string | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(150) currentTitle?: string | null;
-  @ApiPropertyOptional({ nullable: true }) @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsNumber({ maxDecimalPlaces: 1 }) @Min(0) @Max(60) experienceYears?: number | null;
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(({ value }) => (value === '' ? null : value))
+  @optionalNullable
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0)
+  @Max(60)
+  experienceYears?: number | null;
   @ApiPropertyOptional({ nullable: true }) @Money() currentCtc?: number | null;
   @ApiPropertyOptional({ nullable: true }) @Money() expectedCtc?: number | null;
   @ApiPropertyOptional({ nullable: true }) @Transform(({ value }) => (value === '' ? null : value)) @optionalNullable @Type(() => Number) @IsInt() @Min(0) @Max(365) noticePeriodDays?: number | null;
@@ -199,6 +224,63 @@ export class UpdateOfferDto extends PartialType(OfferDto) {}
 export class OfferResponseDto {
   @ApiProperty({ enum: ['ACCEPTED', 'DECLINED'] }) @IsIn(['ACCEPTED', 'DECLINED']) response!: 'ACCEPTED' | 'DECLINED';
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) reason?: string | null;
+}
+
+export class OfferApprovalNoteDto {
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+
+export class RejectOfferApprovalDto {
+  @ApiProperty() @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)) @IsString() @Length(3, 500) note!: string;
+}
+
+export class LetterTemplateDto {
+  @ApiProperty({ example: 'Offer of employment – {{designation}}' }) @IsString() @Length(3, 200) subject!: string;
+  @ApiProperty({ description: 'Plain text: blank lines between paragraphs, "- " for list items, **bold**; placeholders like {{candidate_name}}' })
+  @IsString()
+  @Length(20, 20000)
+  body!: string;
+}
+
+export class RecruitmentSettingsDto {
+  @ApiProperty({ description: 'Every offer needs approval (recruitment.offer.approve) before release' }) @IsBoolean() offerApprovalRequired!: boolean;
+}
+
+export class PortalAcceptDto {
+  @ApiProperty({ description: 'Full name, typed as the signature' }) @IsString() @Length(2, 200) signedName!: string;
+  @ApiProperty({ description: 'Agreement to sign electronically' }) @IsBoolean() agree!: boolean;
+}
+
+export class PortalDeclineDto {
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) reason?: string | null;
+}
+
+export class PrejoiningDetailsDto {
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE) dateOfBirth?: string | null;
+  @ApiPropertyOptional({ enum: GENDERS, nullable: true }) @Transform(emptyToNull) @optionalNullable @IsIn(GENDERS) gender?: Gender | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @Matches(/^\+?[0-9 ()-]{7,20}$/, { message: 'phone must be a valid phone number' }) phone?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) address?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) permanentAddress?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(120) emergencyContactName?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  @Transform(emptyToNull)
+  @optionalNullable
+  @Matches(/^\+?[0-9 ()-]{7,20}$/, { message: 'emergencyContactPhone must be a valid phone number' })
+  emergencyContactPhone?: string | null;
+  @ApiPropertyOptional({ enum: MARITAL_STATUSES, nullable: true }) @Transform(emptyToNull) @optionalNullable @IsIn(MARITAL_STATUSES) maritalStatus?: MaritalStatus | null;
+  @ApiPropertyOptional({ enum: BLOOD_GROUPS, nullable: true }) @Transform(emptyToNull) @optionalNullable @IsIn(BLOOD_GROUPS) bloodGroup?: BloodGroup | null;
+  @ApiPropertyOptional({ nullable: true, example: 'IN' }) @Transform(emptyToNull) @optionalNullable @Matches(/^[A-Z]{2}$/, { message: 'nationality must be a 2-letter country code' }) nationality?:
+    string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'ABCDE1234F' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() || null : value))
+  @optionalNullable
+  @Matches(/^[A-Z]{5}[0-9]{4}[A-Z]$/, { message: 'pan must look like ABCDE1234F' })
+  pan?: string | null;
+}
+
+export class PortalDocumentDto {
+  @ApiProperty({ enum: PREJOINING_DOCUMENT_CATEGORIES }) @IsIn(PREJOINING_DOCUMENT_CATEGORIES) category!: PrejoiningDocumentCategory;
+  @ApiProperty({ example: 'Aadhaar card' }) @IsString() @Length(2, 200) title!: string;
 }
 
 export class HireDto {

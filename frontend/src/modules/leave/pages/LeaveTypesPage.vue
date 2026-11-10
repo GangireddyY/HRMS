@@ -17,7 +17,8 @@ const settings = useAsync(() => leaveApi.settings());
 
 const missingRecommended = computed(() => {
   const codes = new Set((types.data.value ?? []).map((t) => t.code));
-  return RECOMMENDED_LEAVE_TYPES.filter((t) => !codes.has(t.code));
+  const hasCompOff = (types.data.value ?? []).some((t) => t.compOffValidityDays !== null);
+  return RECOMMENDED_LEAVE_TYPES.filter((t) => !codes.has(t.code) && !(hasCompOff && 'compOffValidityDays' in t));
 });
 const adding = ref(false);
 async function addRecommended() {

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+public/
+playwright-report/
+test-results/
+uploads/
+uploads-test/
+*.sql
+*.tsbuildinfo
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.env
+.env.*

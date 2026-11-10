@@ -7,31 +7,234 @@ import { CANDIDATE_SKILLS_MAX, type ParsedResume } from '../../contracts';
 
 /** Matched case-insensitively. */
 const SKILLS = [
-  'JavaScript', 'TypeScript', 'Node.js', 'React', 'React Native', 'Angular', 'Vue.js', 'Next.js', 'Nuxt', 'Svelte', 'jQuery', 'HTML', 'CSS', 'Sass', 'Tailwind CSS', 'Bootstrap', 'Redux', 'GraphQL', 'REST APIs', 'NestJS', 'Express.js',
-  'Python', 'Django', 'Flask', 'FastAPI', 'Java', 'Spring Boot', 'Kotlin', 'Scala', 'C++', 'C#', '.NET', 'ASP.NET', 'PHP', 'Laravel', 'Ruby on Rails', 'Golang', 'Rust', 'Perl', 'Objective-C', 'Dart', 'Flutter', 'Android', 'iOS', 'SwiftUI',
-  'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Oracle', 'SQL Server', 'SQLite', 'Elasticsearch', 'Cassandra', 'DynamoDB', 'Firebase', 'Snowflake', 'BigQuery',
-  'AWS', 'Azure', 'Google Cloud', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'Ansible', 'Jenkins', 'GitHub Actions', 'GitLab CI', 'CI/CD', 'DevOps', 'Linux', 'Bash', 'PowerShell', 'Git', 'Microservices', 'Kafka', 'RabbitMQ', 'Nginx',
-  'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'TensorFlow', 'PyTorch', 'scikit-learn', 'Pandas', 'NumPy', 'Data Analysis', 'Data Science', 'Data Engineering', 'Spark', 'Hadoop', 'Airflow', 'Power BI', 'Tableau', 'Looker', 'Statistics',
-  'Selenium', 'Cypress', 'Playwright', 'Jest', 'JUnit', 'Manual Testing', 'Automation Testing', 'Performance Testing', 'JIRA', 'Confluence', 'Agile', 'Scrum', 'Kanban',
-  'Figma', 'Sketch', 'Adobe XD', 'Photoshop', 'Illustrator', 'InDesign', 'UI Design', 'UX Design', 'User Research', 'Wireframing', 'Prototyping',
-  'Project Management', 'Product Management', 'Stakeholder Management', 'Team Leadership', 'People Management', 'Business Analysis', 'Requirements Gathering', 'PMP', 'PRINCE2', 'Six Sigma',
-  'SAP', 'Salesforce', 'HubSpot', 'Zoho', 'Tally', 'QuickBooks', 'MS Office', 'Microsoft Excel', 'Advanced Excel', 'MS Word', 'PowerPoint', 'Google Sheets', 'VBA',
-  'Accounting', 'Bookkeeping', 'Financial Analysis', 'Financial Modelling', 'Budgeting', 'Taxation', 'GST', 'TDS', 'Auditing', 'Payroll', 'Accounts Payable', 'Accounts Receivable', 'IFRS',
-  'Recruitment', 'Talent Acquisition', 'Onboarding', 'Employee Relations', 'HR Operations', 'Performance Management', 'Compensation and Benefits', 'Labour Law',
-  'Digital Marketing', 'SEO', 'SEM', 'Content Writing', 'Copywriting', 'Social Media Marketing', 'Google Ads', 'Google Analytics', 'Email Marketing', 'Brand Management', 'Market Research', 'Lead Generation', 'B2B Sales', 'Business Development', 'Account Management', 'CRM',
-  'Customer Service', 'Customer Success', 'Negotiation', 'Communication', 'Public Speaking', 'Problem Solving', 'Supply Chain', 'Logistics', 'Procurement', 'Inventory Management', 'Quality Assurance', 'AutoCAD', 'SolidWorks', 'MATLAB',
+  'JavaScript',
+  'TypeScript',
+  'Node.js',
+  'React',
+  'React Native',
+  'Angular',
+  'Vue.js',
+  'Next.js',
+  'Nuxt',
+  'Svelte',
+  'jQuery',
+  'HTML',
+  'CSS',
+  'Sass',
+  'Tailwind CSS',
+  'Bootstrap',
+  'Redux',
+  'GraphQL',
+  'REST APIs',
+  'NestJS',
+  'Express.js',
+  'Python',
+  'Django',
+  'Flask',
+  'FastAPI',
+  'Java',
+  'Spring Boot',
+  'Kotlin',
+  'Scala',
+  'C++',
+  'C#',
+  '.NET',
+  'ASP.NET',
+  'PHP',
+  'Laravel',
+  'Ruby on Rails',
+  'Golang',
+  'Rust',
+  'Perl',
+  'Objective-C',
+  'Dart',
+  'Flutter',
+  'Android',
+  'iOS',
+  'SwiftUI',
+  'SQL',
+  'PostgreSQL',
+  'MySQL',
+  'MongoDB',
+  'Redis',
+  'Oracle',
+  'SQL Server',
+  'SQLite',
+  'Elasticsearch',
+  'Cassandra',
+  'DynamoDB',
+  'Firebase',
+  'Snowflake',
+  'BigQuery',
+  'AWS',
+  'Azure',
+  'Google Cloud',
+  'GCP',
+  'Docker',
+  'Kubernetes',
+  'Terraform',
+  'Ansible',
+  'Jenkins',
+  'GitHub Actions',
+  'GitLab CI',
+  'CI/CD',
+  'DevOps',
+  'Linux',
+  'Bash',
+  'PowerShell',
+  'Git',
+  'Microservices',
+  'Kafka',
+  'RabbitMQ',
+  'Nginx',
+  'Machine Learning',
+  'Deep Learning',
+  'NLP',
+  'Computer Vision',
+  'TensorFlow',
+  'PyTorch',
+  'scikit-learn',
+  'Pandas',
+  'NumPy',
+  'Data Analysis',
+  'Data Science',
+  'Data Engineering',
+  'Spark',
+  'Hadoop',
+  'Airflow',
+  'Power BI',
+  'Tableau',
+  'Looker',
+  'Statistics',
+  'Selenium',
+  'Cypress',
+  'Playwright',
+  'Jest',
+  'JUnit',
+  'Manual Testing',
+  'Automation Testing',
+  'Performance Testing',
+  'JIRA',
+  'Confluence',
+  'Agile',
+  'Scrum',
+  'Kanban',
+  'Figma',
+  'Sketch',
+  'Adobe XD',
+  'Photoshop',
+  'Illustrator',
+  'InDesign',
+  'UI Design',
+  'UX Design',
+  'User Research',
+  'Wireframing',
+  'Prototyping',
+  'Project Management',
+  'Product Management',
+  'Stakeholder Management',
+  'Team Leadership',
+  'People Management',
+  'Business Analysis',
+  'Requirements Gathering',
+  'PMP',
+  'PRINCE2',
+  'Six Sigma',
+  'SAP',
+  'Salesforce',
+  'HubSpot',
+  'Zoho',
+  'Tally',
+  'QuickBooks',
+  'MS Office',
+  'Microsoft Excel',
+  'Advanced Excel',
+  'MS Word',
+  'PowerPoint',
+  'Google Sheets',
+  'VBA',
+  'Accounting',
+  'Bookkeeping',
+  'Financial Analysis',
+  'Financial Modelling',
+  'Budgeting',
+  'Taxation',
+  'GST',
+  'TDS',
+  'Auditing',
+  'Payroll',
+  'Accounts Payable',
+  'Accounts Receivable',
+  'IFRS',
+  'Recruitment',
+  'Talent Acquisition',
+  'Onboarding',
+  'Employee Relations',
+  'HR Operations',
+  'Performance Management',
+  'Compensation and Benefits',
+  'Labour Law',
+  'Digital Marketing',
+  'SEO',
+  'SEM',
+  'Content Writing',
+  'Copywriting',
+  'Social Media Marketing',
+  'Google Ads',
+  'Google Analytics',
+  'Email Marketing',
+  'Brand Management',
+  'Market Research',
+  'Lead Generation',
+  'B2B Sales',
+  'Business Development',
+  'Account Management',
+  'CRM',
+  'Customer Service',
+  'Customer Success',
+  'Negotiation',
+  'Communication',
+  'Public Speaking',
+  'Problem Solving',
+  'Supply Chain',
+  'Logistics',
+  'Procurement',
+  'Inventory Management',
+  'Quality Assurance',
+  'AutoCAD',
+  'SolidWorks',
+  'MATLAB',
 ];
 /** Ordinary words too — matched only with this exact capitalisation. */
 const EXACT = ['Go', 'Swift', 'Ruby', 'Excel', 'Spring', 'Express', 'Sales', 'Marketing', 'Leadership'];
-const ALIASES: Record<string, string> = { nodejs: 'Node.js', 'node js': 'Node.js', reactjs: 'React', 'react.js': 'React', vuejs: 'Vue.js', vue: 'Vue.js', angularjs: 'Angular', postgres: 'PostgreSQL', k8s: 'Kubernetes', 'amazon web services': 'AWS', 'ms excel': 'Microsoft Excel', 'c sharp': 'C#', expressjs: 'Express.js', nextjs: 'Next.js' };
+const ALIASES: Record<string, string> = {
+  nodejs: 'Node.js',
+  'node js': 'Node.js',
+  reactjs: 'React',
+  'react.js': 'React',
+  vuejs: 'Vue.js',
+  vue: 'Vue.js',
+  angularjs: 'Angular',
+  postgres: 'PostgreSQL',
+  k8s: 'Kubernetes',
+  'amazon web services': 'AWS',
+  'ms excel': 'Microsoft Excel',
+  'c sharp': 'C#',
+  expressjs: 'Express.js',
+  nextjs: 'Next.js',
+};
 
 const HEADINGS: [RegExp, string][] = [
   [/^(?:work |professional |relevant |employment |career )?(?:experience|history|employment(?: history)?|work history|career history)$/, 'experience'],
   [/^(?:education|academics?|academic (?:background|qualifications?)|qualifications?|educational qualifications?)$/, 'education'],
   [/^(?:skills|technical skills|key skills|core skills|core competencies|competencies|expertise|technologies|tech stack|tools)$/, 'skills'],
-  [/^(?:projects?|key projects|personal projects|certifications?|courses|trainings?|achievements|awards|publications|languages|interests|hobbies|personal (?:details|information)|references|declaration|summary|profile|professional summary|career objective|objective|about me)$/, 'other'],
+  [
+    /^(?:projects?|key projects|personal projects|certifications?|courses|trainings?|achievements|awards|publications|languages|interests|hobbies|personal (?:details|information)|references|declaration|summary|profile|professional summary|career objective|objective|about me)$/,
+    'other',
+  ],
 ];
-const TITLE = /\b(engineer|developer|programmer|manager|analyst|designer|consultant|lead|architect|executive|officer|specialist|intern|associate|director|head|administrator|accountant|scientist|tester|recruiter|coordinator|representative|supervisor|technician|advisor|strategist|writer|editor|founder|president|vp|principal|trainee|assistant|partner|controller|auditor|counsel|nurse|teacher)\b/i;
+const TITLE =
+  /\b(engineer|developer|programmer|manager|analyst|designer|consultant|lead|architect|executive|officer|specialist|intern|associate|director|head|administrator|accountant|scientist|tester|recruiter|coordinator|representative|supervisor|technician|advisor|strategist|writer|editor|founder|president|vp|principal|trainee|assistant|partner|controller|auditor|counsel|nurse|teacher)\b/i;
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const DATE = String.raw`(?:(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?\s*[,'’]?\s*|(\d{1,2})\s*[/.-]\s*)?((?:19|20)\d{2})`;
 const RANGE = new RegExp(`${DATE}\\s*(?:-|–|—|to|till|until)\\s*(?:${DATE}|(present|current|now|till date|to date|date|ongoing))`, 'gi');
@@ -40,7 +243,12 @@ const BULLET = /^[•·▪●◦○■□➢►✓*-]\s*/;
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const wordPattern = (term: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}+#.])${escape(term)}(?![\\p{L}\\p{N}+#]|\\.[\\p{L}])`, flags);
 const titleCase = (w: string) => (w === w.toUpperCase() || w === w.toLowerCase() ? w.toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (_, p: string, c: string) => p + c.toUpperCase()) : w);
-const clip = (s: string, n: number) => s.replace(/\s+/g, ' ').replace(/^[\s,;:|·•–—-]+|[\s,;:|·•–—-]+$/g, '').slice(0, n).trim();
+const clip = (s: string, n: number) =>
+  s
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s,;:|·•–—-]+|[\s,;:|·•–—-]+$/g, '')
+    .slice(0, n)
+    .trim();
 
 export function resumeLines(text: string): string[] {
   return text
@@ -54,7 +262,17 @@ function sections(lines: string[]) {
   const out: Record<string, string[]> = { header: [], experience: [], education: [], skills: [], other: [] };
   let current = 'header';
   for (const line of lines) {
-    const key = line.length <= 40 ? HEADINGS.find(([re]) => re.test(line.toLowerCase().replace(/[:\s]+$/, '').replace(/&/g, 'and')))?.[1] : undefined;
+    const key =
+      line.length <= 40
+        ? HEADINGS.find(([re]) =>
+            re.test(
+              line
+                .toLowerCase()
+                .replace(/[:\s]+$/, '')
+                .replace(/&/g, 'and'),
+            ),
+          )?.[1]
+        : undefined;
     if (key) current = key;
     else out[current]!.push(line);
   }
@@ -115,8 +333,12 @@ export function rangeMonths(text: string, today: Date): number {
 
 function experienceOf(text: string, experience: string[], today: Date): number | undefined {
   const stated: number[] = [];
-  for (const m of text.matchAll(/(\d{1,2}(?:\.\d{1,2})?)\s*\+?\s*(?:years?|yrs?)(?:\s*(?:and\s*)?(\d{1,2})\s*months?)?[^.\n]{0,40}?\b(?:experience|exp\b)/gi)) stated.push(Number(m[1]) + (m[2] ? Number(m[2]) / 12 : 0));
-  for (const m of text.matchAll(/(?:total\s+)?experience\s*(?:of|:|-)?\s*(?:about|over|around|nearly|more than)?\s*(\d{1,2}(?:\.\d{1,2})?)\s*\+?\s*(?:years?|yrs?)(?:\s*(?:and\s*)?(\d{1,2})\s*months?)?/gi)) stated.push(Number(m[1]) + (m[2] ? Number(m[2]) / 12 : 0));
+  for (const m of text.matchAll(/(\d{1,2}(?:\.\d{1,2})?)\s*\+?\s*(?:years?|yrs?)(?:\s*(?:and\s*)?(\d{1,2})\s*months?)?[^.\n]{0,40}?\b(?:experience|exp\b)/gi))
+    stated.push(Number(m[1]) + (m[2] ? Number(m[2]) / 12 : 0));
+  for (const m of text.matchAll(
+    /(?:total\s+)?experience\s*(?:of|:|-)?\s*(?:about|over|around|nearly|more than)?\s*(\d{1,2}(?:\.\d{1,2})?)\s*\+?\s*(?:years?|yrs?)(?:\s*(?:and\s*)?(\d{1,2})\s*months?)?/gi,
+  ))
+    stated.push(Number(m[1]) + (m[2] ? Number(m[2]) / 12 : 0));
   const years = stated.filter((y) => y > 0 && y <= 50);
   const value = years.length ? Math.max(...years) : experience.length ? rangeMonths(experience.join('\n'), today) / 12 : 0;
   return value > 0 ? Math.min(60, Math.round(value * 10) / 10) : undefined;
@@ -126,20 +348,32 @@ function roleOf(header: string[], experience: string[]): { title?: string; compa
   const split = (line: string) => {
     const at = line.match(/^(.{2,100}?)\s+(?:at|@)\s+(.{2,100})$/i);
     if (at && TITLE.test(at[1]!)) return { title: at[1]!, company: at[2]! };
-    const parts = line.split(/\s+[|·–—-]\s+|\s*[|·]\s*|,\s+/).map((p) => p.trim()).filter(Boolean);
+    const parts = line
+      .split(/\s+[|·–—-]\s+|\s*[|·]\s*|,\s+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length < 2) return null;
     const t = parts.findIndex((p) => TITLE.test(p));
     if (t < 0) return null;
     const company = parts.find((p, i) => i !== t && !TITLE.test(p));
     return company ? { title: parts[t]!, company } : null;
   };
-  const clean = (l: string) => l.replace(BULLET, '').replace(RANGE, '').replace(/\(\s*\)/g, '').trim();
+  const clean = (l: string) =>
+    l
+      .replace(BULLET, '')
+      .replace(RANGE, '')
+      .replace(/\(\s*\)/g, '')
+      .trim();
   for (const line of header.slice(0, 10)) {
     const at = clean(line).match(/^(.{2,100}?)\s+(?:at|@)\s+(.{2,100})$/i);
     if (at && TITLE.test(at[1]!)) return { title: clip(at[1]!, 150), company: clip(at[2]!, 150) };
   }
   // The most recent job comes first: either "Title | Company" on one line, or a title line next to a company line.
-  const window = experience.slice(0, 6).filter((l) => !BULLET.test(l)).map(clean).filter((l) => l.length >= 2);
+  const window = experience
+    .slice(0, 6)
+    .filter((l) => !BULLET.test(l))
+    .map(clean)
+    .filter((l) => l.length >= 2);
   const companyLike = (l: string | undefined) => !!l && !TITLE.test(l) && l.split(' ').length <= 8 && /^[\p{Lu}\d]/u.test(l);
   for (const [i, line] of window.slice(0, 4).entries()) {
     const r = split(line);
@@ -160,7 +394,10 @@ function skillsOf(text: string, vocabulary: string[]): string[] {
   for (const term of [...new Set([...SKILLS, ...vocabulary.filter((v) => v.trim().length >= 2)])]) add(term, text.search(wordPattern(term, 'iu')));
   for (const term of EXACT) add(term, text.search(wordPattern(term, 'u')));
   for (const [alias, name] of Object.entries(ALIASES)) add(name, text.search(wordPattern(alias, 'iu')));
-  return [...found.values()].sort((a, b) => a.at - b.at).map((s) => s.name).slice(0, Math.min(30, CANDIDATE_SKILLS_MAX));
+  return [...found.values()]
+    .sort((a, b) => a.at - b.at)
+    .map((s) => s.name)
+    .slice(0, Math.min(30, CANDIDATE_SKILLS_MAX));
 }
 
 /** Parses the text of a resume. `vocabulary` adds the organisation's own skill names to the built-in list. */

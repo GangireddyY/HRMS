@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { MODULES, PERMISSIONS, SYSTEM_ROLE_TEMPLATES } from '../../contracts';
 import { Op } from 'sequelize';
-import { Feature, Permission, Role, RolePermission } from '../../database/models';
+import { Feature, Permission, Plan, PlanFeature, Role, RolePermission } from '../../database/models';
+import { DEFAULT_PLANS } from '../../infrastructure/seed/platform-bootstrap';
 
 /** Catalog sync spans all organizations by design. */
 const ALL_TENANTS = { skipTenantScope: true } as const;
@@ -21,12 +22,15 @@ export class CatalogSyncService implements OnApplicationBootstrap {
 
   async sync(): Promise<{ created: string[]; removed: string[] }> {
     const features = new Map((await Feature.findAll()).map((f) => [f.key, f]));
+    const launched: Feature[] = [];
     for (const m of MODULES) {
       const row = { name: m.name, description: m.description, isCore: m.core };
       const current = features.get(m.key);
-      if (!current) await Feature.create({ key: m.key, ...row });
+      if (!current) launched.push(await Feature.create({ key: m.key, ...row }));
       else if (current.name !== row.name || current.description !== row.description || current.isCore !== row.isCore) await current.update(row);
     }
+    // A module launched after the plans exist joins the standard plans that list it (once, when it first appears).
+    if (features.size && launched.length) await this.addLaunchedModulesToPlans(launched);
 
     const existing = await Permission.findAll();
     const existingByKey = new Map(existing.map((p) => [p.key, p]));
@@ -58,6 +62,16 @@ export class CatalogSyncService implements OnApplicationBootstrap {
       this.logger.log(`Permission catalog synced (+${created.length} / -${removed.length})`);
     }
     return { created, removed };
+  }
+
+  private async addLaunchedModulesToPlans(launched: Feature[]): Promise<void> {
+    const plans = await Plan.findAll({ where: { code: DEFAULT_PLANS.map((p) => p.code) }, attributes: ['id', 'code'] });
+    const rows = plans.flatMap((plan) => {
+      const seed = DEFAULT_PLANS.find((p) => p.code === plan.code)!;
+      return launched.filter((f) => seed.features.includes(f.key)).map((f) => ({ planId: plan.id, featureId: f.id }));
+    });
+    if (rows.length) await PlanFeature.bulkCreate(rows, { ignoreDuplicates: true });
+    this.logger.log(`New modules added to standard plans: ${launched.map((f) => f.key).join(', ')}`);
   }
 
   private async grantNewPermissionsToSystemRoles(newKeys: string[]): Promise<void> {

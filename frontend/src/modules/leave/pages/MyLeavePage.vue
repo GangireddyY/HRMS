@@ -6,6 +6,8 @@ import type { LeaveRequestStatus } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { leaveApi } from '@/modules/leave/api/leave.api';
 import ApplyLeaveModal from '@/modules/leave/components/ApplyLeaveModal.vue';
+import CompOffCard from '@/modules/leave/components/CompOffCard.vue';
+import EncashmentCard from '@/modules/leave/components/EncashmentCard.vue';
 import LeaveBalanceCards from '@/modules/leave/components/LeaveBalanceCards.vue';
 import LeaveLedgerModal from '@/modules/leave/components/LeaveLedgerModal.vue';
 import MyLeaveGridCard from '@/modules/leave/components/MyLeaveGridCard.vue';
@@ -307,6 +309,8 @@ const tint = (color: string | undefined, amount: number) => (color ? `color-mix(
       </AppCard>
 
       <aside class="space-y-4">
+        <CompOffCard v-if="canApply" @changed="refresh" />
+        <EncashmentCard v-if="canApply" @changed="refresh" />
         <AppCard title="Coming up" :padded="false">
           <AppSkeleton v-if="ahead.loading.value && !ahead.data.value" class="p-4" :lines="2" />
           <AppErrorState v-else-if="ahead.error.value" :error="ahead.error.value" @retry="ahead.run" />

@@ -3,6 +3,7 @@ import { computed, type Component } from 'vue';
 import { ArrowDownRight, ArrowUpRight } from '@lucide/vue';
 import { KPI_TILE, type KpiTone } from '@/modules/reports/utils/report-visuals';
 import { AppSparkline } from '@/shared/components';
+import { appLocale } from '@/core/locale/locale';
 
 /** A headline figure: icon, value, what it means, and — when the report has a monthly series — its trend and change. */
 const props = defineProps<{ label: string; value: string; icon: Component; tone: KpiTone; hint?: string; spark?: number[] | null; changeLabel?: (diff: number) => string }>();
@@ -12,7 +13,7 @@ const change = computed(() => {
   if (!s || s.length < 2) return null;
   const diff = s.at(-1)! - s[0]!;
   if (!diff) return { text: 'No change', up: null as boolean | null, months: s.length - 1 };
-  return { text: props.changeLabel ? props.changeLabel(Math.abs(diff)) : Math.abs(diff).toLocaleString(), up: diff > 0, months: s.length - 1 };
+  return { text: props.changeLabel ? props.changeLabel(Math.abs(diff)) : Math.abs(diff).toLocaleString(appLocale()), up: diff > 0, months: s.length - 1 };
 });
 </script>
 

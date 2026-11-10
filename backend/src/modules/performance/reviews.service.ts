@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { col, fn, Op, UniqueConstraintError, type Transaction, type WhereOptions } from 'sequelize';
-import { MAX_FEEDBACK_REQUESTS_PER_REVIEW, MAX_GOALS_PER_REVIEW } from '../../contracts';
+import { MAX_FEEDBACK_REQUESTS_PER_REVIEW, MAX_GOALS_PER_REVIEW, POTENTIAL_LABELS } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
@@ -29,6 +29,7 @@ import type {
   GoalDto,
   GoalProgressDto,
   ManagerAssessmentDto,
+  PotentialDto,
   ReassignReviewerDto,
   ReturnGoalsDto,
   ReviewQueryDto,
@@ -277,6 +278,25 @@ export class ReviewsService {
     return this.get(auth, id);
   }
 
+  /** Potential (1–3) for the 9-box: set by HR or the reviewer once the manager review is in; never shown to the employee. */
+  async setPotential(auth: AuthContext, id: string, dto: PotentialDto) {
+    const a = await this.access(auth, id);
+    this.assertActive(a);
+    if (a.isSubject) throw AppError.forbidden("You can't rate your own potential");
+    if (!a.isHr && !(a.isReviewer && auth.permissions.has('performance.review'))) throw AppError.forbidden();
+    if (!DONE.includes(a.review.stage)) throw AppError.conflict('Potential is set once the manager review is submitted');
+    const potential = dto.potential ?? null;
+    if (potential === a.review.potential) return this.get(auth, id);
+    await this.db.transaction(async (transaction) => {
+      await a.review.update({ potential, potentialSetById: auth.userId, potentialSetAt: new Date() }, { transaction });
+      await this.audit.record(
+        { action: 'performance.potential_set', entityType: 'PerformanceReview', entityId: id, summary: potential ? `Potential of ${a.review.employee!.employeeCode} set to ${POTENTIAL_LABELS[potential as 1 | 2 | 3].toLowerCase()}` : `Potential of ${a.review.employee!.employeeCode} cleared`, metadata: { from: a.review.potential, to: potential } },
+        transaction,
+      );
+    });
+    return this.get(auth, id);
+  }
+
   async acknowledge(auth: AuthContext, id: string, dto: AcknowledgeDto) {
     const a = await this.access(auth, id);
     if (!a.isSubject) throw AppError.forbidden();
@@ -466,6 +486,7 @@ export class ReviewsService {
             calibratedRating: r.calibratedRating,
             calibrationNote: others ? r.calibrationNote : null,
             rating: r.calibratedRating ?? r.finalRating,
+            potential: others ? r.potential : null,
           }
         : null,
       acknowledgedAt: r.acknowledgedAt,
@@ -488,6 +509,7 @@ export class ReviewsService {
         submitManagerReview: reviewerActs && r.stage === 'MANAGER_REVIEW',
         requestFeedback: active && (a.isSubject || reviewerActs) && !DONE.includes(r.stage),
         calibrate: active && a.isHr && !a.isSubject && r.stage === 'COMPLETED' && !c.resultsReleasedAt,
+        setPotential: active && !a.isSubject && (a.isHr || reviewerActs) && DONE.includes(r.stage),
         acknowledge: a.isSubject && r.stage === 'COMPLETED' && !!c.resultsReleasedAt,
         reassign: active && a.isHr && !DONE.includes(r.stage),
       },

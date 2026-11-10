@@ -76,7 +76,9 @@ cp backend/.env.docker.example backend/.env.docker    # backend app secrets
 docker compose --env-file .env.docker up -d --build
 ```
 
-Services: `postgres` (17), `redis` (7.4, password-protected), `minio` (S3, console :9001), `migrate` (runs `node dist/database/migrate.js up` + `node dist/cli/bootstrap.js`, then exits), `backend`, `frontend` (nginx on http://localhost:8080 serving the SPA and proxying `/api` to `backend`). Only `frontend` and tooling ports are published, bound to 127.0.0.1.
+Services: `postgres` (17), `redis` (7.4, password-protected), `minio` (S3, console :9001), `migrate` (runs `node dist/database/migrate.js up` + `node dist/cli/bootstrap.js`, then exits), `backend`, `frontend` (unprivileged nginx on http://localhost:8080 serving the SPA and proxying `/api` to `backend`). Only `frontend` and tooling ports are published, bound to 127.0.0.1.
+
+The API connects as `hrms_app` (password `APP_DB_PASSWORD`), which can only read and write rows; `migrate` connects as the schema owner `hrms`, applies migrations and then creates `hrms_app` / refreshes its grants — so existing volumes switch over on the next `up`. Demo data scripts refuse to run with `NODE_ENV=production` unless `ALLOW_DEMO_DATA=true` (throwaway demo environments only).
 
 ## 3. Production deployment
 
@@ -85,8 +87,8 @@ Topology: TLS load balancer → `web` (nginx, static SPA + `/api` proxy) → `ap
 Release steps:
 
 1. Build images in CI: `docker build -t hrms-backend backend` (context = `backend/`) and `docker build -f frontend/Dockerfile -t hrms-frontend .` (context = repository root, because the frontend compiles `backend/src/contracts`). `.dockerignore` files keep `node_modules`, build output and `.env` secrets out of both contexts.
-2. Run the **release job** once per deploy: `node dist/database/migrate.js up && node dist/cli/bootstrap.js` (idempotent: syncs the permission catalog, creates missing plans, creates the first Super Admin if `SUPERADMIN_*` are provided — remove them afterwards).
-3. Roll out API replicas (health check `GET /api/v1/health`), then web.
+2. Run the **release job** once per deploy: `node dist/database/migrate.js up && node dist/database/reencrypt.js && node dist/cli/bootstrap.js` (idempotent; `reencrypt.js` moves encrypted values written in an older format or under a previous key to the current one and encrypts contact details still in plain text — `--dry-run` only counts, exit code 2 when a value can't be read; syncs the permission catalog, creates missing plans, creates the first Super Admin if `SUPERADMIN_*` are provided — remove them afterwards).
+3. Roll out API replicas (liveness `GET /api/v1/health/live`, readiness `GET /api/v1/health/ready`), then web.
 
 ### Required environment (API)
 
@@ -94,9 +96,12 @@ Release steps:
 |---|---|
 | `NODE_ENV=production` | Enables production checks |
 | `DB_HOST`, `DB_PORT` (5432), `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Database configuration. `DB_USER` must be a least-privilege role (boot fails with `postgres` in production); `DB_PASSWORD` from the secret manager |
-| `DB_SSL` (false) | `true` requires TLS with certificate verification (managed databases) |
+| `DB_SSL` (false) | `true` requires TLS with certificate verification (managed databases). Required in production; boot fails without it unless `DB_ALLOW_INSECURE=true`, which is only for a database on a private network (the compose stack sets it) |
+| `DB_MIGRATION_USER`, `DB_MIGRATION_PASSWORD` | Release job only. Migrations run as this schema owner; afterwards `migrate.js up` creates `DB_USER` if missing (needs `CREATEROLE`; otherwise create it once by hand) and grants it row access only — no DDL, no `TRUNCATE`, no `UPDATE` on `audit_logs`, no access to `schema_migrations`. Production boot refuses `DB_USER` = `DB_MIGRATION_USER`. Don't give these to the API replicas |
 | `JWT_ACCESS_SECRET` | ≥ 32 chars, from the secret manager; rotate by deploying a new value (forces re-login on next refresh) |
 | `DATA_ENCRYPTION_KEY` | 32 bytes base64, from KMS/secret manager. **Back it up** – encrypted columns are unrecoverable without it |
+| `UPLOAD_SCAN=clamav`, `CLAMAV_HOST`, `CLAMAV_PORT` (3310), `CLAMAV_TIMEOUT_MS` (30000) | Required in production: every upload is streamed to clamd before it's stored; infected files are rejected (`FILE_REJECTED`, audited as `security.upload_blocked`) and nothing is stored while clamd is unreachable (`SCAN_UNAVAILABLE`, 503). Run clamd beside the API (`clamav/clamav`, ~1.5 GB RAM, freshclam keeps signatures current). Development uses `off`, which still blocks the EICAR test file |
+| `DATA_ENCRYPTION_KEY_VERSION` (1), `DATA_ENCRYPTION_PREVIOUS_KEYS` | Key rotation: the version written into new values, and earlier keys (`1:<base64>,2:<base64>`) still needed to read older ones |
 | `COOKIE_SECURE=true` | Enforced at boot |
 | `CORS_ORIGINS`, `APP_URL` | Public web origin |
 | `TRUST_PROXY` | Number of proxies in front of the API (for correct client IPs / rate limits) |
@@ -104,14 +109,17 @@ Release steps:
 | `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION` (+ `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE` for MinIO / R2) | Employee documents. `s3` is required in production; credentials come from the AWS chain (instance role or `AWS_*` variables), never from `.env` files. Keep the bucket private with Block Public Access on; objects are written with SSE-S3 and only served through authorized API endpoints. Development uses `STORAGE_DRIVER=local` (`STORAGE_LOCAL_DIR`, default `uploads/`) |
 | `ALLOW_ORGANIZATION_SIGNUP`, `DEFAULT_PLAN_CODE` | Self-service onboarding control |
 | `JWT_ACCESS_TTL_SECONDS` (900), `REFRESH_TOKEN_TTL_DAYS` (7) | Upper bounds; organization policies may be stricter |
-| `REDIS_URL` | Phase 9 (BullMQ), Phase 10 (distributed rate limiting) |
+| `REDIS_URL` | Required in production: rate-limit counters shared by all API instances (an instance counts in memory while Redis is unreachable, and readiness reports it down) |
+| `SENTRY_DSN` | Optional: unexpected errors (5xx, background jobs that failed every attempt, unhandled rejections) are reported with the request id and route pattern only — no bodies, headers or user data |
+| `LOG_FORMAT` (`json` in production) | `json`: one object per line with time, level, context, message, requestId, organizationId, stack; `text`: Nest's readable format |
 
 Swagger is disabled when `NODE_ENV=production`.
 
 ## 4. Operations
 
-* **Health**: `GET /api/v1/health` (DB check, 503 when down); nginx `GET /healthz`.
-* **Logs**: structured Nest logs to stdout; correlate with `X-Request-Id` / `requestId` in error responses.
+* **Health**: `GET /api/v1/health/live` (process up) and `GET /api/v1/health/ready` (= `/health`): database, Redis, virus scanner and background jobs; 503 only when the database or Redis is down, `degraded` when the scanner is down, a job has failed or jobs wait more than 15 minutes. nginx `GET /healthz`.
+* **Background jobs**: `background_jobs` (PostgreSQL) — notification emails and other side effects are enqueued in the same transaction as the change and run by any API instance (`FOR UPDATE SKIP LOCKED`), retried after 30 s, 2 min, 10 min, 1 h and 6 h, then kept as `FAILED` for 30 days (done jobs are deleted after 3 days). Alert on `jobs.failed > 0` from the readiness response. Emails with one-time links (invitations, password resets) are sent directly so tokens never sit in the database.
+* **Logs**: JSON lines to stdout (warnings and errors to stderr); correlate with `X-Request-Id` / `requestId` in error responses and job ids (`job-<id>`).
 * **Migrations**: never edit applied migrations; add a new `*.up.sql` (+ `*.down.sql`); check `node dist/database/migrate.js status` in the release job. Databases created by the earlier Prisma-based build are adopted with `migrate.js baseline` (no SQL is executed); the obsolete `_prisma_migrations` table can then be dropped.
 * **Backups**: see [SECURITY.md §6](SECURITY.md#6-backup--recovery). Example manual backup / restore:
 
@@ -120,7 +128,7 @@ PGPASSWORD="$DB_PASSWORD" pg_dump -Fc -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" 
 PGPASSWORD="$RESTORE_DB_PASSWORD" pg_restore --clean --if-exists -h "$RESTORE_DB_HOST" -U "$RESTORE_DB_USER" -d "$RESTORE_DB_NAME" hrms-2026-11-04.dump
 ```
 
-* **Key rotation**: JWT secret – deploy new secret (sessions re-authenticate). Data key – introduce `v2` key, re-encrypt in a background job, keep `v1` for decryption until complete (Phase 10 tooling).
+* **Key rotation**: JWT secret – deploy new secret (sessions re-authenticate). Data key – generate a new key; deploy it as `DATA_ENCRYPTION_KEY` with `DATA_ENCRYPTION_KEY_VERSION=2` and the old one as `DATA_ENCRYPTION_PREVIOUS_KEYS=1:<old key>`; run `node dist/database/reencrypt.js` (safe while the API runs) until it reports everything current; then remove the previous key.
 
 ## 5. Environment notes for this workstation
 

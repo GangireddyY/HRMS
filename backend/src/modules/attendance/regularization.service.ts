@@ -9,13 +9,13 @@ import { addDays } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { AttendanceRecord, AttendanceRegularization, Employee, OrganizationMembership, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { managerAndCover } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AttendanceRulesService } from './attendance-rules.service';
 import type { CreateRegularizationDto, RegularizationQueryDto, ReviewDto } from './dto/attendance.dto';
 import { OvertimeService } from './overtime.service';
-
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`;
+import { fullName } from '../../common/utils/names';
 
 function present(r: AttendanceRegularization, reviewers: Map<string, string>) {
   return {
@@ -51,7 +51,8 @@ export class RegularizationService {
     const ctx = await this.rules.context(auth.organizationId!, self);
     const today = this.rules.today(ctx.timeZone);
     if (dto.workDate > today) throw AppError.validation([{ field: 'workDate', message: 'You can only regularize past days or today' }]);
-    if (dto.workDate < addDays(today, -REGULARIZATION_WINDOW_DAYS)) throw AppError.validation([{ field: 'workDate', message: `Requests are accepted for the last ${REGULARIZATION_WINDOW_DAYS} days only` }]);
+    if (dto.workDate < addDays(today, -REGULARIZATION_WINDOW_DAYS))
+      throw AppError.validation([{ field: 'workDate', message: `Requests are accepted for the last ${REGULARIZATION_WINDOW_DAYS} days only` }]);
     if (dto.workDate < self.dateOfJoining) throw AppError.validation([{ field: 'workDate', message: 'This date is before your date of joining' }]);
     await this.rules.assertOpen(dto.workDate);
     const { checkInAt, checkOutAt } = this.rules.instants(dto.workDate, dto.checkIn, dto.checkOut, ctx.timeZone);
@@ -64,7 +65,10 @@ export class RegularizationService {
           { organizationId: auth.organizationId!, employeeId: self.id, workDate: dto.workDate, checkInAt, checkOutAt: checkOutAt!, reason: dto.reason, requestedById: auth.userId },
           { transaction },
         );
-        await this.audit.record({ action: 'attendance.regularization_requested', entityType: 'AttendanceRegularization', entityId: created.id, summary: `Regularization requested for ${dto.workDate}` }, transaction);
+        await this.audit.record(
+          { action: 'attendance.regularization_requested', entityType: 'AttendanceRegularization', entityId: created.id, summary: `Regularization requested for ${dto.workDate}` },
+          transaction,
+        );
         return created;
       });
     } catch (e) {
@@ -72,8 +76,8 @@ export class RegularizationService {
       throw e;
     }
 
-    const approver = await this.managerUserId(self);
-    if (approver) {
+    for (const approver of await managerAndCover(self.managerId)) {
+      if (approver === auth.userId) continue;
       await this.notifications.notify(approver, {
         organizationId: auth.organizationId,
         type: 'attendance.regularization',
@@ -102,11 +106,18 @@ export class RegularizationService {
     const { rows, count } = await AttendanceRegularization.findAndCountAll({
       where: { [Op.and]: filters },
       include: [{ model: Employee, attributes: ['id', 'firstName', 'lastName', 'employeeCode'] }],
-      order: [[literal(`CASE WHEN "AttendanceRegularization"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'], ['workDate', 'DESC'], ['createdAt', 'DESC']],
+      order: [
+        [literal(`CASE WHEN "AttendanceRegularization"."status" = 'PENDING' THEN 0 ELSE 1 END`), 'ASC'],
+        ['workDate', 'DESC'],
+        ['createdAt', 'DESC'],
+      ],
       ...paginationArgs(query),
     });
     const reviewers = await this.reviewerNames(rows);
-    return new PaginatedResult(rows.map((r) => present(r, reviewers)), paginationMeta(query, count));
+    return new PaginatedResult(
+      rows.map((r) => present(r, reviewers)),
+      paginationMeta(query, count),
+    );
   }
 
   async approve(auth: AuthContext, id: string, dto: ReviewDto) {
@@ -128,7 +139,10 @@ export class RegularizationService {
         : await AttendanceRecord.create({ ...values, organizationId: auth.organizationId!, employeeId: employee.id, workDate: request.workDate }, { transaction });
       await this.overtime.sync(saved, transaction);
       await request.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
-      await this.audit.record({ action: 'attendance.regularization_approved', entityType: 'AttendanceRegularization', entityId: id, summary: `Regularization for ${fullName(employee)} on ${request.workDate} approved` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.regularization_approved', entityType: 'AttendanceRegularization', entityId: id, summary: `Regularization for ${fullName(employee)} on ${request.workDate} approved` },
+        transaction,
+      );
     });
     await this.notifyRequester(request, auth, 'approved', dto.note);
     return this.get(id);
@@ -138,7 +152,10 @@ export class RegularizationService {
     const { request, employee } = await this.forReview(auth, id);
     await this.db.transaction(async (transaction) => {
       await request.update({ status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
-      await this.audit.record({ action: 'attendance.regularization_rejected', entityType: 'AttendanceRegularization', entityId: id, summary: `Regularization for ${fullName(employee)} on ${request.workDate} rejected` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.regularization_rejected', entityType: 'AttendanceRegularization', entityId: id, summary: `Regularization for ${fullName(employee)} on ${request.workDate} rejected` },
+        transaction,
+      );
     });
     await this.notifyRequester(request, auth, 'rejected', dto.note);
     return this.get(id);
@@ -164,7 +181,9 @@ export class RegularizationService {
   private async forReview(auth: AuthContext, id: string) {
     const request = await AttendanceRegularization.findByPk(id);
     if (!request) throw AppError.notFound('Request');
-    const employee = await Employee.findByPk(request.employeeId, { attributes: ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId', 'shiftId', 'locationId', 'dateOfJoining', 'exitDate'] });
+    const employee = await Employee.findByPk(request.employeeId, {
+      attributes: ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId', 'shiftId', 'locationId', 'dateOfJoining', 'exitDate'],
+    });
     if (!employee || !(await this.scope.covers(auth, 'attendance.regularize.approve', employee))) throw AppError.notFound('Request');
     if (auth.membershipId && employee.membershipId === auth.membershipId) throw AppError.forbidden('You cannot review your own request');
     if (request.status !== 'PENDING') throw AppError.conflict(`This request is already ${request.status.toLowerCase()}`);

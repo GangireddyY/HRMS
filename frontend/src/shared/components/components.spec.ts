@@ -7,6 +7,7 @@ import AppDatePicker from '@/shared/components/forms/AppDatePicker.vue';
 import AppOtpInput from '@/shared/components/forms/AppOtpInput.vue';
 import AppPasswordChecklist from '@/shared/components/forms/AppPasswordChecklist.vue';
 import AppSelect from '@/shared/components/forms/AppSelect.vue';
+import AppDropdown from '@/shared/components/layout/AppDropdown.vue';
 import type { TableColumn } from '@/shared/components/types';
 
 interface Row {
@@ -14,6 +15,45 @@ interface Row {
   name: string;
 }
 const columns: TableColumn<Row>[] = [{ key: 'name', label: 'Name', sortField: 'name' }];
+
+describe('AppDropdown', () => {
+  it('is a keyboard-operable menu button', async () => {
+    const w = mount(AppDropdown, {
+      attachTo: document.body,
+      props: { label: 'Actions' },
+      slots: {
+        trigger: `<template #trigger="{ toggle }"><button type="button" @click="toggle">More</button></template>`,
+        default: '<button type="button">Edit</button><button type="button">Archive</button><a href="/x">Open</a>',
+      },
+    });
+    const trigger = w.get('button');
+    expect(trigger.attributes('aria-haspopup')).toBe('menu');
+    expect(trigger.attributes('aria-expanded')).toBe('false');
+
+    await trigger.trigger('keydown', { key: 'Enter' });
+    await trigger.trigger('click');
+    await new Promise((r) => setTimeout(r, 0));
+    const menu = w.get('[role="menu"]');
+    expect(trigger.attributes('aria-expanded')).toBe('true');
+    expect(trigger.attributes('aria-controls')).toBe(menu.attributes('id'));
+    const items = menu.findAll('[role="menuitem"]');
+    expect(items).toHaveLength(3);
+    expect(document.activeElement?.textContent).toBe('Edit');
+
+    await menu.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toBe('Archive');
+    await menu.trigger('keydown', { key: 'End' });
+    expect(document.activeElement?.textContent).toBe('Open');
+    await menu.trigger('keydown', { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toBe('Edit');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(w.find('[role="menu"]').exists()).toBe(false);
+    expect(document.activeElement).toBe(trigger.element);
+    w.unmount();
+  });
+});
 
 describe('AppDataTable', () => {
   it('renders rows', () => {

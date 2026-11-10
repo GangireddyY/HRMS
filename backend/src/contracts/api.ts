@@ -49,6 +49,10 @@ export const ERROR_CODES = [
   'MFA_REQUIRED',
   'MFA_INVALID',
   'MFA_SETUP_REQUIRED',
+  'STEP_UP_REQUIRED',
+  'SSO_REQUIRED',
+  'FILE_REJECTED',
+  'SCAN_UNAVAILABLE',
   'TOKEN_INVALID',
   'TOKEN_EXPIRED',
   'SESSION_REVOKED',
@@ -84,6 +88,8 @@ export interface OrganizationSummary {
   logoUrl: string | null;
   /** Lowercase `#rrggbb` chosen by the organization, or null. */
   brandColor: string | null;
+  /** ISO 4217 code amounts are shown in (e.g. INR). */
+  currency: string;
 }
 
 /** Appearance choices saved on the account (keys and values are validated by the web app's catalogs). */
@@ -110,8 +116,10 @@ export interface AccessContext {
   activeOrganization: OrganizationSummary | null;
   organizations: OrganizationSummary[];
   roles: { id: string; key: string; name: string }[];
-  /** permission key -> broadest granted scope */
+  /** permission key -> broadest granted scope (delegated approvals included) */
   permissions: Record<string, PermissionScope>;
+  /** People you're approving for while they're away. */
+  actingFor: { name: string; endsOn: string; permissions: string[] }[];
   platformPermissions: string[];
   /** Entitled modules for the active organization. */
   features: ModuleKey[];

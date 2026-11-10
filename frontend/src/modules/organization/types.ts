@@ -36,6 +36,34 @@ export interface OrganizationProfile {
   plan: { id: string; code: string; name: string };
 }
 
+export interface SsoSettings {
+  enabled: boolean;
+  issuer: string | null;
+  clientId: string | null;
+  hasClientSecret: boolean;
+  emailDomains: string[];
+  required: boolean;
+  autoProvision: boolean;
+  defaultRoleKey: string;
+  buttonLabel: string | null;
+  redirectUri: string;
+  signInUrl: string | null;
+  updatedAt: string | null;
+}
+
+export interface SsoSettingsInput {
+  enabled: boolean;
+  issuer: string;
+  clientId: string;
+  clientSecret?: string | null;
+  publicClient?: boolean;
+  emailDomains: string[];
+  required?: boolean;
+  autoProvision?: boolean;
+  defaultRoleKey?: string;
+  buttonLabel?: string | null;
+}
+
 export interface SecurityPolicy {
   id: string;
   passwordMinLength: number;

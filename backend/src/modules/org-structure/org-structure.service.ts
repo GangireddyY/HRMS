@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { fn, col, UniqueConstraintError, type Transaction } from 'sequelize';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
+import { parseNetwork } from '../../common/utils/networks';
 import { DatabaseService } from '../../database/database.service';
 import { CostCenter, Department, Designation, Employee, Grade, Location } from '../../database/models';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
@@ -100,6 +101,7 @@ export class OrgStructureService {
 
   createLocation(auth: AuthContext, dto: CreateLocationDto) {
     this.checkGeofence(dto);
+    if (dto.allowedNetworks !== undefined) dto.allowedNetworks = this.networks(dto.allowedNetworks);
     const { latitude, longitude, ...rest } = dto;
     return this.create('location', (transaction) =>
       Location.create({ ...rest, latitude: latitude == null ? null : String(latitude), longitude: longitude == null ? null : String(longitude), organizationId: auth.organizationId!, createdById: auth.userId, updatedById: auth.userId }, { transaction }),
@@ -113,7 +115,16 @@ export class OrgStructureService {
       longitude: dto.longitude !== undefined ? dto.longitude : row.longitude === null ? null : Number(row.longitude),
       geofenceRadiusM: dto.geofenceRadiusM !== undefined ? dto.geofenceRadiusM : row.geofenceRadiusM,
     });
+    if (dto.allowedNetworks !== undefined) dto.allowedNetworks = this.networks(dto.allowedNetworks);
     return this.update('location', auth, row, dto);
+  }
+
+  /** Office networks, normalized; any entry that isn't an IP address or CIDR range is refused. */
+  private networks(values: string[] | null): string[] | null {
+    if (!values?.length) return null;
+    const bad = values.filter((v) => !parseNetwork(v));
+    if (bad.length) throw AppError.validation([{ field: 'allowedNetworks', message: `Not an IP address or range: ${bad.slice(0, 3).join(', ')}` }]);
+    return [...new Set(values.map((v) => parseNetwork(v)!))];
   }
 
   /** Coordinates come as a pair; a geofence radius needs them. */

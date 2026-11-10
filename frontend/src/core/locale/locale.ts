@@ -24,7 +24,7 @@ export interface LocalePrefs {
   direction: Direction;
 }
 
-/** Also read by the pre-paint script in index.html; change both together. */
+/** Also read by the pre-paint script public/theme-boot.js; change both together. */
 export const LOCALE_STORAGE_KEYS = { region: 'hrms.region', hourCycle: 'hrms.hourCycle', direction: 'hrms.direction' } as const;
 export const DEFAULT_LOCALE_PREFS: LocalePrefs = { region: 'auto', hourCycle: 'auto', direction: 'auto' };
 

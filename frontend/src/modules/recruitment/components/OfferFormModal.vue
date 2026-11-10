@@ -6,6 +6,7 @@ import type { OfferSummary } from '@/modules/recruitment/types';
 import { AppAlert, AppButton, AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { localToday } from '@/shared/utils/dates';
 
 /** Draft (or edit a draft) offer. Department, designation and location default from the requisition. */
 const props = defineProps<{ open: boolean; applicationId: string; offer: OfferSummary | null }>();
@@ -29,7 +30,7 @@ watch(
   { immediate: true },
 );
 const opts = (rows: { id: string; name: string; isActive?: boolean }[] | null | undefined) => (rows ?? []).filter((r) => r.isActive !== false).map((r) => ({ value: r.id, label: r.name }));
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const canSave = computed(() => Number(form.annualCtc) > 0 && !!form.joiningDate);
 
 async function save() {

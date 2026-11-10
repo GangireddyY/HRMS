@@ -11,7 +11,7 @@ import { addDays, zonedParts } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { AttendanceRecord, Department, Employee, PayrollSettings, Timesheet, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { fullName, userIdsOf } from '../employees/employee-people';
+import { fullName, managerAndCover, userIdsOf } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AccessService } from '../rbac/access.service';
@@ -20,7 +20,21 @@ import type { ReviewDto, SaveTimesheetDto, TimesheetBoardQueryDto, TimesheetQuer
 import { cleanEntries, dateLabel, dayTotals, hoursLabel, NO_TIMESHEET_RULES, overlaps, reminderText, weekDates, weekLabel, type ReminderKind, type TimesheetRules } from './timesheet-rules';
 
 const APPROVE = 'attendance.timesheet.approve';
-const EMPLOYEE_ATTRIBUTES = ['id', 'organizationId', 'firstName', 'lastName', 'employeeCode', 'managerId', 'departmentId', 'membershipId', 'dateOfJoining', 'exitDate', 'status', 'shiftId', 'locationId'] as const;
+const EMPLOYEE_ATTRIBUTES = [
+  'id',
+  'organizationId',
+  'firstName',
+  'lastName',
+  'employeeCode',
+  'managerId',
+  'departmentId',
+  'membershipId',
+  'dateOfJoining',
+  'exitDate',
+  'status',
+  'shiftId',
+  'locationId',
+] as const;
 /** Timesheets older than this can no longer be edited (payroll has long used them). */
 const EDIT_WINDOW_WEEKS = 26;
 
@@ -75,7 +89,8 @@ export class TimesheetsService {
       days,
       timesheet: sheet ? this.present(sheet, await this.names([sheet.reviewedById]), self.id, rules.dueWeekday) : null,
       previous: previous && previous.entries.length ? { weekStart: previous.weekStart, entries: previous.entries } : null,
-      canEdit: weekStart <= currentWeek && weekEnd >= self.dateOfJoining && weekStart >= addDays(currentWeek, -7 * EDIT_WINDOW_WEEKS) && (!sheet || sheet.status === 'DRAFT' || sheet.status === 'REJECTED'),
+      canEdit:
+        weekStart <= currentWeek && weekEnd >= self.dateOfJoining && weekStart >= addDays(currentWeek, -7 * EDIT_WINDOW_WEEKS) && (!sheet || sheet.status === 'DRAFT' || sheet.status === 'REJECTED'),
     };
   }
 
@@ -126,17 +141,25 @@ export class TimesheetsService {
           status: (submit ? 'SUBMITTED' : 'DRAFT') as TimesheetStatus,
           ...(submit ? { submittedAt: new Date(), submittedById: auth.userId, reviewedById: null, reviewedAt: null, reviewNote: null } : {}),
         };
-        const sheet = existing ? await existing.update(values, { transaction }) : await Timesheet.create({ organizationId: auth.organizationId!, employeeId: self.id, weekStart, ...values }, { transaction });
+        const sheet = existing
+          ? await existing.update(values, { transaction })
+          : await Timesheet.create({ organizationId: auth.organizationId!, employeeId: self.id, weekStart, ...values }, { transaction });
         if (!submit) return;
         await this.audit.record(
           { action: 'attendance.timesheet_submitted', entityType: 'Timesheet', entityId: sheet.id, summary: `Timesheet for the week of ${weekLabel(weekStart)} submitted (${hoursLabel(total)})` },
           transaction,
         );
-        const managerUser = self.managerId ? (await userIdsOf([self.managerId], transaction)).get(self.managerId) : undefined;
-        if (managerUser && managerUser !== auth.userId) {
+        for (const managerUser of await managerAndCover(self.managerId, transaction)) {
+          if (managerUser === auth.userId) continue;
           await this.notifications.notify(
             managerUser,
-            { organizationId: auth.organizationId, type: 'attendance.timesheet', title: `${fullName(self)} submitted a timesheet for the week of ${weekLabel(weekStart)}`, body: `${hoursLabel(total)} logged.`, link: '/hr/attendance/timesheets' },
+            {
+              organizationId: auth.organizationId,
+              type: 'attendance.timesheet',
+              title: `${fullName(self)} submitted a timesheet for the week of ${weekLabel(weekStart)}`,
+              body: `${hoursLabel(total)} logged.`,
+              link: '/hr/attendance/timesheets',
+            },
             transaction,
           );
         }
@@ -156,7 +179,10 @@ export class TimesheetsService {
       if (!sheet || sheet.employeeId !== self.id) throw AppError.notFound('Timesheet');
       if (sheet.status !== 'SUBMITTED') throw AppError.conflict('Only a timesheet waiting for review can be withdrawn');
       await sheet.update({ status: 'DRAFT', submittedAt: null }, { transaction });
-      await this.audit.record({ action: 'attendance.timesheet_withdrawn', entityType: 'Timesheet', entityId: id, summary: `Timesheet for the week of ${weekLabel(sheet.weekStart)} withdrawn` }, transaction);
+      await this.audit.record(
+        { action: 'attendance.timesheet_withdrawn', entityType: 'Timesheet', entityId: id, summary: `Timesheet for the week of ${weekLabel(sheet.weekStart)} withdrawn` },
+        transaction,
+      );
       return sheet.weekStart;
     });
     return this.week(auth, { weekStart });
@@ -189,11 +215,19 @@ export class TimesheetsService {
           attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'departmentId'],
           include: [{ model: Department, attributes: ['id', 'name'] }],
           ...(search
-            ? { where: { [Op.or]: [{ firstName: { [Op.iLike]: containsPattern(search) } }, { lastName: { [Op.iLike]: containsPattern(search) } }, { employeeCode: { [Op.iLike]: containsPattern(search) } }] } }
+            ? {
+                where: {
+                  [Op.or]: [{ firstName: { [Op.iLike]: containsPattern(search) } }, { lastName: { [Op.iLike]: containsPattern(search) } }, { employeeCode: { [Op.iLike]: containsPattern(search) } }],
+                },
+              }
             : {}),
         },
       ],
-      order: [[literal(`CASE WHEN "Timesheet"."status" = 'SUBMITTED' THEN 0 ELSE 1 END`), 'ASC'], ['weekStart', 'DESC'], ['submittedAt', 'ASC']],
+      order: [
+        [literal(`CASE WHEN "Timesheet"."status" = 'SUBMITTED' THEN 0 ELSE 1 END`), 'ASC'],
+        ['weekStart', 'DESC'],
+        ['submittedAt', 'ASC'],
+      ],
       ...paginationArgs(query),
     });
     const [reviewers, rules] = await Promise.all([this.names(rows.map((r) => r.reviewedById)), this.timesheetRules(auth.organizationId!)]);
@@ -299,7 +333,11 @@ export class TimesheetsService {
       for (const r of outstanding) {
         const userId = users.get(r.employee.id);
         if (!userId || userId === actorUserId) continue;
-        await this.notifications.notify(userId, { organizationId, type: 'attendance.timesheet', ...reminderText(kind, r.status, week, due, rules), link: `/me/timesheets?week=${weekStart}` }, transaction);
+        await this.notifications.notify(
+          userId,
+          { organizationId, type: 'attendance.timesheet', ...reminderText(kind, r.status, week, due, rules), link: `/me/timesheets?week=${weekStart}` },
+          transaction,
+        );
         reminded++;
       }
       // Managers hear about their own people who are still outstanding (only those who can review timesheets).
@@ -364,12 +402,17 @@ export class TimesheetsService {
           { dateOfJoining: { [Op.lte]: weekEnd } },
           { [Op.or]: [{ exitDate: null }, { exitDate: { [Op.gte]: weekStart } }] },
           ...(self ? [{ id: { [Op.ne]: self.id } }] : []),
-          ...(term ? [{ [Op.or]: [{ firstName: { [Op.iLike]: containsPattern(term) } }, { lastName: { [Op.iLike]: containsPattern(term) } }, { employeeCode: { [Op.iLike]: containsPattern(term) } }] }] : []),
+          ...(term
+            ? [{ [Op.or]: [{ firstName: { [Op.iLike]: containsPattern(term) } }, { lastName: { [Op.iLike]: containsPattern(term) } }, { employeeCode: { [Op.iLike]: containsPattern(term) } }] }]
+            : []),
         ],
       },
       attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'departmentId'],
       include: [{ model: Department, attributes: ['id', 'name'] }],
-      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
+      order: [
+        ['firstName', 'ASC'],
+        ['lastName', 'ASC'],
+      ],
     });
     const sheets = employees.length ? await Timesheet.findAll({ where: { weekStart, employeeId: employees.map((e) => e.id) } }) : [];
     const by = new Map(sheets.map((s) => [s.employeeId, s]));
@@ -397,7 +440,7 @@ export class TimesheetsService {
     const leaveBy = leave.get(employee.id);
     const recordBy = new Map(records.map((r) => [r.workDate, r]));
     return weekDates(weekStart).map((date) => {
-      const holiday = holidays.get(date);
+      const holiday = holidays.on(date, ctx.locationId);
       const dayLeave = leaveBy?.get(date);
       const rest = this.rules.isRestDay(ctx, date);
       const offDay = (holiday && !holiday.isOptional) || rest;

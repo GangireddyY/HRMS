@@ -9,8 +9,10 @@ COPY backend/src/contracts /app/backend/src/contracts
 COPY frontend ./
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+# Runs as an unprivileged user (uid 101) on port 8080.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://127.0.0.1:8080/healthz || exit 1

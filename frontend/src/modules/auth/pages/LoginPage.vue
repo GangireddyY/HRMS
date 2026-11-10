@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, ArrowRight, Building2, KeyRound, Lock, LogIn, Mail, ShieldCheck } from '@lucide/vue';
+import { ArrowLeft, ArrowRight, Building2, KeyRound, KeySquare, Lock, LogIn, Mail, ShieldCheck } from '@lucide/vue';
 import { AppAlert, AppButton, AppInput, AppOtpInput } from '@/shared/components';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { homePath } from '@/core/navigation/workspaces';
 import { useAuthStore } from '@/core/auth/auth.store';
+import { ApiError } from '@/core/http/http-client';
+import { authApi } from '@/modules/auth/api/auth.api';
 import { safeRedirect } from '@/shared/utils/redirect';
 
 const auth = useAuthStore();
@@ -26,6 +28,44 @@ const submitting = ref(false);
 
 async function finish() {
   await router.replace(safeRedirect(route.query.redirect) ?? homePath(subject.value));
+}
+
+// ---- Single sign-on ----------------------------------------------------------------------------------
+const SSO_ERRORS: Record<string, string> = {
+  expired: 'The sign-in took too long or was already used. Try again.',
+  not_configured: "Single sign-on isn't set up for your organization.",
+  provider_error: "Your identity provider couldn't confirm the sign-in. Try again, or contact your IT team.",
+  no_account: "You're not a member of this organization yet. Ask your HR team for an invitation.",
+  domain_not_allowed: "That account's email domain can't sign in to this organization.",
+  account_disabled: 'Your account is disabled. Contact your administrator.',
+  email_unverified: "Your email address isn't verified with your identity provider.",
+  seat_limit: 'Your organization has no free seats. Contact your administrator.',
+};
+const ssoError = typeof route.query.sso_error === 'string' ? (SSO_ERRORS[route.query.sso_error] ?? SSO_ERRORS.provider_error!) : null;
+const ssoMode = ref(false);
+const ssoBusy = ref(false);
+const ssoMessage = ref<string | null>(null);
+async function continueWithSso(required = false) {
+  reset();
+  ssoMessage.value = null;
+  const value = email.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    fieldErrors.value = { email: 'Enter your work email to find your organization' };
+    return;
+  }
+  ssoBusy.value = true;
+  try {
+    const found = await authApi.ssoDiscover(value);
+    if (!found) {
+      ssoMessage.value = required ? null : "Your organization doesn't use single sign-on. Sign in with your password.";
+      return;
+    }
+    window.location.assign(authApi.ssoStartUrl(found.organizationSlug, { email: value, returnTo: safeRedirect(route.query.redirect) ?? undefined }));
+  } catch (e) {
+    handle(e, 'Could not start single sign-on');
+  } finally {
+    ssoBusy.value = false;
+  }
 }
 
 /** Instant feedback for empty or malformed fields; the server remains the authority. */
@@ -53,6 +93,11 @@ async function submitCredentials() {
     }
     await finish();
   } catch (e) {
+    if (e instanceof ApiError && e.code === 'SSO_REQUIRED') {
+      submitting.value = false;
+      await continueWithSso(true);
+      return;
+    }
     handle(e, 'Sign-in failed');
   } finally {
     submitting.value = false;
@@ -90,7 +135,16 @@ function backToCredentials() {
       <h1 class="text-2xl leading-tight font-semibold tracking-tight sm:text-title short:text-2xl">Welcome back</h1>
       <p class="mt-2 text-base text-fg-muted short:mt-1 short:text-sm">Sign in to continue to your workspace.</p>
 
-      <form class="mt-4 space-y-5 short:space-y-3" novalidate @submit.prevent="submitCredentials">
+      <form v-if="ssoMode" class="mt-4 space-y-5 short:space-y-3" novalidate @submit.prevent="continueWithSso()">
+        <AppAlert v-if="formError" title="Couldn't start single sign-on">{{ formError }}</AppAlert>
+        <AppAlert v-else-if="ssoMessage" tone="info">{{ ssoMessage }}</AppAlert>
+        <AppInput v-model="email" label="Work email" type="email" autocomplete="username" inputmode="email" size="lg" :icon="Mail" placeholder="you@company.com" :error="fieldErrors.email" />
+        <AppButton type="submit" block size="lg" :loading="ssoBusy" :icon="KeySquare" :icon-right="ArrowRight">Continue with SSO</AppButton>
+        <button type="button" class="w-full text-center text-sm font-medium text-accent-fg hover:underline" @click="ssoMode = false; ssoMessage = null; reset()">Sign in with a password instead</button>
+      </form>
+
+      <form v-else class="mt-4 space-y-5 short:space-y-3" novalidate @submit.prevent="submitCredentials">
+        <AppAlert v-if="ssoError" title="Single sign-on didn't work">{{ ssoError }}</AppAlert>
         <AppAlert v-if="formError" title="Couldn't sign you in">{{ formError }}</AppAlert>
         <AppAlert v-else-if="route.query.reason === 'idle'" tone="info" title="You were signed out">
           For your security, you were signed out after {{ route.query.minutes ? `${route.query.minutes} minutes` : 'a while' }} without activity. Sign in to pick up where you left off.
@@ -111,7 +165,8 @@ function backToCredentials() {
             <RouterLink to="/forgot-password" class="rounded text-sm font-medium text-accent-fg transition hover:text-accent-fg">Forgot password?</RouterLink>
           </template>
         </AppInput>
-        <AppButton type="submit" block size="lg" :loading="submitting" :icon-right="ArrowRight" class="group">Sign in</AppButton>
+        <AppButton type="submit" block size="lg" :loading="submitting || ssoBusy" :icon-right="ArrowRight" class="group">Sign in</AppButton>
+        <AppButton type="button" variant="secondary" block size="lg" :icon="KeySquare" @click="ssoMode = true; reset()">Sign in with SSO</AppButton>
       </form>
 
       <div class="mt-auto pt-6 short:pt-4">

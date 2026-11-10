@@ -16,6 +16,7 @@ import {
   FilePlus2,
   FileSpreadsheet,
   FileText,
+  Gift,
   History,
   Landmark,
   Lock,
@@ -29,8 +30,11 @@ import {
   Wallet,
   X,
 } from '@lucide/vue';
+import { BANK_FILE_FORMAT_LABELS, BANK_FILE_FORMATS } from '@contracts';
 import { appLocale } from '@/core/locale/locale';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
+import { statutoryApi } from '@/modules/payroll/api/statutory.api';
+import BonusPayoutModal from '@/modules/payroll/components/BonusPayoutModal.vue';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import PayslipGridCard from '@/modules/payroll/components/PayslipGridCard.vue';
 import PayslipView from '@/modules/payroll/components/PayslipView.vue';
@@ -91,6 +95,11 @@ async function refresh(next?: PayrollRunDetail) {
 }
 
 const busy = ref<string | null>(null);
+const bonusOpen = ref(false);
+async function onBonus() {
+  bonusOpen.value = false;
+  await refresh();
+}
 async function act(key: string, fn: () => Promise<PayrollRunDetail>, success: string, description?: string) {
   busy.value = key;
   try {
@@ -194,7 +203,13 @@ const exportsList = computed(() => {
   if (!x) return [];
   return [
     { key: 'register', icon: FileSpreadsheet, label: 'Payroll register', hint: 'Every payslip line, CSV', available: true, run: () => payrollApi.downloadRegister(x.id) },
-    { key: 'ecr', icon: FileText, label: 'PF return (ECR)', hint: approved.value ? 'For the EPFO portal, TXT' : 'Available once approved', available: approved.value, run: () => payrollApi.downloadPfEcr(x.id) },
+    ...(auth.can('payroll.process')
+      ? [
+          { key: 'ecr', icon: FileText, label: 'PF return (ECR)', hint: approved.value ? 'For the EPFO portal, TXT' : 'Available once approved', available: approved.value, run: () => payrollApi.downloadPfEcr(x.id) },
+          { key: 'esi', icon: FileText, label: 'ESI return', hint: approved.value ? 'Monthly contributions for the ESIC portal, CSV' : 'Available once approved', available: approved.value, run: () => statutoryApi.downloadEsiReturn(x.id) },
+          { key: 'levies', icon: FileSpreadsheet, label: 'Professional tax & LWF', hint: approved.value ? 'Per employee and state, CSV' : 'Available once approved', available: approved.value, run: () => statutoryApi.downloadStateLevies(x.id) },
+        ]
+      : []),
     ...(auth.can('payroll.disburse')
       ? [{ key: 'bank', icon: Landmark, label: 'Bank transfer file', hint: approved.value ? 'Salary transfers, CSV' : 'Available once approved', available: approved.value, run: () => payrollApi.downloadBankFile(x.id) }]
       : []),
@@ -283,7 +298,7 @@ const lop = (row: PayslipSummary) => row.lopOverride ?? row.lopDays;
     <AppSkeleton v-if="run.loading.value && !r" :lines="8" />
     <AppErrorState v-else-if="run.error.value" :error="run.error.value" title="Could not load the payroll run" @retry="run.run" />
     <template v-else-if="r">
-      <AppPageHeader :title="`Payroll · ${r.period}`" :description="r.notes ?? undefined" back="/hr/payroll/runs" back-label="Payroll runs">
+      <AppPageHeader :title="`Payroll · ${r.period}${r.payGroup ? ` · ${r.payGroup.name}` : ''}`" :description="r.notes ?? undefined" back="/hr/payroll/runs" back-label="Payroll runs">
         <template #leading>
           <div v-if="tile" class="flex w-12 shrink-0 flex-col items-center rounded-xl bg-accent-soft py-1.5 ring-1 ring-brand-500/15 ring-inset max-sm:hidden" aria-hidden="true">
             <span class="text-2xs leading-4 font-semibold text-accent-fg uppercase">{{ tile.month }}</span>
@@ -294,14 +309,19 @@ const lop = (row: PayslipSummary) => row.lopOverride ?? row.lopDays;
           <AppBadge :tone="r.status === 'DRAFT' && r.reviewNote ? 'danger' : runTone[r.status]" dot>{{ r.status === 'DRAFT' && r.reviewNote ? 'Sent back' : RUN_STATUS_LABELS[r.status] }}</AppBadge>
         </template>
         <template #actions>
-          <AppDropdown label="Downloads" width="w-60">
+          <AppDropdown label="Downloads" width="w-72" align="left">
             <template #trigger="{ toggle }"><AppButton variant="secondary" :icon="Download" :icon-right="ChevronDown" @click="toggle">Downloads</AppButton></template>
             <template #default="{ close }">
               <AppMenuItem @select="close(); download(() => payrollApi.downloadRegister(r!.id))">Payroll register (CSV)</AppMenuItem>
-              <AppMenuItem v-if="r.status === 'APPROVED' || r.status === 'PAID'" @select="close(); download(() => payrollApi.downloadPfEcr(r!.id))">PF return – ECR (TXT)</AppMenuItem>
-              <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.disburse')" @select="close(); download(() => payrollApi.downloadBankFile(r!.id))">Bank transfer file (CSV)</AppMenuItem>
+              <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.process')" @select="close(); download(() => payrollApi.downloadPfEcr(r!.id))">PF return – ECR (TXT)</AppMenuItem>
+              <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.process')" @select="close(); download(() => statutoryApi.downloadEsiReturn(r!.id))">ESI return (CSV)</AppMenuItem>
+              <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.process')" @select="close(); download(() => statutoryApi.downloadStateLevies(r!.id))">Professional tax & LWF (CSV)</AppMenuItem>
+              <template v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.disburse')">
+                <AppMenuItem v-for="f in BANK_FILE_FORMATS" :key="f" @select="close(); download(() => payrollApi.downloadBankFile(r!.id, f))">Bank file – {{ BANK_FILE_FORMAT_LABELS[f] }}</AppMenuItem>
+              </template>
             </template>
           </AppDropdown>
+          <AppButton v-if="r.permissions.process" variant="secondary" :icon="Gift" @click="bonusOpen = true">Add bonus</AppButton>
           <AppButton v-if="r.permissions.cancel" variant="ghost" :icon="Ban" :loading="busy === 'cancel'" @click="cancelRun">Cancel</AppButton>
           <template v-if="r.permissions.process">
             <AppButton variant="secondary" :icon="Calculator" :loading="busy === 'calc'" @click="act('calc', () => payrollApi.calculate(id), 'Payroll recalculated')">Recalculate</AppButton>
@@ -547,6 +567,7 @@ const lop = (row: PayslipSummary) => row.lopOverride ?? row.lopDays;
           </div>
         </div>
       </AppModal>
+      <BonusPayoutModal :open="bonusOpen" :run-id="r.id" @close="bonusOpen = false" @saved="onBonus" />
     </template>
   </div>
 </template>

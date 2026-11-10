@@ -7,7 +7,7 @@ import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { containsPattern } from '../../common/utils/like';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Employee, LeaveLedgerEntry, LeaveRequest, LeaveType, OrganizationMembership, User } from '../../database/models';
+import { CompOffRequest, Department, Employee, LeaveLedgerEntry, LeaveRequest, LeaveType, OrganizationMembership, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AttendanceRulesService } from '../attendance/attendance-rules.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
@@ -15,9 +15,26 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { AdjustmentDto, BalanceOverviewQueryDto, LedgerQueryDto } from './dto/leave.dto';
 import { accrualPlan, carryForward, leaveYearOf, leaveYearRange, round2 } from './leave-policy';
 import { LeaveTypesService } from './leave-types.service';
+import { fullName } from '../../common/utils/names';
 
-export const LEAVE_EMPLOYEE_ATTRS = ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'status', 'gender', 'dateOfJoining', 'exitDate', 'managerId', 'departmentId', 'membershipId', 'shiftId', 'locationId'];
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
+export const LEAVE_EMPLOYEE_ATTRS = [
+  'id',
+  'organizationId',
+  'employeeCode',
+  'firstName',
+  'lastName',
+  'status',
+  'gender',
+  'dateOfJoining',
+  'exitDate',
+  'managerId',
+  'departmentId',
+  'membershipId',
+  'shiftId',
+  'locationId',
+  'employmentType',
+  'gradeId',
+];
 
 export interface LeaveYearContext {
   startMonth: number;
@@ -43,8 +60,26 @@ export interface BalanceRow {
   available: number | null;
 }
 
-/** Whether a type applies to an employee (gender-specific types such as maternity leave). */
-export const appliesTo = (t: Pick<LeaveType, 'applicableGender'>, e: Pick<Employee, 'gender'>) => !t.applicableGender || t.applicableGender === e.gender;
+interface Planned {
+  employeeId: string;
+  leaveTypeId: string;
+  leaveYear: number;
+  kind: LedgerKind;
+  days: number;
+  effectiveDate: string;
+  note: string;
+  key: string;
+}
+
+export type LeaveSubject = Pick<Employee, 'gender' | 'locationId' | 'employmentType' | 'gradeId'>;
+type Accruing = Pick<Employee, 'id' | 'dateOfJoining' | 'exitDate'> & LeaveSubject;
+
+/** Whether a type applies to an employee: gender-specific types (maternity leave) and the type's location, employment type and grade rules. */
+export const appliesTo = (t: Pick<LeaveType, 'applicableGender' | 'locationIds' | 'employmentTypes' | 'gradeIds'>, e: LeaveSubject) =>
+  (!t.applicableGender || t.applicableGender === e.gender) &&
+  (!t.locationIds?.length || (!!e.locationId && t.locationIds.includes(e.locationId))) &&
+  (!t.employmentTypes?.length || t.employmentTypes.includes(e.employmentType)) &&
+  (!t.gradeIds?.length || (!!e.gradeId && t.gradeIds.includes(e.gradeId)));
 
 /**
  * Leave balances from the append-only ledger. Accruals, carry-forward and lapse are written lazily (whenever balances are
@@ -71,7 +106,7 @@ export class LeaveBalanceService {
    * Writes the accruals due so far in `year` and, at the start of a year, last year's carry-forward and lapse
    * (looking back `depth` years so a gap in activity cannot lose a carry-forward).
    */
-  async ensure(organizationId: string, employees: Pick<Employee, 'id' | 'dateOfJoining' | 'exitDate' | 'gender'>[], year: number, depth = 2, asOfOverride?: string): Promise<void> {
+  async ensure(organizationId: string, employees: Accruing[], year: number, depth = 2, asOfOverride?: string): Promise<void> {
     if (!employees.length) return;
     const ctx = await this.yearContext(organizationId);
     const range = leaveYearRange(year, ctx.startMonth);
@@ -84,7 +119,7 @@ export class LeaveBalanceService {
     const inPrev = employees.filter((e) => e.dateOfJoining <= prev.to && !(e.exitDate && e.exitDate < prev.from));
     if (depth > 0 && inPrev.length) await this.ensure(organizationId, inPrev, year - 1, depth - 1, prev.to);
 
-    const planned: { employeeId: string; leaveTypeId: string; leaveYear: number; kind: LedgerKind; days: number; effectiveDate: string; note: string; key: string }[] = [];
+    const planned: Planned[] = [];
     for (const e of employees) {
       for (const t of types) {
         if (!appliesTo(t, e)) continue;
@@ -107,19 +142,108 @@ export class LeaveBalanceService {
           const remaining = (sums.get(k)?.total ?? 0) - (pending.get(k) ?? 0);
           const { carried, lapsed } = carryForward(remaining, Number(t.carryForwardLimit));
           if (carried > 0) {
-            planned.push({ employeeId: e.id, leaveTypeId: t.id, leaveYear: year, kind: 'CARRY_FORWARD', days: carried, effectiveDate: range.from, note: `Carried forward from ${year - 1}`, key: `cf:${t.id}:${e.id}:${year}` });
+            planned.push({
+              employeeId: e.id,
+              leaveTypeId: t.id,
+              leaveYear: year,
+              kind: 'CARRY_FORWARD',
+              days: carried,
+              effectiveDate: range.from,
+              note: `Carried forward from ${year - 1}`,
+              key: `cf:${t.id}:${e.id}:${year}`,
+            });
           }
           if (lapsed > 0) {
-            planned.push({ employeeId: e.id, leaveTypeId: t.id, leaveYear: year - 1, kind: 'LAPSE', days: -lapsed, effectiveDate: prev.to, note: 'Lapsed at the end of the leave year', key: `lapse:${t.id}:${e.id}:${year - 1}` });
+            planned.push({
+              employeeId: e.id,
+              leaveTypeId: t.id,
+              leaveYear: year - 1,
+              kind: 'LAPSE',
+              days: -lapsed,
+              effectiveDate: prev.to,
+              note: 'Lapsed at the end of the leave year',
+              key: `lapse:${t.id}:${e.id}:${year - 1}`,
+            });
           }
         }
       }
     }
-    if (!planned.length) return;
+    await this.write(organizationId, await this.capAccruals(planned, types, year));
+    const compOff = types.find((t) => t.compOffValidityDays !== null);
+    if (compOff && year === ctx.currentYear) await this.expireCompOff(organizationId, employees, compOff, year, asOf);
+  }
 
-    const existing = new Set(
-      (await LeaveLedgerEntry.findAll({ where: { idempotencyKey: planned.map((p) => p.key) }, attributes: ['idempotencyKey'], raw: true })).map((r) => r.idempotencyKey),
-    );
+  /**
+   * Comp-off credits expire one by one; days taken use up the oldest first, so whatever balance exceeds the credits
+   * still valid has expired (pending requests are held back).
+   */
+  private async expireCompOff(organizationId: string, employees: Pick<Employee, 'id'>[], type: LeaveType, year: number, asOf: string) {
+    const ids = employees.map((e) => e.id);
+    const [sums, pending, live] = await Promise.all([
+      this.sums(ids, year),
+      this.pendingSums(ids, year),
+      CompOffRequest.findAll({ where: { employeeId: ids, leaveTypeId: type.id, status: 'APPROVED', expiresOn: { [Op.gte]: asOf } }, attributes: ['employeeId', 'days'] }),
+    ]);
+    const valid = new Map<string, number>();
+    for (const r of live) valid.set(r.employeeId, round2((valid.get(r.employeeId) ?? 0) + Number(r.days)));
+    const planned: Planned[] = [];
+    for (const id of ids) {
+      const k = `${id}:${type.id}`;
+      const balance = sums.get(k)?.total ?? 0;
+      const lapse = Math.min(round2(balance - (valid.get(id) ?? 0)), round2(balance - (pending.get(k) ?? 0)));
+      if (lapse > 0)
+        planned.push({ employeeId: id, leaveTypeId: type.id, leaveYear: year, kind: 'LAPSE', days: -lapse, effectiveDate: asOf, note: 'Comp-off expired', key: `colapse:${type.id}:${id}:${asOf}` });
+    }
+    await this.write(organizationId, planned);
+  }
+
+  /**
+   * Types with a balance cap: an accrual not written yet credits only what keeps the balance (as of its date) within
+   * the cap, and nothing once it is reached. Worked out from the ledger as of each date, so repeating it gives the same
+   * result and a month skipped at the cap is not credited later.
+   */
+  private async capAccruals(planned: Planned[], types: LeaveType[], year: number): Promise<Planned[]> {
+    const caps = new Map(types.filter((t) => t.maxBalance !== null).map((t) => [t.id, Number(t.maxBalance)]));
+    const candidates = planned.filter((p) => p.kind === 'ACCRUAL' && caps.has(p.leaveTypeId));
+    if (!candidates.length) return planned;
+    const written = new Set((await LeaveLedgerEntry.findAll({ where: { idempotencyKey: candidates.map((p) => p.key) }, attributes: ['idempotencyKey'], raw: true })).map((r) => r.idempotencyKey));
+    const fresh = candidates.filter((p) => !written.has(p.key)).sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+    if (!fresh.length) return planned;
+    const entries = await LeaveLedgerEntry.findAll({
+      where: { employeeId: [...new Set(fresh.map((p) => p.employeeId))], leaveTypeId: [...new Set(fresh.map((p) => p.leaveTypeId))], leaveYear: year },
+      attributes: ['employeeId', 'leaveTypeId', 'effectiveDate', 'days'],
+      raw: true,
+    });
+    const history = new Map<string, { date: string; days: number }[]>();
+    for (const e of entries) {
+      const k = `${e.employeeId}:${e.leaveTypeId}`;
+      history.set(k, [...(history.get(k) ?? []), { date: e.effectiveDate, days: Number(e.days) }]);
+    }
+    const adjusted = new Map<string, Planned | null>();
+    for (const p of fresh) {
+      const k = `${p.employeeId}:${p.leaveTypeId}`;
+      const list = history.get(k) ?? [];
+      const balance = round2(list.filter((x) => x.date <= p.effectiveDate).reduce((s, x) => s + x.days, 0));
+      const room = round2(caps.get(p.leaveTypeId)! - balance);
+      const days = Math.min(p.days, Math.max(0, room));
+      if (days <= 0) {
+        adjusted.set(p.key, null);
+        continue;
+      }
+      const entry = days < p.days ? { ...p, days, note: `${p.note}, capped at the ${caps.get(p.leaveTypeId)}-day limit` } : p;
+      adjusted.set(p.key, entry);
+      history.set(k, [...list, { date: p.effectiveDate, days }]);
+    }
+    return planned.flatMap((p) => {
+      if (!adjusted.has(p.key)) return [p];
+      const a = adjusted.get(p.key);
+      return a ? [a] : [];
+    });
+  }
+
+  private async write(organizationId: string, planned: Planned[]) {
+    if (!planned.length) return;
+    const existing = new Set((await LeaveLedgerEntry.findAll({ where: { idempotencyKey: planned.map((p) => p.key) }, attributes: ['idempotencyKey'], raw: true })).map((r) => r.idempotencyKey));
     const missing = planned.filter((p) => !existing.has(p.key));
     if (!missing.length) return;
     await LeaveLedgerEntry.bulkCreate(
@@ -204,7 +328,10 @@ export class LeaveBalanceService {
       where: { [Op.and]: filters },
       attributes: LEAVE_EMPLOYEE_ATTRS,
       include: [{ model: Department, attributes: ['id', 'name'] }],
-      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
+      order: [
+        ['firstName', 'ASC'],
+        ['lastName', 'ASC'],
+      ],
       ...paginationArgs(query),
     });
     const summaries = await this.summaries(auth.organizationId!, rows, year);
@@ -226,7 +353,10 @@ export class LeaveBalanceService {
         { model: LeaveType, attributes: ['id', 'code', 'name', 'color'] },
         { model: LeaveRequest, attributes: ['id', 'startDate', 'endDate'] },
       ],
-      order: [['effectiveDate', 'ASC'], ['createdAt', 'ASC']],
+      order: [
+        ['effectiveDate', 'ASC'],
+        ['createdAt', 'ASC'],
+      ],
     });
     const actorIds = [...new Set(rows.map((r) => r.createdById).filter((x): x is string => !!x))];
     const actors = new Map((actorIds.length ? await User.findAll({ where: { id: actorIds }, attributes: ['id', 'firstName', 'lastName'] }) : []).map((u) => [u.id, fullName(u)]));
@@ -294,7 +424,10 @@ export class LeaveBalanceService {
 
     const userId = await this.userIdOf(employee.membershipId);
     if (userId && userId !== auth.userId) {
-      const verb = dto.kind === 'ENCASHMENT' ? `${dto.days} day${dto.days === 1 ? '' : 's'} of ${type.name} encashed` : `${type.name} balance ${signed > 0 ? 'increased' : 'reduced'} by ${Math.abs(signed)} day${Math.abs(signed) === 1 ? '' : 's'}`;
+      const verb =
+        dto.kind === 'ENCASHMENT'
+          ? `${dto.days} day${dto.days === 1 ? '' : 's'} of ${type.name} encashed`
+          : `${type.name} balance ${signed > 0 ? 'increased' : 'reduced'} by ${Math.abs(signed)} day${Math.abs(signed) === 1 ? '' : 's'}`;
       await this.notifications.notify(userId, { organizationId: auth.organizationId, type: 'leave.balance', title: verb, body: dto.note, link: '/me/leave' });
     }
     return { id: entry.id, kind: entry.kind, days: Number(entry.days), effectiveDate: entry.effectiveDate };
@@ -302,17 +435,29 @@ export class LeaveBalanceService {
 
   /** Writes due accruals (and year-end carry-forward) for every current employee; safe to repeat. */
   async runAccruals(auth: AuthContext) {
-    const ctx = await this.yearContext(auth.organizationId!);
+    const result = await this.accrueAll(auth.organizationId!);
+    await this.audit.record({
+      action: 'leave.accruals_run',
+      entityType: 'Organization',
+      entityId: auth.organizationId!,
+      summary: `Leave accruals brought up to date (${result.entries} entries)`,
+      metadata: { employees: result.employees, entries: result.entries },
+    });
+    return result;
+  }
+
+  /** Accruals, carry-forward, lapse and comp-off expiry for everyone employed this or last leave year (the nightly job and "Run accruals"). */
+  async accrueAll(organizationId: string) {
+    const ctx = await this.yearContext(organizationId);
     const range = leaveYearRange(ctx.currentYear, ctx.startMonth);
     const employees = await Employee.findAll({
       where: { dateOfJoining: { [Op.lte]: range.to }, [Op.or]: [{ exitDate: null }, { exitDate: { [Op.gte]: leaveYearRange(ctx.currentYear - 1, ctx.startMonth).from } }] },
-      attributes: ['id', 'dateOfJoining', 'exitDate', 'gender'],
+      attributes: ['id', 'dateOfJoining', 'exitDate', 'gender', 'locationId', 'employmentType', 'gradeId'],
       order: [['id', 'ASC']],
     });
     const before = await LeaveLedgerEntry.count({ where: { idempotencyKey: { [Op.ne]: null } } });
-    for (let i = 0; i < employees.length; i += 500) await this.ensure(auth.organizationId!, employees.slice(i, i + 500), ctx.currentYear);
+    for (let i = 0; i < employees.length; i += 500) await this.ensure(organizationId, employees.slice(i, i + 500), ctx.currentYear);
     const written = (await LeaveLedgerEntry.count({ where: { idempotencyKey: { [Op.ne]: null } } })) - before;
-    await this.audit.record({ action: 'leave.accruals_run', entityType: 'Organization', entityId: auth.organizationId!, summary: `Leave accruals brought up to date (${written} entries)`, metadata: { employees: employees.length, entries: written } });
     return { employees: employees.length, entries: written, year: ctx.currentYear };
   }
 

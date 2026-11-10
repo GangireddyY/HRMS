@@ -15,4 +15,8 @@ export interface TableColumn<Row> {
   class?: string;
   /** Plain value accessor when no cell slot is provided. */
   value?: (row: Row) => unknown;
+  /** The cell as text for CSV export (falls back to `value`, then the row's `key` field). */
+  exportValue?: (row: Row) => string | number | boolean | null | undefined;
+  /** Leave the column out of the export (e.g. actions). */
+  noExport?: boolean;
 }

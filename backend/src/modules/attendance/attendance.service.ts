@@ -1,21 +1,40 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Op, type WhereOptions } from 'sequelize';
-import type { DayStatus } from '../../contracts';
+import { PUNCH_PHOTO_MAX_BYTES, type DayStatus } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { containsPattern } from '../../common/utils/like';
+import { ipAllowed, normalizeIp } from '../../common/utils/networks';
 import { minutesToTime, monthRange } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { AttendanceOvertime, AttendanceRecord, AttendanceRegularization, Department, Designation, Employee, Location } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { AttendanceRulesService, OPEN_PUNCH_HOURS, distanceMetres, type EffectiveShift, type EmployeeContext } from './attendance-rules.service';
 import type { CalendarQueryDto, DailyQueryDto, PunchDto, UpsertRecordDto } from './dto/attendance.dto';
 import { OvertimeService } from './overtime.service';
+import { fullName } from '../../common/utils/names';
 
-const EMPLOYEE_ATTRS = ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'status', 'dateOfJoining', 'exitDate', 'shiftId', 'locationId', 'managerId', 'departmentId', 'membershipId', 'biometricCode'];
+const EMPLOYEE_ATTRS = [
+  'id',
+  'organizationId',
+  'employeeCode',
+  'firstName',
+  'lastName',
+  'status',
+  'dateOfJoining',
+  'exitDate',
+  'shiftId',
+  'locationId',
+  'managerId',
+  'departmentId',
+  'membershipId',
+  'biometricCode',
+];
 
 export function presentRecord(r: AttendanceRecord | undefined | null) {
   if (!r) return null;
@@ -31,7 +50,24 @@ export function presentRecord(r: AttendanceRecord | undefined | null) {
     source: r.source,
     workMode: r.workMode,
     note: r.note,
+    hasPhoto: !!r.checkInPhotoKey,
   };
+}
+
+const PHOTO_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+/** A `data:image/...;base64,` photo from the camera: its bytes and type, or a validation error. */
+export function decodePunchPhoto(dataUrl: string): { data: Buffer; contentType: string; ext: string } {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if (!m) throw AppError.validation([{ field: 'photo', message: 'The photo must be a JPEG, PNG or WebP image' }]);
+  const data = Buffer.from(m[2]!, 'base64');
+  if (!data.length) throw AppError.validation([{ field: 'photo', message: 'The photo is empty' }]);
+  if (data.length > PUNCH_PHOTO_MAX_BYTES) throw AppError.validation([{ field: 'photo', message: `The photo is too large (up to ${Math.round(PUNCH_PHOTO_MAX_BYTES / 1000)} KB)` }]);
+  const jpeg = data[0] === 0xff && data[1] === 0xd8;
+  const png = data.subarray(0, 4).toString('hex') === '89504e47';
+  const webp = data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP';
+  if (!(jpeg || png || webp)) throw AppError.validation([{ field: 'photo', message: "The photo isn't a valid image" }]);
+  return { data, contentType: m[1]!, ext: PHOTO_TYPES[m[1]!]! };
 }
 
 function shiftSummary(shift: EffectiveShift) {
@@ -48,8 +84,6 @@ function shiftSummary(shift: EffectiveShift) {
   };
 }
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`;
-
 @Injectable()
 export class AttendanceService {
   constructor(
@@ -58,11 +92,12 @@ export class AttendanceService {
     private readonly scope: EmployeeScopeService,
     private readonly rules: AttendanceRulesService,
     private readonly overtime: OvertimeService,
+    private readonly storage: StorageService,
   ) {}
 
   // ---- Self-service ----------------------------------------------------------------------------
 
-  async today(auth: AuthContext) {
+  async today(auth: AuthContext, ip?: string) {
     const self = await this.scope.self(auth);
     if (!self) return { employee: null };
     const ctx = await this.rules.context(auth.organizationId!, self);
@@ -74,9 +109,9 @@ export class AttendanceService {
       this.rules.holidays(date, date),
       this.rules.isClosed(date),
       this.rules.workFromHomeDays([self.id], date, date),
-      self.locationId ? Location.findByPk(self.locationId, { attributes: ['id', 'name', 'latitude', 'longitude', 'geofenceRadiusM'] }) : null,
+      self.locationId ? Location.findByPk(self.locationId, { attributes: ['id', 'name', 'latitude', 'longitude', 'geofenceRadiusM', 'allowedNetworks', 'punchPhotoRequired'] }) : null,
     ]);
-    const holiday = holidays.get(date);
+    const holiday = holidays.on(date, ctx.locationId);
     const workFromHome = !!wfh.get(self.id)?.has(date);
     return {
       employee: { id: self.id, name: fullName(self), employeeCode: self.employeeCode, status: self.status },
@@ -88,6 +123,8 @@ export class AttendanceService {
       isWeeklyOff: this.rules.isRestDay(ctx, date),
       workFromHome,
       geofence: location?.geofenceRadiusM && !workFromHome ? { location: location.name, radiusMetres: location.geofenceRadiusM } : null,
+      officeNetwork: location?.allowedNetworks?.length && !workFromHome ? { location: location.name, onNetwork: ipAllowed(ip, location.allowedNetworks) } : null,
+      photoRequired: !!location?.punchPhotoRequired,
       record: presentRecord(record),
       openRecord: presentRecord(open),
       periodClosed: closed,
@@ -106,23 +143,51 @@ export class AttendanceService {
     const existing = await AttendanceRecord.findOne({ where: { employeeId: self.id, workDate: date } });
     if (existing?.checkInAt) throw AppError.conflict(`You already recorded attendance today (in at ${this.localTime(existing.checkInAt, ctx)}). Ask for a regularization if it is wrong.`);
     const workFromHome = !!(await this.rules.workFromHomeDays([self.id], date, date)).get(self.id)?.has(date);
-    if (!workFromHome) await this.checkGeofence(self, dto);
+    const location = self.locationId ? await Location.findByPk(self.locationId, { attributes: ['name', 'allowedNetworks', 'punchPhotoRequired'] }) : null;
+    if (!workFromHome) {
+      await this.checkGeofence(self, dto);
+      if (location?.allowedNetworks?.length && !ipAllowed(ip, location.allowedNetworks)) {
+        throw AppError.validation([{ field: 'network', message: `Punch in from the ${location.name} office network${ip ? ` (you're on ${normalizeIp(ip)})` : ''}, or ask to work from home.` }]);
+      }
+    }
+    const photo = dto.photo ? decodePunchPhoto(dto.photo) : null;
+    if (location?.punchPhotoRequired && !photo) throw AppError.validation([{ field: 'photo', message: `${location.name} needs a photo with every punch-in. Allow the camera and try again.` }]);
     const outcome = await this.rules.evaluate(ctx, date, now, null);
-    await AttendanceRecord.create({
-      organizationId: auth.organizationId!,
-      employeeId: self.id,
-      workDate: date,
-      shiftId: outcome.shiftId,
-      checkInAt: now,
-      lateMinutes: outcome.lateMinutes,
-      source: 'WEB',
-      workMode: workFromHome ? 'REMOTE' : 'OFFICE',
-      checkInIp: ip ?? null,
-      checkInLatitude: dto.latitude === undefined ? null : String(dto.latitude),
-      checkInLongitude: dto.longitude === undefined ? null : String(dto.longitude),
-      updatedById: auth.userId,
-    });
-    return this.today(auth);
+    const photoKey = photo ? `organizations/${auth.organizationId}/attendance/${self.id}/${date}-${randomUUID()}.${photo.ext}` : null;
+    if (photo) await this.storage.put(photoKey!, photo.data, photo.contentType);
+    try {
+      await AttendanceRecord.create({
+        organizationId: auth.organizationId!,
+        employeeId: self.id,
+        workDate: date,
+        shiftId: outcome.shiftId,
+        checkInAt: now,
+        lateMinutes: outcome.lateMinutes,
+        source: 'WEB',
+        workMode: workFromHome ? 'REMOTE' : 'OFFICE',
+        checkInIp: ip ?? null,
+        checkInLatitude: dto.latitude === undefined ? null : String(dto.latitude),
+        checkInLongitude: dto.longitude === undefined ? null : String(dto.longitude),
+        checkInPhotoKey: photoKey,
+        updatedById: auth.userId,
+      });
+    } catch (e) {
+      if (photoKey) await this.storage.deleteQuietly([photoKey]);
+      throw e;
+    }
+    return this.today(auth, ip);
+  }
+
+  /** The punch-in photo of a record: the employee's own, or within `attendance.view` scope. */
+  async photo(auth: AuthContext, recordId: string) {
+    const record = await AttendanceRecord.findByPk(recordId, { attributes: ['id', 'employeeId', 'workDate', 'checkInPhotoKey'] });
+    if (!record?.checkInPhotoKey) throw AppError.notFound('Photo');
+    const employee = await Employee.findByPk(record.employeeId, { attributes: EMPLOYEE_ATTRS });
+    const self = await this.scope.self(auth);
+    if (!employee || (self?.id !== employee.id && !(await this.scope.covers(auth, 'attendance.view', employee)))) throw AppError.notFound('Photo');
+    const ext = record.checkInPhotoKey.split('.').pop()!;
+    const contentType = Object.entries(PHOTO_TYPES).find(([, e]) => e === ext)?.[0] ?? 'image/jpeg';
+    return { stream: await this.storage.get(record.checkInPhotoKey), contentType, fileName: `punch-${record.workDate}.${ext}` };
   }
 
   async punchOut(auth: AuthContext, ip: string | undefined) {
@@ -137,7 +202,7 @@ export class AttendanceService {
       await open.update({ checkOutAt: now, checkOutIp: ip ?? null, ...outcome, updatedById: auth.userId }, { transaction });
       await this.overtime.sync(open, transaction);
     });
-    return this.today(auth);
+    return this.today(auth, ip);
   }
 
   // ---- Calendars & registers -------------------------------------------------------------------
@@ -163,7 +228,7 @@ export class AttendanceService {
     const wfhDays = wfh.get(employee.id);
     const otByDate = new Map(overtime.map((o) => [o.workDate, o]));
     const result = days.map((date) => {
-      const holiday = holidays.get(date);
+      const holiday = holidays.on(date, ctx.locationId);
       const record = byDate.get(date);
       const dayLeave = leaveByDate?.get(date);
       const shift = this.rules.shiftOn(ctx, date);
@@ -220,8 +285,14 @@ export class AttendanceService {
     const employees = await Employee.findAll({
       where: { [Op.and]: filters },
       attributes: EMPLOYEE_ATTRS,
-      include: [{ model: Department, attributes: ['id', 'name'] }, { model: Designation, attributes: ['id', 'name'] }],
-      order: [['firstName', 'ASC'], ['lastName', 'ASC']],
+      include: [
+        { model: Department, attributes: ['id', 'name'] },
+        { model: Designation, attributes: ['id', 'name'] },
+      ],
+      order: [
+        ['firstName', 'ASC'],
+        ['lastName', 'ASC'],
+      ],
       limit: 5000,
     });
     const ids = employees.map((e) => e.id);
@@ -237,10 +308,16 @@ export class AttendanceService {
       const ctx = contexts.get(e.id)!;
       const record = byEmployee.get(e.id);
       const dayLeave = leave.get(e.id)?.get(date);
-      const status = this.rules.dayStatus(date, this.rules.today(ctx.timeZone), e, ctx, holidays.get(date), record, dayLeave);
+      const status = this.rules.dayStatus(date, this.rules.today(ctx.timeZone), e, ctx, holidays.on(date, ctx.locationId), record, dayLeave);
       const shift = this.rules.shiftOn(ctx, date);
       return {
-        employee: { id: e.id, name: fullName(e), employeeCode: e.employeeCode, department: e.department ? { id: e.department.id, name: e.department.name } : null, designation: e.designation?.name ?? null },
+        employee: {
+          id: e.id,
+          name: fullName(e),
+          employeeCode: e.employeeCode,
+          department: e.department ? { id: e.department.id, name: e.department.name } : null,
+          designation: e.designation?.name ?? null,
+        },
         status,
         leave: dayLeave ? { code: dayLeave.code, name: dayLeave.name, color: dayLeave.color, session: dayLeave.session } : null,
         record: presentRecord(record),
@@ -263,7 +340,13 @@ export class AttendanceService {
     };
     const filtered = query.status
       ? rows.filter((r) =>
-          query.status === 'LATE' ? (r.record?.lateMinutes ?? 0) > 0 : query.status === 'REMOTE' ? r.workFromHome : query.status === 'ABSENT' ? r.status === 'ABSENT' || r.status === 'UPCOMING' : r.status === query.status,
+          query.status === 'LATE'
+            ? (r.record?.lateMinutes ?? 0) > 0
+            : query.status === 'REMOTE'
+              ? r.workFromHome
+              : query.status === 'ABSENT'
+                ? r.status === 'ABSENT' || r.status === 'UPCOMING'
+                : r.status === query.status,
         )
       : rows;
     const start = (query.page - 1) * query.pageSize;
@@ -283,7 +366,14 @@ export class AttendanceService {
     const { checkInAt, checkOutAt } = this.rules.instants(dto.workDate, dto.checkIn, dto.checkOut, ctx.timeZone);
     if (checkOutAt && checkOutAt > new Date()) throw AppError.validation([{ field: 'checkOut', message: 'Check-out cannot be in the future' }]);
     const record = await this.db.transaction(async (transaction) => {
-      const values = { ...(await this.rules.evaluate(ctx, dto.workDate, checkInAt, checkOutAt, transaction)), checkInAt, checkOutAt, source: 'MANUAL' as const, note: dto.note, updatedById: auth.userId };
+      const values = {
+        ...(await this.rules.evaluate(ctx, dto.workDate, checkInAt, checkOutAt, transaction)),
+        checkInAt,
+        checkOutAt,
+        source: 'MANUAL' as const,
+        note: dto.note,
+        updatedById: auth.userId,
+      };
       const existing = await AttendanceRecord.findOne({ where: { employeeId: employee.id, workDate: dto.workDate }, transaction });
       const before = existing ? { checkInAt: existing.checkInAt, checkOutAt: existing.checkOutAt, status: existing.status } : null;
       const saved = existing
@@ -296,7 +386,11 @@ export class AttendanceService {
           entityType: 'AttendanceRecord',
           entityId: saved.id,
           summary: `Attendance of ${fullName(employee)} on ${dto.workDate} corrected`,
-          changes: { checkInAt: { from: before?.checkInAt ?? null, to: checkInAt }, checkOutAt: { from: before?.checkOutAt ?? null, to: checkOutAt }, status: { from: before?.status ?? null, to: saved.status } },
+          changes: {
+            checkInAt: { from: before?.checkInAt ?? null, to: checkInAt },
+            checkOutAt: { from: before?.checkOutAt ?? null, to: checkOutAt },
+            status: { from: before?.status ?? null, to: saved.status },
+          },
           metadata: { note: dto.note },
         },
         transaction,

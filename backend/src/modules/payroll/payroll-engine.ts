@@ -7,6 +7,7 @@ import {
   PF_RATE,
   PF_WAGE_CEILING,
   type ComponentCalculation,
+  type LabourWelfareState,
   type ProfessionalTaxState,
   type TaxRegime,
 } from '../../contracts';
@@ -83,9 +84,7 @@ export function salaryBreakdown(annualCtc: number, lines: StructureLine[], opts:
   const amountOf = (l: StructureLine, basic: number) =>
     l.calculation === 'PERCENT_OF_CTC' ? (monthlyCtc * (l.value ?? 0)) / 100 : l.calculation === 'PERCENT_OF_BASIC' ? (basic * (l.value ?? 0)) / 100 : (l.value ?? 0);
   const basic = rupees(amountOf(basicLine, 0));
-  const fixed = lines
-    .filter((l) => l.calculation !== 'BALANCE')
-    .map((l) => ({ line: l, monthly: l === basicLine ? basic : rupees(amountOf(l, basic)) }));
+  const fixed = lines.filter((l) => l.calculation !== 'BALANCE').map((l) => ({ line: l, monthly: l === basicLine ? basic : rupees(amountOf(l, basic)) }));
 
   const pfWage = fixed.filter((f) => f.line.pfWage).reduce((n, f) => n + f.monthly, 0);
   const employerPf = opts.pfEnabled && opts.pfApplicable ? rupees(pfBase(pfWage, opts.pfRestrictToCeiling) * PF_RATE) : 0;
@@ -154,7 +153,17 @@ export function earnedComponents(days: PayDay[], daysInMonth: number, lopOverrid
   for (const d of salaried) {
     const pay = lopOverride === null ? 1 - d.lop : 1;
     for (const c of d.salary!) {
-      const t = totals.get(c.componentId) ?? { componentId: c.componentId, code: c.code, name: c.name, role: c.role, amount: 0, rate: c.monthly, taxable: c.taxable, pfWage: c.pfWage, esiWage: c.esiWage };
+      const t = totals.get(c.componentId) ?? {
+        componentId: c.componentId,
+        code: c.code,
+        name: c.name,
+        role: c.role,
+        amount: 0,
+        rate: c.monthly,
+        taxable: c.taxable,
+        pfWage: c.pfWage,
+        esiWage: c.esiWage,
+      };
       t.amount += (c.monthly * pay) / daysInMonth;
       Object.assign(t, { rate: c.monthly, name: c.name, taxable: c.taxable, pfWage: c.pfWage, esiWage: c.esiWage });
       totals.set(c.componentId, t);
@@ -204,6 +213,12 @@ export function esiCovered(opts: { enabled: boolean; grossRate: number; month: n
 
 export function professionalTax(state: ProfessionalTaxState | null, gross: number, gender: string | null, month: number): number {
   return state && gross > 0 ? state.amount(gross, gender, month) : 0;
+}
+
+/** Labour welfare fund for the month: only in the months the state collects it, and only on a salary that month. */
+export function labourWelfareFund(state: LabourWelfareState | null, gross: number, month: number): { employee: number; employer: number } {
+  if (!state || gross <= 0 || (state.months && !state.months.includes(month))) return { employee: 0, employer: 0 };
+  return state.contribution(gross);
 }
 
 // ---- TDS (income tax deducted at source) -----------------------------------------------------------

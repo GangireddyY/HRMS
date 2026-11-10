@@ -1,9 +1,13 @@
-import type { LeaveRequestStatus } from '@contracts';
+import type { LeaveEncashmentStatus, LeaveRequestStatus } from '@contracts';
 import { http, type ListQuery } from '@/core/http/http-client';
 import type {
   AdjustmentInput,
   BalanceOverview,
   Balances,
+  CompOffEligibility,
+  CompOffRequest,
+  Encashment,
+  EncashmentOption,
   LeaveCalendar,
   LeaveQuote,
   LeaveRequest,
@@ -48,4 +52,18 @@ export const leaveApi = {
   reject: (id: string, note: string) => http.post<LeaveRequest>(`/leave/requests/${id}/reject`, { note }),
   cancel: (id: string, reason?: string) => http.post<LeaveRequest>(`/leave/requests/${id}/cancel`, { reason }),
   calendar: (month: string, departmentId?: string) => http.get<LeaveCalendar>('/leave/calendar', { month, departmentId }),
+
+  compOffEligible: () => http.get<CompOffEligibility>('/leave/comp-offs/eligible'),
+  requestCompOff: (body: { workDate: string; days: number; reason: string }) => http.post<CompOffRequest>('/leave/comp-offs', body),
+  compOffs: (q: ListQuery & { view?: 'mine' | 'team'; status?: LeaveRequestStatus }) => http.page<CompOffRequest>('/leave/comp-offs', q),
+  approveCompOff: (id: string, note?: string) => http.post<CompOffRequest>(`/leave/comp-offs/${id}/approve`, { note }),
+  rejectCompOff: (id: string, note: string) => http.post<CompOffRequest>(`/leave/comp-offs/${id}/reject`, { note }),
+  cancelCompOff: (id: string) => http.post<CompOffRequest>(`/leave/comp-offs/${id}/cancel`),
+
+  encashmentOptions: () => http.get<{ year: number; types: EncashmentOption[] }>('/leave/encashments/options'),
+  requestEncashment: (body: { leaveTypeId: string; days: number; reason?: string | null }) => http.post<Encashment>('/leave/encashments', body),
+  encashments: (q: ListQuery & { view?: 'mine' | 'all'; status?: LeaveEncashmentStatus }) => http.page<Encashment>('/leave/encashments', q),
+  approveEncashment: (id: string, note?: string) => http.post<Encashment>(`/leave/encashments/${id}/approve`, { note }),
+  rejectEncashment: (id: string, note: string) => http.post<Encashment>(`/leave/encashments/${id}/reject`, { note }),
+  cancelEncashment: (id: string) => http.post<Encashment>(`/leave/encashments/${id}/cancel`),
 };

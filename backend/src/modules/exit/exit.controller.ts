@@ -1,13 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, StreamableFile } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
+import { CurrentAuth, RequirePermissions, RequireStepUp, RequireTenant } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
 import { AlumniService } from './alumni.service';
 import {
   AlumniProfileDto,
   AlumniQueryDto,
   ApproveExitDto,
+  BulkPaySettlementsDto,
   CalculateSettlementDto,
   ClearanceItemDto,
   CloseExitDto,
@@ -20,6 +21,8 @@ import {
   ResignDto,
   ReturnSettlementDto,
   RevokeLetterDto,
+  SettlementBankFileQueryDto,
+  SettlementPayoutQueryDto,
   UpdateClearanceDto,
   UpdateExitDto,
 } from './dto/exit.dto';
@@ -137,6 +140,32 @@ export class ExitController {
   }
 
   // ---- Full & final settlement ------------------------------------------------------------------
+
+  @Get('settlements/payouts')
+  @RequirePermissions('payroll.settlement.manage')
+  @ApiOperation({ summary: 'Approved settlements waiting to be paid (or paid ones), with whether each has bank details' })
+  payouts(@CurrentAuth() auth: AuthContext, @Query() query: SettlementPayoutQueryDto) {
+    requireAny(auth, ['payroll.settlement.manage']);
+    return this.settlements.payouts(auth, query.status);
+  }
+
+  @Get('settlements/bank-file')
+  @RequirePermissions('payroll.settlement.manage', 'payroll.disburse')
+  @RequireStepUp()
+  @ApiOperation({ summary: "Transfer file for approved settlements (CSV, generic or a bank's bulk layout) with account numbers – audited; needs a fresh step-up" })
+  async settlementBankFile(@CurrentAuth() auth: AuthContext, @Query() query: SettlementBankFileQueryDto) {
+    requireAny(auth, ['payroll.settlement.manage']);
+    const f = await this.settlements.bankFile(auth, query.ids, query.format);
+    return new StreamableFile(Buffer.from(`\uFEFF${f.content}`, 'utf8'), { type: 'text/csv; charset=utf-8', disposition: `attachment; filename="${f.fileName}"` });
+  }
+
+  @Post('settlements/pay')
+  @RequirePermissions('payroll.settlement.manage')
+  @ApiOperation({ summary: 'Mark several approved settlements paid with one transfer reference' })
+  payMany(@CurrentAuth() auth: AuthContext, @Body() dto: BulkPaySettlementsDto) {
+    requireAny(auth, ['payroll.settlement.manage']);
+    return this.settlements.payMany(auth, dto);
+  }
 
   @Get(':id/settlement')
   @RequireTenant()

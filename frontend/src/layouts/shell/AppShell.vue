@@ -10,6 +10,8 @@ import MobileMoreMenu from '@/layouts/shell/MobileMoreMenu.vue';
 import MobileTabBar from '@/layouts/shell/MobileTabBar.vue';
 import MobileTopbar from '@/layouts/shell/MobileTopbar.vue';
 import SessionTimeoutDialog from '@/layouts/shell/SessionTimeoutDialog.vue';
+import OfflineBanner from '@/layouts/shell/OfflineBanner.vue';
+import StepUpDialog from '@/layouts/shell/StepUpDialog.vue';
 import AssistantPanel from '@/modules/assistant/components/AssistantPanel.vue';
 import { useDevice } from '@/shared/composables/use-device';
 import { openFormPages } from '@/shared/composables/use-form-page';
@@ -37,6 +39,7 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
       <div class="flex min-h-0 flex-1 flex-col overflow-clip bg-canvas lg:border-s lg:border-line">
         <AppTopbar v-if="isDesktop" :workspace="ws" />
         <MobileTopbar v-else :workspace="ws" />
+        <OfflineBanner />
         <div
           v-if="auth.isRestricted"
           class="flex items-center gap-3 border-b border-warning/35 bg-warning-soft px-4 py-2 text-sm text-warning-fg"
@@ -44,6 +47,7 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
         >
           <AlertTriangle :size="16" class="shrink-0" aria-hidden="true" />
           <span v-if="auth.context?.passwordExpired">Your password has expired. Change it to continue using HRMS.</span>
+          <span v-else-if="auth.context?.platformPermissions?.length && !auth.context.activeOrganization">Platform administrators must use two-factor authentication. Set it up to continue.</span>
           <span v-else>Your organization requires two-factor authentication. Set it up to continue.</span>
         </div>
         <!-- Forms open as pages over the content area (AppModal teleports into #form-pages). -->
@@ -66,5 +70,6 @@ const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0)
     <MobileTabBar v-if="showTabBar" :workspace="ws" />
     <AssistantPanel />
     <SessionTimeoutDialog />
+    <StepUpDialog />
   </div>
 </template>

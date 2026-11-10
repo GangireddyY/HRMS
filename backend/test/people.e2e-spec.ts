@@ -164,7 +164,7 @@ describe('Organization structure & employees (e2e)', () => {
     expect(saved.body.data).toMatchObject({ pan: 'ABCDE1234F', bankAccountNumber: '123456789012', bankIfsc: 'HDFC0001234' });
 
     const row = await Employee.findByPk(e.id, RAW);
-    expect(row!.panEncrypted).toMatch(/^v1:/);
+    expect(row!.panEncrypted).toMatch(/^k1:/);
     expect(row!.panEncrypted).not.toContain('ABCDE');
     expect(row!.bankAccountLast4).toBe('9012');
     expect((await ctx.http().get(`${API}/employees/${e.id}`).set(h)).body.data.hasBankAccount).toBe(true);

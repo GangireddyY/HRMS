@@ -26,7 +26,7 @@ Applied migrations are tracked in `schema_migrations`. Each migration runs in it
 | History | separate append-only history tables for employment, salary, department, designation, manager, policy changes and payroll corrections (Phase 2+); the generic `audit_logs` table records every administrative change with a field diff |
 | JSON | only where the shape is genuinely variable: `audit_logs.changes/metadata`. Never as a substitute for relations |
 | Money | `numeric(12,2)` (payroll will use `numeric(14,2)`) – never floating point |
-| Sensitive data | encrypted application-side with AES-256-GCM (`v1:<iv>:<tag>:<ciphertext>`), e.g. `users.mfa_secret_enc`; bank accounts, PAN, Aadhaar (Phase 2) follow the same pattern plus a `*_last4` column for display/search |
+| Sensitive data | encrypted application-side with AES-256-GCM (`k<version>:<iv>:<tag>:<ciphertext>`, bound to `table.column:rowId`), e.g. `users.mfa_secret_enc`, `employees.pan_encrypted`, `employees.address`; identifiers keep a `*_last4` column for display/search. The full list is `infrastructure/crypto/encrypted-fields.ts`; `npm run db:reencrypt` upgrades older values |
 | Secrets | passwords: Argon2id; high-entropy tokens (refresh, reset, invitation, recovery codes): SHA-256 — raw values are never stored |
 | Deletion | users and organizations are never hard-deleted (status transitions); audit logs are append-only (DB trigger) |
 

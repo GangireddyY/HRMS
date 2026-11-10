@@ -5,6 +5,7 @@ import type { Education, Experience, FamilyMember, ProfileSection } from '@/modu
 import { educationLevelOptions, genderOptions, relationshipOptions } from '@/modules/people/utils/labels';
 import { AppAlert, AppButton, AppCheckbox, AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { localToday } from '@/shared/utils/dates';
 
 type Item = FamilyMember | Education | Experience;
 
@@ -14,7 +15,7 @@ const emit = defineEmits<{ close: []; saved: [] }>();
 const TITLES: Record<ProfileSection, string> = { family: 'family member', education: 'education', experience: 'previous employment' };
 const { fieldErrors, formError, handle, reset } = useFormErrors();
 const saving = ref(false);
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const form = reactive({
   name: '',
   relationship: null as string | null,

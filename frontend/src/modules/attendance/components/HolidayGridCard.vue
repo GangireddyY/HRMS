@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { BriefcaseBusiness, CalendarClock, CalendarOff, Pencil, Trash2 } from '@lucide/vue';
+import { BriefcaseBusiness, CalendarClock, CalendarOff, MapPin, Pencil, Trash2 } from '@lucide/vue';
 import type { Holiday } from '@/modules/attendance/types';
+import { holidayWhere } from '@/modules/attendance/utils/attendance-format';
 import { dateTile, daysBetween, longDay, relativeDay } from '@/modules/attendance/utils/attendance-ops';
 import { AppBadge, AppButton } from '@/shared/components';
 
@@ -13,6 +14,8 @@ const h = computed(() => props.holiday);
 const tile = computed(() => dateTile(h.value.date));
 const until = computed(() => daysBetween(props.today, h.value.date));
 const when = computed(() => (until.value === 0 ? 'Today' : relativeDay(h.value.date, props.today).replace(/^./, (c) => c.toUpperCase())));
+const where = computed(() => holidayWhere(h.value));
+const whereTitle = computed(() => (h.value.locations.length ? h.value.locations.map((l) => l.name).join(', ') : 'Every location'));
 </script>
 
 <template>
@@ -29,6 +32,9 @@ const when = computed(() => (until.value === 0 ? 'Today' : relativeDay(h.value.d
           <AppBadge :tone="h.isOptional ? 'neutral' : 'violet'" size="sm">{{ h.isOptional ? 'Optional' : 'Public holiday' }}</AppBadge>
           <AppBadge v-if="next" tone="brand" size="sm" dot>Next up</AppBadge>
         </div>
+        <p class="mt-2 flex items-center gap-1 text-xs text-fg-muted" :title="whereTitle">
+          <MapPin :size="12" class="shrink-0" aria-hidden="true" /><span class="truncate">{{ where }}</span>
+        </p>
       </div>
     </div>
 

@@ -44,6 +44,9 @@ export const MODULE_KEYS = [
   'compliance',
   'exit',
   'reports',
+  'assets',
+  'helpdesk',
+  'travel',
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
@@ -71,6 +74,9 @@ export const MODULES: readonly ModuleDefinition[] = [
   { key: 'compliance', name: 'Compliance & Documents', description: 'Policies, statutory records and secure documents.', core: false },
   { key: 'exit', name: 'Exit Management', description: 'Resignations, clearances and full & final settlement.', core: false },
   { key: 'reports', name: 'Reports & Analytics', description: 'Dashboards, reports and exports.', core: false },
+  { key: 'assets', name: 'Assets', description: 'Company assets, who has them, requests and returns.', core: false },
+  { key: 'helpdesk', name: 'HR Helpdesk', description: 'Employee questions and requests as tickets, with response times.', core: false },
+  { key: 'travel', name: 'Travel', description: 'Business travel requests, approvals, bookings and advances.', core: false },
 ];
 
 export interface PermissionDefinition {
@@ -104,6 +110,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('core', 'organization.profile', 'organization.view', 'View organization profile and settings'),
   def('core', 'organization.profile', 'organization.update', 'Update organization profile and settings'),
   def('core', 'organization.security', 'organization.security.manage', 'Manage password, session and MFA policies'),
+  def('core', 'organization.integrations', 'integration.manage', 'Manage API keys and webhooks'),
   def('core', 'organization.structure', 'organization.structure.manage', 'Manage branches, locations, departments, designations, grades and cost centers'),
   def('core', 'organization.calendar', 'organization.calendar.manage', 'Manage holidays and working-day calendars'),
   // Core: users & roles
@@ -116,7 +123,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // Core: audit
   def('core', 'audit', 'audit.view', 'View audit trail'),
   def('core', 'audit', 'audit.login_history.view', 'View login history of all users'),
-  def('core', 'audit', 'audit.purge', 'Archive old audit trail and login history to a file, then delete them'),
+  def('core', 'audit', 'audit.purge', 'Archive old audit trail and login history to a file, then delete them', { restricted: true }),
+  def('core', 'privacy', 'privacy.manage', "Handle personal-data requests (export and erase people's data) and set retention periods"),
   // Core: self-service
   def('core', 'self', 'self.profile.update', 'Update own permitted personal details'),
 
@@ -130,6 +138,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('employee', 'employees.lifecycle', 'employee.lifecycle.manage', 'Transfers, promotions, manager and status changes', S),
   def('employee', 'employees.compensation', 'employee.salary.view', 'View employee salary details', S),
   def('employee', 'employees.compensation', 'employee.salary.revise', 'Revise employee salary'),
+  def('employee', 'employees.compensation', 'employee.salary.approve', 'Approve salary revisions above the approval threshold'),
   def('employee', 'employees.sensitive', 'employee.sensitive.view', 'View bank and statutory identifiers', S),
   def('employee', 'employees.documents', 'employee.document.manage', 'Manage employee documents', S),
 
@@ -140,6 +149,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('recruitment', 'recruitment.pipeline', 'recruitment.manage', 'Manage jobs, candidates and pipeline'),
   def('recruitment', 'recruitment.interviews', 'recruitment.interview.feedback', 'Submit interview feedback'),
   def('recruitment', 'recruitment.offers', 'recruitment.offer.manage', 'Generate and release offers'),
+  def('recruitment', 'recruitment.offers', 'recruitment.offer.approve', 'Approve offers before they are released (never your own)'),
 
   // Onboarding
   def('onboarding', 'onboarding.cases', 'onboarding.view', 'View onboarding cases', S),
@@ -177,6 +187,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('payroll', 'payroll.payslips', 'payroll.payslip.view', 'View payslips', S),
   def('payroll', 'payroll.reimbursements', 'payroll.reimbursement.apply', 'Submit reimbursement claims'),
   def('payroll', 'payroll.reimbursements', 'payroll.reimbursement.approve', 'Approve reimbursement claims', S),
+  def('payroll', 'payroll.reimbursements', 'payroll.reimbursement.finance', 'Give the finance approval on large reimbursement claims'),
   def('payroll', 'payroll.settlements', 'payroll.settlement.manage', 'Manage full and final settlements'),
   def('payroll', 'payroll.loans', 'payroll.loan.apply', 'Request loans and salary advances'),
   def('payroll', 'payroll.loans', 'payroll.loan.approve', 'Approve loan and salary advance requests and set their terms'),
@@ -189,6 +200,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('performance', 'performance.reviews', 'performance.self_assess', 'Submit self-assessment and goals'),
   def('performance', 'performance.feedback', 'performance.feedback.give', 'Give peer / 360 feedback'),
   def('performance', 'performance.pip', 'performance.pip.manage', 'Manage performance improvement plans', S),
+  def('performance', 'performance.okrs', 'performance.okr.manage', 'Set company and department objectives (OKRs)', S),
 
   // Training
   def('training', 'training.catalog', 'training.view', 'View courses and programs'),
@@ -231,6 +243,20 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('reports', 'reports.payroll', 'reports.payroll.view', 'View payroll and cost reports'),
   def('reports', 'reports.recruitment', 'reports.recruitment.view', 'View recruitment reports'),
   def('reports', 'reports.export', 'reports.export', 'Export reports (CSV / Excel / PDF)'),
+
+  // Assets
+  def('assets', 'assets.mine', 'assets.request', 'See your assets and request new ones'),
+  def('assets', 'assets.register', 'assets.view', 'View the asset register', S),
+  def('assets', 'assets.register', 'assets.manage', 'Add assets, assign and take them back, handle requests'),
+
+  // Helpdesk
+  def('helpdesk', 'helpdesk.tickets', 'helpdesk.raise', 'Raise HR helpdesk tickets'),
+  def('helpdesk', 'helpdesk.tickets', 'helpdesk.manage', 'Answer, assign and resolve helpdesk tickets'),
+
+  // Travel
+  def('travel', 'travel.requests', 'travel.request', 'Request business travel'),
+  def('travel', 'travel.requests', 'travel.approve', 'Approve travel requests', S),
+  def('travel', 'travel.desk', 'travel.manage', 'Travel desk: see all requests, record bookings and advances'),
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);

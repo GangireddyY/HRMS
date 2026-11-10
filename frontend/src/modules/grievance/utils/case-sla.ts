@@ -2,6 +2,8 @@ import type { Component } from 'vue';
 import { Building2, FileText, HeartPulse, MessageSquare, Scale, ShieldAlert, ShieldCheck, Users, Wallet } from '@lucide/vue';
 import { OPEN_GRIEVANCE_STATUSES, type GrievanceCategory } from '@contracts';
 import type { CaseSummary } from '@/modules/grievance/types';
+import { daysBetween as days, localToday } from '@/shared/utils/dates';
+import { plural } from '@/shared/utils/text';
 
 /** Icon and tile colours per category (full class names, so Tailwind keeps them). */
 export const CATEGORY_VISUALS: Record<GrievanceCategory, { icon: Component; tile: string }> = {
@@ -16,15 +18,10 @@ export const CATEGORY_VISUALS: Record<GrievanceCategory, { icon: Component; tile
   POSH: { icon: ShieldCheck, tile: 'bg-violet-50 text-violet-600 ring-violet-600/15 dark:bg-violet-500/15 dark:text-violet-300' },
 };
 
-const DAY = 86_400_000;
-const pad = (n: number) => String(n).padStart(2, '0');
-export const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+export const todayIso = localToday;
+export { plural };
 /** Whole days from one date to another (date parts only). */
-export const daysBetween = (from: string, to: string) => Math.round((Date.parse(to.slice(0, 10)) - Date.parse(from.slice(0, 10))) / DAY);
-export const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+export const daysBetween = (from: string, to: string) => days(from.slice(0, 10), to.slice(0, 10));
 export const isOpenCase = (c: Pick<CaseSummary, 'status'>) => OPEN_GRIEVANCE_STATUSES.includes(c.status);
 
 /** Days to look ahead for "due soon". */

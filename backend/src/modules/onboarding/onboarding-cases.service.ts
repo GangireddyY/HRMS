@@ -16,8 +16,8 @@ import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { CancelCaseDto, CaseQueryDto, CaseTaskDto, StartCaseDto, TaskActionDto, UpdateCaseDto, UpdateCaseTaskDto, VerifyTaskDocumentDto } from './dto/onboarding.dto';
 import { OnboardingTemplatesService } from './onboarding-templates.service';
+import { fullName } from '../../common/utils/names';
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const EMPLOYEE_ATTRS = ['id', 'organizationId', 'employeeCode', 'firstName', 'lastName', 'status', 'dateOfJoining', 'managerId', 'departmentId', 'membershipId', 'workEmail'];
 const EMPLOYEE_INCLUDE = [
   { model: Department, attributes: ['id', 'name'] },

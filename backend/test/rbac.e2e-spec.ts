@@ -181,6 +181,26 @@ describe('RBAC & user administration (e2e)', () => {
     expect(res.status).toBe(409);
   });
 
+  it('keeps restricted access (POSH, deleting the audit trail) out of self-service grants', async () => {
+    const { admin, organization, roleIdsByKey } = await createOrgWithAdmin(ctx);
+    const adminSession = await login(ctx, admin.email);
+    // Organization Admin no longer holds the audit purge implicitly.
+    expect((await ctx.http().get(`${API}/log-archives`).set(bearer(adminSession.accessToken))).status).toBe(403);
+
+    // A second administrator who also holds Team Lead can't add POSH access to that role (it would reach themselves)…
+    const { session: second } = await memberWithRoles(organization.id, ['org_admin', 'team_lead']);
+    const teamLead = roleIdsByKey.get('team_lead');
+    const current = await ctx.http().get(`${API}/roles/${teamLead}`).set(bearer(second.accessToken));
+    const withPosh = [...current.body.data.permissions, { key: 'grievance.posh.access', scope: 'ORGANIZATION' }];
+    const self = await ctx.http().put(`${API}/roles/${teamLead}/permissions`).set(bearer(second.accessToken)).send({ permissions: withPosh });
+    expect(self.status).toBe(403);
+    // …but another administrator can, and it is audited.
+    const other = await ctx.http().put(`${API}/roles/${teamLead}/permissions`).set(bearer(adminSession.accessToken)).send({ permissions: withPosh });
+    expect(other.status).toBe(200);
+    const audit = await ctx.http().get(`${API}/audit-logs`).set(bearer(adminSession.accessToken));
+    expect(audit.body.data.map((a: { action: string }) => a.action)).toContain('rbac.restricted_access_granted');
+  });
+
   it('suspension blocks access immediately and reactivation restores it', async () => {
     const { admin, organization } = await createOrgWithAdmin(ctx);
     const adminSession = await login(ctx, admin.email);

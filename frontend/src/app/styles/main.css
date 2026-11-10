@@ -560,6 +560,11 @@
     outline: 2px solid var(--app-ring);
     outline-offset: 2px;
   }
+  /* Headings and the content area receive focus after a navigation (for screen readers), not as controls. */
+  h1[tabindex='-1']:focus,
+  #main:focus {
+    outline: none;
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--app-border-strong) transparent;

@@ -4,6 +4,7 @@ import { CalendarClock, History, InfinityIcon, RefreshCw, Scale, SlidersHorizont
 import type { PaginationMeta } from '@contracts';
 import { leaveApi } from '@/modules/leave/api/leave.api';
 import AdjustBalanceModal from '@/modules/leave/components/AdjustBalanceModal.vue';
+import EncashmentApprovals from '@/modules/leave/components/EncashmentApprovals.vue';
 import LeaveBalanceGridCard from '@/modules/leave/components/LeaveBalanceGridCard.vue';
 import LeaveLedgerModal from '@/modules/leave/components/LeaveLedgerModal.vue';
 import type { BalanceOverview } from '@/modules/leave/types';
@@ -154,6 +155,8 @@ async function runAccruals() {
         </li>
       </ul>
     </section>
+
+    <EncashmentApprovals v-if="canAllocate" @changed="table.load()" />
 
     <AppCard title="Balances by person" :icon="Scale" :description="table.meta.value ? `${table.meta.value.total} ${table.meta.value.total === 1 ? 'person' : 'people'} · available days, with pending in amber` : undefined" :padded="false">
       <div class="grid gap-3 border-b border-line/70 px-4 py-3 sm:grid-cols-[1fr_220px_220px]">

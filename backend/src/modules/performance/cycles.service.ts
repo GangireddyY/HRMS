@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { col, fn, Op, type Transaction, type WhereOptions } from 'sequelize';
-import { DEFAULT_RATING_LABELS, REVIEW_STAGES, type ReviewStage } from '../../contracts';
+import { DEFAULT_RATING_LABELS, NINE_BOX_LABELS, REVIEW_STAGES, SUGGESTED_DISTRIBUTION, type ReviewStage } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
@@ -10,11 +10,15 @@ import { Department, Employee, PerformanceCycle, PerformanceReview } from '../..
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AddParticipantsDto, CycleDto, CycleQueryDto, UpdateCycleDto } from './dto/performance.dto';
-import { userIdsOf } from './performance-people';
+import { personRef, userIdsOf } from './performance-people';
 import { distribution } from './performance-scoring';
 
+const DONE_STAGES: ReviewStage[] = ['COMPLETED', 'ACKNOWLEDGED'];
+/** 9-box performance band of a 1–5 rating: 1–2 low, 3 medium, 4–5 high. */
+const band = (rating: number) => (rating <= 2 ? 0 : rating === 3 ? 1 : 2);
+
 /** Fields that can still change once a cycle is running. */
-const ACTIVE_EDITABLE = ['name', 'description', 'goalsDue', 'selfReviewDue', 'managerReviewDue'] as const;
+const ACTIVE_EDITABLE = ['name', 'description', 'goalsDue', 'selfReviewDue', 'managerReviewDue', 'targetDistribution'] as const;
 
 export function presentCycle(c: PerformanceCycle) {
   return {
@@ -31,6 +35,7 @@ export function presentCycle(c: PerformanceCycle) {
     ratingLabels: c.ratingLabels,
     eligibilityCutoff: c.eligibilityCutoff,
     departmentIds: c.departmentIds,
+    targetDistribution: c.targetDistribution,
     status: c.status,
     launchedAt: c.launchedAt,
     resultsReleasedAt: c.resultsReleasedAt,
@@ -74,6 +79,60 @@ export class CyclesService {
     };
   }
 
+  /**
+   * Calibration view: the rating spread of completed reviews against the cycle's target curve (or the suggested bell
+   * curve), and everyone placed on the 9-box once a potential is set.
+   */
+  async calibration(id: string, departmentId?: string) {
+    const c = await this.find(id);
+    const reviews = await PerformanceReview.findAll({
+      where: { cycleId: id, stage: DONE_STAGES, ...(departmentId ? { '$employee.department_id$': departmentId } : {}) },
+      attributes: ['id', 'employeeId', 'reviewerId', 'stage', 'finalRating', 'calibratedRating', 'calibrationNote', 'potential'],
+      include: [
+        { model: Employee, as: 'employee', attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'departmentId'], include: [{ model: Department, attributes: ['id', 'name'] }] },
+        { model: Employee, as: 'reviewer', attributes: ['id', 'employeeCode', 'firstName', 'lastName'] },
+      ],
+      order: [[{ model: Employee, as: 'employee' }, 'firstName', 'ASC']],
+    });
+    const pending = await PerformanceReview.count({ where: { cycleId: id, stage: { [Op.notIn]: DONE_STAGES } } });
+    const target = c.targetDistribution ?? [...SUGGESTED_DISTRIBUTION];
+    const people = reviews.map((r) => {
+      const rating = r.calibratedRating ?? r.finalRating;
+      const box = rating !== null && r.potential !== null ? { performance: band(rating), potential: r.potential - 1 } : null;
+      return {
+        reviewId: r.id,
+        employee: { ...personRef(r.employee)!, department: r.employee?.department?.name ?? null },
+        reviewer: personRef(r.reviewer),
+        finalRating: r.finalRating,
+        calibratedRating: r.calibratedRating,
+        calibrationNote: r.calibrationNote,
+        rating,
+        potential: r.potential,
+        box: box ? { ...box, label: NINE_BOX_LABELS[box.performance]![box.potential]! } : null,
+      };
+    });
+    const total = people.filter((p) => p.rating !== null).length;
+    const counts = distribution(people.map((p) => p.rating));
+    return {
+      cycle: { id: c.id, name: c.name, status: c.status, ratingLabels: c.ratingLabels, resultsReleasedAt: c.resultsReleasedAt },
+      targetDistribution: target,
+      targetIsCustom: !!c.targetDistribution,
+      rated: total,
+      pending,
+      withoutPotential: people.filter((p) => p.potential === null).length,
+      distribution: [1, 2, 3, 4, 5].map((rating, i) => {
+        const count = counts[rating] ?? 0;
+        const expected = Math.round((total * target[i]!) / 100);
+        return { rating, label: c.ratingLabels[i] ?? String(rating), count, percent: total ? Math.round((count * 1000) / total) / 10 : 0, target: target[i]!, expected, gap: count - expected };
+      }),
+      nineBox: [0, 1, 2].flatMap((performance) =>
+        [0, 1, 2].map((potential) => ({ performance, potential, label: NINE_BOX_LABELS[performance]![potential]!, count: people.filter((p) => p.box?.performance === performance && p.box.potential === potential).length })),
+      ),
+      people,
+      canCalibrate: c.status === 'ACTIVE' && !c.resultsReleasedAt,
+    };
+  }
+
   async create(auth: AuthContext, dto: CycleDto) {
     this.validate(dto);
     const c = await this.db.transaction(async (transaction) => {
@@ -92,6 +151,7 @@ export class CyclesService {
           ratingLabels: dto.ratingLabels ?? DEFAULT_RATING_LABELS,
           eligibilityCutoff: dto.eligibilityCutoff ?? null,
           departmentIds: dto.departmentIds?.length ? dto.departmentIds : null,
+          targetDistribution: dto.targetDistribution ?? null,
           createdById: auth.userId,
           updatedById: auth.userId,
         },
@@ -243,6 +303,7 @@ export class CyclesService {
     if (new Set(keys).size !== keys.length) issues.push({ field: 'competencies', message: 'Each competency needs a different key' });
     const weight = dto.goalsWeight ?? 70;
     if (forLaunch && weight < 100 && !keys.length) issues.push({ field: 'competencies', message: `Add competencies, or count goals for 100% of the score (they count for ${weight}% now)` });
+    if (dto.targetDistribution && dto.targetDistribution.reduce((s, n) => s + n, 0) !== 100) issues.push({ field: 'targetDistribution', message: 'The target shares must add up to 100%' });
     if (issues.length) throw AppError.validation(issues);
   }
 

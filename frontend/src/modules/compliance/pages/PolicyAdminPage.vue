@@ -11,6 +11,7 @@ import { POLICY_VISUALS, ackPct, daysFromToday, relativeDays } from '@/modules/c
 import { EMPLOYMENT_TYPE_LABELS } from '@/modules/people/utils/labels';
 import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppDataTable, AppDatePicker, AppErrorState, AppFacts, AppInput, AppPageHeader, AppSearchInput, AppSelect, AppSkeleton, AppTabs, AppTextarea, type Fact, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
+import { useUnsavedGuard } from '@/shared/composables/use-unsaved-guard';
 import { useTable } from '@/shared/composables/use-table';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate, formatDateTime, timeAgo } from '@/shared/utils/format';
@@ -44,6 +45,7 @@ watch(
   { immediate: true },
 );
 const dirty = computed(() => !!draft.value && (form.content !== (draft.value.content ?? '') || form.changeSummary !== (draft.value.changeSummary ?? '') || form.reacknowledge !== draft.value.reacknowledge || (form.effectiveFrom ?? null) !== draft.value.effectiveFrom));
+useUnsavedGuard(dirty, { message: 'Your edits to the draft are not saved yet. If you leave now, they will be lost.' });
 const busy = ref<string | null>(null);
 async function act(key: string, fn: () => Promise<PolicyDetail>, success: string, description?: string) {
   busy.value = key;

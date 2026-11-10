@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { Bell, BellRing, CheckCheck, Inbox, LayoutGrid, Rows3 } from '@lucide/vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { onLiveUpdate } from '@/core/realtime/live-updates';
+import { Bell, BellRing, CheckCheck, Inbox, LayoutGrid, Mail, Rows3 } from '@lucide/vue';
 import { notificationsApi } from '@/modules/notifications/api/notifications.api';
+import EmailSettingsModal from '@/modules/notifications/components/EmailSettingsModal.vue';
 import NotificationGridCard from '@/modules/notifications/components/NotificationGridCard.vue';
 import NotificationListItem from '@/modules/notifications/components/NotificationListItem.vue';
 import type { NotificationRow } from '@/modules/notifications/types';
@@ -12,7 +14,15 @@ import { useTable } from '@/shared/composables/use-table';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 
 const router = useRouter();
+const route = useRoute();
 const feedback = useFeedbackStore();
+
+/** Emails link here with `?settings=1`. */
+const emailSettingsOpen = ref(route.query.settings === '1');
+function closeEmailSettings() {
+  emailSettingsOpen.value = false;
+  if (route.query.settings) void router.replace({ query: { ...route.query, settings: undefined } });
+}
 const table = useTable((q) => notificationsApi.list(q), { pageSize: 18, filters: { unreadOnly: false as boolean } });
 const groups = computed(() => groupByDay(table.rows.value));
 
@@ -25,6 +35,13 @@ async function refreshUnread() {
   }
 }
 onMounted(refreshUnread);
+// New notifications appear without a reload (on the first page only, so paging isn't disturbed).
+onBeforeUnmount(
+  onLiveUpdate(() => {
+    void refreshUnread();
+    if (table.page.value === 1) void table.load();
+  }),
+);
 
 const show = computed({
   get: () => (table.filters.unreadOnly ? 'unread' : 'all'),
@@ -93,13 +110,17 @@ async function markAll() {
 
 <template>
   <div>
-    <AppPageHeader title="Notifications" description="Account, security and workflow updates.">
+    <AppPageHeader title="Notifications" description="Account, security and workflow updates. Choose which are also emailed to you.">
       <template v-if="unread !== null" #badges>
         <AppBadge v-if="unread" tone="brand" dot>{{ unread }} unread</AppBadge>
         <AppBadge v-else tone="success" dot>All caught up</AppBadge>
       </template>
-      <template #actions><AppButton variant="secondary" :icon="CheckCheck" :disabled="unread === 0" @click="markAll">Mark all as read</AppButton></template>
+      <template #actions>
+        <AppButton variant="secondary" :icon="Mail" @click="emailSettingsOpen = true">Email settings</AppButton>
+        <AppButton variant="secondary" :icon="CheckCheck" :disabled="unread === 0" @click="markAll">Mark all as read</AppButton>
+      </template>
     </AppPageHeader>
+    <EmailSettingsModal :open="emailSettingsOpen" @close="closeEmailSettings" />
 
     <AppCard :padded="false" class="overflow-hidden">
       <div class="flex items-center gap-2 border-b border-line px-4 py-3 sm:gap-3 sm:px-5">

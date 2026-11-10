@@ -3,13 +3,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { CurrentAuth, Public } from '../../common/auth/decorators';
+import { Authenticated, CurrentAuth, Public } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
 import type { UploadedImage } from '../organizations/organization-logo.service';
 import { AVATAR_UPLOAD_LIMIT_BYTES, AvatarService } from './avatar.service';
 
 @ApiTags('Auth')
 @ApiBearerAuth()
+@Authenticated()
 @Controller({ path: 'auth/me/avatar', version: '1' })
 export class MyAvatarController {
   constructor(private readonly avatars: AvatarService) {}

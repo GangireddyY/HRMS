@@ -1,9 +1,11 @@
-import { professionalTaxState } from '../../contracts';
+import { labourWelfareState, professionalTaxState } from '../../contracts';
+import { proofsApply } from './payroll-runs.service';
 import {
   ageOn,
   earnedComponents,
   esiContribution,
   esiCovered,
+  labourWelfareFund,
   monthlyTds,
   pfContribution,
   professionalTax,
@@ -27,11 +29,7 @@ const line = (code: string, calculation: StructureLine['calculation'], value: nu
   esiWage: true,
   ...extra,
 });
-const STANDARD = [
-  line('BASIC', 'PERCENT_OF_CTC', 50, { role: 'BASIC', pfWage: true }),
-  line('HRA', 'PERCENT_OF_BASIC', 50, { role: 'HRA' }),
-  line('SPECIAL', 'BALANCE', null),
-];
+const STANDARD = [line('BASIC', 'PERCENT_OF_CTC', 50, { role: 'BASIC', pfWage: true }), line('HRA', 'PERCENT_OF_BASIC', 50, { role: 'HRA' }), line('SPECIAL', 'BALANCE', null)];
 const STATUTORY = { pfEnabled: true, pfApplicable: true, pfRestrictToCeiling: true, esiEnabled: true };
 const amount = (b: { components: { code: string; monthly: number }[] }, code: string) => b.components.find((c) => c.code === code)!.monthly;
 
@@ -97,13 +95,25 @@ describe('monthly earnings', () => {
     Array.from({ length: n }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, '0')}`, lop: 0, ...fn(i + 1) }));
 
   it('prorates by calendar day, loss of pay and mid-month revisions', () => {
-    const full = earnedComponents(month(30, () => ({ salary: salary(30_000, 15_000) })), 30);
+    const full = earnedComponents(
+      month(30, () => ({ salary: salary(30_000, 15_000) })),
+      30,
+    );
     expect(full.map((c) => c.amount)).toEqual([30_000, 15_000]);
-    const lop = earnedComponents(month(30, (d) => ({ salary: salary(30_000, 15_000), lop: d === 10 ? 1 : d === 11 ? 0.5 : 0 })), 30);
+    const lop = earnedComponents(
+      month(30, (d) => ({ salary: salary(30_000, 15_000), lop: d === 10 ? 1 : d === 11 ? 0.5 : 0 })),
+      30,
+    );
     expect(lop.map((c) => c.amount)).toEqual([28_500, 14_250]);
     // Joined on the 16th; revised on the 21st.
-    const revised = earnedComponents(month(30, (d) => ({ salary: d < 16 ? null : d < 21 ? salary(30_000, 15_000) : salary(36_000, 18_000) })), 30);
-    expect(revised.map((c) => [c.amount, c.rate])).toEqual([[17_000, 36_000], [8_500, 18_000]]);
+    const revised = earnedComponents(
+      month(30, (d) => ({ salary: d < 16 ? null : d < 21 ? salary(30_000, 15_000) : salary(36_000, 18_000) })),
+      30,
+    );
+    expect(revised.map((c) => [c.amount, c.rate])).toEqual([
+      [17_000, 36_000],
+      [8_500, 18_000],
+    ]);
   });
 
   it('applies a loss-of-pay override at the latest salary', () => {
@@ -141,8 +151,41 @@ describe('statutory contributions', () => {
   });
 });
 
+describe('labour welfare fund and proof cut-off', () => {
+  it('collects only in the state’s months, by the state’s rule', () => {
+    const mh = labourWelfareState('Maharashtra');
+    expect(labourWelfareFund(mh, 40000, 6)).toEqual({ employee: 25, employer: 75 });
+    expect(labourWelfareFund(mh, 40000, 7)).toEqual({ employee: 0, employer: 0 });
+    expect(labourWelfareFund(mh, 2500, 12)).toEqual({ employee: 0, employer: 0 });
+    expect(labourWelfareFund(labourWelfareState('HR'), 10000, 3)).toEqual({ employee: 20, employer: 40 });
+    expect(labourWelfareFund(labourWelfareState('Haryana'), 90000, 3)).toEqual({ employee: 34, employer: 68 });
+    expect(labourWelfareFund(labourWelfareState('Kerala'), 30000, 9)).toEqual({ employee: 50, employer: 50 });
+    expect(labourWelfareFund(null, 30000, 6)).toEqual({ employee: 0, employer: 0 });
+    expect(labourWelfareState('Rajasthan')).toBeNull();
+  });
+
+  it('uses proofs from the cut-off month to March only', () => {
+    expect(proofsApply(1, 12)).toBe(false);
+    expect(proofsApply(1, 1)).toBe(true);
+    expect(proofsApply(1, 3)).toBe(true);
+    expect(proofsApply(1, 4)).toBe(false);
+    expect(proofsApply(10, 11)).toBe(true);
+    expect(proofsApply(null, 3)).toBe(false);
+  });
+});
+
 describe('TDS', () => {
-  const NEW: TaxDeclaration = { regime: 'NEW', rentPaidAnnual: 0, metroCity: false, section80c: 0, section80ccd1b: 0, section80d: 0, homeLoanInterest: 0, previousEmployerIncome: 0, previousEmployerTds: 0 };
+  const NEW: TaxDeclaration = {
+    regime: 'NEW',
+    rentPaidAnnual: 0,
+    metroCity: false,
+    section80c: 0,
+    section80ccd1b: 0,
+    section80d: 0,
+    homeLoanInterest: 0,
+    previousEmployerIncome: 0,
+    previousEmployerTds: 0,
+  };
   const figures = (taxable: number, basic = 0, hra = 0, employeePf = 0, professionalTax = 0) => ({ taxable, basic, hra, employeePf, professionalTax });
 
   it('spreads the projected annual tax over the months left', () => {

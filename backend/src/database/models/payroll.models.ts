@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { ComponentCalculation, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '../../contracts';
+import type { AdjustmentCategory, ClaimApprovalStep, ComponentCalculation, DailyRateBasis, PayslipPdfPassword, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxProofSection, TaxProofStatus, TaxRegime, TimesheetMissedAction } from '../../contracts';
 import { Employee } from './people.models';
 
 /** Decimal columns come back from PostgreSQL as strings. */
@@ -29,6 +29,18 @@ export class PayrollSettings extends Model<InferAttributes<PayrollSettings>, Inf
   /** Monday of the last week reminded on its due day / the day after (written by the reminder job only). */
   @Column(DataType.DATEONLY) timesheetDueReminded: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) timesheetOverdueReminded: CreationOptional<string | null>;
+  /** Raises above this percent need a second person's approval; null = no approval step. */
+  @Column(DataType.DECIMAL(5, 2)) salaryApprovalThresholdPct: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) lwfEnabled: CreationOptional<boolean>;
+  /** Calendar month from which income tax uses accepted proofs only; null = declarations all year. */
+  @Column(DataType.SMALLINT) proofsFromMonth: CreationOptional<number | null>;
+  /** Daily rate for leave encashed while in service (paid through payroll). */
+  @Column(DataType.STRING(10)) leaveEncashmentBasis: CreationOptional<DailyRateBasis>;
+  /** Email each employee their payslip PDF when a run is approved; the PDF password rule. */
+  @Column(DataType.BOOLEAN) payslipEmailEnabled: CreationOptional<boolean>;
+  @Column(DataType.STRING(10)) payslipPdfPassword: CreationOptional<PayslipPdfPassword>;
+  /** Reimbursement claims above this amount need a finance approval after the manager's; null = one approval. */
+  @Column(DataType.DECIMAL(12, 2)) claimFinanceApprovalAbove: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
@@ -110,6 +122,35 @@ export class EmployeeSalary extends Model<InferAttributes<EmployeeSalary>, Infer
   @BelongsTo(() => SalaryStructure, 'structureId') structure?: NonAttribute<SalaryStructure>;
 }
 
+export type SalaryRevisionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+/** A raise above the approval threshold, waiting for a second person before it becomes an EmployeeSalary. */
+@Table({ tableName: 'salary_revision_requests', underscored: true })
+export class SalaryRevisionRequest extends Model<InferAttributes<SalaryRevisionRequest>, InferCreationAttributes<SalaryRevisionRequest>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @ForeignKey(() => SalaryStructure) @Column(DataType.UUID) structureId: string;
+  @Column(DataType.DECIMAL(14, 2)) annualCtc: string;
+  @Column(DataType.DECIMAL(14, 2)) previousCtc: string;
+  @Column(DataType.DATEONLY) effectiveFrom: string;
+  @Column(DataType.BOOLEAN) pfApplicable: CreationOptional<boolean>;
+  @Column(DataType.STRING(300)) reason: CreationOptional<string | null>;
+  @Column(DataType.STRING(10)) status: CreationOptional<SalaryRevisionStatus>;
+  @Column(DataType.UUID) requestedById: CreationOptional<string | null>;
+  @Column(DataType.UUID) reviewedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;
+  @Column(DataType.UUID) salaryId: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+  @BelongsTo(() => SalaryStructure, 'structureId') structure?: NonAttribute<SalaryStructure>;
+}
+
 @Table({ tableName: 'tax_declarations', underscored: true })
 export class TaxDeclarationRecord extends Model<InferAttributes<TaxDeclarationRecord>, InferCreationAttributes<TaxDeclarationRecord>> {
   @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
@@ -132,6 +173,34 @@ export class TaxDeclarationRecord extends Model<InferAttributes<TaxDeclarationRe
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
 }
 
+/** A proof for a declared deduction; once accepted, `acceptedAmount` is what income tax may use. */
+@Table({ tableName: 'tax_declaration_proofs', underscored: true })
+export class TaxDeclarationProof extends Model<InferAttributes<TaxDeclarationProof>, InferCreationAttributes<TaxDeclarationProof>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.SMALLINT) financialYear: number;
+  @Column(DataType.STRING(12)) section: TaxProofSection;
+  @Column(DataType.STRING(200)) description: string;
+  @Column(DataType.DECIMAL(12, 2)) amount: string;
+  @Column(DataType.STRING(300)) storageKey: string;
+  @Column(DataType.STRING(200)) fileName: string;
+  @Column(DataType.STRING(100)) contentType: string;
+  @Column(DataType.INTEGER) byteSize: number;
+  @Column(DataType.STRING(10)) status: CreationOptional<TaxProofStatus>;
+  @Column(DataType.DECIMAL(12, 2)) acceptedAmount: CreationOptional<string | null>;
+  @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;
+  @Column(DataType.UUID) reviewedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) uploadedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
+}
+
 @Table({ tableName: 'payroll_runs', underscored: true })
 export class PayrollRun extends Model<InferAttributes<PayrollRun>, InferCreationAttributes<PayrollRun>> {
   @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
@@ -140,6 +209,8 @@ export class PayrollRun extends Model<InferAttributes<PayrollRun>, InferCreation
   @AllowNull(false) @Column(DataType.UUID) organizationId: string;
   @Column(DataType.SMALLINT) year: number;
   @Column(DataType.SMALLINT) month: number;
+  /** null = the main run (employees without a pay group). */
+  @Column(DataType.UUID) payGroupId: CreationOptional<string | null>;
   @Column(DataType.STRING(10)) status: CreationOptional<PayrollRunStatus>;
   @Column(DataType.STRING(500)) notes: CreationOptional<string | null>;
   @Column(DataType.INTEGER) employeeCount: CreationOptional<number>;
@@ -218,7 +289,23 @@ export class PayrollAdjustment extends Model<InferAttributes<PayrollAdjustment>,
   @Column(DataType.STRING(100)) label: string;
   @Column(DataType.DECIMAL(12, 2)) amount: string;
   @Column(DataType.BOOLEAN) taxable: CreationOptional<boolean>;
+  @Column(DataType.STRING(10)) category: CreationOptional<AdjustmentCategory>;
   @CreatedAt createdAt: CreationOptional<Date>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+}
+
+/** A group of employees paid in their own payroll runs (e.g. contractors, a subsidiary, weekly-paid staff). */
+@Table({ tableName: 'pay_groups', underscored: true })
+export class PayGroup extends Model<InferAttributes<PayGroup>, InferCreationAttributes<PayGroup>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(80)) name: string;
+  @Column(DataType.STRING(300)) description: CreationOptional<string | null>;
+  @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
 }
 
@@ -243,12 +330,43 @@ export class ReimbursementClaim extends Model<InferAttributes<ReimbursementClaim
   @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
   @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;
   @ForeignKey(() => PayrollRun) @Column(DataType.UUID) payrollRunId: CreationOptional<string | null>;
+  /** While pending: waiting on the manager, or (above the finance threshold) on finance. */
+  @Column(DataType.STRING(8)) approvalStage: CreationOptional<ClaimApprovalStep>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
 
   @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
   @BelongsTo(() => PayrollRun, 'payrollRunId') run?: NonAttribute<PayrollRun | null>;
+  @HasMany(() => ReimbursementApproval, 'claimId') approvals?: NonAttribute<ReimbursementApproval[]>;
+}
+
+@Table({ tableName: 'reimbursement_approvals', underscored: true, updatedAt: false })
+export class ReimbursementApproval extends Model<InferAttributes<ReimbursementApproval>, InferCreationAttributes<ReimbursementApproval>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => ReimbursementClaim) @Column(DataType.UUID) claimId: string;
+  @Column(DataType.STRING(8)) step: ClaimApprovalStep;
+  @Column(DataType.STRING(8)) decision: 'APPROVED' | 'REJECTED';
+  @Column(DataType.UUID) decidedById: CreationOptional<string | null>;
+  @Column(DataType.STRING(500)) note: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+}
+
+/** Per category: whether it can be claimed, limits, and when a receipt is required. */
+@Table({ tableName: 'expense_policies', underscored: true })
+export class ExpensePolicy extends Model<InferAttributes<ExpensePolicy>, InferCreationAttributes<ExpensePolicy>> {
+  @PrimaryKey @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @PrimaryKey @Column(DataType.STRING(20)) category: ReimbursementCategory;
+  @Column(DataType.BOOLEAN) allowed: CreationOptional<boolean>;
+  @Column(DataType.DECIMAL(12, 2)) perClaimLimit: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(12, 2)) monthlyLimit: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(12, 2)) receiptRequiredAbove: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
 }
 
 @Table({ tableName: 'employee_loans', underscored: true })

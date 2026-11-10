@@ -70,6 +70,7 @@ const EMPLOYEE_SELF_SERVICE = merge(
     'benefits.view', 'benefits.enroll',
     'compliance.view', 'compliance.policy.acknowledge',
     'exit.view', 'exit.resign',
+    'assets.request', 'helpdesk.raise', 'travel.request',
   ),
 );
 
@@ -94,7 +95,7 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
     locked: false,
     grants: merge(
       moduleGrants(ORG, 'employee', 'recruitment', 'onboarding', 'attendance', 'leave', 'performance',
-        'training', 'engagement', 'grievance', 'benefits', 'compliance', 'exit', 'reports'),
+        'training', 'engagement', 'grievance', 'benefits', 'compliance', 'exit', 'reports', 'assets', 'helpdesk', 'travel'),
       grants(ORG, 'organization.view', 'organization.structure.manage', 'organization.calendar.manage',
         'user.view', 'user.invite', 'role.view', 'audit.view',
         'payroll.view', 'payroll.review', 'payroll.approve', 'payroll.payslip.view', 'payroll.settlement.manage', 'payroll.loan.approve'),
@@ -109,7 +110,7 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
     grants: merge(
       EMPLOYEE_SELF_SERVICE,
       moduleGrants(ORG, 'employee', 'recruitment', 'onboarding', 'attendance', 'leave', 'performance',
-        'training', 'engagement', 'benefits', 'compliance', 'exit'),
+        'training', 'engagement', 'benefits', 'compliance', 'exit', 'assets', 'helpdesk', 'travel'),
       grants(ORG, 'organization.view', 'organization.structure.manage', 'organization.calendar.manage',
         'user.view', 'role.view', 'grievance.view', 'grievance.manage', 'payroll.view',
         'reports.view', 'reports.recruitment.view', 'reports.export'),
@@ -133,11 +134,11 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
   {
     key: 'recruiter',
     name: 'Recruiter',
-    description: 'Runs hiring pipelines from requisition to offer. Cannot approve requisitions (segregation of duties).',
+    description: 'Runs hiring pipelines from requisition to offer. Cannot approve requisitions or offers (segregation of duties).',
     locked: false,
     grants: merge(
       EMPLOYEE_SELF_SERVICE,
-      moduleGrants(ORG, 'recruitment').filter((g) => g.key !== 'recruitment.requisition.approve'),
+      moduleGrants(ORG, 'recruitment').filter((g) => g.key !== 'recruitment.requisition.approve' && g.key !== 'recruitment.offer.approve'),
       grants(ORG, 'onboarding.view', 'reports.recruitment.view'),
     ),
   },
@@ -162,8 +163,8 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
     locked: false,
     grants: merge(
       EMPLOYEE_SELF_SERVICE,
-      grants(ORG, 'employee.salary.view', 'payroll.view', 'payroll.review', 'payroll.approve', 'payroll.disburse',
-        'payroll.reimbursement.approve', 'payroll.settlement.manage', 'payroll.loan.approve', 'payroll.loan.manage',
+      grants(ORG, 'employee.salary.view', 'employee.salary.approve', 'payroll.view', 'payroll.review', 'payroll.approve', 'payroll.disburse',
+        'payroll.reimbursement.approve', 'payroll.reimbursement.finance', 'payroll.settlement.manage', 'payroll.loan.approve', 'payroll.loan.manage',
         'reports.payroll.view', 'reports.export'),
     ),
   },
@@ -175,8 +176,8 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
     grants: merge(
       EMPLOYEE_SELF_SERVICE,
       grants('DEPARTMENT', 'employee.view', 'attendance.view', 'attendance.regularize.approve', 'attendance.timesheet.approve',
-        'leave.view', 'leave.approve', 'performance.view', 'performance.review', 'performance.pip.manage',
-        'training.assign', 'exit.view', 'exit.approve', 'payroll.reimbursement.approve',
+        'leave.view', 'leave.approve', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.okr.manage',
+        'training.assign', 'exit.view', 'exit.approve', 'payroll.reimbursement.approve', 'travel.approve', 'assets.view',
         'onboarding.view', 'onboarding.confirmation.approve', 'reports.view',
         'recruitment.requisition.create', 'recruitment.requisition.approve', 'recruitment.interview.feedback'),
     ),
@@ -190,7 +191,7 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
       EMPLOYEE_SELF_SERVICE,
       grants('TEAM', 'employee.view', 'attendance.view', 'attendance.regularize.approve', 'attendance.timesheet.approve',
         'leave.view', 'leave.approve', 'performance.view', 'performance.review',
-        'recruitment.interview.feedback', 'reports.view'),
+        'recruitment.interview.feedback', 'reports.view', 'travel.approve', 'assets.view'),
     ),
   },
   {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { KeyRound, Laptop, LogOut } from '@lucide/vue';
+import { Download, KeyRound, Laptop, LogOut } from '@lucide/vue';
 import { validatePassword } from '@contracts';
 import { authApi } from '@/modules/auth/api/auth.api';
+import { privacyApi } from '@/modules/privacy/api/privacy.api';
 import type { LoginEventRow } from '@/modules/audit/types';
 import MfaPanel from '@/modules/account/components/MfaPanel.vue';
 import LoginEventCard from '@/modules/audit/components/LoginEventCard.vue';
@@ -50,6 +51,18 @@ async function changePassword() {
     handle(e, 'Could not change password');
   } finally {
     changing.value = false;
+  }
+}
+
+const exporting = ref(false);
+async function exportMyData() {
+  exporting.value = true;
+  try {
+    await privacyApi.exportMine();
+  } catch (e) {
+    feedback.error('Could not download your data', e);
+  } finally {
+    exporting.value = false;
   }
 }
 
@@ -163,6 +176,13 @@ const historyColumns: TableColumn<LoginEventRow>[] = [
         <template #cell-organization="{ row }">{{ row.organization?.name ?? '—' }}</template>
         <template #card="{ row }"><LoginEventCard :event="row" own /></template>
       </AppDataTable>
+    </AppCard>
+
+    <AppCard v-if="auth.organization" title="Your data" description="Download everything this organization holds about you — profile, contact and bank details, attendance, leave, payslips and more — as a file. You'll be asked to confirm it's you first.">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-fg-muted">To correct or erase your data, contact HR. Statutory payroll records are kept for the period the law requires.</p>
+        <AppButton variant="secondary" :icon="Download" :loading="exporting" @click="exportMyData">Download my data</AppButton>
+      </div>
     </AppCard>
   </div>
 </template>

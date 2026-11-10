@@ -2,6 +2,7 @@
 import { computed, ref, useId } from 'vue';
 import { ArrowRight, Clock3, Copy, Fingerprint, MessageSquarePlus, MessageSquareText, Plus, Tag, Trash2 } from '@lucide/vue';
 import { TIMESHEET_ACTIVITY_MAX, TIMESHEET_MAX_ENTRIES, TIMESHEET_NOTE_MAX, TIMESHEET_PROJECT_MAX, rangeMinutes } from '@contracts';
+import { appLocale } from '@/core/locale/locale';
 import type { TimesheetDay } from '../types';
 import { DAY_KIND_LABELS, dayParts, hoursLabel, parseHours, toHours } from '../utils/timesheet-format';
 
@@ -168,7 +169,7 @@ function dayState(i: number) {
 }
 
 const bare = 'min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-fg-subtle disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:[display:none!important]';
-const longWeekday = (date: string) => new Intl.DateTimeFormat(undefined, { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+const longWeekday = (date: string) => new Intl.DateTimeFormat(appLocale(), { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
 const timeInput = 'w-[4.6rem] bg-transparent text-center text-sm font-medium tabular-nums outline-none disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden';
 const iconButton = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-fg-subtle transition hover:bg-surface-muted hover:text-fg focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40';
 </script>

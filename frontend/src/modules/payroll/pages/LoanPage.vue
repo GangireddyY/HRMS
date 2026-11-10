@@ -11,6 +11,7 @@ import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
+import { localToday } from '@/shared/utils/dates';
 
 /** One loan or advance: terms, repayments and the remaining schedule; HR actions depend on the caller's permissions. */
 const route = useRoute();
@@ -20,7 +21,7 @@ const hr = computed(() => route.path.startsWith('/hr'));
 const loan = useAsync(() => loansApi.get(id.value));
 watch(id, () => void loan.run());
 const l = computed(() => loan.data.value);
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const { fieldErrors, formError, handle, reset } = useFormErrors();
 const busy = ref(false);
 const modal = ref<'approve' | 'reject' | 'disburse' | 'defer' | 'repay' | null>(null);

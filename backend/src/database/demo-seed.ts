@@ -7,8 +7,9 @@
  * password below. Run `npm run db:seed` first (plans, Super Admin).
  */
 import 'reflect-metadata';
-import { loadEnvFile } from './env-file';
+import { loadEnvFile, refuseDemoDataInProduction } from './env-file';
 loadEnvFile();
+refuseDemoDataInProduction('db:seed:demo');
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

@@ -1,5 +1,5 @@
-import { randomBytes } from 'node:crypto';
-import { EncryptionService } from './encryption.service';
+import { createCipheriv, randomBytes } from 'node:crypto';
+import { EncryptionService, fieldContext, parseKeyRing } from './encryption.service';
 import { PasswordHasher } from './password-hasher.service';
 import { generateRecoveryCode, generateToken, normalizeRecoveryCode, safeEqual, sha256 } from './tokens';
 
@@ -8,8 +8,45 @@ describe('EncryptionService', () => {
 
   it('round-trips plaintext', () => {
     const cipher = service.encrypt('JBSWY3DPEHPK3PXP');
-    expect(cipher.startsWith('v1:')).toBe(true);
+    expect(cipher.startsWith('k1:')).toBe(true);
     expect(service.decrypt(cipher)).toBe('JBSWY3DPEHPK3PXP');
+  });
+
+  it('binds ciphertext to its field context', () => {
+    const a = fieldContext('employees', 'pan', 'emp-a');
+    const cipher = service.encrypt('ABCDE1234F', a);
+    expect(service.decrypt(cipher, a)).toBe('ABCDE1234F');
+    expect(() => service.decrypt(cipher, fieldContext('employees', 'pan', 'emp-b'))).toThrow();
+    expect(() => service.decrypt(cipher, fieldContext('employees', 'uan', 'emp-a'))).toThrow();
+  });
+
+  it('reads the earlier v1 format (no context) and flags it for re-encryption', () => {
+    const key = randomBytes(32);
+    const iv = randomBytes(12);
+    const c = createCipheriv('aes-256-gcm', key, iv);
+    const data = Buffer.concat([c.update('legacy', 'utf8'), c.final()]);
+    const legacy = ['v1', iv.toString('base64'), c.getAuthTag().toString('base64'), data.toString('base64')].join(':');
+    const svc = new EncryptionService(key.toString('base64'));
+    expect(svc.decrypt(legacy, 'any context')).toBe('legacy');
+    expect(svc.isStale(legacy)).toBe(true);
+    expect(svc.isStale(svc.encrypt('x'))).toBe(false);
+  });
+
+  it('rotates keys: new values use the current version, old ones still decrypt', () => {
+    const oldKey = randomBytes(32).toString('base64');
+    const before = new EncryptionService(oldKey, 1);
+    const written = before.encrypt('secret', 'ctx');
+    const after = new EncryptionService(randomBytes(32).toString('base64'), 2, parseKeyRing(`1:${oldKey}`));
+    expect(after.decrypt(written, 'ctx')).toBe('secret');
+    expect(after.isStale(written)).toBe(true);
+    expect(after.encrypt('secret', 'ctx').startsWith('k2:')).toBe(true);
+    expect(() => new EncryptionService(randomBytes(32).toString('base64'), 2).decrypt(written, 'ctx')).toThrow(/version 1/);
+  });
+
+  it('treats plain text as legacy in lenient columns', () => {
+    expect(service.decryptLenient('12 MG Road', 'ctx')).toBe('12 MG Road');
+    expect(service.decryptLenient(service.encrypt('12 MG Road', 'ctx'), 'ctx')).toBe('12 MG Road');
+    expect(service.decryptLenient(null, 'ctx')).toBeNull();
   });
 
   it('uses a random IV so equal plaintexts differ', () => {

@@ -1,4 +1,5 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger, Optional } from '@nestjs/common';
+import { ErrorReporter } from '../../infrastructure/observability/error-reporter';
 import { ThrottlerException } from '@nestjs/throttler';
 import { EmptyResultError, ForeignKeyConstraintError, UniqueConstraintError } from 'sequelize';
 import type { ApiFailure, ErrorCode, ValidationIssue } from '../../contracts';
@@ -14,6 +15,8 @@ import { RequestContext } from '../context/request-context';
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger('ExceptionFilter');
 
+  constructor(@Optional() private readonly errors?: ErrorReporter) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
@@ -27,6 +30,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `${req.method} ${req.originalUrl} -> ${status} [${requestId}]`,
         exception instanceof Error ? exception.stack : String(exception),
       );
+      // The route pattern, not the URL: ids and query strings stay out of the report.
+      const route = (req as Request & { route?: { path?: string } }).route?.path ?? 'unmatched';
+      this.errors?.capture(exception, { tags: { method: req.method, route, status: String(status) } });
     }
 
     const body: ApiFailure = { success: false, error: { code, message, details, requestId } };

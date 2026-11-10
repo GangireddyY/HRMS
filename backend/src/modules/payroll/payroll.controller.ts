@@ -3,11 +3,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RECEIPT_MAX_BYTES } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
+import { CurrentAuth, RequirePermissions, RequireStepUp, RequireTenant } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
 import {
   AdjustmentDto,
   ApproveLoanDto,
+  AssignPayGroupDto,
+  BankFileQueryDto,
+  BonusPayoutDto,
   ClaimDto,
   ClaimQueryDto,
   ComponentDto,
@@ -19,27 +22,34 @@ import {
   LoanQueryDto,
   LoanRepaymentDto,
   LoanRequestDto,
+  PayGroupDto,
   PayRunDto,
   PayrollSettingsDto,
+  ExpensePolicyDto,
   RejectLoanDto,
   RejectRunDto,
   ReviewClaimDto,
   ReviewRunDto,
+  ReviewSalaryRevisionDto,
   RunPayslipQueryDto,
   RunQueryDto,
   SalaryDto,
   SalaryListQueryDto,
   SalaryPreviewDto,
+  SalaryRevisionQueryDto,
   StructureDto,
   TaxDeclarationDto,
   UpdateComponentDto,
+  UpdatePayGroupDto,
   UpdatePayslipDto,
   UpdateStructureDto,
 } from './dto/payroll.dto';
 import { LoansService } from './loans.service';
+import { PayGroupsService } from './pay-groups.service';
 import { PayrollConfigService } from './payroll-config.service';
 import { PayrollRunsService } from './payroll-runs.service';
 import { ReimbursementsService, type UploadedReceipt } from './reimbursements.service';
+import { ExpensePolicyService } from './expense-policy.service';
 import { SalariesService } from './salaries.service';
 
 const UUID = new ParseUUIDPipe();
@@ -63,6 +73,8 @@ export class PayrollController {
     private readonly runs: PayrollRunsService,
     private readonly claims: ReimbursementsService,
     private readonly loans: LoansService,
+    private readonly payGroups: PayGroupsService,
+    private readonly expensePolicyService: ExpensePolicyService,
   ) {}
 
   // ---- Settings, components & structures ---------------------------------------------------------
@@ -179,6 +191,37 @@ export class PayrollController {
     return { deleted: true };
   }
 
+  @Get('salary-revisions')
+  @RequirePermissions('employee.salary.view')
+  @ApiOperation({ summary: 'Salary revisions sent for approval (raises above the threshold); pending by default' })
+  salaryRevisions(@CurrentAuth() auth: AuthContext, @Query() query: SalaryRevisionQueryDto) {
+    requireAny(auth);
+    return this.salaries.revisions(auth, query.status);
+  }
+
+  @Post('salary-revisions/:id/approve')
+  @RequirePermissions('employee.salary.approve')
+  @ApiOperation({ summary: 'Approve a revision (not the requester or the employee); it becomes the salary from its date' })
+  approveSalaryRevision(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth);
+    return this.salaries.approveRevision(auth, id);
+  }
+
+  @Post('salary-revisions/:id/reject')
+  @RequirePermissions('employee.salary.approve')
+  rejectSalaryRevision(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewSalaryRevisionDto) {
+    requireAny(auth);
+    return this.salaries.rejectRevision(auth, id, dto.note);
+  }
+
+  @Post('salary-revisions/:id/cancel')
+  @RequirePermissions('employee.salary.revise')
+  @ApiOperation({ summary: 'Withdraw your own revision request' })
+  cancelSalaryRevision(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth);
+    return this.salaries.cancelRevision(auth, id);
+  }
+
   @Get('me/salary')
   @RequireTenant()
   mySalary(@CurrentAuth() auth: AuthContext) {
@@ -292,6 +335,47 @@ export class PayrollController {
     return this.runs.addAdjustment(auth, id, dto);
   }
 
+  @Post('runs/:id/bonuses')
+  @RequirePermissions('payroll.process')
+  @ApiOperation({ summary: 'Bonus or incentive for many people at once (fixed, % of Basic or gross, or the statutory bonus)' })
+  addBonus(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: BonusPayoutDto) {
+    return this.runs.addBonus(auth, id, dto);
+  }
+
+  // ---- Pay groups ----
+
+  @Get('pay-groups')
+  @RequirePermissions('payroll.view')
+  listPayGroups() {
+    return this.payGroups.list();
+  }
+
+  @Post('pay-groups')
+  @RequirePermissions('payroll.configure')
+  createPayGroup(@CurrentAuth() auth: AuthContext, @Body() dto: PayGroupDto) {
+    return this.payGroups.create(auth, dto);
+  }
+
+  @Patch('pay-groups/:id')
+  @RequirePermissions('payroll.configure')
+  updatePayGroup(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: UpdatePayGroupDto) {
+    return this.payGroups.update(auth, id, dto);
+  }
+
+  @Delete('pay-groups/:id')
+  @RequirePermissions('payroll.configure')
+  async removePayGroup(@Param('id', UUID) id: string) {
+    await this.payGroups.remove(id);
+    return { deleted: true };
+  }
+
+  @Put('pay-groups/members')
+  @RequirePermissions('payroll.configure')
+  @ApiOperation({ summary: 'Move employees into a pay group, or back to the main payroll' })
+  assignPayGroup(@CurrentAuth() auth: AuthContext, @Body() dto: AssignPayGroupDto) {
+    return this.payGroups.assign(auth, dto);
+  }
+
   @Delete('runs/:id/adjustments/:adjustmentId')
   @RequirePermissions('payroll.process')
   removeAdjustment(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Param('adjustmentId', UUID) adjustmentId: string) {
@@ -306,14 +390,16 @@ export class PayrollController {
 
   @Get('runs/:id/bank-file')
   @RequirePermissions('payroll.disburse')
-  @ApiOperation({ summary: 'Salary transfer file (CSV) with account numbers – audited' })
-  async bankFile(@Param('id', UUID) id: string) {
-    return csvFile(await this.runs.bankFileCsv(id));
+  @RequireStepUp()
+  @ApiOperation({ summary: "Salary transfer file (CSV, generic or a bank's bulk layout) with account numbers – audited; needs a fresh step-up" })
+  async bankFile(@Param('id', UUID) id: string, @Query() query: BankFileQueryDto) {
+    return csvFile(await this.runs.bankFileCsv(id, query.format));
   }
 
   @Get('runs/:id/pf-ecr')
-  @RequirePermissions('payroll.view')
-  @ApiOperation({ summary: 'EPFO ECR text file for the month' })
+  @RequirePermissions('payroll.process')
+  @RequireStepUp()
+  @ApiOperation({ summary: 'EPFO ECR text file for the month (decrypted UANs; needs a fresh step-up)' })
   async pfEcr(@Param('id', UUID) id: string) {
     const f = await this.runs.pfEcr(id);
     return new StreamableFile(Buffer.from(f.content, 'utf8'), { type: 'text/plain; charset=utf-8', disposition: attachment(f.fileName) });
@@ -332,6 +418,15 @@ export class PayrollController {
   payslip(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
     requireAny(auth, 'payroll.view', 'payroll.payslip.view');
     return this.runs.payslip(auth, id);
+  }
+
+  @Get('payslips/:id/pdf')
+  @RequireTenant()
+  @ApiOperation({ summary: 'The payslip as a PDF' })
+  async payslipPdf(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth, 'payroll.view', 'payroll.payslip.view');
+    const { fileName, data } = await this.runs.payslipPdfFile(auth, id);
+    return new StreamableFile(data, { type: 'application/pdf', length: data.length, disposition: attachment(fileName) });
   }
 
   // ---- Reimbursements --------------------------------------------------------------------------
@@ -368,15 +463,40 @@ export class PayrollController {
   }
 
   @Post('reimbursements/:id/approve')
-  @RequirePermissions('payroll.reimbursement.approve')
+  @RequireTenant()
+  @ApiOperation({ summary: "The manager's approval, or finance's for claims above the finance threshold" })
   approveClaim(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewClaimDto) {
+    requireAny(auth, 'payroll.reimbursement.approve', 'payroll.reimbursement.finance');
     return this.claims.approve(auth, id, dto);
   }
 
   @Post('reimbursements/:id/reject')
-  @RequirePermissions('payroll.reimbursement.approve')
+  @RequireTenant()
   rejectClaim(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewClaimDto) {
+    requireAny(auth, 'payroll.reimbursement.approve', 'payroll.reimbursement.finance');
     return this.claims.reject(auth, id, dto);
+  }
+
+  @Get('expense-policy')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Expense policy per category, and the finance approval threshold' })
+  expensePolicy(@CurrentAuth() auth: AuthContext) {
+    requireAny(auth, 'payroll.reimbursement.apply', 'payroll.reimbursement.approve', 'payroll.reimbursement.finance', 'payroll.configure', 'payroll.view');
+    return this.expensePolicyService.view(auth.organizationId!);
+  }
+
+  @Put('expense-policy')
+  @RequirePermissions('payroll.configure')
+  updateExpensePolicy(@CurrentAuth() auth: AuthContext, @Body() dto: ExpensePolicyDto) {
+    return this.expensePolicyService.update(auth, dto);
+  }
+
+  @Get('me/reimbursements/usage')
+  @RequirePermissions('payroll.reimbursement.apply')
+  @ApiOperation({ summary: 'Your claimed amounts per category in a month, with the policy limits' })
+  claimUsage(@CurrentAuth() auth: AuthContext, @Query('month') month?: string) {
+    if (month !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw AppError.validation([{ field: 'month', message: 'Use YYYY-MM' }]);
+    return this.claims.myUsage(auth, month ?? new Date().toISOString().slice(0, 7));
   }
 
   @Post('reimbursements/:id/cancel')

@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { AttendanceRecordStatus, AttendanceSource, OvertimeStatus, PunchDirection, RegularizationStatus, TimesheetEntry, TimesheetStatus, WorkMode } from '../../contracts';
+import type { AttendanceRecordStatus, AttendanceSource, OvertimeStatus, PunchDirection, RegularizationStatus, ShiftSwapStatus, TimesheetEntry, TimesheetStatus, WorkMode } from '../../contracts';
 import { Employee } from './people.models';
 
 @Table({ tableName: 'shifts', underscored: true })
@@ -43,6 +43,8 @@ export class Holiday extends Model<InferAttributes<Holiday>, InferCreationAttrib
   @Column(DataType.STRING(120)) name: string;
   /** Optional (restricted) holidays are shown but remain working days. */
   @Column(DataType.BOOLEAN) isOptional: CreationOptional<boolean>;
+  /** Locations that observe it; empty = every location. */
+  @Column(DataType.ARRAY(DataType.UUID)) locationIds: CreationOptional<string[]>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
@@ -72,6 +74,7 @@ export class AttendanceRecord extends Model<InferAttributes<AttendanceRecord>, I
   @Column(DataType.STRING(45)) checkOutIp: CreationOptional<string | null>;
   @Column(DataType.DECIMAL(9, 6)) checkInLatitude: CreationOptional<string | null>;
   @Column(DataType.DECIMAL(9, 6)) checkInLongitude: CreationOptional<string | null>;
+  @Column(DataType.STRING(300)) checkInPhotoKey: CreationOptional<string | null>;
   @Column(DataType.STRING(500)) note: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
@@ -256,4 +259,31 @@ export class AttendancePunch extends Model<InferAttributes<AttendancePunch>, Inf
   @Column(DataType.STRING(4)) direction: CreationOptional<PunchDirection>;
   @Column(DataType.DATEONLY) workDate: string;
   @CreatedAt createdAt: CreationOptional<Date>;
+}
+
+/** Two colleagues trade their shifts (or a shift and a day off) on one day: the colleague agrees, then a manager approves. */
+@Table({ tableName: 'shift_swaps', underscored: true })
+export class ShiftSwap extends Model<InferAttributes<ShiftSwap>, InferCreationAttributes<ShiftSwap>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) requesterId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) colleagueId: string;
+  @Column(DataType.DATEONLY) workDate: string;
+  @Column(DataType.UUID) requesterShiftId: CreationOptional<string | null>;
+  @Column(DataType.UUID) colleagueShiftId: CreationOptional<string | null>;
+  @Column(DataType.STRING(500)) reason: string;
+  @Column(DataType.STRING(10)) status: CreationOptional<ShiftSwapStatus>;
+  @Column(DataType.DATE) colleagueRespondedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(500)) colleagueNote: CreationOptional<string | null>;
+  @Column(DataType.UUID) reviewedById: CreationOptional<string | null>;
+  @Column(DataType.DATE) reviewedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(500)) reviewNote: CreationOptional<string | null>;
+  @Column(DataType.UUID) requestedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'requesterId') requester?: NonAttribute<Employee>;
+  @BelongsTo(() => Employee, 'colleagueId') colleague?: NonAttribute<Employee>;
 }

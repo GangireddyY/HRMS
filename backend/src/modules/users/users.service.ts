@@ -12,6 +12,7 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { SessionService } from '../auth/session.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { assertNoEscalation } from '../rbac/escalation';
+import { alertRestrictedGrant } from '../rbac/restricted-access';
 import { InviteUserDto, UserListQueryDto } from './dto/users.dto';
 import { InvitationService } from './invitation.service';
 
@@ -207,6 +208,14 @@ export class UsersService {
       body: `Current roles: ${nextRoles.map((r) => r.name).join(', ')}`,
       organizationId: auth.organizationId,
     });
+    const addedIds = nextIds.filter((r) => !currentIds.includes(r));
+    if (addedIds.length) {
+      const granted = await RolePermission.findAll({ where: { roleId: addedIds }, attributes: ['id'], include: [{ model: Permission, attributes: ['key'] }] });
+      await alertRestrictedGrant(
+        { notifications: this.notifications, audit: this.audit },
+        { organizationId: auth.organizationId!, actorUserId: auth.userId, keys: granted.map((g) => g.permission!.key), grantedTo: member.email, excludeUserIds: [member.userId] },
+      );
+    }
     return this.get(id);
   }
 

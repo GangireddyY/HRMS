@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Check, FileImage, FileText, Hourglass, Inbox, ListChecks, PieChart, Receipt, Wallet, X } from '@lucide/vue';
+import { useRoute } from 'vue-router';
+import { Check, FileImage, FileText, Hourglass, Inbox, Landmark, ListChecks, PieChart, Receipt, Wallet, X } from '@lucide/vue';
+import { useAuthStore } from '@/core/auth/auth.store';
 import { REIMBURSEMENT_STATUSES, type ReimbursementCategory, type ReimbursementStatus } from '@contracts';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import ClaimGridCard from '@/modules/payroll/components/ClaimGridCard.vue';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
-import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
-import { AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
+import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimStatusLabel, claimTone, monthName, rupees } from '@/modules/payroll/utils/payroll-format';
+import { AppAlert, AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { runBulk } from '@/shared/utils/bulk';
 import { fetchAllPages } from '@/shared/utils/fetch-all';
@@ -15,33 +17,45 @@ import { useTable } from '@/shared/composables/use-table';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate, timeAgo } from '@/shared/utils/format';
 
-/** Claims to approve (within `payroll.reimbursement.approve` scope, never your own) and all claims in scope. */
+/**
+ * Claims to approve (within `payroll.reimbursement.approve` scope, never your own), the finance queue (claims above
+ * the finance threshold the manager approved, for `payroll.reimbursement.finance`), and all claims in scope.
+ */
 const feedback = useFeedbackStore();
-const view = ref<'approve' | 'all'>('approve');
+const auth = useAuthStore();
+const route = useRoute();
+const isFinance = computed(() => auth.can('payroll.reimbursement.finance'));
+const isApprover = computed(() => auth.can('payroll.reimbursement.approve'));
+type View = 'approve' | 'finance' | 'all';
+const view = ref<View>(route.query.tab === 'finance' && isFinance.value ? 'finance' : isApprover.value ? 'approve' : isFinance.value ? 'finance' : 'all');
 const table = useTable((q) => payrollApi.claims({ ...q, view: view.value }), { filters: { status: undefined as ReimbursementStatus | undefined } });
 watch(view, () => void table.load());
 const statusOptions = REIMBURSEMENT_STATUSES.map((s) => ({ value: s, label: CLAIM_STATUS_LABELS[s] }));
 
 /** What's waiting and what's approved but not yet paid, for the summary; independent of the table's page and filters. */
-const pending = useAsync(() => fetchAllPages((page, pageSize) => payrollApi.claims({ view: 'approve', page, pageSize })));
+const pending = useAsync(() => fetchAllPages((page, pageSize) => payrollApi.claims({ view: 'approve', page, pageSize })), { immediate: isApprover.value });
+const financeQueue = useAsync(() => fetchAllPages((page, pageSize) => payrollApi.claims({ view: 'finance', page, pageSize })), { immediate: isFinance.value });
 const approved = useAsync(() => fetchAllPages((page, pageSize) => payrollApi.claims({ view: 'all', status: 'APPROVED', page, pageSize })));
-const refreshSummary = () => Promise.all([pending.run(), approved.run()]);
-const waiting = computed(() => pending.data.value ?? []);
+const refreshSummary = () => Promise.all([isApprover.value ? pending.run() : null, isFinance.value ? financeQueue.run() : null, approved.run()]);
+const waiting = computed(() => (view.value === 'finance' ? (financeQueue.data.value ?? []) : (pending.data.value ?? [])));
 const DAY = 86_400_000;
 const ageDays = (c: Claim) => Math.floor((Date.now() - new Date(c.createdAt).getTime()) / DAY);
 /** Claims waiting longer than this are highlighted. */
 const SLA_DAYS = 7;
 const tabs = computed(() => [
-  { key: 'approve', label: 'To approve', icon: Inbox, count: pending.data.value?.length ?? null },
+  ...(isApprover.value ? [{ key: 'approve', label: 'To approve', icon: Inbox, count: pending.data.value?.length ?? null }] : []),
+  ...(isFinance.value ? [{ key: 'finance', label: 'Finance approval', icon: Landmark, count: financeQueue.data.value?.length ?? null }] : []),
   { key: 'all', label: 'All claims', icon: ListChecks },
 ]);
+const policy = useAsync(() => payrollApi.expensePolicy());
+const threshold = computed(() => policy.data.value?.financeApprovalAbove ?? null);
 const strip = computed<StripItem[]>(() => {
   const list = waiting.value;
   const oldest = list.length ? Math.max(...list.map(ageDays)) : 0;
   const overdue = list.filter((c) => ageDays(c) > SLA_DAYS).length;
   const ok = approved.data.value ?? [];
   return [
-    { key: 'waiting', label: 'Waiting for you', value: list.length, tone: 'warning', hint: list.length ? `Oldest ${oldest === 0 ? 'today' : `${oldest} day${oldest === 1 ? '' : 's'} ago`}` : 'Nothing to approve' },
+    { key: 'waiting', label: view.value === 'finance' ? 'Waiting for finance' : 'Waiting for you', value: list.length, tone: 'warning', hint: list.length ? `Oldest ${oldest === 0 ? 'today' : `${oldest} day${oldest === 1 ? '' : 's'} ago`}` : 'Nothing to approve' },
     { key: 'amount', label: 'Amount to approve', value: rupees(list.reduce((n, c) => n + c.amount, 0)), tone: 'brand', hint: list.length ? `${list.filter((c) => c.receipt).length} of ${list.length} with a receipt` : undefined },
     { key: 'overdue', label: `Waiting over ${SLA_DAYS} days`, value: overdue, tone: overdue ? 'danger' : 'neutral', hint: overdue ? 'Decide these first' : 'All within a week' },
     { key: 'approved', label: 'Approved · next payroll', value: ok.length, tone: 'info', hint: ok.length ? `${rupees(ok.reduce((n, c) => n + c.amount, 0))} to pay, tax-free` : 'Nothing to pay out' },
@@ -67,13 +81,18 @@ function open(c: Claim, d: 'approve' | 'reject') {
   reviewing.value = c;
   decision.value = d;
   note.value = '';
+  void payrollApi.claim(c.id).then(
+    (full) => reviewing.value?.id === full.id && (reviewing.value = full),
+    () => undefined,
+  );
 }
+const goesToFinance = computed(() => !!reviewing.value && reviewing.value.approvalStage === 'MANAGER' && threshold.value !== null && reviewing.value.amount > threshold.value);
 async function decide() {
   busy.value = true;
   try {
     const c = reviewing.value!;
-    await (decision.value === 'approve' ? payrollApi.approveClaim(c.id, note.value || null) : payrollApi.rejectClaim(c.id, note.value));
-    feedback.success(decision.value === 'approve' ? 'Claim approved' : 'Claim rejected', `${c.employee?.name} has been notified.`);
+    const done = await (decision.value === 'approve' ? payrollApi.approveClaim(c.id, note.value || null) : payrollApi.rejectClaim(c.id, note.value));
+    feedback.success(done.approvalStage === 'FINANCE' ? 'Approved · sent to finance' : decision.value === 'approve' ? 'Claim approved' : 'Claim rejected', `${c.employee?.name} has been notified.`);
     reviewing.value = null;
     await Promise.all([table.load(), refreshSummary()]);
   } catch (e) {
@@ -108,7 +127,7 @@ const columns = computed<TableColumn<Claim>[]>(() => [
   { key: 'title', label: 'Expense' },
   { key: 'employee', label: 'Employee' },
   { key: 'amount', label: 'Amount', align: 'right' },
-  ...(view.value === 'all' ? [{ key: 'status', label: 'Status' }] : []),
+  ...(view.value !== 'approve' ? [{ key: 'status', label: view.value === 'finance' ? 'Manager approval' : 'Status' }] : []),
   { key: 'actions', label: '', align: 'right' },
 ]);
 </script>
@@ -183,8 +202,14 @@ const columns = computed<TableColumn<Claim>[]>(() => [
               </template>
               <template #cell-amount="{ row }"><span class="font-semibold text-fg tabular-nums">{{ rupees(row.amount, true) }}</span></template>
               <template #cell-status="{ row }">
-                <AppBadge :tone="claimTone[row.status]" dot>{{ CLAIM_STATUS_LABELS[row.status] }}</AppBadge>
-                <p v-if="row.reviewedBy" class="mt-0.5 text-2xs text-fg-muted">by {{ row.reviewedBy }}</p>
+                <template v-if="view === 'finance'">
+                  <p class="text-sm text-fg">{{ row.trail.find((t: Claim['trail'][number]) => t.step === 'MANAGER')?.by ?? '—' }}</p>
+                  <p class="text-2xs text-fg-muted">{{ timeAgo(row.trail.find((t: Claim['trail'][number]) => t.step === 'MANAGER')?.at ?? row.createdAt) }}</p>
+                </template>
+                <template v-else>
+                  <AppBadge :tone="claimTone[row.status]" dot>{{ claimStatusLabel(row) }}</AppBadge>
+                  <p v-if="row.reviewedBy" class="mt-0.5 text-2xs text-fg-muted">by {{ row.reviewedBy }}</p>
+                </template>
               </template>
               <template #cell-actions="{ row }">
                 <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
@@ -257,6 +282,25 @@ const columns = computed<TableColumn<Claim>[]>(() => [
         </div>
         <AppButton v-if="reviewing.receipt" size="xs" variant="secondary" :icon="FileText" @click="receipt(reviewing)">Receipt</AppButton>
       </div>
+      <dl v-if="reviewing?.policy && (reviewing.policy.perClaimLimit || reviewing.policy.monthlyLimit)" class="mb-4 grid grid-cols-2 gap-2 text-xs">
+        <div class="rounded-lg bg-surface-muted/60 px-3 py-2">
+          <dt class="text-fg-subtle">Limit per claim</dt>
+          <dd class="font-medium text-fg tabular-nums">{{ reviewing.policy.perClaimLimit ? rupees(reviewing.policy.perClaimLimit) : 'None' }}</dd>
+        </div>
+        <div class="rounded-lg bg-surface-muted/60 px-3 py-2">
+          <dt class="text-fg-subtle">Claimed in {{ monthName(reviewing.policy.month) }}</dt>
+          <dd class="font-medium text-fg tabular-nums">{{ rupees(reviewing.policy.monthUsed) }}<template v-if="reviewing.policy.monthlyLimit"> of {{ rupees(reviewing.policy.monthlyLimit) }}</template></dd>
+        </div>
+      </dl>
+      <ol v-if="reviewing?.trail.length" class="mb-4 space-y-1.5" aria-label="Approvals so far">
+        <li v-for="(t, i) in reviewing.trail" :key="i" class="flex items-start gap-2 text-xs">
+          <span :class="['mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full', t.decision === 'APPROVED' ? 'bg-success text-white' : 'bg-danger text-white']" aria-hidden="true"><component :is="t.decision === 'APPROVED' ? Check : X" :size="10" :stroke-width="3" /></span>
+          <p class="text-fg-muted">
+            <span class="font-medium text-fg">{{ t.step === 'MANAGER' ? 'Manager' : 'Finance' }}</span> · {{ t.decision === 'APPROVED' ? 'approved' : 'rejected' }} by {{ t.by ?? '—' }} {{ timeAgo(t.at) }}<template v-if="t.note"> · “{{ t.note }}”</template>
+          </p>
+        </li>
+      </ol>
+      <AppAlert v-if="decision === 'approve' && goesToFinance" tone="info" class="mb-4">Above {{ rupees(threshold) }}: finance approves it after you.</AppAlert>
       <AppTextarea v-model="note" :label="decision === 'approve' ? 'Note (optional)' : 'Reason'" :required="decision === 'reject'" :rows="3" :maxlength="500" />
       <template #footer>
         <AppButton variant="secondary" @click="reviewing = null">Cancel</AppButton>

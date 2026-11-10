@@ -76,11 +76,29 @@ export class LoansService {
         },
         { transaction },
       );
-      await this.audit.record({ action: 'payroll.loan_requested', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference}: ${LABEL[dto.type]} of ${money(dto.amount)} over ${dto.tenureMonths} months for ${employee.employeeCode}` }, transaction);
+      await this.audit.record(
+        {
+          action: 'payroll.loan_requested',
+          entityType: 'EmployeeLoan',
+          entityId: loan.id,
+          summary: `${loan.reference}: ${LABEL[dto.type]} of ${money(dto.amount)} over ${dto.tenureMonths} months for ${employee.employeeCode}`,
+        },
+        transaction,
+      );
       const employeeUser = (await userIdsOf([employee.id], transaction)).get(employee.id);
       for (const userId of await usersWithPermission('payroll.loan.approve', transaction)) {
         if (userId === auth.userId || userId === employeeUser) continue;
-        await this.notifications.notify(userId, { organizationId: auth.organizationId, type: 'payroll.loan', title: `${fullName(employee)} asked for a ${LABEL[dto.type]} of ${money(dto.amount)}`, body: dto.purpose, link: `/hr/payroll/loans/${loan.id}` }, transaction);
+        await this.notifications.notify(
+          userId,
+          {
+            organizationId: auth.organizationId,
+            type: 'payroll.loan',
+            title: `${fullName(employee)} asked for a ${LABEL[dto.type]} of ${money(dto.amount)}`,
+            body: dto.purpose,
+            link: `/hr/payroll/loans/${loan.id}`,
+          },
+          transaction,
+        );
       }
       return loan.id;
     });
@@ -97,11 +115,35 @@ export class LoansService {
       await this.checkStartMonth(auth, dto.startYear, dto.startMonth);
       const emi = loanEmi(principal, rate, tenure);
       await loan.update(
-        { status: 'APPROVED', principal: String(principal), tenureMonths: tenure, interestRate: String(rate), emi: String(emi), startYear: dto.startYear, startMonth: dto.startMonth, decidedById: auth.userId, decidedAt: new Date(), decisionNote: dto.note ?? null },
+        {
+          status: 'APPROVED',
+          principal: String(principal),
+          tenureMonths: tenure,
+          interestRate: String(rate),
+          emi: String(emi),
+          startYear: dto.startYear,
+          startMonth: dto.startMonth,
+          decidedById: auth.userId,
+          decidedAt: new Date(),
+          decisionNote: dto.note ?? null,
+        },
         { transaction },
       );
-      await this.audit.record({ action: 'payroll.loan_approved', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference} approved: ${money(principal)} over ${tenure} months at ${rate}%, instalment ${money(emi)} from ${periodLabel(dto.startYear, dto.startMonth)}` }, transaction);
-      await this.tell(loan, `Your ${LABEL[loan.type]} ${loan.reference} was approved`, `${money(principal)}, repaid ${money(emi)} a month from ${periodLabel(dto.startYear, dto.startMonth)}.`, transaction);
+      await this.audit.record(
+        {
+          action: 'payroll.loan_approved',
+          entityType: 'EmployeeLoan',
+          entityId: loan.id,
+          summary: `${loan.reference} approved: ${money(principal)} over ${tenure} months at ${rate}%, instalment ${money(emi)} from ${periodLabel(dto.startYear, dto.startMonth)}`,
+        },
+        transaction,
+      );
+      await this.tell(
+        loan,
+        `Your ${LABEL[loan.type]} ${loan.reference} was approved`,
+        `${money(principal)}, repaid ${money(emi)} a month from ${periodLabel(dto.startYear, dto.startMonth)}.`,
+        transaction,
+      );
     });
     return this.get(auth, id);
   }
@@ -139,8 +181,16 @@ export class LoansService {
       if (loan.status !== 'APPROVED') throw AppError.conflict('Only an approved loan can be disbursed');
       await this.checkPaymentDate(auth, dto.disbursedOn, loan.decidedAt!.toISOString().slice(0, 10), 'disbursedOn');
       await loan.update({ status: 'ACTIVE', disbursedOn: dto.disbursedOn, disbursementReference: dto.reference, disbursedById: auth.userId }, { transaction });
-      await this.audit.record({ action: 'payroll.loan_disbursed', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference} disbursed on ${dto.disbursedOn} (${dto.reference})` }, transaction);
-      await this.tell(loan, `Your ${LABEL[loan.type]} ${loan.reference} has been paid out`, `${money(Number(loan.emi))} a month is deducted from your salary from ${periodLabel(loan.startYear!, loan.startMonth!)}.`, transaction);
+      await this.audit.record(
+        { action: 'payroll.loan_disbursed', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference} disbursed on ${dto.disbursedOn} (${dto.reference})` },
+        transaction,
+      );
+      await this.tell(
+        loan,
+        `Your ${LABEL[loan.type]} ${loan.reference} has been paid out`,
+        `${money(Number(loan.emi))} a month is deducted from your salary from ${periodLabel(loan.startYear!, loan.startMonth!)}.`,
+        transaction,
+      );
     });
     return this.get(auth, id);
   }
@@ -152,7 +202,10 @@ export class LoansService {
       await this.checkNoRunAwaitingApproval(transaction);
       await this.checkStartMonth(auth, dto.startYear, dto.startMonth);
       await loan.update({ startYear: dto.startYear, startMonth: dto.startMonth }, { transaction });
-      await this.audit.record({ action: 'payroll.loan_deferred', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference}: deductions from ${periodLabel(dto.startYear, dto.startMonth)} (${dto.note})` }, transaction);
+      await this.audit.record(
+        { action: 'payroll.loan_deferred', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference}: deductions from ${periodLabel(dto.startYear, dto.startMonth)} (${dto.note})` },
+        transaction,
+      );
       await this.tell(loan, `Deductions for ${loan.reference} now start in ${periodLabel(dto.startYear, dto.startMonth)}`, dto.note, transaction);
     });
     return this.get(auth, id);
@@ -166,9 +219,15 @@ export class LoansService {
       await this.checkPaymentDate(auth, dto.paidOn, loan.disbursedOn!, 'paidOn');
       const { outstanding } = (await loanBalances([loan], transaction)).get(loan.id)!;
       if (dto.amount > outstanding) throw AppError.validation([{ field: 'amount', message: `Only ${money(outstanding)} is still owed` }]);
-      await EmployeeLoanRepayment.create({ organizationId: loan.organizationId, loanId: loan.id, source: 'MANUAL', paidOn: dto.paidOn, principal: String(dto.amount), note: dto.note, createdById: auth.userId }, { transaction });
+      await EmployeeLoanRepayment.create(
+        { organizationId: loan.organizationId, loanId: loan.id, source: 'MANUAL', paidOn: dto.paidOn, principal: String(dto.amount), note: dto.note, createdById: auth.userId },
+        { transaction },
+      );
       const closed = (await closeRepaidLoans([loan.id], transaction)).length > 0;
-      await this.audit.record({ action: 'payroll.loan_repaid', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference}: repayment of ${money(dto.amount)} recorded${closed ? ' (closed)' : ''}` }, transaction);
+      await this.audit.record(
+        { action: 'payroll.loan_repaid', entityType: 'EmployeeLoan', entityId: loan.id, summary: `${loan.reference}: repayment of ${money(dto.amount)} recorded${closed ? ' (closed)' : ''}` },
+        transaction,
+      );
       await this.tell(loan, closed ? `Your ${LABEL[loan.type]} ${loan.reference} is fully repaid` : `A repayment of ${money(dto.amount)} was recorded on ${loan.reference}`, undefined, transaction);
     });
     return this.get(auth, id);
@@ -190,11 +249,16 @@ export class LoansService {
     const like = query.search ? containsPattern(query.search) : null;
     const employeeWhere = like ? { [Op.or]: [{ firstName: { [Op.iLike]: like } }, { lastName: { [Op.iLike]: like } }, { employeeCode: { [Op.iLike]: like } }] } : undefined;
     const where = { [Op.and]: conditions };
-    const include = [{ model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName'], where: employeeWhere, required: !!like, include: [{ model: Department, attributes: ['id', 'name'] }] }];
+    const include = [
+      { model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName'], where: employeeWhere, required: !!like, include: [{ model: Department, attributes: ['id', 'name'] }] },
+    ];
     const count = await EmployeeLoan.count({ where, include });
     const rows = await EmployeeLoan.findAll({ where, include, order: [['createdAt', 'DESC']], ...paginationArgs(query) });
     const balances = await loanBalances(rows);
-    return new PaginatedResult(rows.map((l) => this.summary(l, balances.get(l.id)!)), paginationMeta(query, count));
+    return new PaginatedResult(
+      rows.map((l) => this.summary(l, balances.get(l.id)!)),
+      paginationMeta(query, count),
+    );
   }
 
   async mine(auth: AuthContext) {
@@ -209,14 +273,23 @@ export class LoansService {
   }
 
   async get(auth: AuthContext, id: string) {
-    const loan = await EmployeeLoan.findByPk(id, { include: [{ model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'status'], include: [{ model: Department, attributes: ['id', 'name'] }] }] });
+    const loan = await EmployeeLoan.findByPk(id, {
+      include: [{ model: Employee, attributes: ['id', 'employeeCode', 'firstName', 'lastName', 'status'], include: [{ model: Department, attributes: ['id', 'name'] }] }],
+    });
     if (!loan) throw AppError.notFound('Loan');
     const self = await this.scope.self(auth);
     const own = self?.id === loan.employeeId;
     const hr = HR.some((p) => auth.permissions.has(p));
     if (!own && !hr) throw AppError.notFound('Loan');
     const balance = (await loanBalances([loan])).get(loan.id)!;
-    const repayments = await EmployeeLoanRepayment.findAll({ where: { loanId: loan.id }, include: [{ model: PayrollRun, attributes: ['id', 'year', 'month'] }], order: [['paidOn', 'ASC'], ['createdAt', 'ASC']] });
+    const repayments = await EmployeeLoanRepayment.findAll({
+      where: { loanId: loan.id },
+      include: [{ model: PayrollRun, attributes: ['id', 'year', 'month'] }],
+      order: [
+        ['paidOn', 'ASC'],
+        ['createdAt', 'ASC'],
+      ],
+    });
     const names = await this.names([loan.createdById, loan.decidedById, loan.disbursedById]);
     const name = (x: string | null) => (x ? (names.get(x) ?? 'Former user') : null);
     const first = await this.firstOpenMonth(auth);
@@ -258,7 +331,14 @@ export class LoansService {
   async firstOpenMonth(auth: AuthContext): Promise<{ year: number; month: number }> {
     const today = await this.salaries.today(auth.organizationId!);
     const [ty, tm] = today.split('-').map(Number) as [number, number];
-    const latest = await PayrollRun.findOne({ where: { status: ['APPROVED', 'PAID'] }, order: [['year', 'DESC'], ['month', 'DESC']], attributes: ['year', 'month'] });
+    const latest = await PayrollRun.findOne({
+      where: { status: ['APPROVED', 'PAID'] },
+      order: [
+        ['year', 'DESC'],
+        ['month', 'DESC'],
+      ],
+      attributes: ['year', 'month'],
+    });
     const after = latest ? monthIndex(latest.year, latest.month) + 1 : 0;
     const index = Math.max(after, monthIndex(ty, tm));
     return { year: Math.floor(index / 12), month: (index % 12) + 1 };
@@ -267,13 +347,15 @@ export class LoansService {
   // ---- Internals --------------------------------------------------------------------------------
 
   private checkTerms(type: LoanType, tenure: number, rate: number) {
-    if (type === 'ADVANCE' && tenure > ADVANCE_MAX_TENURE_MONTHS) throw AppError.validation([{ field: 'tenureMonths', message: `Salary advances are repaid within ${ADVANCE_MAX_TENURE_MONTHS} months` }]);
+    if (type === 'ADVANCE' && tenure > ADVANCE_MAX_TENURE_MONTHS)
+      throw AppError.validation([{ field: 'tenureMonths', message: `Salary advances are repaid within ${ADVANCE_MAX_TENURE_MONTHS} months` }]);
     if (type === 'ADVANCE' && rate > 0) throw AppError.validation([{ field: 'interestRate', message: 'Salary advances are interest-free' }]);
   }
 
   private async checkStartMonth(auth: AuthContext, year: number, month: number) {
     const first = await this.firstOpenMonth(auth);
-    if (monthIndex(year, month) < monthIndex(first.year, first.month)) throw AppError.validation([{ field: 'startMonth', message: `Deductions can start from ${periodLabel(first.year, first.month)}` }]);
+    if (monthIndex(year, month) < monthIndex(first.year, first.month))
+      throw AppError.validation([{ field: 'startMonth', message: `Deductions can start from ${periodLabel(first.year, first.month)}` }]);
     if (monthIndex(year, month) > monthIndex(first.year, first.month) + 12) throw AppError.validation([{ field: 'startMonth', message: 'Choose a month within a year' }]);
   }
 

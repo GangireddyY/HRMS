@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ArrowDownRight, ArrowUpRight, CalendarClock, History, Lock, Settings2, Trash2, UserX, Users, Wallet } from '@lucide/vue';
+import { ArrowDownRight, ArrowUpRight, BadgeCheck, CalendarClock, History, Lock, Settings2, Trash2, UserX, Users, Wallet } from '@lucide/vue';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import SalaryBreakdownTable from '@/modules/payroll/components/SalaryBreakdownTable.vue';
 import SalaryFormModal from '@/modules/payroll/components/SalaryFormModal.vue';
 import SalaryGridCard from '@/modules/payroll/components/SalaryGridCard.vue';
-import type { EmployeeSalary, SalaryHistory, SalaryRow } from '@/modules/payroll/types';
+import type { EmployeeSalary, SalaryHistory, SalaryRow, SalarySaveResult } from '@/modules/payroll/types';
 import { rupees } from '@/modules/payroll/utils/payroll-format';
 import { change } from '@/modules/payroll/utils/run-compare';
 import { AppAvatar, AppBadge, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSearchInput, AppSkeleton, AppStatStrip, AppTabs, type StripItem, type TableColumn } from '@/shared/components';
@@ -16,12 +16,14 @@ import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { fetchAllPages } from '@/shared/utils/fetch-all';
 import { formatDate, timeAgo } from '@/shared/utils/format';
+import { localToday } from '@/shared/utils/dates';
 
 /** Everyone's CTC: payroll cost at a glance, who has no salary yet (left out of payroll), upcoming revisions and each employee's history. */
 const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const canRevise = computed(() => auth.can('employee.salary.revise'));
 const canSetup = computed(() => auth.can('payroll.configure') || auth.can('payroll.view'));
+const revisions = useAsync(() => payrollApi.salaryRevisions());
 const view = ref('all');
 const table = useTable((q) => payrollApi.salaries({ ...q, missing: view.value === 'missing' || undefined }));
 watch(view, () => void table.load());
@@ -61,9 +63,14 @@ async function openForm(row: SalaryRow) {
   lockedThrough.value = (await payrollApi.salaryHistory(row.employee.id).catch(() => null))?.lockedThrough ?? null;
   formOpen.value = true;
 }
-async function onSaved() {
+async function onSaved(result: SalarySaveResult) {
   formOpen.value = false;
-  feedback.success('Salary saved', `${target.value?.employee.name} has been notified.`);
+  if ('pendingApproval' in result) {
+    feedback.success('Sent for approval', `The ${result.request.raisePercent}% raise for ${target.value?.employee.name} takes effect once someone else approves it.`);
+    void revisions.run();
+  } else {
+    feedback.success('Salary saved', `${target.value?.employee.name} has been notified.`);
+  }
   await Promise.all([table.load(), summary.run()]);
   if (history.value?.employee?.id === target.value?.employee.id) await openHistory(target.value!);
 }
@@ -105,7 +112,7 @@ const revision = (i: number) => {
   const list = history.value?.salaries ?? [];
   return list[i + 1] ? change(list[i]!.annualCtc, list[i + 1]!.annualCtc) : null;
 };
-const isUpcoming = (s: EmployeeSalary) => s.effectiveFrom > new Date().toISOString().slice(0, 10);
+const isUpcoming = (s: EmployeeSalary) => s.effectiveFrom > localToday();
 const currentIndex = computed(() => history.value?.salaries.findIndex((s) => !isUpcoming(s)) ?? -1);
 
 const columns: TableColumn<SalaryRow>[] = [
@@ -121,7 +128,12 @@ const columns: TableColumn<SalaryRow>[] = [
 <template>
   <div class="space-y-4">
     <AppPageHeader title="Salaries" description="Each employee's CTC and its breakdown. Revisions start from an effective date and keep the history.">
-      <template v-if="canSetup" #actions><AppButton variant="secondary" :icon="Settings2" to="/hr/payroll/setup">Salary structures</AppButton></template>
+      <template #actions>
+        <AppButton v-if="revisions.data.value?.length" variant="secondary" :icon="BadgeCheck" to="/hr/payroll/salary-revisions">
+          Awaiting approval <AppBadge tone="warning" size="sm" class="ms-1">{{ revisions.data.value.length }}</AppBadge>
+        </AppButton>
+        <AppButton v-if="canSetup" variant="secondary" :icon="Settings2" to="/hr/payroll/setup">Salary structures</AppButton>
+      </template>
     </AppPageHeader>
 
     <AppStatStrip :items="strip" :loading="summary.loading.value && !summary.data.value" label="Payroll cost" />
@@ -210,6 +222,17 @@ const columns: TableColumn<SalaryRow>[] = [
     <SalaryFormModal :open="formOpen" :employee="target?.employee ?? null" :current="target?.current ?? null" :locked-through="lockedThrough" @close="formOpen = false" @saved="onSaved" />
 
     <AppModal :open="!!historyFor" :title="historyFor ? `Salary history · ${historyFor.employee.name}` : ''" :description="historyFor ? [historyFor.employee.employeeCode, historyFor.employee.designation, `joined ${formatDate(historyFor.employee.dateOfJoining)}`].filter(Boolean).join(' · ') : undefined" size="lg" @close="historyFor = null">
+      <RouterLink
+        v-if="!loadingHistory && history?.pendingRevision"
+        to="/hr/payroll/salary-revisions"
+        class="mb-4 flex items-center gap-3 rounded-xl bg-warning-soft/60 px-4 py-3 text-sm ring-1 ring-warning/30 ring-inset hover:bg-warning-soft"
+      >
+        <BadgeCheck :size="16" class="shrink-0 text-warning-fg" aria-hidden="true" />
+        <span class="min-w-0 flex-1 text-fg">
+          <span class="font-medium tabular-nums">{{ rupees(history.pendingRevision.annualCtc) }}</span> from {{ formatDate(history.pendingRevision.effectiveFrom) }}
+          (+{{ history.pendingRevision.raisePercent }}%) is waiting for approval{{ history.pendingRevision.requestedBy ? ` · requested by ${history.pendingRevision.requestedBy}` : '' }}
+        </span>
+      </RouterLink>
       <AppSkeleton v-if="loadingHistory" :lines="5" />
       <div v-else-if="history && !history.salaries.length" class="flex items-center gap-3 rounded-lg bg-surface-muted/60 px-4 py-4">
         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-fg-subtle ring-1 ring-line ring-inset" aria-hidden="true"><Wallet :size="16" /></span>

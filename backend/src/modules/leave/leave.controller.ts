@@ -1,13 +1,18 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { CurrentAuth, RequirePermissions } from '../../common/auth/decorators';
+import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
+import { AppError } from '../../common/errors/app-error';
 import {
   AdjustmentDto,
   ApplyLeaveDto,
   BalanceOverviewQueryDto,
   BalanceQueryDto,
   CancelLeaveDto,
+  CompOffQueryDto,
+  CreateCompOffDto,
+  EncashmentQueryDto,
+  EncashmentRequestDto,
   LeaveCalendarQueryDto,
   LeaveQuoteDto,
   LeaveRequestQueryDto,
@@ -18,6 +23,8 @@ import {
   ReviewLeaveDto,
   UpdateLeaveTypeDto,
 } from './dto/leave.dto';
+import { CompOffService } from './comp-off.service';
+import { EncashmentsService } from './encashments.service';
 import { LeaveBalanceService } from './leave-balance.service';
 import { LeaveRequestsService } from './leave-requests.service';
 import { LeaveTypesService } from './leave-types.service';
@@ -32,6 +39,8 @@ export class LeaveController {
     private readonly types: LeaveTypesService,
     private readonly balances: LeaveBalanceService,
     private readonly requests: LeaveRequestsService,
+    private readonly compOffs: CompOffService,
+    private readonly encashments: EncashmentsService,
   ) {}
 
   // ---- Configuration ---------------------------------------------------------------------------
@@ -163,5 +172,87 @@ export class LeaveController {
   @ApiOperation({ summary: 'Approved and pending leave in a month within your scope, with holidays' })
   calendar(@CurrentAuth() auth: AuthContext, @Query() query: LeaveCalendarQueryDto) {
     return this.requests.calendar(auth, query);
+  }
+
+  // ---- Compensatory off ------------------------------------------------------------------------
+
+  @Get('comp-offs/eligible')
+  @RequirePermissions('leave.apply')
+  @ApiOperation({ summary: 'Holidays and weekly offs you worked recently, with the comp-off each can earn' })
+  compOffEligible(@CurrentAuth() auth: AuthContext) {
+    return this.compOffs.eligible(auth);
+  }
+
+  @Post('comp-offs')
+  @RequirePermissions('leave.apply')
+  requestCompOff(@CurrentAuth() auth: AuthContext, @Body() dto: CreateCompOffDto) {
+    return this.compOffs.create(auth, dto);
+  }
+
+  @Get('comp-offs')
+  @RequirePermissions('leave.view')
+  @ApiOperation({ summary: 'Your comp-off requests, or (view=team) the ones you can approve' })
+  listCompOffs(@CurrentAuth() auth: AuthContext, @Query() query: CompOffQueryDto) {
+    return this.compOffs.list(auth, query);
+  }
+
+  @Post('comp-offs/:id/approve')
+  @RequirePermissions('leave.approve')
+  approveCompOff(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewLeaveDto) {
+    return this.compOffs.approve(auth, id, dto);
+  }
+
+  @Post('comp-offs/:id/reject')
+  @RequirePermissions('leave.approve')
+  rejectCompOff(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectLeaveDto) {
+    return this.compOffs.reject(auth, id, dto);
+  }
+
+  @Post('comp-offs/:id/cancel')
+  @RequirePermissions('leave.apply')
+  cancelCompOff(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.compOffs.cancel(auth, id);
+  }
+
+  // ---- Encashment ------------------------------------------------------------------------------
+
+  @Get('encashments/options')
+  @RequirePermissions('leave.apply')
+  @ApiOperation({ summary: 'How many days of each encashable type you can encash now' })
+  encashmentOptions(@CurrentAuth() auth: AuthContext) {
+    return this.encashments.options(auth);
+  }
+
+  @Post('encashments')
+  @RequirePermissions('leave.apply')
+  @ApiOperation({ summary: 'Ask to be paid for unused leave (paid with the next payroll once approved)' })
+  requestEncashment(@CurrentAuth() auth: AuthContext, @Body() dto: EncashmentRequestDto) {
+    return this.encashments.request(auth, dto);
+  }
+
+  @Get('encashments')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Your encashment requests, or everyone’s (view=all, leave.allocate)' })
+  listEncashments(@CurrentAuth() auth: AuthContext, @Query() query: EncashmentQueryDto) {
+    if (!auth.features.has('leave') || (!auth.permissions.has('leave.apply') && !auth.permissions.has('leave.allocate'))) throw AppError.forbidden();
+    return this.encashments.list(auth, query);
+  }
+
+  @Post('encashments/:id/approve')
+  @RequirePermissions('leave.allocate')
+  approveEncashment(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewLeaveDto) {
+    return this.encashments.approve(auth, id, dto);
+  }
+
+  @Post('encashments/:id/reject')
+  @RequirePermissions('leave.allocate')
+  rejectEncashment(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectLeaveDto) {
+    return this.encashments.reject(auth, id, dto);
+  }
+
+  @Post('encashments/:id/cancel')
+  @RequirePermissions('leave.apply')
+  cancelEncashment(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    return this.encashments.cancel(auth, id);
   }
 }

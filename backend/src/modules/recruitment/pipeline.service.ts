@@ -12,8 +12,8 @@ import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CandidatesService, presentCandidate } from './candidates.service';
 import type { AddApplicationDto, ApplicationQueryDto, FeedbackDto, InterviewDto, MoveStageDto, UpdateInterviewDto } from './dto/recruitment.dto';
+import { fullName } from '../../common/utils/names';
 
-const fullName = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`.trim();
 const ACTIVE: readonly ApplicationStage[] = PIPELINE_STAGES;
 const isActive = (s: ApplicationStage) => ACTIVE.includes(s);
 
@@ -48,7 +48,10 @@ export class PipelineService {
       distinct: true,
       ...paginationArgs({ ...query, pageSize: Math.min(query.pageSize, 100) }),
     });
-    return new PaginatedResult(rows.map((a) => this.summary(a)), paginationMeta(query, count));
+    return new PaginatedResult(
+      rows.map((a) => this.summary(a)),
+      paginationMeta(query, count),
+    );
   }
 
   async add(auth: AuthContext, jobId: string, dto: AddApplicationDto) {
@@ -76,7 +79,10 @@ export class PipelineService {
         { model: Candidate },
         { model: JobOpening, attributes: ['id', 'title', 'status', 'requisitionId'] },
         { model: ApplicationEvent },
-        { model: Interview, include: [{ model: InterviewPanelist, include: [{ model: Employee, attributes: ['id', 'firstName', 'lastName'], include: [{ model: Designation, attributes: ['id', 'name'] }] }] }] },
+        {
+          model: Interview,
+          include: [{ model: InterviewPanelist, include: [{ model: Employee, attributes: ['id', 'firstName', 'lastName'], include: [{ model: Designation, attributes: ['id', 'name'] }] }] }],
+        },
         { model: Offer },
       ],
     });
@@ -115,7 +121,12 @@ export class PipelineService {
   }
 
   async move(auth: AuthContext, id: string, dto: MoveStageDto) {
-    const a = await JobApplication.findByPk(id, { include: [{ model: Candidate, attributes: ['id', 'firstName', 'lastName'] }, { model: Offer, attributes: ['id', 'status'] }] });
+    const a = await JobApplication.findByPk(id, {
+      include: [
+        { model: Candidate, attributes: ['id', 'firstName', 'lastName'] },
+        { model: Offer, attributes: ['id', 'status'] },
+      ],
+    });
     if (!a) throw AppError.notFound('Application');
     if (dto.stage === a.stage) throw AppError.validation([{ field: 'stage', message: 'The application is already at this stage' }]);
     if (dto.stage === 'HIRED') throw AppError.validation([{ field: 'stage', message: 'Candidates are hired by converting an accepted offer' }]);
@@ -126,8 +137,14 @@ export class PipelineService {
     const from = a.stage;
     await this.db.transaction(async (transaction) => {
       await a.update({ stage: dto.stage, stageChangedAt: new Date(), rejectionReason: dto.stage === 'REJECTED' ? dto.note! : isActive(dto.stage) ? null : a.rejectionReason }, { transaction });
-      await ApplicationEvent.create({ organizationId: auth.organizationId!, applicationId: id, fromStage: from, toStage: dto.stage, note: dto.note ?? null, createdById: auth.userId }, { transaction });
-      await this.audit.record({ action: 'application.stage_changed', entityType: 'JobApplication', entityId: id, summary: `${fullName(a.candidate!)} moved to ${dto.stage.toLowerCase()}` }, transaction);
+      await ApplicationEvent.create(
+        { organizationId: auth.organizationId!, applicationId: id, fromStage: from, toStage: dto.stage, note: dto.note ?? null, createdById: auth.userId },
+        { transaction },
+      );
+      await this.audit.record(
+        { action: 'application.stage_changed', entityType: 'JobApplication', entityId: id, summary: `${fullName(a.candidate!)} moved to ${dto.stage.toLowerCase()}` },
+        transaction,
+      );
     });
     return this.get(auth, id);
   }
@@ -135,24 +152,52 @@ export class PipelineService {
   // ---- Interviews ------------------------------------------------------------------------------
 
   async schedule(auth: AuthContext, applicationId: string, dto: InterviewDto) {
-    const a = await JobApplication.findByPk(applicationId, { include: [{ model: Candidate, attributes: ['id', 'firstName', 'lastName'] }, { model: JobOpening, attributes: ['id', 'title'] }] });
+    const a = await JobApplication.findByPk(applicationId, {
+      include: [
+        { model: Candidate, attributes: ['id', 'firstName', 'lastName'] },
+        { model: JobOpening, attributes: ['id', 'title'] },
+      ],
+    });
     if (!a) throw AppError.notFound('Application');
     if (!isActive(a.stage)) throw AppError.conflict(`The application is ${a.stage.toLowerCase()}`);
     const panel = await this.panel(dto.panelistIds);
     const from = a.stage;
     await this.db.transaction(async (transaction) => {
       const created = await Interview.create(
-        { organizationId: auth.organizationId!, applicationId, roundName: dto.roundName, scheduledAt: new Date(dto.scheduledAt), durationMinutes: dto.durationMinutes ?? 60, mode: dto.mode ?? 'VIDEO', location: dto.location ?? null, createdById: auth.userId },
+        {
+          organizationId: auth.organizationId!,
+          applicationId,
+          roundName: dto.roundName,
+          scheduledAt: new Date(dto.scheduledAt),
+          durationMinutes: dto.durationMinutes ?? 60,
+          mode: dto.mode ?? 'VIDEO',
+          location: dto.location ?? null,
+          createdById: auth.userId,
+        },
         { transaction },
       );
-      await InterviewPanelist.bulkCreate(panel.map((p) => ({ organizationId: auth.organizationId!, interviewId: created.id, employeeId: p.id })), { transaction });
+      await InterviewPanelist.bulkCreate(
+        panel.map((p) => ({ organizationId: auth.organizationId!, interviewId: created.id, employeeId: p.id })),
+        { transaction },
+      );
       if (a.stage === 'APPLIED' || a.stage === 'SCREENING') {
         await a.update({ stage: 'INTERVIEW', stageChangedAt: new Date() }, { transaction });
-        await ApplicationEvent.create({ organizationId: auth.organizationId!, applicationId, fromStage: from, toStage: 'INTERVIEW', note: `${dto.roundName} scheduled`, createdById: auth.userId }, { transaction });
+        await ApplicationEvent.create(
+          { organizationId: auth.organizationId!, applicationId, fromStage: from, toStage: 'INTERVIEW', note: `${dto.roundName} scheduled`, createdById: auth.userId },
+          { transaction },
+        );
       }
-      await this.audit.record({ action: 'interview.scheduled', entityType: 'JobApplication', entityId: applicationId, summary: `${dto.roundName} scheduled for ${fullName(a.candidate!)}` }, transaction);
+      await this.audit.record(
+        { action: 'interview.scheduled', entityType: 'JobApplication', entityId: applicationId, summary: `${dto.roundName} scheduled for ${fullName(a.candidate!)}` },
+        transaction,
+      );
     });
-    await this.notifyPanel(auth, panel.map((p) => p.membershipId), `Interview: ${fullName(a.candidate!)} for ${a.job!.title}`, `${dto.roundName} on ${new Date(dto.scheduledAt).toUTCString()}`);
+    await this.notifyPanel(
+      auth,
+      panel.map((p) => p.membershipId),
+      `Interview: ${fullName(a.candidate!)} for ${a.job!.title}`,
+      `${dto.roundName} on ${new Date(dto.scheduledAt).toUTCString()}`,
+    );
     return this.get(auth, applicationId);
   }
 
@@ -171,7 +216,11 @@ export class PipelineService {
         if (removed.some((p) => p.submittedAt)) throw AppError.conflict('Panelists who already gave feedback cannot be removed');
         if (removed.length) await InterviewPanelist.destroy({ where: { id: removed.map((p) => p.id) }, transaction });
         const added = panel.filter((p) => !existing.has(p.id));
-        if (added.length) await InterviewPanelist.bulkCreate(added.map((p) => ({ organizationId: auth.organizationId!, interviewId: id, employeeId: p.id })), { transaction });
+        if (added.length)
+          await InterviewPanelist.bulkCreate(
+            added.map((p) => ({ organizationId: auth.organizationId!, interviewId: id, employeeId: p.id })),
+            { transaction },
+          );
       }
       await this.audit.record({ action: 'interview.updated', entityType: 'JobApplication', entityId: i.applicationId, summary: `${i.roundName} updated` }, transaction);
     });
@@ -197,7 +246,14 @@ export class PipelineService {
       where: { status: { [Op.ne]: 'CANCELLED' } },
       include: [
         { model: InterviewPanelist, where: { employeeId: self.id }, required: true },
-        { model: JobApplication, attributes: ['id', 'stage'], include: [{ model: Candidate, attributes: ['id', 'firstName', 'lastName', 'currentTitle', 'currentCompany', 'experienceYears', 'resumeKey'] }, { model: JobOpening, attributes: ['id', 'title'] }] },
+        {
+          model: JobApplication,
+          attributes: ['id', 'stage'],
+          include: [
+            { model: Candidate, attributes: ['id', 'firstName', 'lastName', 'currentTitle', 'currentCompany', 'experienceYears', 'resumeKey'] },
+            { model: JobOpening, attributes: ['id', 'title'] },
+          ],
+        },
       ],
       order: [['scheduledAt', 'DESC']],
       limit: 200,
@@ -212,7 +268,13 @@ export class PipelineService {
         mode: i.mode,
         location: i.location,
         status: i.status,
-        candidate: { name: fullName(i.application!.candidate!), currentTitle: i.application!.candidate!.currentTitle, currentCompany: i.application!.candidate!.currentCompany, experienceYears: i.application!.candidate!.experienceYears === null ? null : Number(i.application!.candidate!.experienceYears), hasResume: !!i.application!.candidate!.resumeKey },
+        candidate: {
+          name: fullName(i.application!.candidate!),
+          currentTitle: i.application!.candidate!.currentTitle,
+          currentCompany: i.application!.candidate!.currentCompany,
+          experienceYears: i.application!.candidate!.experienceYears === null ? null : Number(i.application!.candidate!.experienceYears),
+          hasResume: !!i.application!.candidate!.resumeKey,
+        },
         job: { id: i.application!.job!.id, title: i.application!.job!.title },
         myFeedback: mine.submittedAt ? { rating: mine.rating, recommendation: mine.recommendation, feedback: mine.feedback, submittedAt: mine.submittedAt } : null,
       };
@@ -236,7 +298,12 @@ export class PipelineService {
       await this.audit.record({ action: 'interview.feedback_submitted', entityType: 'JobApplication', entityId: i.applicationId, summary: `Feedback submitted for ${i.roundName}` }, transaction);
     });
     if (i.createdById && i.createdById !== auth.userId) {
-      await this.notifications.notify(i.createdById, { organizationId: auth.organizationId, type: 'recruitment.interview', title: `Interview feedback received (${i.roundName})`, link: `/hr/recruitment/applications/${i.applicationId}` });
+      await this.notifications.notify(i.createdById, {
+        organizationId: auth.organizationId,
+        type: 'recruitment.interview',
+        title: `Interview feedback received (${i.roundName})`,
+        link: `/hr/recruitment/applications/${i.applicationId}`,
+      });
     }
     return (await this.mine(auth)).find((x) => x.id === interviewId)!;
   }
@@ -264,7 +331,8 @@ export class PipelineService {
     const ids = membershipIds.filter((x): x is string => !!x);
     if (!ids.length) return;
     const members = await OrganizationMembership.findAll({ where: { id: ids, status: 'ACTIVE' }, attributes: ['userId'] });
-    for (const m of members) if (m.userId !== auth.userId) await this.notifications.notify(m.userId, { organizationId: auth.organizationId, type: 'recruitment.interview', title, body, link: '/me/interviews' });
+    for (const m of members)
+      if (m.userId !== auth.userId) await this.notifications.notify(m.userId, { organizationId: auth.organizationId, type: 'recruitment.interview', title, body, link: '/me/interviews' });
   }
 
   private summary(a: JobApplication) {

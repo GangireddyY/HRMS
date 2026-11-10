@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { Banknote, CalendarDays, Check, FileImage, FileText, FileX, Hourglass, MessageSquareText, Undo2, X } from '@lucide/vue';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
-import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
+import { CLAIM_CATEGORY_LABELS, claimStatusLabel, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
 import { AppAvatar, AppBadge, AppButton } from '@/shared/components';
 import { formatDate, formatDateTime, timeAgo } from '@/shared/utils/format';
 
@@ -54,7 +54,7 @@ const reviewed = computed(() =>
         <h3 class="line-clamp-2 text-sm leading-snug font-semibold text-fg">{{ c.title }}</h3>
         <p class="mt-0.5 truncate text-xs text-fg-muted">{{ CLAIM_CATEGORY_LABELS[c.category] }}</p>
       </div>
-      <AppBadge class="shrink-0" :tone="claimTone[c.status]" size="sm" dot>{{ CLAIM_STATUS_LABELS[c.status] }}</AppBadge>
+      <AppBadge class="shrink-0" :tone="claimTone[c.status]" size="sm" dot>{{ claimStatusLabel(c) }}</AppBadge>
     </div>
 
     <div>

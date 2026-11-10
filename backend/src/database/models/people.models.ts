@@ -71,6 +71,10 @@ export class Location extends Model<InferAttributes<Location>, InferCreationAttr
   @Column(DataType.DECIMAL(9, 6)) latitude: CreationOptional<string | null>;
   @Column(DataType.DECIMAL(9, 6)) longitude: CreationOptional<string | null>;
   @Column(DataType.INTEGER) geofenceRadiusM: CreationOptional<number | null>;
+  /** IP addresses / CIDR ranges web punch-ins must come from (empty = anywhere). */
+  @Column(DataType.ARRAY(DataType.STRING(50))) allowedNetworks: CreationOptional<string[] | null>;
+  /** Web punch-ins need a photo taken with the camera. */
+  @Column(DataType.BOOLEAN) punchPhotoRequired: CreationOptional<boolean>;
   @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
@@ -148,27 +152,35 @@ export class Employee extends Model<InferAttributes<Employee>, InferCreationAttr
   /** When probation was confirmed; null = not confirmed yet. */
   @Column(DataType.DATEONLY) confirmedOn: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) exitDate: CreationOptional<string | null>;
-  @Column(DataType.STRING(500)) address: CreationOptional<string | null>;
-  @Column(DataType.STRING(120)) emergencyContactName: CreationOptional<string | null>;
-  @Column(DataType.STRING(30)) emergencyContactPhone: CreationOptional<string | null>;
+  /** Encrypted (EncryptionService, context employees.<column>:<id>); may hold plain text written before that. */
+  @Column(DataType.TEXT) address: CreationOptional<string | null>;
+  @Column(DataType.TEXT) emergencyContactName: CreationOptional<string | null>;
+  @Column(DataType.TEXT) emergencyContactPhone: CreationOptional<string | null>;
   @Column(DataType.TEXT) panEncrypted: CreationOptional<string | null>;
   @Column(DataType.TEXT) uanEncrypted: CreationOptional<string | null>;
+  /** ESIC insurance (IP) number. */
+  @Column(DataType.STRING(17)) esiNumber: CreationOptional<string | null>;
   @Column(DataType.TEXT) bankAccountEncrypted: CreationOptional<string | null>;
   @Column({ type: DataType.STRING(4), field: 'bank_account_last4' }) bankAccountLast4: CreationOptional<string | null>;
   @Column(DataType.STRING(11)) bankIfsc: CreationOptional<string | null>;
   @Column(DataType.STRING(100)) bankName: CreationOptional<string | null>;
   @ForeignKey(() => Grade) @Column(DataType.UUID) gradeId: CreationOptional<string | null>;
+  /** Paid in this pay group's own payroll runs; null = the main run. */
+  @Column(DataType.UUID) payGroupId: CreationOptional<string | null>;
   @ForeignKey(() => CostCenter) @Column(DataType.UUID) costCenterId: CreationOptional<string | null>;
   @Column(DataType.STRING(20)) maritalStatus: CreationOptional<MaritalStatus | null>;
   @Column(DataType.STRING(3)) bloodGroup: CreationOptional<BloodGroup | null>;
   /** ISO 3166-1 alpha-2. */
   @Column(DataType.CHAR(2)) nationality: CreationOptional<string | null>;
-  @Column(DataType.STRING(500)) permanentAddress: CreationOptional<string | null>;
+  @Column(DataType.TEXT) permanentAddress: CreationOptional<string | null>;
   @Column(DataType.SMALLINT) noticePeriodDays: CreationOptional<number | null>;
   @Column(DataType.TEXT) aadhaarEncrypted: CreationOptional<string | null>;
   @Column({ type: DataType.STRING(4), field: 'aadhaar_last4' }) aadhaarLast4: CreationOptional<string | null>;
   @Column(DataType.TEXT) passportEncrypted: CreationOptional<string | null>;
   @Column(DataType.DATEONLY) passportExpiry: CreationOptional<string | null>;
+  /** Personal data erased (DPDP): PARTIAL keeps what statutory retention needs; FULL is anonymized. */
+  @Column(DataType.DATE) erasedAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(7)) erasureLevel: CreationOptional<'PARTIAL' | 'FULL' | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;

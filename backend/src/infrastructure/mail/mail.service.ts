@@ -1,12 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, type OnModuleInit } from '@nestjs/common';
 import { MailService as SendGridClient } from '@sendgrid/mail';
+import type { Transaction } from 'sequelize';
 import { AppConfig } from '../../config/app-config.service';
+import { JobQueueService } from '../jobs/job-queue.service';
+
+const MAIL_JOB = 'mail.send';
 
 export interface MailMessage {
   to: string;
   subject: string;
   text: string;
   html: string;
+  /** Base64 content. Large files belong in a job that builds them, not in the queued message. */
+  attachments?: { filename: string; content: string; type: string }[];
 }
 
 const SENDGRID_TIMEOUT_MS = 10_000;
@@ -18,18 +24,35 @@ const SENDGRID_TIMEOUT_MS = 10_000;
  *  - Test: nothing is sent; messages are captured in `outbox` so integration tests can read links.
  */
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   private readonly client?: SendGridClient;
   readonly outbox: MailMessage[] = [];
 
-  constructor(private readonly config: AppConfig) {
+  constructor(
+    private readonly config: AppConfig,
+    @Optional() private readonly jobs?: JobQueueService,
+  ) {
     const apiKey = config.get('SENDGRID_API_KEY');
     if (apiKey && !config.isTest) {
       this.client = new SendGridClient();
       this.client.setApiKey(apiKey);
       this.client.setTimeout(SENDGRID_TIMEOUT_MS);
     }
+  }
+
+  onModuleInit(): void {
+    this.jobs?.register<MailMessage>(MAIL_JOB, (message) => this.send(message));
+  }
+
+  /**
+   * Sends through the job queue: written with the transaction (so it goes out exactly when the change commits) and
+   * retried with backoff if SendGrid fails. For notifications; messages carrying one-time tokens use `send` so the
+   * token never sits in the database.
+   */
+  async queue(message: MailMessage, opts: { transaction?: Transaction } = {}): Promise<void> {
+    if (!this.jobs) return this.send(message);
+    await this.jobs.enqueue(MAIL_JOB, message, { transaction: opts.transaction, maxAttempts: 6 });
   }
 
   async send(message: MailMessage): Promise<void> {
@@ -48,6 +71,7 @@ export class MailService {
         subject: message.subject,
         text: message.text,
         html: message.html,
+        ...(message.attachments?.length ? { attachments: message.attachments.map((a) => ({ content: a.content, filename: a.filename, type: a.type, disposition: 'attachment' })) } : {}),
         // These emails carry one-time tokens (password reset, invitations); tracking would route them through SendGrid redirects.
         trackingSettings: { clickTracking: { enable: false, enableText: false }, openTracking: { enable: false } },
         mailSettings: { sandboxMode: { enable: this.config.get('SENDGRID_SANDBOX_MODE') } },

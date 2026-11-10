@@ -7,7 +7,7 @@ import ClaimFormModal from '@/modules/payroll/components/ClaimFormModal.vue';
 import ClaimGridCard from '@/modules/payroll/components/ClaimGridCard.vue';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
-import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
+import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimStatusLabel, claimTone, rupees } from '@/modules/payroll/utils/payroll-format';
 import { AppBadge, AppButton, AppCard, AppDataTable, AppPageHeader, AppSearchInput, AppStatStrip, type StripItem, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useTable } from '@/shared/composables/use-table';
@@ -86,6 +86,10 @@ function statusNote(c: Claim): string | null {
   if (c.status === 'REJECTED') return c.reviewNote ? `“${c.reviewNote}”` : c.reviewedBy ? `By ${c.reviewedBy}` : null;
   if (c.payroll) return `${c.status === 'PAID' ? 'Paid with' : 'In'} ${c.payroll.period} payroll`;
   if (c.status === 'APPROVED') return 'Paid with the next payroll';
+  if (c.status === 'PENDING' && c.approvalStage === 'FINANCE') {
+    const manager = c.trail.find((t) => t.step === 'MANAGER');
+    return manager?.by ? `Approved by ${manager.by}; finance approves next` : 'Finance approves next';
+  }
   if (c.status === 'PENDING') return `Waiting ${timeAgo(c.createdAt).replace(/ ago$/, '')}`;
   return null;
 }
@@ -158,7 +162,7 @@ const STEPS = [
           <template #cell-amount="{ row }"><span :class="['font-semibold tabular-nums', row.status === 'CANCELLED' || row.status === 'REJECTED' ? 'text-fg-subtle line-through decoration-fg-subtle/50' : 'text-fg']">{{ rupees(row.amount, true) }}</span></template>
           <template #cell-status="{ row }">
             <div class="max-md:text-end">
-              <AppBadge :tone="claimTone[row.status]" dot>{{ CLAIM_STATUS_LABELS[row.status] }}</AppBadge>
+              <AppBadge :tone="claimTone[row.status]" dot>{{ claimStatusLabel(row) }}</AppBadge>
               <p v-if="statusNote(row)" class="mt-0.5 max-w-56 truncate text-xs text-fg-muted" :title="statusNote(row)!">{{ statusNote(row) }}</p>
               <p v-if="row.reviewedBy && row.status !== 'PENDING' && !(row.status === 'REJECTED' && !row.reviewNote)" class="max-w-56 truncate text-2xs text-fg-subtle">
                 {{ row.status === 'REJECTED' ? 'Rejected' : 'Approved' }} by {{ row.reviewedBy }}<template v-if="row.reviewedAt"> · {{ formatDate(row.reviewedAt) }}</template>

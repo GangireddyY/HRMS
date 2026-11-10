@@ -6,13 +6,14 @@ import { performanceApi } from '@/modules/performance/api/performance.api';
 import type { PipDetail } from '@/modules/performance/types';
 import { AppAlert, AppButton, AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
+import { localToday } from '@/shared/utils/dates';
 
 /** Open an improvement plan for someone in your scope: reason, measurable objectives and a time frame. */
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: []; saved: [p: PipDetail] }>();
 
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const today = new Date().toISOString().slice(0, 10);
+const today = localToday();
 const in60 = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
 const form = reactive({ employeeId: null as string | null, reason: '', startDate: today as string | undefined, endDate: in60 as string | undefined, objectives: [{ title: '', measure: '' }] });
 const saving = ref(false);
