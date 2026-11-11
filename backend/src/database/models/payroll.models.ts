@@ -254,6 +254,8 @@ export class Payslip extends Model<InferAttributes<Payslip>, InferCreationAttrib
   @ForeignKey(() => PayrollRun) @Column(DataType.UUID) runId: string;
   @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
   @Column(DataType.JSONB) employee: Record<string, unknown>;
+  /** The paying entity's currency; null = the organization's. */
+  @Column(DataType.CHAR(3)) currency: CreationOptional<string | null>;
   @Column(DataType.SMALLINT) daysInMonth: number;
   @Column(DataType.DECIMAL(4, 1)) employedDays: string;
   @Column(DataType.DECIMAL(4, 1)) lopDays: CreationOptional<string>;
@@ -304,6 +306,8 @@ export class PayGroup extends Model<InferAttributes<PayGroup>, InferCreationAttr
   @Column(DataType.STRING(80)) name: string;
   @Column(DataType.STRING(300)) description: CreationOptional<string | null>;
   @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
+  /** The entity this group is paid by (its currency and statutory rules); null = the default entity. */
+  @Column(DataType.UUID) legalEntityId: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;
@@ -319,7 +323,12 @@ export class ReimbursementClaim extends Model<InferAttributes<ReimbursementClaim
   @Column(DataType.STRING(20)) category: ReimbursementCategory;
   @Column(DataType.STRING(150)) title: string;
   @Column(DataType.DATEONLY) expenseDate: string;
+  /** In the employee's pay currency (converted when the receipt was in another one). */
   @Column(DataType.DECIMAL(12, 2)) amount: string;
+  /** The receipt's currency, when not the pay currency, with its amount and the rate used. */
+  @Column(DataType.CHAR(3)) currency: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(12, 2)) originalAmount: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(18, 8)) exchangeRate: CreationOptional<string | null>;
   @Column(DataType.STRING(1000)) description: CreationOptional<string | null>;
   @Column(DataType.STRING(200)) receiptKey: CreationOptional<string | null>;
   @Column(DataType.STRING(255)) receiptName: CreationOptional<string | null>;

@@ -1,3 +1,5 @@
+import type { NotificationSettingsView } from '@contracts';
+
 export interface NotificationRow {
   id: string;
   type: string;
@@ -8,13 +10,7 @@ export interface NotificationRow {
   createdAt: string;
 }
 
-export interface NotificationEmailSettings {
-  email: boolean;
-  /** Browser notifications on any device. */
-  push: boolean;
-  muted: string[];
-  categories: { key: string; label: string; description: string }[];
-}
+export type NotificationEmailSettings = NotificationSettingsView;
 
 export interface PushStatus {
   /** The server has VAPID keys. */

@@ -14,6 +14,7 @@ import { AuditService } from '../../infrastructure/audit/audit.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { ApprovalChainsService } from '../approvals/approval-chains.service';
 import { detectDocumentType, safeFileName } from '../employees/employee-documents.service';
+import { EntitiesService } from '../entities/entities.service';
 import { managerAndCover, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -30,6 +31,7 @@ export interface UploadedReceipt {
 }
 
 const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const moneyIn = (n: number, currency: string) => (currency === 'INR' ? money(n) : new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n));
 const FINANCE = 'payroll.reimbursement.finance';
 
 /**
@@ -48,6 +50,7 @@ export class ReimbursementsService {
     private readonly salaries: SalariesService,
     private readonly policy: ExpensePolicyService,
     private readonly chains: ApprovalChainsService,
+    private readonly entities: EntitiesService,
   ) {}
 
   async create(auth: AuthContext, dto: ClaimDto, file?: UploadedReceipt) {
@@ -57,7 +60,13 @@ export class ReimbursementsService {
     const today = await this.salaries.today(auth.organizationId!);
     if (dto.expenseDate > today) throw AppError.validation([{ field: 'expenseDate', message: "The expense date can't be in the future" }]);
     if (dto.expenseDate < self.dateOfJoining) throw AppError.validation([{ field: 'expenseDate', message: 'The expense is from before you joined' }]);
-    await this.policy.checkClaim(auth.organizationId!, dto.category, dto.amount, !!file);
+    // A receipt in another currency is converted to the pay currency at the rate on the expense date.
+    const payCurrency = await this.entities.payCurrencyOf(auth.organizationId!, (await Employee.findByPk(self.id, { attributes: ['legalEntityId'] }))!);
+    const foreign = dto.currency && dto.currency !== payCurrency ? dto.currency : null;
+    const converted = foreign ? await this.entities.convert(auth.organizationId!, dto.amount, foreign, payCurrency, dto.expenseDate) : null;
+    if (foreign && !converted) throw AppError.validation([{ field: 'currency', message: `No exchange rate for ${foreign} to ${payCurrency} on or before ${dto.expenseDate}; ask payroll to add one` }]);
+    const amount = converted?.amount ?? dto.amount;
+    await this.policy.checkClaim(auth.organizationId!, dto.category, amount, !!file);
 
     let receipt: { key: string; name: string; type: string; size: number } | null = null;
     if (file) {
@@ -69,7 +78,7 @@ export class ReimbursementsService {
     }
     try {
       const claim = await this.db.transaction(async (transaction) => {
-        await this.policy.checkMonthly(auth.organizationId!, self.id, dto.category, dto.expenseDate, dto.amount, transaction);
+        await this.policy.checkMonthly(auth.organizationId!, self.id, dto.category, dto.expenseDate, amount, transaction);
         const c = await ReimbursementClaim.create(
           {
             organizationId: auth.organizationId!,
@@ -77,7 +86,8 @@ export class ReimbursementsService {
             category: dto.category,
             title: dto.title,
             expenseDate: dto.expenseDate,
-            amount: String(dto.amount),
+            amount: String(amount),
+            ...(foreign ? { currency: foreign, originalAmount: String(dto.amount), exchangeRate: String(converted!.rate) } : {}),
             description: dto.description ?? null,
             receiptKey: receipt?.key ?? null,
             receiptName: receipt?.name ?? null,
@@ -88,18 +98,18 @@ export class ReimbursementsService {
           { transaction },
         );
         await this.audit.record(
-          { action: 'payroll.claim_submitted', entityType: 'ReimbursementClaim', entityId: c.id, summary: `${self.employeeCode} claimed ${money(dto.amount)} for "${dto.title}"` },
+          { action: 'payroll.claim_submitted', entityType: 'ReimbursementClaim', entityId: c.id, summary: `${self.employeeCode} claimed ${moneyIn(amount, payCurrency)}${foreign ? ` (${foreign} ${dto.amount})` : ''} for "${dto.title}"` },
           transaction,
         );
         // A configured approval chain, when one applies, replaces the manager / finance steps.
         const requester = await Employee.findByPk(self.id, { attributes: ['id', 'managerId', 'departmentId', 'membershipId'], transaction });
-        const chain = await this.chains.start('EXPENSE', c.id, requester!, { amount: dto.amount, category: dto.category }, transaction);
+        const chain = await this.chains.start('EXPENSE', c.id, requester!, { amount, category: dto.category }, transaction);
         const firstApprovers = chain ? await this.chains.usersOf(chain.steps[0]!.approverMembershipIds, transaction) : await managerAndCover(self.managerId, transaction);
         for (const managerUser of firstApprovers) {
           if (managerUser === auth.userId) continue;
           await this.notifications.notify(
             managerUser,
-            { organizationId: auth.organizationId, type: 'payroll.claim', title: `${fullName(self)} claimed ${money(dto.amount)}`, body: dto.title, link: '/hr/payroll/reimbursements' },
+            { organizationId: auth.organizationId, type: 'payroll.claim', title: `${fullName(self)} claimed ${moneyIn(amount, payCurrency)}`, body: dto.title, link: chain ? '/me/approvals' : '/hr/payroll/reimbursements' },
             transaction,
           );
         }
@@ -324,7 +334,7 @@ export class ReimbursementsService {
     });
     for (const approver of await this.chains.usersOf(next)) {
       if (approver === auth.userId || approver === userId) continue;
-      await this.notifications.notify(approver, { organizationId: auth.organizationId, type: 'payroll.claim', title: `${nextLabel} approval needed: ${fullName(claim.employee!)} claimed ${amount}`, body: claim.title, link: '/hr/payroll/reimbursements' });
+      await this.notifications.notify(approver, { organizationId: auth.organizationId, type: 'payroll.claim', title: `${nextLabel} approval needed: ${fullName(claim.employee!)} claimed ${amount}`, body: claim.title, link: '/me/approvals' });
     }
     return this.get(auth, id);
   }
@@ -373,6 +383,8 @@ export class ReimbursementsService {
       title: c.title,
       expenseDate: c.expenseDate,
       amount: Number(c.amount),
+      /** The receipt in another currency (amount is the converted figure). */
+      original: c.currency ? { currency: c.currency, amount: Number(c.originalAmount), rate: Number(c.exchangeRate) } : null,
       description: c.description,
       receipt: c.receiptKey ? { fileName: c.receiptName, contentType: c.receiptType, size: c.receiptSize } : null,
       status: c.status,

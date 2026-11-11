@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router';
 import { BadgeCheck, CheckCircle2, FilterX, Gavel, PiggyBank, Send, SlidersHorizontal, TrendingUp, Wand2, XCircle } from '@lucide/vue';
 import { MAX_HIKE_PERCENT, type HikeStatus, type MeritGuideline } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
+import { errorMessage } from '@/core/http/http-client';
+import CompensationPoolsCard from '@/modules/performance/components/CompensationPoolsCard.vue';
 import HikeGridCard from '@/modules/performance/components/HikeGridCard.vue';
 import RatingChip from '@/modules/performance/components/RatingChip.vue';
 import type { Compensation, HikeList, HikeRow } from '@/modules/performance/types';
@@ -31,6 +33,7 @@ const view = ref<'mine' | 'all'>(hr.value ? 'all' : 'mine');
 const status = ref<HikeStatus | undefined>(undefined);
 const list = ref<HikeList | null>(null);
 const comp = ref<Compensation | null>(null);
+const poolsCard = ref<InstanceType<typeof CompensationPoolsCard> | null>(null);
 /** The last list loaded without a status filter: status counts for viewers without the compensation summary. */
 const unfiltered = ref<HikeRow[] | null>(null);
 const loading = ref(false);
@@ -200,19 +203,27 @@ function openDecide(row: HikeRow, kind: 'approve' | 'reject') {
   Object.assign(decideForm, { percent: row.recommendation!.percent, note: '' });
   modal.value = kind;
 }
-async function decide(approve: boolean) {
+async function decide(approve: boolean, overBudget = false) {
   reset();
   busy.value = true;
   const recId = current.value!.recommendation!.id;
   try {
     const row = approve
-      ? await performanceApi.approveHike(recId, { percent: Number(decideForm.percent), note: decideForm.note.trim() || null })
+      ? await performanceApi.approveHike(recId, { percent: Number(decideForm.percent), note: decideForm.note.trim() || null, ...(overBudget ? { overBudget: true } : {}) })
       : await performanceApi.rejectHike(recId, decideForm.note.trim());
     replace(row);
     await refreshComp();
+    await poolsCard.value?.refresh();
     modal.value = null;
     feedback.success(approve ? 'Increase approved' : 'Sent back to the reviewer');
   } catch (e) {
+    const message = errorMessage(e);
+    // The department's pool would be overspent: approving anyway is a deliberate, audited choice.
+    if (approve && !overBudget && /pool of/.test(message)) {
+      busy.value = false;
+      if (await feedback.confirm({ title: 'Over the department’s pool', message, confirmLabel: 'Approve over budget', danger: true })) return decide(true, true);
+      return;
+    }
     handle(e, 'Could not record the decision');
   } finally {
     busy.value = false;
@@ -387,6 +398,8 @@ async function apply() {
           </div>
         </AppCard>
         </div>
+
+        <CompensationPoolsCard v-if="comp?.budget" ref="poolsCard" :cycle-id="id" :can-configure="!!comp?.permissions.configure" @changed="refreshComp" />
 
         <div>
           <div class="space-y-4">

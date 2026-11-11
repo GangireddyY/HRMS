@@ -123,6 +123,64 @@ export function notificationEmail(
   };
 }
 
+/** A scheduled report-builder report, attached. */
+export function scheduledReportEmail(to: string, name: string, report: { title: string; organization: string; period: string | null; rows: number; manageUrl: string }, file: { filename: string; content: string; type: string }): MailMessage {
+  const what = `${report.title}${report.period ? ` (${report.period})` : ''}`;
+  return {
+    to,
+    subject: `[${report.organization}] ${what}`,
+    text: `Hi ${name},\n\nYour scheduled report "${what}" is attached: ${report.rows} row${report.rows === 1 ? '' : 's'}, limited to what you have access to.\n\nManage scheduled reports: ${report.manageUrl}\n`,
+    html: layout(
+      report.title,
+      `<p>Hi ${escapeHtml(name)},</p><p>Your scheduled report <strong>${escapeHtml(what)}</strong> is attached: ${report.rows} row${report.rows === 1 ? '' : 's'}, limited to what you have access to.</p><p style="color:#6b7280;font-size:12px"><a href="${escapeHtml(report.manageUrl)}" style="color:#6b7280">Manage scheduled reports</a></p>`,
+    ),
+    attachments: [file],
+  };
+}
+
+/** An iCalendar invite (or cancellation); calendars show it with add / update / remove buttons. */
+export function calendarInviteEmail(to: string, name: string, e: { title: string; when: string; organization: string; cancelled: boolean }, ics: string, method: 'REQUEST' | 'CANCEL'): MailMessage {
+  const head = e.cancelled ? `Cancelled: ${e.title}` : e.title;
+  return {
+    to,
+    subject: `${head} · ${e.when}`,
+    text: `Hi ${name},\n\n${e.cancelled ? 'This has been cancelled and is removed from your calendar' : 'This has been added to your calendar'}: ${e.title}, ${e.when}.\n\n${e.organization}\n`,
+    html: layout(head, `<p>Hi ${escapeHtml(name)},</p><p>${e.cancelled ? 'This has been cancelled' : 'This has been added to your calendar'}:</p><p><strong>${escapeHtml(e.title)}</strong><br>${escapeHtml(e.when)}</p><p style="color:#6b7280;font-size:12px">${escapeHtml(e.organization)}</p>`),
+    attachments: [{ filename: e.cancelled ? 'cancel.ics' : 'invite.ics', content: Buffer.from(ics, 'utf8').toString('base64'), type: `text/calendar; method=${method}; charset=UTF-8` }],
+  };
+}
+
+export interface DigestGroup {
+  /** Null = personal notifications (not tied to an organization). */
+  organization: string | null;
+  items: { title: string; body?: string | null; url?: string | null; category: string; at: string }[];
+}
+
+/** Daily / weekly summary of unread notifications, grouped by organization. */
+export function digestEmail(to: string, name: string, period: 'daily' | 'weekly', groups: DigestGroup[], inboxUrl: string, preferencesUrl: string): MailMessage {
+  const total = groups.reduce((n, g) => n + g.items.length, 0);
+  const title = `${total} update${total === 1 ? '' : 's'} waiting for you`;
+  const text = groups
+    .map((g) => `${g.organization ?? 'Personal'}\n${g.items.map((i) => `- ${i.title}${i.body ? `: ${i.body}` : ''}${i.url ? ` (${i.url})` : ''}`).join('\n')}`)
+    .join('\n\n');
+  const html = groups
+    .map(
+      (g) => `<h3 style="margin:24px 0 8px;font-size:14px;color:#374151">${escapeHtml(g.organization ?? 'Personal')}</h3><ul style="padding-left:18px;margin:0">${g.items
+        .map(
+          (i) =>
+            `<li style="margin:0 0 10px">${i.url ? `<a href="${escapeHtml(i.url)}" style="color:#4f46e5;text-decoration:none">${escapeHtml(i.title)}</a>` : escapeHtml(i.title)}<br><span style="color:#6b7280;font-size:12px">${escapeHtml(i.category)}${i.body ? ` · ${escapeHtml(i.body)}` : ''}</span></li>`,
+        )
+        .join('')}</ul>`,
+    )
+    .join('');
+  return {
+    to,
+    subject: `Your ${period} HRMS summary: ${title}`,
+    text: `Hi ${name},\n\nYour ${period} summary of unread notifications:\n\n${text}\n\nOpen them all: ${inboxUrl}\nChoose how often you get emails: ${preferencesUrl}\n`,
+    html: layout(title, `<p>Hi ${escapeHtml(name)}, here is your ${period} summary of unread notifications.</p>${html}${button(inboxUrl, 'Open notifications')}<p style="color:#6b7280;font-size:12px"><a href="${escapeHtml(preferencesUrl)}" style="color:#6b7280">Choose how often you get emails</a></p>`),
+  };
+}
+
 export function securityAlertEmail(to: string, name: string, event: string): MailMessage {
   return {
     to,

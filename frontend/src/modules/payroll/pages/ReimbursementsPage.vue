@@ -9,7 +9,7 @@ import ClaimGridCard from '@/modules/payroll/components/ClaimGridCard.vue';
 import type { Claim } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
 import { CLAIM_CATEGORY_LABELS, CLAIM_STATUS_LABELS, claimStatusLabel, claimTone, monthName, rupees } from '@/modules/payroll/utils/payroll-format';
-import { AppAlert, AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
+import { AppAlert, AppApprovalProgress, AppAvatar, AppBadge, AppBulkDecision, AppButton, AppCard, AppDataTable, AppModal, AppPageHeader, AppSelect, AppStatStrip, AppTabs, AppTextarea, type StripItem, type TableColumn } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { runBulk } from '@/shared/utils/bulk';
 import { fetchAllPages } from '@/shared/utils/fetch-all';
@@ -292,7 +292,8 @@ const columns = computed<TableColumn<Claim>[]>(() => [
           <dd class="font-medium text-fg tabular-nums">{{ rupees(reviewing.policy.monthUsed) }}<template v-if="reviewing.policy.monthlyLimit"> of {{ rupees(reviewing.policy.monthlyLimit) }}</template></dd>
         </div>
       </dl>
-      <ol v-if="reviewing?.trail.length" class="mb-4 space-y-1.5" aria-label="Approvals so far">
+      <AppApprovalProgress v-if="reviewing?.chain" :progress="reviewing.chain" class="mb-4 rounded-xl bg-surface-muted/50 p-3" />
+      <ol v-else-if="reviewing?.trail.length" class="mb-4 space-y-1.5" aria-label="Approvals so far">
         <li v-for="(t, i) in reviewing.trail" :key="i" class="flex items-start gap-2 text-xs">
           <span :class="['mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full', t.decision === 'APPROVED' ? 'bg-success text-white' : 'bg-danger text-white']" aria-hidden="true"><component :is="t.decision === 'APPROVED' ? Check : X" :size="10" :stroke-width="3" /></span>
           <p class="text-fg-muted">
@@ -300,7 +301,7 @@ const columns = computed<TableColumn<Claim>[]>(() => [
           </p>
         </li>
       </ol>
-      <AppAlert v-if="decision === 'approve' && goesToFinance" tone="info" class="mb-4">Above {{ rupees(threshold) }}: finance approves it after you.</AppAlert>
+      <AppAlert v-if="decision === 'approve' && goesToFinance && !reviewing?.chain" tone="info" class="mb-4">Above {{ rupees(threshold) }}: finance approves it after you.</AppAlert>
       <AppTextarea v-model="note" :label="decision === 'approve' ? 'Note (optional)' : 'Reason'" :required="decision === 'reject'" :rows="3" :maxlength="500" />
       <template #footer>
         <AppButton variant="secondary" @click="reviewing = null">Cancel</AppButton>

@@ -10,6 +10,7 @@ import { fullName, organizationToday, usersWithPermission } from '../employees/e
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SalariesService } from '../payroll/salaries.service';
+import { CompensationBudgetsService } from './compensation-budgets.service';
 import type { CompensationDto, DecideHikeDto, HikeDto, HikeQueryDto } from './dto/performance.dto';
 import { budgetUse, guidelineFor, increasedCtc, matrixProblems, outsideGuideline } from './hike-rules';
 
@@ -32,6 +33,7 @@ export class HikesService {
     private readonly scope: EmployeeScopeService,
     private readonly notifications: NotificationsService,
     private readonly salaries: SalariesService,
+    private readonly budgets: CompensationBudgetsService,
   ) {}
 
   async compensation(auth: AuthContext, cycleId: string) {
@@ -189,6 +191,9 @@ export class HikesService {
       if (rec.status !== 'SUBMITTED') throw AppError.conflict(`The recommendation is ${rec.status.toLowerCase()}`);
       const percent = approve && dto.percent !== undefined ? dto.percent : Number(rec.percent);
       const current = num(rec.currentCtc);
+      const over = approve ? await this.budgets.overspend(rec, current === null ? null : increasedCtc(current, percent), transaction) : null;
+      if (over && !dto.overBudget) throw AppError.conflict(`${over}. Approve over budget to go ahead.`);
+      if (over) await this.audit.record({ action: 'performance.hike_over_budget', entityType: 'HikeRecommendation', entityId: rec.id, summary: `Increase approved over the department's pool: ${over}` }, transaction);
       await rec.update(
         { status: approve ? 'APPROVED' : 'REJECTED', percent: String(percent), newCtc: current === null ? null : String(increasedCtc(current, percent)), decidedById: auth.userId, decidedAt: new Date(), decisionNote: dto.note ?? null },
         { transaction },

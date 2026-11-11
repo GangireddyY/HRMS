@@ -65,8 +65,8 @@ export const payrollApi = {
   addBonus: (runId: string, body: { label: string; category: 'BONUS' | 'INCENTIVE'; basis: BonusBasis; value: number; employeeIds?: string[]; taxable?: boolean }) =>
     http.post<{ added: number; total: number; skipped: { employee: string; reason: string }[]; held: number }>(`/payroll/runs/${runId}/bonuses`, body),
   payGroups: () => http.get<PayGroups>('/payroll/pay-groups'),
-  createPayGroup: (body: { name: string; description?: string | null }) => http.post<PayGroup>('/payroll/pay-groups', body),
-  updatePayGroup: (id: string, body: { name?: string; description?: string | null; isActive?: boolean }) => http.patch<PayGroup>(`/payroll/pay-groups/${id}`, body),
+  createPayGroup: (body: { name: string; description?: string | null; legalEntityId?: string | null }) => http.post<PayGroup>('/payroll/pay-groups', body),
+  updatePayGroup: (id: string, body: { name?: string; description?: string | null; isActive?: boolean; legalEntityId?: string | null }) => http.patch<PayGroup>(`/payroll/pay-groups/${id}`, body),
   removePayGroup: (id: string) => http.delete<{ deleted: boolean }>(`/payroll/pay-groups/${id}`),
   assignPayGroup: (employeeIds: string[], payGroupId: string | null) => http.put<PayGroups>('/payroll/pay-groups/members', { employeeIds, payGroupId }),
   downloadPayslipPdf: (id: string, fileName: string) => downloadFile(`/payroll/payslips/${id}/pdf`, undefined, fileName),
@@ -94,9 +94,9 @@ export const payrollApi = {
   claimUsage: (month: string) => http.get<ClaimUsage>('/payroll/me/reimbursements/usage', { month }),
   expensePolicy: () => http.get<ExpensePolicyView>('/payroll/expense-policy'),
   updateExpensePolicy: (body: { categories: ExpensePolicyRule[]; financeApprovalAbove: number | null }) => http.put<ExpensePolicyView>('/payroll/expense-policy', body),
-  createClaim: (body: { category: ReimbursementCategory; title: string; expenseDate: string; amount: number; description?: string | null }, receipt: File | null) =>
+  createClaim: (body: { category: ReimbursementCategory; title: string; expenseDate: string; amount: number; description?: string | null; currency?: string | null }, receipt: File | null) =>
     receipt
-      ? http.upload<Claim>('/payroll/reimbursements', receipt, { fileName: receipt.name, fields: { ...body, amount: String(body.amount), description: body.description ?? '' } })
+      ? http.upload<Claim>('/payroll/reimbursements', receipt, { fileName: receipt.name, fields: { ...body, amount: String(body.amount), description: body.description ?? '', currency: body.currency ?? '' } })
       : http.post<Claim>('/payroll/reimbursements', body),
   approveClaim: (id: string, note?: string | null) => http.post<Claim>(`/payroll/reimbursements/${id}/approve`, { note }),
   rejectClaim: (id: string, note: string) => http.post<Claim>(`/payroll/reimbursements/${id}/reject`, { note }),

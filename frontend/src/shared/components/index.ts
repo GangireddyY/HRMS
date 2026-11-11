@@ -31,6 +31,7 @@ export { default as AppInsights } from './data/AppInsights.vue';
 export { default as AppActionQueue } from './data/AppActionQueue.vue';
 export { default as AppPersonList } from './data/AppPersonList.vue';
 export { default as AppFacts } from './data/AppFacts.vue';
+export { default as AppApprovalProgress } from './data/AppApprovalProgress.vue';
 export { default as AppMonthCalendar } from './data/AppMonthCalendar.vue';
 export { default as AppStatStrip } from './data/AppStatStrip.vue';
 export type { StripItem } from './data/AppStatStrip.vue';

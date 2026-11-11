@@ -87,6 +87,41 @@ export const APPROVAL_CHAIN_MAX_STEPS = 5;
 export const APPROVAL_INSTANCE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
 export type ApprovalInstanceStatus = (typeof APPROVAL_INSTANCE_STATUSES)[number];
 
+/** Where a request on an approval chain stands (request detail views). */
+export interface ApprovalChainProgress {
+  chain: string;
+  status: ApprovalInstanceStatus;
+  currentStep: number;
+  dueAt: string | null;
+  escalated: boolean;
+  steps: { label: string; state: 'done' | 'current' | 'rejected' | 'upcoming' }[];
+  decisions: { step: number; name: string; decision: 'APPROVED' | 'REJECTED'; note: string | null; at: string; onBehalf: boolean }[];
+}
+
+/** A request waiting at an approval-chain step the caller decides ("My approvals"). */
+export interface ApprovalInboxItem {
+  /** The approval instance. */
+  id: string;
+  subject: ApprovalSubject;
+  subjectId: string;
+  chain: string;
+  step: string;
+  stepNumber: number;
+  steps: number;
+  waitingSince: string;
+  dueAt: string | null;
+  escalated: boolean;
+  /** Decided under approval cover for someone else. */
+  onBehalf: boolean;
+  /** The requester (employee) or, for offers, the candidate. */
+  person: string;
+  title: string;
+  detail: string;
+  amount: number | null;
+  /** Resignations: the last working day to propose (requested, else the notice end). */
+  suggestedDate: string | null;
+}
+
 export interface ApprovalStep {
   level: number;
   userId: string;

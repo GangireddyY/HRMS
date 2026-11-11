@@ -35,7 +35,9 @@ import {
   GraduationCap,
   Grid3x3,
   HandCoins,
+  GitBranchPlus,
   Handshake,
+  Landmark,
   HeartPulse,
   History,
   Headset,
@@ -157,6 +159,7 @@ export const WORKSPACES: Workspace[] = [
         title: 'Organization',
         items: [
           { label: 'Settings', to: '/admin/organization', icon: Building2, access: { permissions: ['organization.view'] } },
+          { label: 'Entities & currencies', to: '/admin/legal-entities', icon: Landmark, access: { permissions: ['organization.view'] } },
           { label: 'Structure', to: '/admin/structure', icon: Network, access: { permissions: ['organization.view'] } },
           { label: 'Custom fields', to: '/admin/custom-fields', icon: ListPlus, access: { permissions: ['employee.fields.manage'] } },
           { label: 'Holidays', to: '/admin/holidays', icon: CalendarDays, access: { permissions: ['organization.view'] } },
@@ -266,6 +269,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Review cycles', to: '/hr/performance/cycles', icon: RefreshCcw, access: { permissions: ['performance.configure', 'performance.view'], scope: 'TEAM', feature: 'performance' } },
           { label: 'Improvement plans', to: '/hr/performance/pips', icon: LifeBuoy, access: { permissions: ['performance.pip.manage'], scope: 'TEAM', feature: 'performance' } },
           { label: 'OKRs', to: '/hr/performance/okrs', icon: Crosshair, access: { permissions: ['performance.okr.manage'], scope: 'TEAM', feature: 'performance' } },
+          { label: 'Succession', to: '/hr/performance/succession', icon: GitBranchPlus, access: { permissions: ['performance.succession.view', 'performance.succession.manage'], scope: 'TEAM', feature: 'performance' } },
           { label: '1:1s', to: '/me/performance/one-on-ones', icon: MessagesSquare, access: { permissions: ['performance.review'], scope: 'TEAM', feature: 'performance' } },
         ],
       },
@@ -378,6 +382,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Profile', to: '/me/profile', icon: User },
           { label: 'Security', to: '/me/security', icon: KeyRound },
+          { label: 'My approvals', to: '/me/approvals', icon: ListChecks, access: { tenant: true } },
           { label: 'Approval cover', to: '/me/delegation', icon: Handshake, access: { permissions: [...DELEGABLE_PERMISSIONS], scope: 'TEAM' } },
           { label: 'Appearance', to: '/me/appearance', icon: Palette },
           { label: 'Notifications', to: '/me/notifications', icon: Bell },

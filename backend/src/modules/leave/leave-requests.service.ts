@@ -9,8 +9,9 @@ import { addDays, monthRange } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { AttendancePeriod, Department, Employee, Holiday, LeaveLedgerEntry, LeaveRequest, LeaveType, Location, User, type ApprovalInstance } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { ApprovalChainsService } from '../approvals/approval-chains.service';
+import { ApprovalChainsService, queueWhere } from '../approvals/approval-chains.service';
 import { AttendanceRulesService, holidayAppliesAt } from '../attendance/attendance-rules.service';
+import { CalendarService } from '../calendar/calendar.service';
 import { managerAndCover, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -54,6 +55,7 @@ export class LeaveRequestsService {
     private readonly balances: LeaveBalanceService,
     private readonly notifications: NotificationsService,
     private readonly chains: ApprovalChainsService,
+    private readonly invites: CalendarService,
   ) {}
 
   // ---- Applying --------------------------------------------------------------------------------
@@ -113,7 +115,7 @@ export class LeaveRequestsService {
         type: 'leave.request',
         title: `${fullName(employee)} applied for ${type.name.toLowerCase()} (${plural(Number(request.days))})`,
         body: `${this.range(request)}: ${dto.reason}`,
-        link: '/hr/leave/requests',
+        link: chain ? '/me/approvals' : '/hr/leave/requests',
       });
     }
     return this.get(request.id);
@@ -177,6 +179,7 @@ export class LeaveRequestsService {
     });
     if (final) {
       await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved`, dto.note);
+      await this.invites.leave(request, 'REQUEST');
       return this.get(id);
     }
     await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved by ${step.name}; ${next.label} approves next`, dto.note);
@@ -189,7 +192,7 @@ export class LeaveRequestsService {
         type: 'leave.request',
         title: `${fullName(employee)}'s ${type.name.toLowerCase()} (${plural(Number(request.days))}) needs ${next.label} approval`,
         body: `${this.range(request)}. Approved by ${step.name}.`,
-        link: '/hr/leave/requests',
+        link: chain ? '/me/approvals' : '/hr/leave/requests',
       });
     }
     return this.get(id);
@@ -266,6 +269,7 @@ export class LeaveRequestsService {
       );
     });
 
+    if (wasApproved) await this.invites.leave(request, 'CANCEL');
     if (!isOwn) await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was cancelled`, dto.reason);
     else if (wasApproved) {
       const manager = await this.managerUserId(employee);
@@ -296,10 +300,9 @@ export class LeaveRequestsService {
       if (view === 'team') {
         // Requests on an approval chain show for their current step's approvers only; the rest as before.
         const [mine, managed] = await Promise.all([this.chains.waitingFor(auth, 'LEAVE'), this.chains.managedPending('LEAVE')]);
-        const legacy = scoped ? (managed.length ? { [Op.and]: [scoped, { id: { [Op.notIn]: managed } }] } : scoped) : null;
-        const any = [...(legacy ? [legacy] : []), ...(mine.length ? [{ id: mine }] : [])];
-        if (!any.length) return new PaginatedResult([], paginationMeta(query, 0));
-        filters.push({ [Op.or]: any });
+        const queue = queueWhere(scoped, mine, managed);
+        if (!queue) return new PaginatedResult([], paginationMeta(query, 0));
+        filters.push(queue);
       } else {
         if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
         filters.push(scoped);

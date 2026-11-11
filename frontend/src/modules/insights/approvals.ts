@@ -1,5 +1,5 @@
 import type { Component } from 'vue';
-import { ArrowLeftRight, Banknote, BadgeCheck, Briefcase, CalendarCheck, CalendarClock, CalendarHeart, Clock, HandCoins, House, Landmark, Laptop, LogOut, Luggage, Receipt, Timer, Wallet } from '@lucide/vue';
+import { ArrowLeftRight, Banknote, BadgeCheck, Briefcase, CalendarCheck, CalendarClock, CalendarHeart, Clock, FileSignature, HandCoins, House, Landmark, Laptop, LogOut, Luggage, Receipt, Timer, Wallet } from '@lucide/vue';
 import { http } from '@/core/http/http-client';
 import { employeesApi } from '@/modules/people/api/people.api';
 import type { useAuthStore } from '@/core/auth/auth.store';
@@ -64,6 +64,7 @@ const SOURCES: Source[] = [
   { key: 'payroll', label: 'Payroll runs to approve', to: '/hr/payroll/runs', icon: Banknote, allowed: (a) => a.can('payroll.approve') && a.hasFeature('payroll'), count: () => total(payrollApi.runs({ ...ONE, status: 'SUBMITTED' })) },
   { key: 'requisitions', label: 'Hiring requests', to: '/hr/recruitment/requisitions', icon: Briefcase, allowed: (a) => a.can('recruitment.requisition.approve') && a.hasFeature('recruitment'), count: () => total(recruitmentApi.requisitions({ ...ONE, view: 'approve' })) },
   { key: 'exits', label: 'Resignations', to: '/hr/exits', icon: LogOut, allowed: (a) => (a.can('exit.approve') || a.can('exit.manage')) && a.hasFeature('exit'), count: () => total(exitApi.list({ ...ONE, view: 'approve' })) },
+  { key: 'offers', label: 'Job offers', to: '/me/approvals', icon: FileSignature, allowed: (a) => a.can('recruitment.offer.approve') && a.hasFeature('recruitment'), count: () => Promise.resolve(0) },
   { key: 'travel', label: 'Travel requests', to: '/hr/travel', icon: Luggage, allowed: (a) => a.can('travel.approve') && a.hasFeature('travel'), count: () => total(travelApi.list({ ...ONE, view: 'team', status: 'PENDING' })) },
   { key: 'asset-requests', label: 'Asset requests', to: '/hr/assets?tab=requests', icon: Laptop, allowed: (a) => a.can('assets.manage') && a.hasFeature('assets'), count: () => total(assetsApi.requests({ ...ONE, view: 'all', status: 'PENDING' })) },
   { key: 'probation', label: 'Probation confirmations', to: '/hr/onboarding/probation', icon: BadgeCheck, allowed: (a) => a.can('onboarding.confirmation.approve') && a.hasFeature('onboarding'), count: () => total(onboardingApi.reviews({ ...ONE, view: 'approve' })) },
@@ -71,13 +72,14 @@ const SOURCES: Source[] = [
 
 /** Counts of what's waiting for this user's decision, for the kinds they may decide; a lookup that failed is `failed` (count 0). */
 export async function loadApprovals(auth: Auth): Promise<ApprovalCount[]> {
-  const sources = SOURCES.filter((s) => s.allowed(auth));
-  if (!sources.length) return [];
-  // One request for every count (the server applies the same scopes and approval cover as the lists).
+  // One request for every count (the server applies the same scopes and approval cover as the lists, and adds the kinds
+  // where an approval-chain step waits for this person even without the module's approval permission).
   const counts = new Map((await http.get<{ key: string; count: number; failed?: boolean }[]>('/dashboard/approvals')).map((c) => [c.key, c]));
-  return sources.map(({ allowed: _a, count: _c, ...s }) => {
+  return SOURCES.filter((s) => s.allowed(auth) || counts.has(s.key)).map(({ allowed, count: _c, ...s }) => {
     const c = counts.get(s.key);
-    return c && !c.failed ? { ...s, count: c.count } : { ...s, count: 0, failed: true };
+    // Someone deciding only through a chain can't open the module's HR list: their steps are in "My approvals".
+    const to = allowed(auth) ? s.to : '/me/approvals';
+    return c && !c.failed ? { ...s, to, count: c.count } : { ...s, to, count: 0, failed: true };
   });
 }
 export const canApproveAnything = (auth: Auth) => SOURCES.some((s) => s.allowed(auth));

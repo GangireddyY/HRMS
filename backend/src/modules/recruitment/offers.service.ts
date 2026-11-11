@@ -10,6 +10,7 @@ import { AppConfig } from '../../config/app-config.service';
 import { DatabaseService } from '../../database/database.service';
 import {
   ApplicationEvent,
+  ApprovalInstance,
   Candidate,
   Department,
   Designation,
@@ -32,6 +33,7 @@ import { generateToken, sha256 } from '../../infrastructure/crypto/tokens';
 import { MailService } from '../../infrastructure/mail/mail.service';
 import { offerEmail } from '../../infrastructure/mail/templates';
 import { StorageService } from '../../infrastructure/storage/storage.service';
+import { ApprovalChainsService } from '../approvals/approval-chains.service';
 import { usersWithPermission } from '../employees/employee-people';
 import { EmployeesService } from '../employees/employees.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -55,6 +57,8 @@ const titleCase = (s: string) =>
  * (recruitment.offer.approve, never by whoever drafted it), released with a letter from the organization's template —
  * frozen and hashed at release — and signed by the candidate through a private link, which then serves as the
  * pre-joining portal. Converting an accepted offer creates the employee record, so it also needs employee.create.
+ * A configured OFFER approval chain (matched on CTC and department) makes approval required and decides it step by
+ * step; its "manager" is the requisition's hiring manager.
  */
 @Injectable()
 export class OffersService {
@@ -70,6 +74,7 @@ export class OffersService {
     private readonly crypto: EncryptionService,
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
+    private readonly chains: ApprovalChainsService,
   ) {}
 
   async create(auth: AuthContext, applicationId: string, dto: OfferDto) {
@@ -120,6 +125,7 @@ export class OffersService {
       // A changed offer needs approving again.
       const reset = o.approvalStatus === 'APPROVED' || o.approvalStatus === 'PENDING' ? { approvalStatus: 'NOT_REQUIRED' as const, approvedById: null, approvedAt: null } : {};
       await o.update({ ...rest, ...(annualCtc !== undefined ? { annualCtc: String(annualCtc) } : {}), ...reset, updatedById: auth.userId }, { transaction });
+      await this.chains.cancel('OFFER', o.id, transaction);
       await this.audit.record({ action: 'offer.updated', entityType: 'JobApplication', entityId: o.applicationId, summary: 'Offer updated' }, transaction);
     });
     return this.get(id);
@@ -136,6 +142,8 @@ export class OffersService {
     const budgetMax = app?.job?.requisition?.budgetMax;
     if (budgetMax !== null && budgetMax !== undefined && Number(o.annualCtc) > Number(budgetMax)) return `Above the requisition budget of ${inr(Number(budgetMax))}`;
     if (org?.offerApprovalRequired) return 'Your organization approves every offer before release';
+    const chain = await this.chains.applies('OFFER', { amount: Number(o.annualCtc), departmentId: o.departmentId });
+    if (chain) return `The "${chain.name}" approval chain applies`;
     return null;
   }
 
@@ -146,13 +154,20 @@ export class OffersService {
     const reason = await this.approvalReason(o);
     if (!reason) throw AppError.conflict("This offer doesn't need approval; release it");
     const candidate = await this.candidateOf(o);
+    const app = await JobApplication.findByPk(o.applicationId, { attributes: ['id'], include: [{ model: JobOpening, attributes: ['id'], include: [{ model: JobRequisition, attributes: ['hiringManagerId'] }] }] });
+    const drafter = auth.membershipId ? await Employee.findOne({ where: { membershipId: auth.membershipId }, attributes: ['id'] }) : null;
     await this.db.transaction(async (transaction) => {
       await o.update({ approvalStatus: 'PENDING', approvalRequestedAt: new Date(), approvalRequestedById: auth.userId, approvalNote: null, approvedById: null, approvedAt: null }, { transaction });
       await this.audit.record(
         { action: 'offer.approval_requested', entityType: 'JobApplication', entityId: o.applicationId, summary: `Approval requested for the offer to ${fullName(candidate)} (${reason})` },
         transaction,
       );
-      for (const userId of await usersWithPermission('recruitment.offer.approve', transaction)) {
+      // On a chain the requisition's hiring manager stands in as "the manager"; whoever sent it never approves.
+      const requester = { id: drafter?.id ?? '', managerId: app?.job?.requisition?.hiringManagerId ?? null, departmentId: o.departmentId, membershipId: auth.membershipId ?? null };
+      const chain = await this.chains.start('OFFER', o.id, requester, { amount: Number(o.annualCtc) }, transaction);
+      const approvers = chain ? await this.chains.usersOf(chain.steps[0]!.approverMembershipIds, transaction) : await usersWithPermission('recruitment.offer.approve', transaction);
+      for (const userId of approvers) {
+        if (userId === o.createdById) continue;
         if (userId === auth.userId) continue;
         await this.notifications.notify(
           userId,
@@ -161,7 +176,7 @@ export class OffersService {
             type: 'recruitment.offer',
             title: `Offer for ${fullName(candidate)} (${inr(Number(o.annualCtc))}) needs your approval`,
             body: reason,
-            link: `/hr/recruitment/applications/${o.applicationId}`,
+            link: chain ? '/me/approvals' : `/hr/recruitment/applications/${o.applicationId}`,
           },
           transaction,
         );
@@ -171,31 +186,101 @@ export class OffersService {
   }
 
   async approve(auth: AuthContext, id: string, dto: OfferApprovalNoteDto) {
-    const o = await this.forDecision(auth, id);
+    const { offer: o, chain } = await this.forDecision(auth, id);
+    let next: { approvers: string[]; label: string } | null = null;
     await this.db.transaction(async (transaction) => {
+      if (chain) {
+        const result = await this.chains.decide(auth, chain, 'APPROVED', dto.note ?? null, transaction);
+        if (!result.final) {
+          next = { approvers: result.nextApprovers, label: result.nextLabel! };
+          await this.audit.record({ action: 'offer.step_approved', entityType: 'JobApplication', entityId: o.applicationId, summary: `Offer approved at this step; ${result.nextLabel} next` }, transaction);
+          await this.tellRequester(o, `The offer was approved; ${result.nextLabel} approves next`, dto.note ?? undefined, auth, transaction);
+          return;
+        }
+      }
       await o.update({ approvalStatus: 'APPROVED', approvedById: auth.userId, approvedAt: new Date(), approvalNote: dto.note ?? null }, { transaction });
       await this.audit.record({ action: 'offer.approved', entityType: 'JobApplication', entityId: o.applicationId, summary: 'Offer approved for release' }, transaction);
       await this.tellRequester(o, 'The offer was approved and can be released', dto.note ?? undefined, auth, transaction);
     });
-    return this.get(id);
+    const pending = next as { approvers: string[]; label: string } | null;
+    if (pending) {
+      const candidate = await this.candidateOf(o);
+      for (const userId of await this.chains.usersOf(pending.approvers)) {
+        if (userId === auth.userId || userId === o.createdById) continue;
+        await this.notifications.notify(userId, {
+          organizationId: auth.organizationId,
+          type: 'recruitment.offer',
+          title: `${pending.label} approval needed: offer for ${fullName(candidate)} (${inr(Number(o.annualCtc))})`,
+          link: '/me/approvals',
+        });
+      }
+    }
+    return this.get(id, auth);
   }
 
   async rejectApproval(auth: AuthContext, id: string, dto: RejectOfferApprovalDto) {
-    const o = await this.forDecision(auth, id);
+    const { offer: o, chain } = await this.forDecision(auth, id);
     await this.db.transaction(async (transaction) => {
+      if (chain) await this.chains.decide(auth, chain, 'REJECTED', dto.note, transaction);
       await o.update({ approvalStatus: 'REJECTED', approvedById: auth.userId, approvedAt: new Date(), approvalNote: dto.note }, { transaction });
       await this.audit.record({ action: 'offer.approval_rejected', entityType: 'JobApplication', entityId: o.applicationId, summary: 'Offer approval rejected' }, transaction);
       await this.tellRequester(o, 'The offer was not approved', dto.note, auth, transaction);
     });
-    return this.get(id);
+    return this.get(id, auth);
   }
 
-  private async forDecision(auth: AuthContext, id: string) {
-    if (!auth.permissions.has('recruitment.offer.approve')) throw AppError.forbidden();
+  /** Offers waiting for this caller's decision: their chain step, or (without a chain) any pending offer they may approve. */
+  async awaitingMe(auth: AuthContext) {
+    this.requireModule(auth);
+    const [mine, managed] = await Promise.all([this.chains.waitingFor(auth, 'OFFER'), this.chains.managedPending('OFFER')]);
+    const legacy = auth.permissions.has('recruitment.offer.approve')
+      ? (await Offer.findAll({ where: { approvalStatus: 'PENDING', status: 'DRAFT' }, attributes: ['id', 'createdById', 'approvalRequestedById'] }))
+          .filter((o) => !managed.includes(o.id) && o.createdById !== auth.userId && o.approvalRequestedById !== auth.userId)
+          .map((o) => o.id)
+      : [];
+    const ids = [...new Set([...mine, ...legacy])];
+    if (!ids.length) return [];
+    const offers = await Offer.findAll({ where: { id: ids }, include: [{ model: Designation, attributes: ['id', 'name'] }], order: [['approvalRequestedAt', 'ASC']] });
+    const apps = await JobApplication.findAll({ where: { id: offers.map((o) => o.applicationId) }, attributes: ['id'], include: [{ model: Candidate, attributes: ['firstName', 'lastName'] }] });
+    const candidate = new Map(apps.map((a) => [a.id, a.candidate ? fullName(a.candidate) : 'Candidate']));
+    const chains = await this.chains.forMany('OFFER', ids);
+    return offers.map((o) => ({
+      id: o.id,
+      applicationId: o.applicationId,
+      candidate: candidate.get(o.applicationId) ?? 'Candidate',
+      designation: o.designation?.name ?? null,
+      annualCtc: Number(o.annualCtc),
+      joiningDate: o.joiningDate,
+      requestedAt: o.approvalRequestedAt,
+      awaiting: chains.get(o.id)?.steps[chains.get(o.id)!.currentStep]?.label ?? null,
+    }));
+  }
+
+  private requireModule(auth: AuthContext) {
+    if (!auth.features.has('recruitment')) throw AppError.forbidden('Recruitment is not enabled for your organization');
+  }
+
+  private async forDecision(auth: AuthContext, id: string): Promise<{ offer: Offer; chain: ApprovalInstance | null }> {
+    this.requireModule(auth);
     const o = await this.find(id);
+    const instance = await this.chains.find('OFFER', id);
+    const chain = instance?.status === 'PENDING' ? instance : null;
+    if (chain) {
+      const blocked = this.chains.blockReason(auth, chain);
+      if (blocked) throw AppError.forbidden(blocked);
+    } else if (!auth.permissions.has('recruitment.offer.approve')) throw AppError.forbidden();
     if (o.approvalStatus !== 'PENDING') throw AppError.conflict('This offer is not waiting for approval');
     if (o.createdById === auth.userId || o.approvalRequestedById === auth.userId) throw AppError.forbidden("You can't approve an offer you drafted or sent for approval");
-    return o;
+    return { offer: o, chain };
+  }
+
+  /** HR handling offers, or someone on the offer's approval chain (who may hold no recruitment permission). */
+  async readable(auth: AuthContext, id: string) {
+    this.requireModule(auth);
+    if (auth.permissions.has('recruitment.offer.manage') || auth.permissions.has('recruitment.offer.approve')) return;
+    const chain = await this.chains.find('OFFER', id);
+    if (chain && (this.chains.canDecide(auth, chain) || chain.decisions.some((d) => d.membershipId === auth.membershipId))) return;
+    throw AppError.notFound('Offer');
   }
 
   private async tellRequester(o: Offer, title: string, body: string | undefined, auth: AuthContext, transaction: Transaction) {
@@ -367,6 +452,7 @@ export class OffersService {
     const app = await JobApplication.findByPk(o.applicationId, { attributes: ['id', 'stage'] });
     if (app?.stage === 'HIRED') throw AppError.conflict('The candidate has already been hired');
     await this.transition(auth, o, { status: 'WITHDRAWN', portalTokenHash: null }, 'offer.withdrawn', 'Offer withdrawn');
+    await this.chains.cancel('OFFER', o.id);
     return this.get(id);
   }
 
@@ -542,7 +628,7 @@ export class OffersService {
     return zonedParts(new Date(), org?.timezone ?? 'UTC').date;
   }
 
-  async get(id: string) {
+  async get(id: string, auth?: AuthContext) {
     const o = await Offer.findByPk(id, {
       include: [
         { model: Designation, attributes: ['id', 'name'] },
@@ -555,6 +641,10 @@ export class OffersService {
     const people = [o.approvedById, o.approvalRequestedById, o.createdById].filter((x): x is string => !!x);
     const users = people.length ? new Map((await User.findAll({ where: { id: people }, attributes: ['id', 'firstName', 'lastName'] })).map((u) => [u.id, fullName(u)])) : new Map<string, string>();
     const documents = await OfferDocument.count({ where: { offerId: o.id } });
+    const chain = await this.chains.find('OFFER', o.id);
+    const onChain = chain?.status === 'PENDING' && o.approvalStatus === 'PENDING';
+    const mineToDecide = !!auth && o.approvalStatus === 'PENDING' && o.createdById !== auth.userId && o.approvalRequestedById !== auth.userId;
+    const canDecide = mineToDecide && (onChain ? this.chains.canDecide(auth, chain) : auth.permissions.has('recruitment.offer.approve'));
     return {
       id: o.id,
       applicationId: o.applicationId,
@@ -579,6 +669,8 @@ export class OffersService {
         decidedBy: o.approvedById ? (users.get(o.approvedById) ?? null) : null,
         decidedAt: o.approvedAt,
         note: o.approvalNote,
+        canDecide,
+        chain: this.chains.present(o.approvalStatus === 'NOT_REQUIRED' ? null : chain),
       },
       signature: o.signedAt ? { name: o.signedName, at: o.signedAt, ip: o.signedIp, letterHash: o.letterHash } : null,
       portal: { active: !!o.portalTokenHash && !!o.portalExpiresAt && o.portalExpiresAt > new Date(), expiresAt: o.portalExpiresAt },

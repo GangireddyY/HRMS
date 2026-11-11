@@ -2,11 +2,10 @@
 import { computed, ref, watch } from 'vue';
 import { BadgeCheck, CheckCircle2, ClipboardCheck, Copy, Download, FileText, Link2, Send, ShieldCheck, UserCheck, X } from '@lucide/vue';
 import type { ApplicationStage, OfferApprovalStatus } from '@contracts';
-import { useAuthStore } from '@/core/auth/auth.store';
 import { offersApi, type PrejoiningView } from '@/modules/recruitment/api/offers.api';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import { OFFER_STATUS_LABELS, money, offerTone } from '@/modules/recruitment/utils/recruitment-format';
-import { AppAlert, AppBadge, AppButton, AppErrorState, AppModal, AppSkeleton, AppTextarea } from '@/shared/components';
+import { AppAlert, AppApprovalProgress, AppBadge, AppButton, AppErrorState, AppModal, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate, formatDateTime } from '@/shared/utils/format';
@@ -14,7 +13,6 @@ import { formatDate, formatDateTime } from '@/shared/utils/format';
 /** An offer from draft to signed: approval, the letter, the candidate's link, signature and pre-joining details. */
 const props = defineProps<{ offerId: string; stage: ApplicationStage; canHire: boolean }>();
 const emit = defineEmits<{ edit: []; hire: []; changed: [] }>();
-const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const offer = useAsync(() => offersApi.get(props.offerId));
 watch(() => props.offerId, () => void offer.run());
@@ -27,7 +25,7 @@ const APPROVAL: Record<OfferApprovalStatus, { label: string; tone: 'neutral' | '
   REJECTED: { label: 'Approval rejected', tone: 'danger' },
 };
 const needsApproval = computed(() => !!o.value?.approval.required && o.value.approval.status !== 'APPROVED');
-const canDecide = computed(() => auth.can('recruitment.offer.approve') && o.value?.approval.status === 'PENDING' && o.value.createdById !== auth.user?.id);
+const canDecide = computed(() => !!o.value?.approval.canDecide);
 
 const busy = ref<string | null>(null);
 async function run(key: string, fn: () => Promise<unknown>, success: string) {
@@ -127,6 +125,7 @@ const DETAIL_LABELS: [keyof NonNullable<PrejoiningView['details']>, string][] = 
       <template v-if="o.approval.status === 'REJECTED' && o.approval.note"> “{{ o.approval.note }}” — {{ o.approval.decidedBy }}</template>
     </AppAlert>
     <p v-else-if="o.status === 'DRAFT' && o.approval.status === 'APPROVED'" class="flex items-center gap-1.5 text-xs text-success-fg"><BadgeCheck :size="13" aria-hidden="true" />Approved by {{ o.approval.decidedBy }}<template v-if="o.approval.note"> · “{{ o.approval.note }}”</template></p>
+    <AppApprovalProgress v-if="o.approval.chain && o.approval.status !== 'NOT_REQUIRED'" :progress="o.approval.chain" class="rounded-xl bg-surface-muted/50 p-3" />
 
     <div v-if="o.signature" class="rounded-xl bg-success-soft/50 p-3 text-xs text-fg ring-1 ring-success/20 ring-inset">
       <p class="flex items-center gap-1.5 font-semibold text-success-fg"><ShieldCheck :size="13" aria-hidden="true" />Signed by “{{ o.signature.name }}”</p>

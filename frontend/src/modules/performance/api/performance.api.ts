@@ -1,5 +1,36 @@
-import type { CycleStatus, HikeStatus, OkrHealth, OkrLevel, OkrStatus, OneOnOneItemKind, OneOnOneStatus, PipProgress, PipStatus, ReviewStage } from '@contracts';
+import type {
+  BenchStrength,
+  CompensationPoolView,
+  CycleStatus,
+  HikeStatus,
+  OkrHealth,
+  OkrLevel,
+  OkrStatus,
+  OneOnOneItemKind,
+  OneOnOneStatus,
+  PipProgress,
+  PipStatus,
+  ReviewStage,
+  SuccessionLevel,
+  SuccessionPlanView,
+  SuccessorReadiness,
+} from '@contracts';
 import { http, type ListQuery } from '@/core/http/http-client';
+
+export interface BudgetPools {
+  cycle: { id: string; name: string; budgetPercent: number | null; effectiveFrom: string | null };
+  pools: CompensationPoolView[];
+  totals: { amount: number; planned: number; committed: number; currentPayroll: number };
+}
+export interface SuccessionPlanInput {
+  title: string;
+  incumbentEmployeeId: string | null;
+  departmentId: string | null;
+  criticality: SuccessionLevel;
+  riskOfLoss: SuccessionLevel;
+  notes: string | null;
+  reviewBy: string | null;
+}
 import type {
   AssessmentInput,
   Calibration,
@@ -61,7 +92,15 @@ export const performanceApi = {
   hikes: (cycleId: string, q: { view?: 'mine' | 'all'; status?: HikeStatus }) => http.get<HikeList>(`/performance/cycles/${cycleId}/hikes`, q),
   recommendHike: (reviewId: string, body: HikeInput) => http.put<HikeRow>(`/performance/reviews/${reviewId}/hike`, body),
   submitHike: (id: string) => http.post<HikeRow>(`/performance/hikes/${id}/submit`),
-  approveHike: (id: string, body: { percent?: number; note?: string | null }) => http.post<HikeRow>(`/performance/hikes/${id}/approve`, body),
+  approveHike: (id: string, body: { percent?: number; note?: string | null; overBudget?: boolean }) => http.post<HikeRow>(`/performance/hikes/${id}/approve`, body),
+  budgetPools: (cycleId: string) => http.get<BudgetPools>(`/performance/cycles/${cycleId}/budgets`),
+  setBudgetPools: (cycleId: string, pools: { departmentId: string | null; amount: number }[]) => http.put<BudgetPools>(`/performance/cycles/${cycleId}/budgets`, { pools }),
+  succession: () => http.get<{ plans: SuccessionPlanView[]; summary: Record<BenchStrength, number> & { total: number; highRisk: number } }>('/performance/succession'),
+  saveSuccessionPlan: (body: SuccessionPlanInput, id?: string) => (id ? http.put<SuccessionPlanView>(`/performance/succession/${id}`, body) : http.post<SuccessionPlanView>('/performance/succession', body)),
+  removeSuccessionPlan: (id: string) => http.delete<void>(`/performance/succession/${id}`),
+  addSuccessor: (planId: string, body: { employeeId: string; readiness: SuccessorReadiness; rank?: number; developmentNotes?: string | null }) => http.post<SuccessionPlanView>(`/performance/succession/${planId}/successors`, body),
+  updateSuccessor: (planId: string, id: string, body: { readiness?: SuccessorReadiness; rank?: number; developmentNotes?: string | null }) => http.patch<SuccessionPlanView>(`/performance/succession/${planId}/successors/${id}`, body),
+  removeSuccessor: (planId: string, id: string) => http.delete<SuccessionPlanView>(`/performance/succession/${planId}/successors/${id}`),
   rejectHike: (id: string, note: string) => http.post<HikeRow>(`/performance/hikes/${id}/reject`, { note }),
   applyHikes: (cycleId: string) => http.post<{ applied: number; failed: { employee: string; reason: string }[] }>(`/performance/cycles/${cycleId}/hikes/apply`),
 

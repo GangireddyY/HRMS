@@ -6,7 +6,8 @@ import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import PayslipView from '@/modules/payroll/components/PayslipView.vue';
-import { RUN_STATUS_LABELS, rupees, runTone } from '@/modules/payroll/utils/payroll-format';
+import { RUN_STATUS_LABELS, runTone } from '@/modules/payroll/utils/payroll-format';
+import { formatAmount } from '@/core/locale/currency';
 import { AppBadge, AppButton, AppCard, AppErrorState, AppPageHeader, AppSkeleton, AppSplit } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useAssistantStore } from '@/modules/assistant/assistant.store';
@@ -36,6 +37,8 @@ const hr = computed(() => route.path.startsWith('/hr'));
 const back = computed(() => (hr.value && payslip.data.value ? `/hr/payroll/runs/${payslip.data.value.runId}` : '/me/payslips'));
 
 const p = computed(() => payslip.data.value);
+/** In the payslip's own currency (entities abroad pay in theirs). */
+const money = (n: number | null | undefined) => formatAmount(n, { currency: p.value?.currency ?? undefined });
 const pct = (part: number, whole: number) => {
   const v = whole ? (part / whole) * 100 : 0;
   return v > 0 && v < 1 ? '<1%' : `${Math.round(v)}%`;
@@ -76,7 +79,7 @@ const statusText = computed(() => {
           <div class="relative hero-soft px-5 py-5 text-fg">
             <p class="relative inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2.5 py-0.5 text-xs font-medium ring-1 ring-line/70"><ReceiptText :size="13" aria-hidden="true" />{{ p.period }}</p>
             <h2 id="net-title" class="relative mt-3 text-xs tracking-wide text-fg-muted uppercase">Net pay</h2>
-            <p class="relative text-3xl font-semibold tracking-tight tabular-nums">{{ rupees(p.netPay) }}</p>
+            <p class="relative text-3xl font-semibold tracking-tight tabular-nums">{{ money(p.netPay) }}</p>
             <p class="relative mt-1 inline-flex items-center gap-1.5 text-xs text-fg-muted"><component :is="statusText.icon" :size="13" aria-hidden="true" />{{ statusText.text }}</p>
           </div>
           <div class="space-y-3 p-4">
@@ -84,19 +87,19 @@ const statusText = computed(() => {
             <dl class="space-y-2 text-sm">
               <div class="flex items-center justify-between gap-3">
                 <dt class="flex items-center gap-2 text-fg-muted"><span class="h-2 w-2 rounded-sm bg-line-strong" aria-hidden="true" />Gross earnings</dt>
-                <dd class="font-medium text-fg tabular-nums">{{ rupees(p.gross) }}</dd>
+                <dd class="font-medium text-fg tabular-nums">{{ money(p.gross) }}</dd>
               </div>
               <div class="flex items-center justify-between gap-3">
                 <dt class="flex items-center gap-2 text-fg-muted"><span class="h-2 w-2 rounded-sm bg-amber-400 dark:bg-amber-500" aria-hidden="true" />Deductions <span class="text-2xs text-fg-subtle">{{ pct(p.totalDeductions, p.gross) }}</span></dt>
-                <dd class="font-medium text-fg tabular-nums">− {{ rupees(p.totalDeductions) }}</dd>
+                <dd class="font-medium text-fg tabular-nums">− {{ money(p.totalDeductions) }}</dd>
               </div>
               <div class="flex items-center justify-between gap-3 border-t border-line/70 pt-2">
                 <dt class="flex items-center gap-2 font-medium text-fg"><span class="h-2 w-2 rounded-sm bg-brand-500" aria-hidden="true" />Net pay <span class="text-2xs font-normal text-fg-subtle">{{ pct(p.netPay, p.gross) }}</span></dt>
-                <dd class="font-semibold text-fg tabular-nums">{{ rupees(p.netPay) }}</dd>
+                <dd class="font-semibold text-fg tabular-nums">{{ money(p.netPay) }}</dd>
               </div>
               <div v-if="employerTotal" class="flex items-center justify-between gap-3 text-xs">
                 <dt class="text-fg-muted">Employer contributions <span class="text-fg-subtle">(not deducted)</span></dt>
-                <dd class="text-fg-muted tabular-nums">{{ rupees(employerTotal) }}</dd>
+                <dd class="text-fg-muted tabular-nums">{{ money(employerTotal) }}</dd>
               </div>
             </dl>
           </div>

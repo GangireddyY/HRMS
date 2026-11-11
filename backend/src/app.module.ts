@@ -49,6 +49,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrgStructureModule } from './modules/org-structure/org-structure.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { EntitiesModule } from './modules/entities/entities.module';
 import { ServicesModule } from './modules/services/services.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 
@@ -78,6 +80,8 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
     StorageModule,
     AuditModule,
     NotificationsModule,
+    CalendarModule,
+    EntitiesModule,
     RbacModule,
     OrganizationsModule,
     AuthModule,

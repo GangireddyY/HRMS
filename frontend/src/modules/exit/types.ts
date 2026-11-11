@@ -1,4 +1,4 @@
-import type { AssetCategory, ClearanceDepartment, ClearanceStatus, DailyRateBasis, EmploymentType, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
+import type { ApprovalChainProgress, AssetCategory, ClearanceDepartment, ClearanceStatus, DailyRateBasis, EmploymentType, ExitLetterType, ExitReason, ExitStatus, ExitType, SettlementStatus } from '@contracts';
 
 export interface ExitSummary {
   id: string;
@@ -55,6 +55,8 @@ export interface ExitDetail extends ExitSummary {
   feedbackGiven: boolean;
   eligibleForRehire?: boolean | null;
   rehireNote?: string | null;
+  /** Set when a configured approval chain accepts this resignation. */
+  chain: ApprovalChainProgress | null;
   permissions: {
     self: boolean;
     manage: boolean;

@@ -39,6 +39,11 @@ function requireAny(auth: AuthContext, permissions: string[]) {
   if (!permissions.some((p) => auth.permissions.has(p))) throw AppError.forbidden();
 }
 
+/** Only the module check; the service decides per case (approval-chain approvers may hold no exit permission). */
+function requireModule(auth: AuthContext) {
+  if (!auth.features.has('exit')) throw AppError.forbidden('Exit management is not enabled for your organization');
+}
+
 @ApiTags('Exits')
 @ApiBearerAuth()
 @Controller({ path: 'exits', version: '1' })
@@ -88,22 +93,23 @@ export class ExitController {
   @Get()
   @RequireTenant()
   list(@CurrentAuth() auth: AuthContext, @Query() query: ExitQueryDto) {
-    requireAny(auth, HANDLERS);
+    if (query.view === 'approve') requireModule(auth);
+    else requireAny(auth, HANDLERS);
     return this.exits.list(auth, query);
   }
 
   @Get(':id')
   @RequireTenant()
   get(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
-    requireAny(auth, [...HANDLERS, 'exit.resign']);
+    requireModule(auth);
     return this.exits.get(auth, id);
   }
 
   @Post(':id/approve')
   @RequireTenant()
-  @ApiOperation({ summary: 'Accept a resignation and set the last working day' })
+  @ApiOperation({ summary: 'Accept a resignation and set the last working day (one step at a time on an approval chain)' })
   approve(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ApproveExitDto) {
-    requireAny(auth, ['exit.approve', 'exit.manage']);
+    requireModule(auth);
     return this.exits.approve(auth, id, dto);
   }
 

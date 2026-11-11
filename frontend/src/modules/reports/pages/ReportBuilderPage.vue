@@ -4,6 +4,7 @@ import { BookmarkPlus, ChevronDown, Download, Filter, Play, Plus, Search, Sigma,
 import type { BuilderColumn, BuilderDataset, BuilderFilter, BuilderOperator, BuilderQuery } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { reportsApi, type BuilderResult, type SavedReportRow } from '@/modules/reports/api/reports.api';
+import ReportSchedulesCard from '@/modules/reports/components/ReportSchedulesCard.vue';
 import { AppAlert, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppDropdown, AppEmptyState, AppErrorState, AppInput, AppMenuItem, AppModal, AppMultiPick, AppPageHeader, AppSegmented, AppSelect, AppSkeleton, AppSwitch } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -151,6 +152,8 @@ const presets = computed(() => {
 
 // ---- Save / export ---------------------------------------------------------------------------------------------
 const loadedId = ref<string | null>(null);
+const canSchedule = auth.can('reports.export');
+const datedDatasets = computed(() => (datasets.data.value ?? []).filter((d) => d.dated).map((d) => d.key));
 const loaded = computed(() => saved.data.value?.find((s) => s.id === loadedId.value) ?? null);
 function load(r: SavedReportRow) {
   q.dataset = r.dataset;
@@ -256,6 +259,8 @@ const sortOptions = computed(() => (result.value?.columns ?? q.columns.map((k) =
             </li>
           </ul>
         </AppCard>
+
+        <ReportSchedulesCard v-if="canSchedule" :reports="saved.data.value ?? []" :dated-datasets="datedDatasets" :loaded-report-id="loadedId" />
       </aside>
 
       <div class="min-w-0 space-y-4">

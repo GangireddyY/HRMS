@@ -1,6 +1,8 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
 import type {
+  SuccessionLevel,
+  SuccessorReadiness,
   Competency,
   CycleStatus,
   FeedbackStatus,
@@ -322,4 +324,60 @@ export class OneOnOneItem extends Model<InferAttributes<OneOnOneItem>, InferCrea
   @Column(DataType.BOOLEAN) done: CreationOptional<boolean>;
   @Column(DataType.DATE) doneAt: CreationOptional<Date | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
+}
+
+/** A department's pool for a cycle's salary increases (annual CTC). */
+@Table({ tableName: 'compensation_budgets', underscored: true })
+export class CompensationBudget extends Model<InferAttributes<CompensationBudget>, InferCreationAttributes<CompensationBudget>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => PerformanceCycle) @Column(DataType.UUID) cycleId: string;
+  @Column(DataType.UUID) departmentId: CreationOptional<string | null>;
+  @Column(DataType.DECIMAL(14, 2)) amount: string;
+  @Column(DataType.STRING(500)) note: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
+/** A critical role, its current holder (or vacant), and the people who could step in. */
+@Table({ tableName: 'succession_plans', underscored: true })
+export class SuccessionPlan extends Model<InferAttributes<SuccessionPlan>, InferCreationAttributes<SuccessionPlan>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(150)) title: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) incumbentEmployeeId: CreationOptional<string | null>;
+  @Column(DataType.UUID) departmentId: CreationOptional<string | null>;
+  @Column(DataType.STRING(6)) criticality: CreationOptional<SuccessionLevel>;
+  @Column(DataType.STRING(6)) riskOfLoss: CreationOptional<SuccessionLevel>;
+  @Column(DataType.STRING(2000)) notes: CreationOptional<string | null>;
+  @Column(DataType.DATEONLY) reviewBy: CreationOptional<string | null>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'incumbentEmployeeId') incumbent?: NonAttribute<Employee | null>;
+  @HasMany(() => SuccessionCandidate, 'planId') candidates?: NonAttribute<SuccessionCandidate[]>;
+}
+
+@Table({ tableName: 'succession_candidates', underscored: true })
+export class SuccessionCandidate extends Model<InferAttributes<SuccessionCandidate>, InferCreationAttributes<SuccessionCandidate>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @ForeignKey(() => SuccessionPlan) @Column(DataType.UUID) planId: string;
+  @ForeignKey(() => Employee) @Column(DataType.UUID) employeeId: string;
+  @Column(DataType.STRING(16)) readiness: SuccessorReadiness;
+  @Column(DataType.SMALLINT) rank: CreationOptional<number>;
+  @Column(DataType.STRING(2000)) developmentNotes: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+
+  @BelongsTo(() => Employee, 'employeeId') employee?: NonAttribute<Employee>;
 }

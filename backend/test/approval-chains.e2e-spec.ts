@@ -160,4 +160,139 @@ describe('Approval chains (e2e)', () => {
     expect(approved.status).toBe('APPROVED');
     expect(approved.approval.chain.escalated).toBe(true);
   });
+
+  it('routes expensive travel through the manager and a named approver', async () => {
+    const s = await setup();
+    await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
+      subject: 'TRAVEL',
+      name: 'Costly trips',
+      conditions: { minAmount: 50_000 },
+      steps: [
+        { label: 'Manager', approver: 'MANAGER' },
+        { label: 'Budget owner', approver: 'USER', membershipId: s.ravi.membership.id },
+      ],
+    });
+    const trip = (cost: number) =>
+      ctx.http().post(`${API}/travel/requests`).set(s.asha.h).send({ purpose: 'Client workshop', fromCity: 'Pune', toCity: 'Delhi', departureDate: monday(2), returnDate: addDays(monday(2), 2), mode: 'FLIGHT', estimatedCost: cost });
+    const cheap = (await trip(12_000)).body.data;
+    expect(cheap.chain).toBeNull();
+    expect((await ctx.http().post(`${API}/travel/requests/${cheap.id}/approve`).set(s.manager.h).send({})).body.data.status).toBe('APPROVED');
+
+    const big = (await trip(80_000)).body.data;
+    expect(big.chain.steps.map((x: { label: string }) => x.label)).toEqual(['Manager', 'Budget owner']);
+    // The named approver holds no travel permission and sees nothing until it's their step.
+    const queue = async (h: Record<string, string>) => ((await ctx.http().get(`${API}/travel/requests?view=team&status=PENDING`).set(h)).body.data as { id: string }[]).map((r) => r.id);
+    expect(await queue(s.ravi.h)).toEqual([]);
+    expect((await ctx.http().post(`${API}/travel/requests/${big.id}/approve`).set(s.ravi.h).send({})).status).toBe(404);
+    expect((await ctx.http().post(`${API}/travel/requests/${big.id}/approve`).set(s.manager.h).send({})).body.data).toMatchObject({ status: 'PENDING', chain: { currentStep: 1 } });
+    expect(await queue(s.ravi.h)).toEqual([big.id]);
+    // "My approvals" lists it with what's needed to decide, across kinds of request.
+    const inbox = (await ctx.http().get(`${API}/approvals/waiting`).set(s.ravi.h)).body.data;
+    expect(inbox).toEqual([expect.objectContaining({ subject: 'TRAVEL', subjectId: big.id, step: 'Budget owner', stepNumber: 2, steps: 2, title: 'Pune to Delhi', amount: 80_000, onBehalf: false })]);
+    expect(inbox[0].person).toContain('Person');
+    expect((await ctx.http().get(`${API}/approvals/waiting`).set(s.manager.h)).body.data).toEqual([]);
+    expect((await ctx.http().get(`${API}/travel/requests/${big.id}`).set(s.ravi.h)).body.data.permissions.approve).toBe(true);
+    const done = (await ctx.http().post(`${API}/travel/requests/${big.id}/approve`).set(s.ravi.h).send({ note: 'Within budget' })).body.data;
+    expect(done.status).toBe('APPROVED');
+    expect(done.chain.decisions).toHaveLength(2);
+  });
+
+  it('accepts a resignation step by step on a chain; the last step sets the last working day', async () => {
+    const s = await setup();
+    await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
+      subject: 'EXIT',
+      name: 'Resignations',
+      steps: [
+        { label: 'Manager', approver: 'MANAGER' },
+        { label: 'HR', approver: 'PERMISSION', permission: 'exit.manage' },
+      ],
+    });
+    const resigned = (await ctx.http().post(`${API}/exits/resign`).set(s.asha.h).send({ reason: 'BETTER_OPPORTUNITY' })).body.data;
+    expect(resigned.chain).toMatchObject({ chain: 'Resignations', currentStep: 0 });
+    const lastDay = addDays(orgToday(), 30);
+    const accept = (h: Record<string, string>) => ctx.http().post(`${API}/exits/${resigned.id}/approve`).set(h).send({ lastWorkingDay: lastDay });
+    const queue = async (h: Record<string, string>) => ((await ctx.http().get(`${API}/exits?view=approve`).set(h)).body.data as { id: string }[]).map((r) => r.id);
+
+    // HR can't accept before the manager, and it isn't in their queue yet.
+    expect(await queue(s.hr.h)).not.toContain(resigned.id);
+    expect((await accept(s.hr.h)).body.error.message).toMatch(/waiting for Manager/);
+    expect(await queue(s.manager.h)).toEqual([resigned.id]);
+    expect((await ctx.http().get(`${API}/approvals/waiting`).set(s.manager.h)).body.data).toEqual([expect.objectContaining({ subject: 'EXIT', title: 'Resignation', suggestedDate: resigned.noticeEndsOn })]);
+    const step = (await accept(s.manager.h)).body.data;
+    expect(step).toMatchObject({ status: 'SUBMITTED', lastWorkingDay: null, chain: { currentStep: 1 } });
+    expect(await queue(s.hr.h)).toEqual([resigned.id]);
+    const done = (await accept(s.hr.h)).body.data;
+    expect(done).toMatchObject({ status: 'APPROVED', lastWorkingDay: lastDay, chain: { status: 'APPROVED' } });
+    expect((await ctx.http().get(`${API}/employees/${s.asha.employee.id}`).set(s.h)).body.data.status).toBe('ON_NOTICE');
+
+    // Withdrawing a resignation closes its chain.
+    const again = (await ctx.http().post(`${API}/exits/resign`).set(s.ravi.h).send({ reason: 'PERSONAL' })).body.data;
+    await ctx.http().post(`${API}/exits/${again.id}/withdraw`).set(s.ravi.h);
+    expect((await ApprovalInstance.findOne({ where: { subjectId: again.id }, ...RAW }))?.status ?? 'CANCELLED').toBe('CANCELLED');
+  });
+
+  it('requires and runs offer approval through a chain (hiring manager, then a named approver)', async () => {
+    const s = await setup();
+    const designation = (await ctx.http().post(`${API}/designations`).set(s.h).send({ name: 'Backend Engineer' })).body.data;
+    const recruiter = await (async () => {
+      const user = await createUser(ctx, { email: uniqueEmail('rec'), lastName: 'Person' });
+      const membership = await addMember(ctx, s.organization.id, user.id, ['recruiter']);
+      await ctx.http().post(`${API}/employees`).set(s.h).send({ firstName: user.firstName, lastName: 'Person', dateOfJoining: '2020-01-06', membershipId: membership.id });
+      return { user, h: bearer((await login(ctx, user.email)).accessToken) };
+    })();
+    const req = (
+      await ctx.http().post(`${API}/recruitment/requisitions`).set(s.manager.h).send({ title: 'Backend Engineer', designationId: designation.id, reason: 'NEW_ROLE', justification: 'Scaling the payments platform team', openings: 1, budgetMax: 3_000_000, submit: true })
+    ).body.data;
+    await ctx.http().post(`${API}/recruitment/requisitions/${req.id}/approve`).set(s.hr.h).send({});
+    const job = (await ctx.http().post(`${API}/recruitment/jobs`).set(recruiter.h).send({ requisitionId: req.id, description: 'Build and run payment services in TypeScript.' })).body.data;
+    await ctx.http().post(`${API}/recruitment/jobs/${job.id}/status`).set(recruiter.h).send({ status: 'OPEN' });
+    const candidate = (await ctx.http().post(`${API}/recruitment/candidates`).set(recruiter.h).send({ firstName: 'Meera', lastName: 'Iyer', email: 'meera@example.com', jobId: job.id })).body.data;
+    const appId = candidate.applications[0].id as string;
+    await ctx.http().post(`${API}/recruitment/applications/${appId}/stage`).set(recruiter.h).send({ stage: 'OFFER' });
+
+    await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
+      subject: 'OFFER',
+      name: 'Senior offers',
+      conditions: { minAmount: 2_000_000 },
+      steps: [
+        { label: 'Hiring manager', approver: 'MANAGER' },
+        { label: 'CFO', approver: 'USER', membershipId: s.ravi.membership.id },
+      ],
+    });
+    const future = addDays(orgToday(), 40);
+    const offer = (await ctx.http().post(`${API}/recruitment/applications/${appId}/offers`).set(recruiter.h).send({ annualCtc: 2_500_000, joiningDate: future })).body.data;
+    // Within the requisition budget, but the chain makes approval required.
+    expect(offer.approval.required).toContain('Senior offers');
+    expect((await ctx.http().post(`${API}/recruitment/offers/${offer.id}/release`).set(recruiter.h)).status).toBe(409);
+    const sent = (await ctx.http().post(`${API}/recruitment/offers/${offer.id}/submit-approval`).set(recruiter.h)).body.data;
+    expect(sent.approval.status).toBe('PENDING');
+
+    const awaiting = async (h: Record<string, string>) => ((await ctx.http().get(`${API}/recruitment/offers/awaiting-approval`).set(h)).body.data as { id: string; awaiting: string }[]);
+    expect(await awaiting(s.ravi.h)).toEqual([]);
+    expect((await awaiting(s.manager.h)).map((o) => o.awaiting)).toEqual(['Hiring manager']);
+    // HR holds recruitment.offer.approve but the chain decides.
+    expect((await ctx.http().post(`${API}/recruitment/offers/${offer.id}/approve`).set(s.hr.h).send({})).body.error.message).toMatch(/waiting for Hiring manager/);
+    const decide = (h: Record<string, string>, action: 'approve' | 'reject-approval', note = 'Noted') => ctx.http().post(`${API}/recruitment/offers/${offer.id}/${action}`).set(h).send({ note });
+    expect((await decide(s.manager.h, 'approve')).body.data.approval).toMatchObject({ status: 'PENDING', chain: { currentStep: 1 } });
+    // A change sends it back to draft; resubmitting starts a fresh round from the first step.
+    expect((await ctx.http().patch(`${API}/recruitment/offers/${offer.id}`).set(recruiter.h).send({ annualCtc: 2_400_000 })).body.data.approval.status).toBe('NOT_REQUIRED');
+    expect((await ApprovalInstance.findOne({ where: { subjectId: offer.id }, ...RAW }))!.status).toBe('CANCELLED');
+    expect((await ctx.http().post(`${API}/recruitment/offers/${offer.id}/submit-approval`).set(recruiter.h)).body.data.approval.chain).toMatchObject({ status: 'PENDING', currentStep: 0 });
+    await decide(s.manager.h, 'approve');
+    // A rejection at any step ends the round.
+    expect((await decide(s.ravi.h, 'reject-approval', 'Too high for the band')).body.data.approval).toMatchObject({ status: 'REJECTED', chain: { status: 'REJECTED' } });
+
+    await ctx.http().post(`${API}/recruitment/offers/${offer.id}/submit-approval`).set(recruiter.h);
+    await decide(s.manager.h, 'approve');
+    expect((await awaiting(s.ravi.h)).map((o) => o.id)).toEqual([offer.id]);
+    // The approvals summary counts it for the named approver, who holds no recruitment permission.
+    const summary = (await ctx.http().get(`${API}/dashboard/approvals`).set(s.ravi.h)).body.data as { key: string; count: number }[];
+    expect(summary).toEqual([{ key: 'offers', count: 1 }]);
+    expect((await ctx.http().get(`${API}/recruitment/offers/${offer.id}`).set(s.ravi.h)).body.data.approval.canDecide).toBe(true);
+    const approved = (await decide(s.ravi.h, 'approve', 'Go ahead')).body.data;
+    expect(approved.approval).toMatchObject({ status: 'APPROVED', chain: { status: 'APPROVED' } });
+    expect([200, 201]).toContain((await ctx.http().post(`${API}/recruitment/offers/${offer.id}/release`).set(recruiter.h)).status);
+    // Someone never on the chain can't open offers.
+    expect((await ctx.http().get(`${API}/recruitment/offers/${offer.id}`).set(s.asha.h)).status).toBe(404);
+  });
 });

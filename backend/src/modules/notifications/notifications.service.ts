@@ -5,11 +5,35 @@ import { PaginationQueryDto, paginationArgs, paginationMeta } from '../../common
 import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { AppConfig } from '../../config/app-config.service';
-import { EMAIL_CATEGORIES, DEFAULT_MUTED_CATEGORIES, type NotificationSettings, categoryOf, wantsEmail } from '../../contracts';
+import {
+  DEFAULT_DIGEST_DAY,
+  DEFAULT_DIGEST_HOUR,
+  DEFAULT_MUTED_CATEGORIES,
+  EMAIL_CATEGORIES,
+  type EmailDigest,
+  type NotificationSettings,
+  type NotificationSettingsView,
+  categoryOf,
+  digestsEmail,
+  wantsEmail,
+} from '../../contracts';
 import { Notification, Organization, User } from '../../database/models';
 import { MailService } from '../../infrastructure/mail/mail.service';
 import { notificationEmail } from '../../infrastructure/mail/templates';
 import { PushService } from './push.service';
+import { WhatsAppService } from './whatsapp.service';
+
+export interface NotificationSettingsInput {
+  email: boolean;
+  muted: string[];
+  push?: boolean;
+  emailDigest?: EmailDigest;
+  digestHour?: number;
+  digestDay?: number;
+  timezone?: string;
+  whatsapp?: boolean;
+  calendarInvites?: boolean;
+}
 
 export interface NotificationInput {
   type: string;
@@ -38,6 +62,7 @@ export class NotificationsService {
     @Optional() private readonly mail?: MailService,
     @Optional() private readonly config?: AppConfig,
     @Optional() private readonly push?: PushService,
+    @Optional() private readonly whatsapp?: WhatsAppService,
   ) {}
 
   async notify(userId: string, input: NotificationInput, transaction?: Transaction): Promise<void> {
@@ -54,6 +79,7 @@ export class NotificationsService {
     );
     await this.email(userId, input, transaction);
     await this.push?.queue(userId, input, transaction);
+    await this.whatsapp?.queue(userId, input, transaction);
     // Open sessions refresh once the notification is visible to them.
     if (transaction) transaction.afterCommit(() => this.bus?.publish(userId));
     else this.bus?.publish(userId);
@@ -66,6 +92,8 @@ export class NotificationsService {
     if (!category) return;
     const user = await User.findByPk(userId, { attributes: ['email', 'firstName', 'status', 'notificationSettings'], transaction });
     if (!user || user.status !== 'ACTIVE' || !wantsEmail(user.notificationSettings, input.type)) return;
+    // Held for the person's daily / weekly summary (NotificationDigestService).
+    if (digestsEmail(user.notificationSettings)) return;
     const appUrl = this.config.get('APP_URL');
     const message = notificationEmail(
       user.email,
@@ -92,22 +120,59 @@ export class NotificationsService {
     return org.name;
   }
 
-  async settings(userId: string) {
+  async settings(userId: string): Promise<NotificationSettingsView> {
     const user = await User.findByPk(userId, { attributes: ['notificationSettings'] });
     if (!user) throw AppError.notFound('User');
-    return present(user.notificationSettings);
+    return this.present(user.notificationSettings);
   }
 
-  async updateSettings(userId: string, input: { email: boolean; muted: string[]; push?: boolean }) {
+  async updateSettings(userId: string, input: NotificationSettingsInput): Promise<NotificationSettingsView> {
     const known = new Set<string>(EMAIL_CATEGORIES.map((c) => c.key));
     const unknown = input.muted.filter((m) => !known.has(m));
     if (unknown.length) throw AppError.badRequest(`Unknown notification categories: ${unknown.join(', ')}`);
+    if (input.timezone && !validTimeZone(input.timezone)) throw AppError.validation([{ field: 'timezone', message: 'Unknown timezone' }]);
     const current = await User.findByPk(userId, { attributes: ['notificationSettings'] });
-    const push = input.push ?? current?.notificationSettings?.push;
-    const next: NotificationSettings = { email: input.email, muted: [...new Set(input.muted)], ...(push === undefined ? {} : { push }) };
-    const [count] = await User.update({ notificationSettings: next }, { where: { id: userId } });
-    if (count === 0) throw AppError.notFound('User');
-    return present(next);
+    if (!current) throw AppError.notFound('User');
+    const was = current.notificationSettings ?? {};
+    if (input.whatsapp && !was.whatsappVerifiedAt) throw AppError.conflict('Confirm your WhatsApp number first');
+    const next: NotificationSettings = {
+      ...was,
+      email: input.email,
+      muted: [...new Set(input.muted)],
+      ...(input.push === undefined ? {} : { push: input.push }),
+      ...(input.emailDigest === undefined ? {} : { emailDigest: input.emailDigest }),
+      ...(input.digestHour === undefined ? {} : { digestHour: input.digestHour }),
+      ...(input.digestDay === undefined ? {} : { digestDay: input.digestDay }),
+      ...(input.timezone === undefined ? {} : { timezone: input.timezone }),
+      ...(input.whatsapp === undefined ? {} : { whatsapp: input.whatsapp }),
+      ...(input.calendarInvites === undefined ? {} : { calendarInvites: input.calendarInvites }),
+    };
+    // Switching to a summary starts it from now, not from whenever the last one went out.
+    if (input.emailDigest && input.emailDigest !== 'OFF' && was.emailDigest !== input.emailDigest) next.lastDigestAt = new Date().toISOString();
+    await User.update({ notificationSettings: next }, { where: { id: userId } });
+    return this.present(next);
+  }
+
+  present(settings: NotificationSettings | null | undefined): NotificationSettingsView {
+    const pending = settings?.whatsappPending;
+    return {
+      email: settings?.email !== false,
+      push: settings?.push !== false,
+      muted: settings?.muted ?? [...DEFAULT_MUTED_CATEGORIES],
+      emailDigest: settings?.emailDigest ?? 'OFF',
+      digestHour: settings?.digestHour ?? DEFAULT_DIGEST_HOUR,
+      digestDay: settings?.digestDay ?? DEFAULT_DIGEST_DAY,
+      timezone: settings?.timezone ?? null,
+      calendarInvites: settings?.calendarInvites !== false,
+      whatsapp: {
+        available: !!this.whatsapp?.enabled,
+        on: !!settings?.whatsapp && !!settings.whatsappVerifiedAt,
+        number: settings?.whatsappNumber ?? null,
+        verified: !!settings?.whatsappVerifiedAt,
+        pendingNumber: pending && pending.codeHash && Date.parse(pending.expiresAt) > Date.now() ? pending.number : null,
+      },
+      categories: EMAIL_CATEGORIES.map((c) => ({ key: c.key, label: c.label, description: c.description })),
+    };
   }
 
   private visibleTo(userId: string, organizationId: string | null): WhereOptions<Notification> {
@@ -147,11 +212,11 @@ export class NotificationsService {
   }
 }
 
-function present(settings: NotificationSettings | null | undefined) {
-  return {
-    email: settings?.email !== false,
-    push: settings?.push !== false,
-    muted: settings?.muted ?? [...DEFAULT_MUTED_CATEGORIES],
-    categories: EMAIL_CATEGORIES.map((c) => ({ key: c.key, label: c.label, description: c.description })),
-  };
+function validTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
 }

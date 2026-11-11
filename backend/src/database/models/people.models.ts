@@ -170,6 +170,8 @@ export class Employee extends Model<InferAttributes<Employee>, InferCreationAttr
   @ForeignKey(() => Grade) @Column(DataType.UUID) gradeId: CreationOptional<string | null>;
   /** Paid in this pay group's own payroll runs; null = the main run. */
   @Column(DataType.UUID) payGroupId: CreationOptional<string | null>;
+  /** The company that employs them (its currency); null = the organization's default entity. */
+  @Column(DataType.UUID) legalEntityId: CreationOptional<string | null>;
   @ForeignKey(() => CostCenter) @Column(DataType.UUID) costCenterId: CreationOptional<string | null>;
   @Column(DataType.STRING(20)) maritalStatus: CreationOptional<MaritalStatus | null>;
   @Column(DataType.STRING(3)) bloodGroup: CreationOptional<BloodGroup | null>;

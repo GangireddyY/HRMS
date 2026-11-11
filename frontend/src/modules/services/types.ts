@@ -1,4 +1,5 @@
 import type {
+  ApprovalChainProgress,
   AssetCategory,
   AssetCondition,
   AssetRequestStatus,
@@ -159,6 +160,8 @@ export interface Trip {
   advanceReference: string | null;
   completedAt: string | null;
   createdAt: string;
+  /** Set when a configured approval chain decides this trip. */
+  chain: ApprovalChainProgress | null;
   permissions: { approve: boolean; cancel: boolean; complete: boolean; desk: boolean };
 }
 

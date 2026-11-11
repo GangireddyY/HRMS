@@ -8,8 +8,9 @@ import { PaginatedResult } from '../../common/interceptors/response-envelope.int
 import { containsPattern } from '../../common/utils/like';
 import { addDays } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
-import { Asset, Department, Designation, Employee, EmployeeLifecycleEvent, ExitCase, ExitClearanceItem, ExitSettlement, User } from '../../database/models';
+import { ApprovalInstance, Asset, Department, Designation, Employee, EmployeeLifecycleEvent, ExitCase, ExitClearanceItem, ExitSettlement, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ApprovalChainsService, queueWhere } from '../approvals/approval-chains.service';
 import { fullName, organizationToday, userIdsOf, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -29,6 +30,10 @@ interface Access {
   approve: boolean;
   clear: boolean;
   settle: boolean;
+  /** The resignation follows an approval chain (pending, or decided). */
+  chain: ApprovalInstance | null;
+  /** The caller decides the chain's current step. */
+  chainDecides: boolean;
 }
 
 /**
@@ -36,7 +41,8 @@ interface Access {
  * it with a last working day — never their own; HR can also record employer-initiated exits. While the employee serves
  * notice (status ON_NOTICE, exit date = last working day, so payroll prorates the final month) clearance steps are
  * worked through (`exit.clearance.manage`; handover by the manager). HR completes the exit on or after the last working
- * day (status EXITED) or cancels it. The full & final settlement is in SettlementsService.
+ * day (status EXITED) or cancels it. The full & final settlement is in SettlementsService. When a configured approval
+ * chain applies, a resignation is accepted step by step by the chain's approvers instead; the last step sets the day.
  */
 @Injectable()
 export class ExitsService {
@@ -45,6 +51,7 @@ export class ExitsService {
     private readonly audit: AuditService,
     private readonly scope: EmployeeScopeService,
     private readonly notifications: NotificationsService,
+    private readonly chains: ApprovalChainsService,
   ) {}
 
   // ---- Employee ---------------------------------------------------------------------------------
@@ -76,14 +83,18 @@ export class ExitsService {
         { transaction },
       );
       await this.audit.record({ action: 'exit.resigned', entityType: 'ExitCase', entityId: c.id, summary: `${self.employeeCode} resigned` }, transaction);
+      const requester = (await Employee.findByPk(self.id, { attributes: ['id', 'managerId', 'departmentId', 'membershipId'], transaction }))!;
+      const chain = await this.chains.start('EXIT', c.id, requester, {}, transaction);
       const recipients = new Set(await usersWithPermission('exit.manage', transaction));
-      if (self.managerId) {
+      const deciders = new Set(chain ? await this.chains.usersOf(chain.steps[0]!.approverMembershipIds, transaction) : []);
+      if (!chain && self.managerId) {
         const managerUser = (await userIdsOf([self.managerId], transaction)).get(self.managerId);
         if (managerUser) recipients.add(managerUser);
       }
-      recipients.delete(auth.userId);
-      for (const userId of recipients) {
-        await this.notifications.notify(userId, { organizationId: auth.organizationId, type: 'exit.resignation', title: `${fullName(self)} has resigned`, body: `Notice period ends ${c.noticeEndsOn}.`, link: `/hr/exits/${c.id}` }, transaction);
+      for (const userId of [...new Set([...recipients, ...deciders])]) {
+        if (userId === auth.userId) continue;
+        const link = deciders.has(userId) ? '/me/approvals' : `/hr/exits/${c.id}`;
+        await this.notifications.notify(userId, { organizationId: auth.organizationId, type: 'exit.resignation', title: `${fullName(self)} has resigned`, body: `Notice period ends ${c.noticeEndsOn}.`, link }, transaction);
       }
       return c.id;
     });
@@ -106,6 +117,7 @@ export class ExitsService {
       if (!access.self) throw AppError.forbidden('Only the employee can withdraw their resignation');
       if (c.status !== 'SUBMITTED') throw AppError.conflict('Your resignation has been accepted; ask HR to cancel it');
       await c.update({ status: 'WITHDRAWN', closedAt: new Date(), closedReason: 'Withdrawn by the employee' }, { transaction });
+      await this.chains.cancel('EXIT', c.id, transaction);
       await this.audit.record({ action: 'exit.withdrawn', entityType: 'ExitCase', entityId: c.id, summary: 'Resignation withdrawn' }, transaction);
     });
     return this.get(auth, id);
@@ -166,9 +178,15 @@ export class ExitsService {
     const self = await this.scope.self(auth);
     const conditions: WhereOptions[] = [];
     if (query.view === 'approve') {
-      const scoped = auth.permissions.has('exit.manage') ? {} : await this.scope.where(auth, 'exit.approve', 'employeeId');
-      if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
-      conditions.push(scoped, { status: 'SUBMITTED' });
+      // Resignations on an approval chain show for their current step's approvers only; the rest as before.
+      const [scopedAll, mine, managed] = await Promise.all([
+        auth.permissions.has('exit.manage') ? Promise.resolve({}) : this.scope.where(auth, 'exit.approve', 'employeeId'),
+        this.chains.waitingFor(auth, 'EXIT'),
+        this.chains.managedPending('EXIT'),
+      ]);
+      const queue = queueWhere(scopedAll, mine, managed);
+      if (!queue) return new PaginatedResult([], paginationMeta(query, 0));
+      conditions.push(queue, { status: 'SUBMITTED' });
       if (self) conditions.push({ employeeId: { [Op.ne]: self.id } });
     } else {
       const scoped = auth.permissions.has('exit.manage') || auth.permissions.has('exit.clearance.manage') ? {} : await this.scope.where(auth, 'exit.view', 'employeeId');
@@ -203,13 +221,26 @@ export class ExitsService {
   }
 
   async approve(auth: AuthContext, id: string, dto: ApproveExitDto) {
+    let next: { approvers: string[]; label: string; employeeName: string } | null = null;
     await this.mutate(auth, id, async (c, access, transaction) => {
       if (access.self) throw AppError.forbidden("You can't accept your own resignation");
-      if (!access.approve && !access.manage) throw AppError.forbidden();
+      const onChain = access.chain?.status === 'PENDING';
+      if (onChain) {
+        const blocked = this.chains.blockReason(auth, access.chain!);
+        if (blocked) throw AppError.forbidden(blocked);
+      } else if (!access.approve && !access.manage) throw AppError.forbidden();
       if (c.status !== 'SUBMITTED') throw AppError.conflict('Only a submitted resignation can be accepted');
       const employee = (await Employee.findByPk(c.employeeId, { transaction }))!;
       const problems = this.lastDayProblems(dto.lastWorkingDay, c.submittedOn, employee.dateOfJoining);
       if (problems.length) throw AppError.validation(problems);
+      if (onChain) {
+        const result = await this.chains.decide(auth, access.chain!, 'APPROVED', dto.note ?? null, transaction);
+        if (!result.final) {
+          next = { approvers: result.nextApprovers, label: result.nextLabel!, employeeName: fullName(employee) };
+          await this.audit.record({ action: 'exit.step_accepted', entityType: 'ExitCase', entityId: c.id, summary: `Resignation of ${employee.employeeCode} accepted at this step; ${result.nextLabel} next` }, transaction);
+          return;
+        }
+      }
       await c.update({ status: 'APPROVED', lastWorkingDay: dto.lastWorkingDay, noticeWaived: !!dto.waiveNotice, decidedById: auth.userId, decidedAt: new Date(), decisionNote: dto.note ?? null }, { transaction });
       await this.startNotice(c, employee, auth, transaction);
       await this.audit.record({ action: 'exit.accepted', entityType: 'ExitCase', entityId: c.id, summary: `Resignation of ${employee.employeeCode} accepted; last working day ${dto.lastWorkingDay}` }, transaction);
@@ -218,6 +249,13 @@ export class ExitsService {
         await this.notifications.notify(userId, { organizationId: c.organizationId, type: 'exit.resignation', title: 'Your resignation has been accepted', body: `Your last working day is ${dto.lastWorkingDay}.`, link: '/me/exit' }, transaction);
       }
     });
+    const pending = next as { approvers: string[]; label: string; employeeName: string } | null;
+    if (pending) {
+      for (const userId of await this.chains.usersOf(pending.approvers)) {
+        if (userId === auth.userId) continue;
+        await this.notifications.notify(userId, { organizationId: auth.organizationId, type: 'exit.resignation', title: `${pending.label} acceptance needed: ${pending.employeeName}'s resignation`, link: '/me/approvals' });
+      }
+    }
     return this.get(auth, id);
   }
 
@@ -300,6 +338,7 @@ export class ExitsService {
       await ExitSettlement.destroy({ where: { caseId: c.id }, transaction });
       const wasServing = c.status === 'APPROVED';
       await c.update({ status: 'CANCELLED', closedAt: new Date(), closedReason: dto.reason }, { transaction });
+      await this.chains.cancel('EXIT', c.id, transaction);
       const employee = (await Employee.findByPk(c.employeeId, { transaction }))!;
       if (wasServing && employee.status === 'ON_NOTICE') await this.setStatus(employee, 'ACTIVE', null, await organizationToday(c.organizationId), `Exit cancelled: ${dto.reason}`, auth, transaction);
       await this.audit.record({ action: 'exit.cancelled', entityType: 'ExitCase', entityId: c.id, summary: `Exit of ${employee.employeeCode} cancelled` }, transaction);
@@ -315,26 +354,32 @@ export class ExitsService {
     return c;
   }
 
-  async access(auth: AuthContext, c: ExitCase): Promise<Access> {
+  async access(auth: AuthContext, c: ExitCase, transaction?: Transaction): Promise<Access> {
     const self = await this.scope.self(auth);
-    const employee = (await Employee.findByPk(c.employeeId, { attributes: ['id', 'managerId', 'departmentId'] }))!;
+    const employee = (await Employee.findByPk(c.employeeId, { attributes: ['id', 'managerId', 'departmentId'], transaction }))!;
     const isSelf = self?.id === c.employeeId;
+    const chain = c.type === 'RESIGNATION' ? await this.chains.find('EXIT', c.id, transaction) : null;
+    const chainDecides = !isSelf && this.chains.canDecide(auth, chain);
+    // Chain approvers (possibly outside the usual scope, e.g. a named person) see the case they decide or decided.
+    const chainViewer = !isSelf && !!chain && (chainDecides || chain.decisions.some((d) => d.membershipId === auth.membershipId));
     const a: Access = {
       self: isSelf,
       manage: !isSelf && auth.permissions.has('exit.manage'),
       approve: !isSelf && (await this.scope.covers(auth, 'exit.approve', employee)),
       clear: !isSelf && auth.permissions.has('exit.clearance.manage'),
       settle: !isSelf && auth.permissions.has('payroll.settlement.manage'),
+      chain,
+      chainDecides,
     };
     const viewer = !isSelf && (await this.scope.covers(auth, 'exit.view', employee));
-    if (!a.self && !a.manage && !a.approve && !a.clear && !a.settle && !viewer) throw AppError.notFound('Exit');
+    if (!a.self && !a.manage && !a.approve && !a.clear && !a.settle && !viewer && !chainViewer) throw AppError.notFound('Exit');
     return a;
   }
 
   private async mutate(auth: AuthContext, id: string, fn: (c: ExitCase, access: Access, transaction: Transaction) => Promise<void>) {
     await this.db.transaction(async (transaction) => {
       const c = await this.find(id, transaction);
-      await fn(c, await this.access(auth, c), transaction);
+      await fn(c, await this.access(auth, c, transaction), transaction);
     });
   }
 
@@ -440,10 +485,11 @@ export class ExitsService {
       feedbackGiven: !!full.feedback,
       ...(access.manage ? { eligibleForRehire: full.eligibleForRehire, rehireNote: full.rehireNote } : {}),
       settlement: settlement && (access.settle || ['APPROVED', 'PAID'].includes(settlement.status)) ? this.settlementSummary(settlement, today) : null,
+      chain: this.chains.present(access.chain),
       permissions: {
         self: access.self,
         manage: access.manage,
-        approve: (access.approve || access.manage) && full.status === 'SUBMITTED',
+        approve: full.status === 'SUBMITTED' && (access.chain?.status === 'PENDING' ? access.chainDecides : access.approve || access.manage),
         clear: (access.manage || access.clear) && full.status === 'APPROVED',
         clearManager: (access.manage || access.clear || access.approve) && full.status === 'APPROVED',
         withdraw: access.self && full.status === 'SUBMITTED',

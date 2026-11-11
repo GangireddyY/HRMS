@@ -205,6 +205,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('performance', 'performance.feedback', 'performance.feedback.give', 'Give peer / 360 feedback'),
   def('performance', 'performance.pip', 'performance.pip.manage', 'Manage performance improvement plans', S),
   def('performance', 'performance.okrs', 'performance.okr.manage', 'Set company and department objectives (OKRs)', S),
+  def('performance', 'performance.succession', 'performance.succession.view', 'View succession plans for critical roles and their successors', S),
+  def('performance', 'performance.succession', 'performance.succession.manage', 'Create succession plans, name successors and their readiness'),
 
   // Training
   def('training', 'training.catalog', 'training.view', 'View courses and programs'),

@@ -15,6 +15,6 @@ import { RequisitionsService } from './requisitions.service';
   imports: [EmployeesModule, OnboardingModule, RbacModule],
   controllers: [RecruitmentController, CareersController, OfferPortalController],
   providers: [RequisitionsService, JobsService, CandidatesService, PipelineService, OffersService, CareersService, OfferPortalService],
-  exports: [RequisitionsService],
+  exports: [RequisitionsService, OffersService],
 })
 export class RecruitmentModule {}

@@ -1,5 +1,18 @@
-import type { BuilderColumn, BuilderDataset, BuilderQuery, ReportExportFormat, ReportKey, ReportTable } from '@contracts';
+import type { BuilderColumn, BuilderDataset, BuilderQuery, ReportExportFormat, ReportFrequency, ReportKey, ReportPeriod, ReportScheduleView, ReportTable } from '@contracts';
 import { downloadFile, http } from '@/core/http/http-client';
+
+export type { ReportScheduleView };
+export interface ReportScheduleInput {
+  savedReportId: string;
+  frequency: ReportFrequency;
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  hour: number;
+  format: 'csv' | 'xlsx';
+  period: ReportPeriod;
+  recipientIds: string[];
+  isActive: boolean;
+}
 
 export interface ReportQuery {
   asOf?: string;
@@ -59,4 +72,9 @@ export const reportsApi = {
   saved: () => http.get<SavedReportRow[]>('/reports/saved'),
   save: (body: { name: string; description?: string | null; shared?: boolean; query: BuilderQuery }, id?: string) => (id ? http.put<SavedReportRow[]>(`/reports/saved/${id}`, body) : http.post<SavedReportRow[]>('/reports/saved', body)),
   removeSaved: (id: string) => http.delete<{ deleted: boolean }>(`/reports/saved/${id}`),
+  schedules: () => http.get<ReportScheduleView[]>('/reports/schedules'),
+  scheduleRecipients: (q: string) => http.get<{ userId: string; name: string; email: string }[]>('/reports/schedules/recipients', { q }),
+  saveSchedule: (body: ReportScheduleInput, id?: string) => (id ? http.put<ReportScheduleView>(`/reports/schedules/${id}`, body) : http.post<ReportScheduleView>('/reports/schedules', body)),
+  removeSchedule: (id: string) => http.delete<void>(`/reports/schedules/${id}`),
+  sendSchedule: (id: string) => http.post<ReportScheduleView>(`/reports/schedules/${id}/send`),
 };

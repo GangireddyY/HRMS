@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Op, type Transaction } from 'sequelize';
+import { Op, type Transaction, type WhereOptions } from 'sequelize';
 import { APPROVAL_SUBJECT_LABELS, APPROVAL_SUBJECT_PERMISSION, type ApprovalChainConditions, type ApprovalChainStep, type ApprovalFacts, type ApprovalSubject } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
@@ -20,6 +20,26 @@ export function matches(c: ApprovalChainConditions, f: ApprovalFacts): boolean {
   if (c.leaveTypeIds?.length && (!f.leaveTypeId || !c.leaveTypeIds.includes(f.leaveTypeId))) return false;
   if (c.categories?.length && (!f.category || !c.categories.includes(f.category))) return false;
   return true;
+}
+
+/**
+ * The "to approve" filter of a module list: requests in the caller's approval scope that don't follow a chain, plus
+ * those whose current chain step the caller decides. `scoped` is the module's scope filter (`{}` = everything,
+ * null = nothing); returns null when nothing can match.
+ */
+export function queueWhere(scoped: WhereOptions | null, waitingForMe: string[], chainManaged: string[]): WhereOptions | null {
+  const unrestricted = !!scoped && Object.keys(scoped).length === 0 && Object.getOwnPropertySymbols(scoped).length === 0;
+  const notManaged = chainManaged.length ? { id: { [Op.notIn]: chainManaged } } : null;
+  let legacy: WhereOptions | null = null;
+  if (scoped) {
+    const parts = [...(unrestricted ? [] : [scoped]), ...(notManaged ? [notManaged] : [])];
+    // Everything, not following a chain: no filter at all (an empty object inside OR would match nothing).
+    if (!parts.length) return {};
+    legacy = parts.length === 1 ? parts[0]! : { [Op.and]: parts };
+  }
+  const any = [...(legacy ? [legacy] : []), ...(waitingForMe.length ? [{ id: waitingForMe }] : [])];
+  if (!any.length) return null;
+  return any.length === 1 ? any[0]! : { [Op.or]: any };
 }
 
 export interface DecisionResult {
@@ -48,10 +68,17 @@ export class ApprovalChainsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async start(subject: ApprovalSubject, subjectId: string, requester: Requester, facts: ApprovalFacts, transaction?: Transaction): Promise<ApprovalInstance | null> {
+  /** The chain that would apply to such a request (first active match by priority), without starting it. */
+  async applies(subject: ApprovalSubject, facts: ApprovalFacts, transaction?: Transaction): Promise<ApprovalChain | null> {
     const chains = await ApprovalChain.findAll({ where: { subject, isActive: true }, order: [['priority', 'ASC'], ['createdAt', 'ASC']], transaction });
-    const chain = chains.find((c) => matches(c.conditions ?? {}, { departmentId: requester.departmentId, ...facts }));
+    return chains.find((c) => matches(c.conditions ?? {}, facts)) ?? null;
+  }
+
+  async start(subject: ApprovalSubject, subjectId: string, requester: Requester, facts: ApprovalFacts, transaction?: Transaction): Promise<ApprovalInstance | null> {
+    const chain = await this.applies(subject, { departmentId: requester.departmentId, ...facts }, transaction);
     if (!chain) return null;
+    // A request sent for approval again (an offer after changes) starts over; its finished round is replaced.
+    await ApprovalInstance.destroy({ where: { subject, subjectId, status: { [Op.ne]: 'PENDING' } }, transaction });
     const steps: InstanceStep[] = [];
     for (const s of chain.steps) {
       const approvers = (await this.resolve(s, requester, transaction)).filter((m) => m !== requester.membershipId);
@@ -123,6 +150,13 @@ export class ApprovalChainsService {
     if (!auth.membershipId) return [];
     const pending = await ApprovalInstance.findAll({ where: { subject, status: 'PENDING' }, attributes: ['id', 'subject', 'subjectId', 'steps', 'currentStep', 'status', 'decisions', 'requesterMembershipId'] });
     return pending.filter((i) => this.actingFor(auth, i) !== null).map((i) => i.subjectId);
+  }
+
+  /** Kinds of request with something waiting at a step this caller decides (one query, for the approvals summary). */
+  async subjectsWaitingFor(auth: AuthContext): Promise<Set<ApprovalSubject>> {
+    if (!auth.membershipId) return new Set();
+    const pending = await ApprovalInstance.findAll({ where: { status: 'PENDING' }, attributes: ['id', 'subject', 'subjectId', 'steps', 'currentStep', 'status', 'decisions', 'requesterMembershipId'] });
+    return new Set(pending.filter((i) => this.actingFor(auth, i) !== null).map((i) => i.subject));
   }
 
   async decide(auth: AuthContext, instance: ApprovalInstance, decision: 'APPROVED' | 'REJECTED', note: string | null, transaction: Transaction): Promise<DecisionResult> {

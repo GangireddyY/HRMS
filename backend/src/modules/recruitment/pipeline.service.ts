@@ -9,6 +9,7 @@ import { DatabaseService } from '../../database/database.service';
 import { ApplicationEvent, Candidate, Designation, Employee, Interview, InterviewPanelist, JobApplication, JobOpening, Offer, OrganizationMembership, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
+import { CalendarService } from '../calendar/calendar.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CandidatesService, presentCandidate } from './candidates.service';
 import type { AddApplicationDto, ApplicationQueryDto, FeedbackDto, InterviewDto, MoveStageDto, UpdateInterviewDto } from './dto/recruitment.dto';
@@ -29,6 +30,7 @@ export class PipelineService {
     private readonly scope: EmployeeScopeService,
     private readonly candidates: CandidatesService,
     private readonly notifications: NotificationsService,
+    private readonly calendar: CalendarService,
   ) {}
 
   // ---- Applications ----------------------------------------------------------------------------
@@ -162,7 +164,7 @@ export class PipelineService {
     if (!isActive(a.stage)) throw AppError.conflict(`The application is ${a.stage.toLowerCase()}`);
     const panel = await this.panel(dto.panelistIds);
     const from = a.stage;
-    await this.db.transaction(async (transaction) => {
+    const interviewId = await this.db.transaction(async (transaction) => {
       const created = await Interview.create(
         {
           organizationId: auth.organizationId!,
@@ -191,7 +193,9 @@ export class PipelineService {
         { action: 'interview.scheduled', entityType: 'JobApplication', entityId: applicationId, summary: `${dto.roundName} scheduled for ${fullName(a.candidate!)}` },
         transaction,
       );
+      return created.id;
     });
+    await this.calendar.interview(interviewId, 'REQUEST');
     await this.notifyPanel(
       auth,
       panel.map((p) => p.membershipId),
@@ -206,6 +210,7 @@ export class PipelineService {
     if (!i) throw AppError.notFound('Interview');
     if (i.status !== 'SCHEDULED') throw AppError.conflict(`This interview is ${i.status.toLowerCase()}`);
     const panel = dto.panelistIds ? await this.panel(dto.panelistIds) : null;
+    const removedIds: string[] = [];
     await this.db.transaction(async (transaction) => {
       const { panelistIds: _p, scheduledAt, ...rest } = dto;
       await i.update({ ...rest, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt) } : {}) }, { transaction });
@@ -215,6 +220,7 @@ export class PipelineService {
         const removed = (i.panelists ?? []).filter((p) => !keep.has(p.employeeId));
         if (removed.some((p) => p.submittedAt)) throw AppError.conflict('Panelists who already gave feedback cannot be removed');
         if (removed.length) await InterviewPanelist.destroy({ where: { id: removed.map((p) => p.id) }, transaction });
+        removedIds.push(...removed.map((p) => p.employeeId));
         const added = panel.filter((p) => !existing.has(p.id));
         if (added.length)
           await InterviewPanelist.bulkCreate(
@@ -224,6 +230,7 @@ export class PipelineService {
       }
       await this.audit.record({ action: 'interview.updated', entityType: 'JobApplication', entityId: i.applicationId, summary: `${i.roundName} updated` }, transaction);
     });
+    await this.calendar.interview(id, 'REQUEST', { removedEmployeeIds: removedIds });
     return this.get(auth, i.applicationId);
   }
 
@@ -235,6 +242,7 @@ export class PipelineService {
       await i.update({ status }, { transaction });
       await this.audit.record({ action: `interview.${status.toLowerCase()}`, entityType: 'JobApplication', entityId: i.applicationId, summary: `${i.roundName} ${status.toLowerCase()}` }, transaction);
     });
+    if (status === 'CANCELLED') await this.calendar.interview(id, 'CANCEL');
     return this.get(auth, i.applicationId);
   }
 

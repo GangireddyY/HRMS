@@ -3,7 +3,7 @@ import { fn, col, Op, UniqueConstraintError } from 'sequelize';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
-import { Employee, PayGroup, PayrollRun, Payslip } from '../../database/models';
+import { Employee, LegalEntity, PayGroup, PayrollRun, Payslip } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import type { AssignPayGroupDto, PayGroupDto, UpdatePayGroupDto } from './dto/payroll.dto';
 
@@ -20,36 +20,58 @@ export class PayGroupsService {
   ) {}
 
   async list() {
-    const [groups, counts, main] = await Promise.all([
+    const [groups, counts, main, entities] = await Promise.all([
       PayGroup.findAll({ order: [['name', 'ASC']] }),
       Employee.findAll({ attributes: ['payGroupId', [fn('COUNT', col('id')), 'count']], where: { status: ['ACTIVE', 'ON_NOTICE'], payGroupId: { [Op.ne]: null } }, group: ['payGroupId'], raw: true }) as unknown as Promise<{ payGroupId: string; count: string }[]>,
       Employee.count({ where: { status: ['ACTIVE', 'ON_NOTICE'], payGroupId: null } }),
+      LegalEntity.findAll({ attributes: ['id', 'name', 'currency'] }),
     ]);
     const by = new Map(counts.map((c) => [c.payGroupId, Number(c.count)]));
+    const entityOf = new Map(entities.map((e) => [e.id, e]));
     return {
       mainEmployees: main,
-      groups: groups.map((g) => ({ id: g.id, name: g.name, description: g.description, isActive: g.isActive, employees: by.get(g.id) ?? 0 })),
+      groups: groups.map((g) => {
+        const entity = g.legalEntityId ? entityOf.get(g.legalEntityId) : undefined;
+        return { id: g.id, name: g.name, description: g.description, isActive: g.isActive, employees: by.get(g.id) ?? 0, legalEntity: entity ? { id: entity.id, name: entity.name, currency: entity.currency } : null };
+      }),
     };
   }
 
   async create(auth: AuthContext, dto: PayGroupDto) {
+    await this.checkEntity(dto.legalEntityId);
     const g = await this.guard(() =>
       this.db.transaction(async (transaction) => {
-        const created = await PayGroup.create({ organizationId: auth.organizationId!, name: dto.name, description: dto.description ?? null, isActive: dto.isActive ?? true, createdById: auth.userId }, { transaction });
+        const created = await PayGroup.create({ organizationId: auth.organizationId!, name: dto.name, description: dto.description ?? null, isActive: dto.isActive ?? true, legalEntityId: dto.legalEntityId ?? null, createdById: auth.userId }, { transaction });
         await this.audit.record({ action: 'payroll.pay_group_created', entityType: 'PayGroup', entityId: created.id, summary: `Pay group "${created.name}" created` }, transaction);
         return created;
       }),
     );
-    return { id: g.id, name: g.name, description: g.description, isActive: g.isActive, employees: 0 };
+    return (await this.list()).groups.find((x) => x.id === g.id)!;
+  }
+
+  private async checkEntity(id: string | null | undefined) {
+    if (id && !(await LegalEntity.count({ where: { id } }))) throw AppError.validation([{ field: 'legalEntityId', message: 'Legal entity not found' }]);
   }
 
   async update(auth: AuthContext, id: string, dto: UpdatePayGroupDto) {
     const g = await PayGroup.findByPk(id);
     if (!g) throw AppError.notFound('Pay group');
     if (dto.isActive === false && (await this.openRuns(id))) throw AppError.conflict(`Finish or cancel the open payroll run of ${g.name} first`);
+    if (dto.legalEntityId !== undefined && (dto.legalEntityId ?? null) !== (g.legalEntityId ?? null)) {
+      await this.checkEntity(dto.legalEntityId);
+      if (await this.openRuns(id)) throw AppError.conflict(`Finish or cancel the open payroll run of ${g.name} before changing its entity`);
+    }
     await this.guard(() =>
       this.db.transaction(async (transaction) => {
-        await g.update({ ...(dto.name ? { name: dto.name } : {}), ...(dto.description !== undefined ? { description: dto.description } : {}), ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}) }, { transaction });
+        await g.update(
+          {
+            ...(dto.name ? { name: dto.name } : {}),
+            ...(dto.description !== undefined ? { description: dto.description } : {}),
+            ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+            ...(dto.legalEntityId !== undefined ? { legalEntityId: dto.legalEntityId } : {}),
+          },
+          { transaction },
+        );
         await this.audit.record({ action: 'payroll.pay_group_updated', entityType: 'PayGroup', entityId: id, summary: `Pay group "${g.name}" updated` }, transaction);
       }),
     );

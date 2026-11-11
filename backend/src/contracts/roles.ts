@@ -176,7 +176,7 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
     grants: merge(
       EMPLOYEE_SELF_SERVICE,
       grants('DEPARTMENT', 'employee.view', 'attendance.view', 'attendance.regularize.approve', 'attendance.timesheet.approve',
-        'leave.view', 'leave.approve', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.okr.manage',
+        'leave.view', 'leave.approve', 'performance.view', 'performance.review', 'performance.pip.manage', 'performance.okr.manage', 'performance.succession.view',
         'training.assign', 'exit.view', 'exit.approve', 'payroll.reimbursement.approve', 'travel.approve', 'assets.view',
         'onboarding.view', 'onboarding.confirmation.approve', 'reports.view',
         'recruitment.requisition.create', 'recruitment.requisition.approve', 'recruitment.interview.feedback'),

@@ -103,5 +103,62 @@ export const SUGGESTED_COMPETENCIES: readonly Competency[] = [
   { key: 'ownership', name: 'Ownership', description: 'Takes responsibility and follows through.' },
 ];
 
+// ---- Succession planning ------------------------------------------------------------------------
+
+export const SUCCESSION_LEVELS = ['LOW', 'MEDIUM', 'HIGH'] as const;
+export type SuccessionLevel = (typeof SUCCESSION_LEVELS)[number];
+export const SUCCESSION_LEVEL_LABELS: Record<SuccessionLevel, string> = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
+export const SUCCESSOR_READINESS = ['READY_NOW', 'ONE_TO_TWO_YEARS', 'THREE_PLUS_YEARS'] as const;
+export type SuccessorReadiness = (typeof SUCCESSOR_READINESS)[number];
+export const SUCCESSOR_READINESS_LABELS: Record<SuccessorReadiness, string> = { READY_NOW: 'Ready now', ONE_TO_TWO_YEARS: 'Ready in 1–2 years', THREE_PLUS_YEARS: 'Ready in 3+ years' };
+export const MAX_SUCCESSORS_PER_PLAN = 10;
+/** NONE: nobody named; AT_RISK: no one ready now; COVERED: at least one ready now. */
+export type BenchStrength = 'NONE' | 'AT_RISK' | 'COVERED';
+
+export interface SuccessorView {
+  id: string;
+  employee: { id: string; name: string; employeeCode: string; designation: string | null; department: string | null };
+  readiness: SuccessorReadiness;
+  rank: number;
+  developmentNotes: string | null;
+  /** From the latest completed review: final (calibrated) rating 1–5 and potential 1–3. */
+  nineBox: { rating: number | null; potential: number | null; cycle: string | null };
+}
+
+export interface SuccessionPlanView {
+  id: string;
+  title: string;
+  incumbent: { id: string; name: string; employeeCode: string; designation: string | null } | null;
+  department: { id: string; name: string } | null;
+  criticality: SuccessionLevel;
+  riskOfLoss: SuccessionLevel;
+  notes: string | null;
+  reviewBy: string | null;
+  bench: BenchStrength;
+  successors: SuccessorView[];
+  updatedAt: string;
+  canManage: boolean;
+}
+
+// ---- Compensation budgets -----------------------------------------------------------------------
+
+export interface CompensationPoolView {
+  departmentId: string | null;
+  department: string;
+  /** Annual CTC of the department's people on the cycle's effective date. */
+  currentPayroll: number;
+  headcount: number;
+  /** currentPayroll × the cycle's budget %, when set. */
+  suggested: number | null;
+  /** The pool; null = no pool set for this department. */
+  amount: number | null;
+  /** Increases recommended but not decided (draft or submitted). */
+  planned: number;
+  /** Increases approved or applied. */
+  committed: number;
+  /** amount − committed − planned (null without a pool). */
+  remaining: number | null;
+}
+
 export const MAX_GOALS_PER_REVIEW = 15;
 export const MAX_FEEDBACK_REQUESTS_PER_REVIEW = 10;

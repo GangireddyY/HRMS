@@ -1,4 +1,4 @@
-import type { ClaimApprovalStep, ComponentCalculation, DailyRateBasis, ExpensePolicyRule, PayslipPdfPassword, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '@contracts';
+import type { ApprovalChainProgress, ClaimApprovalStep, ComponentCalculation, DailyRateBasis, ExpensePolicyRule, PayslipPdfPassword, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxRegime, TimesheetMissedAction } from '@contracts';
 
 export interface PayrollSettings {
   pfEnabled: boolean;
@@ -175,6 +175,8 @@ export interface PayGroup {
   description: string | null;
   isActive: boolean;
   employees: number;
+  /** The entity that pays the group (its currency); null = the default entity. */
+  legalEntity: { id: string; name: string; currency: string } | null;
 }
 export interface PayGroups {
   /** People without a pay group (paid in the main run). */
@@ -257,6 +259,8 @@ export interface PayslipSummary {
   gross: number;
   totalDeductions: number;
   netPay: number;
+  /** The paying entity's currency; null = the organization's. */
+  currency: string | null;
   excluded: boolean;
   excludeReason: string | null;
   warnings: string[];
@@ -309,6 +313,8 @@ export interface Claim {
   title: string;
   expenseDate: string;
   amount: number;
+  /** The receipt in another currency; `amount` is the converted figure. */
+  original: { currency: string; amount: number; rate: number } | null;
   description: string | null;
   receipt: { fileName: string; contentType: string; size: number } | null;
   status: ReimbursementStatus;
@@ -320,6 +326,8 @@ export interface Claim {
   reviewNote: string | null;
   payroll: { id: string; period: string; status: PayrollRunStatus } | null;
   createdAt: string;
+  /** Set when a configured approval chain decides this claim. */
+  chain: ApprovalChainProgress | null;
   permissions: { review: boolean; cancel: boolean };
   /** Detail only: the category limits and the employee's total for the claim's month. */
   policy?: { perClaimLimit: number | null; monthlyLimit: number | null; monthUsed: number; month: string };

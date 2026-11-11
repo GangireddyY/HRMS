@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { Pencil, Plus, Trash2, UserPlus, UsersRound } from '@lucide/vue';
+import { entitiesApi } from '@/modules/organization/api/entities.api';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import type { PayGroup } from '@/modules/payroll/types';
 import { employeesApi } from '@/modules/people/api/people.api';
@@ -15,10 +16,13 @@ defineProps<{ canConfigure: boolean }>();
 const feedback = useFeedbackStore();
 const groups = useAsync(() => payrollApi.payGroups());
 
+const entities = useAsync(() => entitiesApi.list());
+const entityOptions = computed(() => [{ value: '', label: 'The default entity' }, ...(entities.data.value ?? []).map((e) => ({ value: e.id, label: `${e.name} (${e.currency})` }))]);
+
 const editing = ref<PayGroup | 'new' | null>(null);
-const form = reactive({ name: '', description: '', isActive: true, error: '' });
+const form = reactive({ name: '', description: '', isActive: true, legalEntityId: '', error: '' });
 function edit(g: PayGroup | 'new') {
-  Object.assign(form, g === 'new' ? { name: '', description: '', isActive: true, error: '' } : { name: g.name, description: g.description ?? '', isActive: g.isActive, error: '' });
+  Object.assign(form, g === 'new' ? { name: '', description: '', isActive: true, legalEntityId: '', error: '' } : { name: g.name, description: g.description ?? '', isActive: g.isActive, legalEntityId: g.legalEntity?.id ?? '', error: '' });
   editing.value = g;
 }
 const saving = ref(false);
@@ -26,7 +30,7 @@ async function save() {
   saving.value = true;
   form.error = '';
   try {
-    const body = { name: form.name, description: form.description || null };
+    const body = { name: form.name, description: form.description || null, legalEntityId: form.legalEntityId || null };
     if (editing.value === 'new') await payrollApi.createPayGroup(body);
     else await payrollApi.updatePayGroup(editing.value!.id, { ...body, isActive: form.isActive });
     editing.value = null;
@@ -87,7 +91,7 @@ async function move() {
       <li v-for="g in groups.data.value.groups" :key="g.id" class="flex items-center gap-3 px-3 py-2.5">
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium text-fg">{{ g.name }} <AppBadge v-if="!g.isActive" size="sm">Inactive</AppBadge></p>
-          <p class="truncate text-xs text-fg-muted">{{ g.description ?? 'Own monthly payroll runs' }}</p>
+          <p class="truncate text-xs text-fg-muted">{{ g.description ?? 'Own monthly payroll runs' }}<template v-if="g.legalEntity"> · {{ g.legalEntity.name }} ({{ g.legalEntity.currency }})</template></p>
         </div>
         <AppBadge size="sm" tone="brand">{{ g.employees }} {{ g.employees === 1 ? 'person' : 'people' }}</AppBadge>
         <template v-if="canConfigure">
@@ -103,6 +107,7 @@ async function move() {
         <AppAlert v-if="form.error">{{ form.error }}</AppAlert>
         <AppInput v-model="form.name" label="Name" placeholder="e.g. Contractors" required />
         <AppTextarea v-model="form.description" label="Description" :rows="2" :maxlength="300" placeholder="e.g. Paid on the 5th" />
+        <AppSelect v-if="entities.data.value?.length" v-model="form.legalEntityId" label="Paid by" :options="entityOptions" :clearable="false" :searchable="false" help="Payslips are in this entity's currency; Indian statutory deductions apply to entities in India only." />
         <AppSwitch v-if="editing !== 'new'" v-model="form.isActive" label="Active" description="Inactive groups can't start new runs." />
       </form>
       <template #footer>

@@ -14,7 +14,7 @@ import { peopleAdminRoutes, peopleHrRoutes, peopleSelfRoutes } from '@/modules/p
 import { platformRoutes } from '@/modules/platform/platform.routes';
 import { privacyRoutes } from '@/modules/privacy/privacy.routes';
 import { integrationsRoutes } from '@/modules/integrations/integrations.routes';
-import { approvalChainsRoutes } from '@/modules/approval-chains/approval-chains.routes';
+import { approvalChainsRoutes, approvalInboxRoutes } from '@/modules/approval-chains/approval-chains.routes';
 import { payrollHrRoutes, payrollSelfRoutes } from '@/modules/payroll/payroll.routes';
 import { performanceHrRoutes, performanceSelfRoutes } from '@/modules/performance/performance.routes';
 import { trainingHrRoutes, trainingSelfRoutes } from '@/modules/training/training.routes';
@@ -63,7 +63,7 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/me',
     component: () => import('@/layouts/EssLayout.vue'),
-    children: [...accountRoutes, ...peopleSelfRoutes, ...onboardingSelfRoutes, ...recruitmentSelfRoutes, ...attendanceSelfRoutes, ...leaveSelfRoutes, ...payrollSelfRoutes, ...performanceSelfRoutes, ...trainingSelfRoutes, ...engagementSelfRoutes, ...grievanceSelfRoutes, ...benefitsSelfRoutes, ...complianceSelfRoutes, ...exitSelfRoutes, ...servicesSelfRoutes, ...notificationsRoutes],
+    children: [...accountRoutes, ...approvalInboxRoutes, ...peopleSelfRoutes, ...onboardingSelfRoutes, ...recruitmentSelfRoutes, ...attendanceSelfRoutes, ...leaveSelfRoutes, ...payrollSelfRoutes, ...performanceSelfRoutes, ...trainingSelfRoutes, ...engagementSelfRoutes, ...grievanceSelfRoutes, ...benefitsSelfRoutes, ...complianceSelfRoutes, ...exitSelfRoutes, ...servicesSelfRoutes, ...notificationsRoutes],
   },
   ...careersRoutes,
   ...errorRoutes,

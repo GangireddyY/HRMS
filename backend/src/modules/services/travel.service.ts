@@ -8,8 +8,9 @@ import { containsPattern } from '../../common/utils/like';
 import { fullName } from '../../common/utils/names';
 import { allocateReference } from '../../common/utils/reference';
 import { DatabaseService } from '../../database/database.service';
-import { Department, Employee, TravelRequest } from '../../database/models';
+import { ApprovalInstance, Department, Employee, TravelRequest } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ApprovalChainsService, queueWhere } from '../approvals/approval-chains.service';
 import { managerAndCover, organizationToday, userIdsOf, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -82,7 +83,7 @@ export class TravelService {
             type: 'travel.request',
             title: `${fullName(self)} asked to travel to ${dto.toCity} (${dto.departureDate})`,
             body: `${dto.purpose} · estimate ${money(dto.estimatedCost)}${dto.advanceAmount ? `, advance ${money(dto.advanceAmount)}` : ''}`,
-            link: '/hr/travel?view=team',
+            link: chain ? '/me/approvals' : '/hr/travel?view=team',
           },
           transaction,
         );
@@ -102,10 +103,9 @@ export class TravelService {
     } else if (view === 'team') {
       // Requests on an approval chain show for their current step's approvers only (and stay visible in scope once decided).
       const [scoped, mine, managed] = await Promise.all([this.scope.where(auth, 'travel.approve', 'employeeId'), this.chains.waitingFor(auth, 'TRAVEL'), this.chains.managedPending('TRAVEL')]);
-      const legacy = scoped ? (managed.length ? { [Op.and]: [scoped, { id: { [Op.notIn]: managed } }] } : scoped) : null;
-      const any = [...(legacy ? [legacy] : []), ...(mine.length ? [{ id: mine }] : [])];
-      if (!any.length) return new PaginatedResult([], paginationMeta(query, 0));
-      filters.push({ [Op.or]: any });
+      const queue = queueWhere(scoped, mine, managed);
+      if (!queue) return new PaginatedResult([], paginationMeta(query, 0));
+      filters.push(queue);
       if (self) filters.push({ employeeId: { [Op.ne]: self.id } });
     } else if (!auth.permissions.has('travel.manage')) throw AppError.forbidden();
     if (query.status) filters.push({ status: query.status });
@@ -287,7 +287,7 @@ export class TravelService {
     if (pending && r) {
       for (const userId of await this.chains.usersOf(pending.approvers)) {
         if (userId === auth.userId) continue;
-        await this.notifications.notify(userId, { organizationId: r.organizationId, type: 'travel.request', title: `${pending.label} approval needed: ${fullName(r.employee!)} to ${r.toCity} (${r.departureDate})`, body: r.purpose, link: '/hr/travel?view=team' });
+        await this.notifications.notify(userId, { organizationId: r.organizationId, type: 'travel.request', title: `${pending.label} approval needed: ${fullName(r.employee!)} to ${r.toCity} (${r.departureDate})`, body: r.purpose, link: '/me/approvals' });
       }
     }
   }

@@ -6,7 +6,9 @@ import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import type { Claim, ClaimUsage } from '@/modules/payroll/types';
 import { CLAIM_CATEGORY_VISUALS } from '@/modules/payroll/utils/claim-visuals';
 import { CLAIM_CATEGORY_LABELS, monthName, rupees } from '@/modules/payroll/utils/payroll-format';
-import { AppAlert, AppButton, AppDatePicker, AppInput, AppModal, AppTextarea } from '@/shared/components';
+import { appCurrency, formatAmount } from '@/core/locale/currency';
+import { entitiesApi, type ExchangeRates } from '@/modules/organization/api/entities.api';
+import { AppAlert, AppButton, AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { localToday } from '@/shared/utils/dates';
 
@@ -15,7 +17,15 @@ const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: []; saved: [c: Claim] }>();
 
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const form = reactive({ category: 'TRAVEL' as ReimbursementCategory, title: '', expenseDate: undefined as string | undefined, amount: '' as number | string, description: '' });
+const form = reactive({ category: 'TRAVEL' as ReimbursementCategory, title: '', expenseDate: undefined as string | undefined, amount: '' as number | string, description: '', currency: '' });
+// Receipts in another currency are converted at the rate on the expense date; offered when rates exist.
+const rates = ref<ExchangeRates | null>(null);
+const currencyOptions = computed(() => (rates.value?.latest.length ? [{ value: '', label: 'My pay currency' }, ...[rates.value.base, ...rates.value.latest.map((r) => r.currency)].map((c) => ({ value: c, label: c }))] : []));
+const converted = computed(() => {
+  const r = rates.value?.latest.find((x) => x.currency === form.currency);
+  const a = Number(form.amount);
+  return r && a ? `≈ ${formatAmount(a * r.rate, { decimals: true, currency: rates.value!.base })} at ${r.rate} (the rate on the expense date applies)` : undefined;
+});
 const receipt = ref<File | null>(null);
 const input = ref<HTMLInputElement | null>(null);
 const saving = ref(false);
@@ -26,7 +36,11 @@ watch(
     if (!open) return;
     reset();
     receipt.value = null;
-    Object.assign(form, { category: 'TRAVEL', title: '', expenseDate: today, amount: '', description: '' });
+    Object.assign(form, { category: 'TRAVEL', title: '', expenseDate: today, amount: '', description: '', currency: '' });
+    entitiesApi.rates().then(
+      (r) => (rates.value = r),
+      () => (rates.value = null),
+    );
   },
   { immediate: true },
 );
@@ -91,7 +105,7 @@ async function save() {
   reset();
   saving.value = true;
   try {
-    emit('saved', await payrollApi.createClaim({ category: form.category, title: form.title, expenseDate: form.expenseDate!, amount: Number(form.amount), description: form.description || null }, receipt.value));
+    emit('saved', await payrollApi.createClaim({ category: form.category, title: form.title, expenseDate: form.expenseDate!, amount: Number(form.amount), description: form.description || null, currency: form.currency || null }, receipt.value));
   } catch (e) {
     handle(e, 'Could not submit the claim');
   } finally {
@@ -125,8 +139,9 @@ async function save() {
         </div>
       </fieldset>
       <AppInput v-model="form.title" label="What was it for?" required :maxlength="150" placeholder="e.g. Cab to client office" :error="fieldErrors.title" />
+      <AppSelect v-if="currencyOptions.length" v-model="form.currency" label="Receipt currency" :options="currencyOptions" :clearable="false" :error="fieldErrors.currency" :help="converted" />
       <div class="grid gap-4 sm:grid-cols-2">
-        <AppInput v-model="form.amount" label="Amount (₹)" type="number" :min="1" required :help="overLimit ? undefined : amountHelp" :error="fieldErrors.amount || overLimit || undefined" />
+        <AppInput v-model="form.amount" :label="form.currency ? `Amount (${form.currency})` : `Amount (${appCurrency()})`" type="number" :min="1" required :help="overLimit || form.currency ? undefined : amountHelp" :error="fieldErrors.amount || (form.currency ? undefined : overLimit) || undefined" />
         <AppDatePicker v-model="form.expenseDate" label="Expense date" required :max="today" :error="fieldErrors.expenseDate" />
       </div>
       <AppTextarea v-model="form.description" label="Details" :rows="2" :maxlength="1000" />

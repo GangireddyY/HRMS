@@ -1,4 +1,4 @@
-import type { AccrualFrequency, CompOffDayKind, EmploymentType, LeaveEncashmentStatus, LeaveGender, LeaveRequestStatus, LeaveSession, LedgerKind, ManualLedgerKind } from '@contracts';
+import type { AccrualFrequency, ApprovalChainProgress, CompOffDayKind, EmploymentType, LeaveEncashmentStatus, LeaveGender, LeaveRequestStatus, LeaveSession, LedgerKind, ManualLedgerKind } from '@contracts';
 
 export interface LeaveType {
   id: string;
@@ -169,7 +169,7 @@ export interface LeaveRequest {
   cancelledBy: string | null;
   cancelReason: string | null;
   createdAt: string;
-  approval: { level: number; levels: number; awaiting: string | null; trail: { level: number; name: string; at: string; note: string | null }[] };
+  approval: { level: number; levels: number; awaiting: string | null; trail: { level: number; name: string; at: string; note: string | null }[]; chain: ApprovalChainProgress | null };
   /** Team view: whether you can approve at the current level. */
   canApprove?: boolean;
   /** Team view: you'd decide on behalf of this person (approval cover). */

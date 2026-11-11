@@ -45,6 +45,11 @@ import {
   RATING_MAX,
   RATING_MIN,
   REVIEW_STAGES,
+  MAX_SUCCESSORS_PER_PLAN,
+  SUCCESSION_LEVELS,
+  SUCCESSOR_READINESS,
+  type SuccessionLevel,
+  type SuccessorReadiness,
   type CycleStatus,
   type PipProgress,
   type PipStatus,
@@ -332,4 +337,34 @@ export class HikeDto {
 export class DecideHikeDto {
   @ApiPropertyOptional({ description: 'Approve a different percentage' }) @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(MAX_HIKE_PERCENT) percent?: number;
   @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsString() @MaxLength(1000) note?: string | null;
+  @ApiPropertyOptional({ description: "Approve even though it overspends the department's increase pool (audited)" }) @IsOptional() @IsBoolean() overBudget?: boolean;
 }
+
+export class CompensationPoolDto {
+  @ApiPropertyOptional({ nullable: true, description: 'Null = people without a department' }) @optionalNullable @IsUUID() departmentId!: string | null;
+  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(1_000_000_000) amount!: number;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) note?: string | null;
+}
+
+export class CompensationPoolsDto {
+  @ApiProperty({ type: [CompensationPoolDto] }) @IsArray() @ArrayMaxSize(500) @ValidateNested({ each: true }) @Type(() => CompensationPoolDto) pools!: CompensationPoolDto[];
+}
+
+export class SuccessionPlanDto {
+  @ApiProperty() @Transform(trim) @IsString() @Length(2, 150) title!: string;
+  @ApiPropertyOptional({ nullable: true, description: 'The current holder; empty for a vacant role' }) @optionalNullable @IsUUID() incumbentEmployeeId?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @optionalNullable @IsUUID() departmentId?: string | null;
+  @ApiProperty({ enum: SUCCESSION_LEVELS }) @IsIn(SUCCESSION_LEVELS) criticality!: SuccessionLevel;
+  @ApiProperty({ enum: SUCCESSION_LEVELS }) @IsIn(SUCCESSION_LEVELS) riskOfLoss!: SuccessionLevel;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(2000) notes?: string | null;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsISO8601(DATE) reviewBy?: string | null;
+}
+
+export class SuccessorDto {
+  @ApiProperty() @IsUUID() employeeId!: string;
+  @ApiProperty({ enum: SUCCESSOR_READINESS }) @IsIn(SUCCESSOR_READINESS) readiness!: SuccessorReadiness;
+  @ApiPropertyOptional({ description: '1 = first choice' }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(MAX_SUCCESSORS_PER_PLAN) rank?: number;
+  @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(2000) developmentNotes?: string | null;
+}
+
+export class UpdateSuccessorDto extends PartialType(SuccessorDto) {}

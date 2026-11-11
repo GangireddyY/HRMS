@@ -7,6 +7,7 @@ const hikes = { permissions: ['performance.review', 'performance.configure', 'em
 const pips = { permissions: ['performance.pip.manage'], scope: 'TEAM' as const, feature };
 const calibration = { permissions: ['performance.configure'], feature };
 const okrs = { permissions: ['performance.okr.manage'], scope: 'TEAM' as const, feature };
+const succession = { permissions: ['performance.succession.view', 'performance.succession.manage'], scope: 'TEAM' as const, feature };
 
 /** HR operations (/hr): review cycles, reviews to conduct or follow, improvement plans. */
 export const performanceHrRoutes: RouteRecordRaw[] = [
@@ -17,6 +18,7 @@ export const performanceHrRoutes: RouteRecordRaw[] = [
   { path: 'performance/cycles/:id/hikes', name: 'hr-cycle-hikes', component: () => import('./pages/HikesPage.vue'), meta: { title: 'Salary increases', access: hikes } },
   { path: 'performance/cycles/:id/calibration', name: 'hr-cycle-calibration', component: () => import('./pages/CalibrationPage.vue'), meta: { title: 'Calibration', access: calibration } },
   { path: 'performance/okrs', name: 'hr-okrs', component: () => import('./pages/OkrsPage.vue'), meta: { title: 'OKRs', access: okrs } },
+  { path: 'performance/succession', name: 'hr-succession', component: () => import('./pages/SuccessionPage.vue'), meta: { title: 'Succession planning', access: succession } },
   { path: 'performance/pips', name: 'hr-pips', component: () => import('./pages/PipsPage.vue'), meta: { title: 'Improvement plans', access: pips } },
   { path: 'performance/pips/:id', name: 'hr-pip', component: () => import('./pages/PipPage.vue'), meta: { title: 'Improvement plan', access: pips } },
 ];

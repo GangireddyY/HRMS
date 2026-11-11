@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Op, type WhereOptions } from 'sequelize';
-import { BUILDER_MAX_ROWS, BUILDER_PREVIEW_ROWS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPES, LEAVE_REQUEST_STATUSES, REIMBURSEMENT_CATEGORIES, REIMBURSEMENT_STATUSES, WORK_MODES, type BuilderColumn, type BuilderDataset, type BuilderQuery } from '../../../contracts';
+import { convertAmount, BUILDER_MAX_ROWS, BUILDER_PREVIEW_ROWS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPES, LEAVE_REQUEST_STATUSES, REIMBURSEMENT_CATEGORIES, REIMBURSEMENT_STATUSES, WORK_MODES, type BuilderColumn, type BuilderDataset, type BuilderQuery } from '../../../contracts';
 import type { AuthContext } from '../../../common/auth/auth-context';
 import { AppError } from '../../../common/errors/app-error';
 import { fullName } from '../../../common/utils/names';
@@ -8,6 +8,7 @@ import { minutesToTime, zonedParts } from '../../../common/utils/zoned-time';
 import { AttendanceRecord, CostCenter, CustomFieldDefinition, Department, Designation, Employee, Grade, LeaveRequest, LeaveType, Location, Organization, PayrollRun, Payslip, ReimbursementClaim, SavedReport, User } from '../../../database/models';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { EmployeeScopeService } from '../../employees/employee-scope.service';
+import { EntitiesService } from '../../entities/entities.service';
 import { reportCsv, reportXlsx } from '../report-export';
 import { runQuery, type Row } from './builder-engine';
 
@@ -46,6 +47,7 @@ export class ReportBuilderService {
   constructor(
     private readonly scope: EmployeeScopeService,
     private readonly audit: AuditService,
+    private readonly entities: EntitiesService,
   ) {
     this.datasets = [this.employees(), this.leave(), this.attendance(), this.claims(), this.payslips()];
   }
@@ -61,6 +63,11 @@ export class ReportBuilderService {
     return { columns: result.columns, rows: result.rows.slice(0, BUILDER_PREVIEW_ROWS), total: result.rows.length, truncated: result.rows.length > BUILDER_PREVIEW_ROWS, capped };
   }
 
+  /** Whether the dataset needs a period (from / to). */
+  isDated(key: BuilderDataset): boolean {
+    return !!this.datasets.find((d) => d.key === key)?.dated;
+  }
+
   async export(auth: AuthContext, q: BuilderQuery, format: 'csv' | 'xlsx', title = 'Report') {
     const d = this.dataset(auth, q.dataset);
     const { result } = await this.execute(auth, q);
@@ -74,10 +81,10 @@ export class ReportBuilderService {
     await this.audit.record({ action: 'reports.builder_exported', entityType: 'Report', entityId: null, summary: `"${title}" exported from ${d.label.toLowerCase()} (${result.rows.length} rows, ${format.toUpperCase()})`, metadata: { dataset: q.dataset, columns: q.columns, rows: result.rows.length } });
     const org = await Organization.findByPk(auth.organizationId!, { attributes: ['name'] });
     const safe = title.replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'report';
-    if (format === 'csv') return { fileName: `${safe}.csv`, contentType: 'text/csv; charset=utf-8', content: reportCsv([table]) };
+    if (format === 'csv') return { fileName: `${safe}.csv`, contentType: 'text/csv; charset=utf-8', content: reportCsv([table]), rows: result.rows.length };
     const period = q.from && q.to ? `${q.from} – ${q.to}` : 'All records';
     const content = await reportXlsx({ title, organization: org?.name ?? '', period, generated: new Date().toISOString().slice(0, 10), summary: [{ label: 'Rows', value: result.rows.length, format: 'number' }], tables: [table] });
-    return { fileName: `${safe}.xlsx`, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content };
+    return { fileName: `${safe}.xlsx`, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content, rows: result.rows.length };
   }
 
   // ---- Saved reports ---------------------------------------------------------------------------
@@ -333,16 +340,23 @@ export class ReportBuilderService {
         P('gross', 'Gross pay', 'money'),
         P('deductions', 'Deductions', 'money'),
         P('netPay', 'Net pay', 'money'),
+        P('currency', 'Currency'),
+        P('netPayBase', 'Net pay (base currency)', 'money'),
       ],
-      load: async (_auth, q) => {
+      load: async (auth, q) => {
         const [fy, fm] = q.from!.split('-').map(Number) as [number, number];
         const [ty, tm] = q.to!.split('-').map(Number) as [number, number];
         const runs = (await PayrollRun.findAll({ where: { status: ['APPROVED', 'PAID'] }, attributes: ['id', 'year', 'month'] })).filter((r) => r.year * 12 + r.month >= fy * 12 + fm && r.year * 12 + r.month <= ty * 12 + tm);
         if (!runs.length) return [];
         const byRun = new Map(runs.map((r) => [r.id, r]));
-        const slips = await Payslip.findAll({ where: { runId: runs.map((r) => r.id), excluded: false }, attributes: ['runId', 'employee', 'payableDays', 'lopDays', 'gross', 'totalDeductions', 'netPay'], limit: BUILDER_MAX_ROWS + 1 });
+        const slips = await Payslip.findAll({ where: { runId: runs.map((r) => r.id), excluded: false }, attributes: ['runId', 'employee', 'currency', 'payableDays', 'lopDays', 'gross', 'totalDeductions', 'netPay'], limit: BUILDER_MAX_ROWS + 1 });
+        const base = (await Organization.findByPk(auth.organizationId!, { attributes: ['currency'] }))?.currency ?? 'INR';
+        // Consolidated figures: each month's net pay at the rates in force at its end.
+        const ratesByRun = new Map<string, Map<string, number>>();
+        for (const run of runs) ratesByRun.set(run.id, await this.entities.ratesOn(auth.organizationId!, new Date(Date.UTC(run.year, run.month, 0)).toISOString().slice(0, 10), slips.map((s) => s.currency ?? base)));
         return slips.map((s) => {
           const run = byRun.get(s.runId)!;
+          const currency = s.currency ?? base;
           const e = s.employee as { name?: string; employeeCode?: string; department?: string | null; designation?: string | null; location?: string | null };
           return {
             employeeCode: e.employeeCode ?? null,
@@ -357,6 +371,8 @@ export class ReportBuilderService {
             gross: Number(s.gross),
             deductions: Number(s.totalDeductions),
             netPay: Number(s.netPay),
+            currency,
+            netPayBase: convertAmount(Number(s.netPay), currency, base, ratesByRun.get(s.runId)!),
           };
         });
       },

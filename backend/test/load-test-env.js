@@ -28,6 +28,8 @@ function loadTestEnv() {
     process.env.VAPID_PUBLIC_KEY = keys.publicKey;
     process.env.VAPID_PRIVATE_KEY = keys.privateKey;
   }
+  // WhatsApp is on in tests with its sender stubbed (the log provider never calls out).
+  process.env.WHATSAPP_PROVIDER = 'log';
   const dbName = process.env.DB_NAME || '';
   if (!/test/i.test(dbName)) {
     throw new Error(`Refusing to run integration tests against non-test database "${dbName}"`);

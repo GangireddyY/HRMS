@@ -184,6 +184,32 @@ export class EnvironmentVariables {
   @IsString()
   VAPID_SUBJECT = 'mailto:no-reply@hrms.local';
 
+  /**
+   * WhatsApp notifications: meta (WhatsApp Business Cloud API), log (written to the server log; development) or off.
+   * Business-initiated messages use approved templates: WHATSAPP_TEMPLATE takes {{1}} = title, {{2}} = link;
+   * WHATSAPP_CODE_TEMPLATE (an authentication template) takes {{1}} = the verification code.
+   */
+  @IsIn(['off', 'log', 'meta'])
+  WHATSAPP_PROVIDER: 'off' | 'log' | 'meta' = 'off';
+
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  WHATSAPP_TOKEN?: string;
+
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  WHATSAPP_PHONE_NUMBER_ID?: string;
+
+  @IsString() @MinLength(1)
+  WHATSAPP_TEMPLATE = 'hrms_notification';
+
+  @IsString() @MinLength(1)
+  WHATSAPP_CODE_TEMPLATE = 'hrms_verification_code';
+
+  @IsString() @MinLength(2)
+  WHATSAPP_TEMPLATE_LANGUAGE = 'en';
+
+  @IsString()
+  WHATSAPP_API_URL = 'https://graph.facebook.com/v21.0';
+
   /** Bearer token Prometheus scrapes `GET /api/v1/metrics` with (at least 24 characters); unset = endpoint off. Required in production. */
   @Transform(emptyToUndefined) @IsOptional() @IsString() @MinLength(24)
   METRICS_TOKEN?: string;
@@ -218,6 +244,7 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
     throw new Error('SENDGRID_API_KEY must be a SendGrid API key (starts with "SG.")');
   }
   if (!!env.VAPID_PUBLIC_KEY !== !!env.VAPID_PRIVATE_KEY) throw new Error('Set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (or neither) for browser notifications');
+  if (env.WHATSAPP_PROVIDER === 'meta' && (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID)) throw new Error('WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID are required when WHATSAPP_PROVIDER is meta');
   if (env.STORAGE_DRIVER === 's3' && (!env.S3_BUCKET || !env.S3_REGION)) throw new Error('S3_BUCKET and S3_REGION are required when STORAGE_DRIVER is s3');
   if (env.NODE_ENV === 'production') {
     if (env.STORAGE_DRIVER !== 's3') throw new Error('STORAGE_DRIVER must be s3 in production (local disk is not shared between instances)');

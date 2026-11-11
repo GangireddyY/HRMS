@@ -30,7 +30,8 @@ const can = {
   surveys: auth.hasFeature('engagement'),
   payslips: auth.can('payroll.payslip.view') && auth.hasFeature('payroll'),
   onboarding: auth.hasFeature('onboarding') && !!auth.organization,
-  approvals: canApproveAnything(auth),
+  // Anyone in an organization may be a named approver on an approval chain.
+  approvals: canApproveAnything(auth) || !!auth.organization,
   holidays: auth.hasFeature('attendance') && !!auth.organization,
 };
 

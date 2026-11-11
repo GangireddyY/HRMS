@@ -13,6 +13,8 @@ export interface PayslipPdfInput {
   gross: number;
   totalDeductions: number;
   netPay: number;
+  /** ISO 4217; null = rupees. */
+  currency?: string | null;
 }
 
 const INK = '#0f172a';
@@ -21,7 +23,8 @@ const LINE = '#e2e8f0';
 const PANEL = '#f1f5f9';
 /** The standard PDF fonts cover Latin-1 only (no rupee sign). */
 const latin = (s: string) => [...s].map((ch) => (ch.charCodeAt(0) <= 0xff || '–—‘’“”•…'.includes(ch) ? ch : '?')).join('');
-const money = (n: number) => `Rs ${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const moneyIn = (currency: string) => (n: number) =>
+  currency === 'INR' ? `Rs ${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${currency} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
@@ -51,8 +54,31 @@ export function rupeesInWords(amount: number): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** Other currencies, international scale: 1250000 USD → "One million two hundred fifty thousand USD only". */
+export function amountInWords(amount: number, currency: string): string {
+  if (currency === 'INR') return rupeesInWords(amount);
+  let n = Math.round(amount);
+  if (n === 0) return `Zero ${currency} only`;
+  const parts: string[] = [];
+  for (const [size, word] of [
+    [1_000_000_000, 'billion'],
+    [1_000_000, 'million'],
+    [1000, 'thousand'],
+  ] as const) {
+    if (n >= size) {
+      parts.push(`${below1000(Math.floor(n / size))} ${word}`);
+      n %= size;
+    }
+  }
+  if (n) parts.push(below1000(n));
+  const text = `${parts.join(' ')} ${currency} only`;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /** A4 payslip: organization, employee details, earnings and deductions side by side, net pay in figures and words. */
 export function payslipPdf(p: PayslipPdfInput, opts: { password?: string } = {}): Promise<Buffer> {
+  const currency = p.currency ?? 'INR';
+  const money = moneyIn(currency);
   const pdf = new PDFDocument({
     size: 'A4',
     margin: 40,
@@ -135,7 +161,7 @@ export function payslipPdf(p: PayslipPdfInput, opts: { password?: string } = {})
   pdf.roundedRect(left, netY, width, 46, 4).fill('#ecfdf5');
   pdf.font('Helvetica').fontSize(9).fillColor(MUTED).text('Net pay', left + 12, netY + 8, { lineBreak: false });
   pdf.font('Helvetica-Bold').fontSize(16).fillColor(INK).text(money(p.netPay), left + 12, netY + 20, { lineBreak: false });
-  pdf.font('Helvetica').fontSize(8.5).fillColor(MUTED).text(latin(rupeesInWords(p.netPay)), left + width / 2, netY + 20, { width: width / 2 - 12, align: 'right' });
+  pdf.font('Helvetica').fontSize(8.5).fillColor(MUTED).text(latin(amountInWords(p.netPay, currency)), left + width / 2, netY + 20, { width: width / 2 - 12, align: 'right' });
   pdf.y = netY + 60;
 
   if (p.employerContributions.length) {

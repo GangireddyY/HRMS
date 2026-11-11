@@ -8,6 +8,7 @@ import { minutesToTime, zonedParts } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
 import { Department, Employee, OneOnOne, OneOnOneItem, Organization } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { CalendarService } from '../calendar/calendar.service';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { CompleteOneOnOneDto, OneOnOneDto, OneOnOneItemDto, OneOnOneQueryDto, UpdateOneOnOneDto, UpdateOneOnOneItemDto } from './dto/performance.dto';
@@ -28,6 +29,7 @@ export class OneOnOnesService {
     private readonly audit: AuditService,
     private readonly scope: EmployeeScopeService,
     private readonly notifications: NotificationsService,
+    private readonly calendar: CalendarService,
   ) {}
 
   async list(auth: AuthContext, query: OneOnOneQueryDto) {
@@ -148,9 +150,12 @@ export class OneOnOnesService {
         },
         { transaction },
       );
-      if (rescheduled) {
-        await this.audit.record({ action: 'performance.one_on_one_rescheduled', entityType: 'OneOnOne', entityId: id, summary: `1:1 with ${meeting.employee!.employeeCode} moved` }, transaction);
-        await this.notify(auth, meeting.employeeId, id, `Your 1:1 with ${fullName(meeting.manager!)} moved to ${await this.when(auth, meeting.scheduledAt)}`, transaction);
+      if (rescheduled || dto.durationMinutes) {
+        if (rescheduled) {
+          await this.audit.record({ action: 'performance.one_on_one_rescheduled', entityType: 'OneOnOne', entityId: id, summary: `1:1 with ${meeting.employee!.employeeCode} moved` }, transaction);
+          await this.notify(auth, meeting.employeeId, id, `Your 1:1 with ${fullName(meeting.manager!)} moved to ${await this.when(auth, meeting.scheduledAt)}`, transaction);
+        }
+        await this.calendar.oneOnOne(meeting, 'REQUEST', transaction);
       }
     });
     return this.get(auth, id);
@@ -227,6 +232,7 @@ export class OneOnOnesService {
       await meeting.update({ status: 'CANCELLED' }, { transaction });
       await this.audit.record({ action: 'performance.one_on_one_cancelled', entityType: 'OneOnOne', entityId: id, summary: `1:1 with ${meeting.employee!.employeeCode} cancelled` }, transaction);
       await this.notify(auth, meeting.employeeId, id, `Your 1:1 with ${fullName(meeting.manager!)} on ${await this.when(auth, meeting.scheduledAt)} was cancelled`, transaction);
+      await this.calendar.oneOnOne(meeting, 'CANCEL', transaction);
     });
     return this.get(auth, id);
   }
@@ -241,6 +247,7 @@ export class OneOnOnesService {
     const employee = await Employee.findByPk(employeeId, { attributes: PERSON_ATTRS, transaction });
     await this.audit.record({ action: 'performance.one_on_one_scheduled', entityType: 'OneOnOne', entityId: m.id, summary: `1:1 with ${employee!.employeeCode} scheduled` }, transaction);
     await this.notify(auth, employeeId, m.id, `${fullName(manager!)} scheduled a 1:1 with you on ${await this.when(auth, at)}`, transaction);
+    await this.calendar.oneOnOne(m, 'REQUEST', transaction);
     return m;
   }
 

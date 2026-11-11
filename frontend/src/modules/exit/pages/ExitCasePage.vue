@@ -28,7 +28,7 @@ import SettlementPanel from '@/modules/exit/components/SettlementPanel.vue';
 import type { ExitDetail } from '@/modules/exit/types';
 import { DEPARTMENT_LABELS, REASON_LABELS, SETTLEMENT_LABELS, STATUS_LABELS, TYPE_LABELS, daysUntil, exitSteps, inr, localIso, relativeDays, serviceLabel, settlementTone, statusTone } from '@/modules/exit/utils/exit-format';
 import { EMPLOYMENT_TYPE_LABELS } from '@/modules/people/utils/labels';
-import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppModal, AppPageHeader, AppSelect, AppSkeleton, AppTabs, AppTextarea } from '@/shared/components';
+import { AppAlert, AppApprovalProgress, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppModal, AppPageHeader, AppSelect, AppSkeleton, AppTabs, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -340,6 +340,10 @@ const clearancePct = computed(() => (e.value?.clearance.total ? Math.round((e.va
               <template v-if="e.permissions.manage" #footer>
                 <AppButton block size="sm" variant="secondary" :icon="ExternalLink" :to="`/hr/employees/${e.employee.id}`">Open employee record</AppButton>
               </template>
+            </AppCard>
+
+            <AppCard v-if="e.chain" title="Acceptance">
+              <AppApprovalProgress :progress="e.chain" />
             </AppCard>
 
             <AppCard title="Key dates">

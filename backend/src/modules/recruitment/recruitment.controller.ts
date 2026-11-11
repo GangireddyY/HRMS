@@ -288,10 +288,18 @@ export class RecruitmentController {
     return this.offers.create(auth, id, dto);
   }
 
+  @Get('offers/awaiting-approval')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Offers waiting for your approval (your approval-chain step, or any pending offer you may approve)' })
+  offersAwaiting(@CurrentAuth() auth: AuthContext) {
+    return this.offers.awaitingMe(auth);
+  }
+
   @Get('offers/:id')
-  @RequirePermissions('recruitment.offer.manage')
-  offer(@Param('id', UUID) id: string) {
-    return this.offers.get(id);
+  @RequireTenant()
+  async offer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    await this.offers.readable(auth, id);
+    return this.offers.get(id, auth);
   }
 
   @Patch('offers/:id')
@@ -334,13 +342,13 @@ export class RecruitmentController {
   }
 
   @Post('offers/:id/approve')
-  @RequirePermissions('recruitment.offer.approve')
+  @RequireTenant()
   approveOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OfferApprovalNoteDto) {
     return this.offers.approve(auth, id, dto);
   }
 
   @Post('offers/:id/reject-approval')
-  @RequirePermissions('recruitment.offer.approve')
+  @RequireTenant()
   rejectOfferApproval(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectOfferApprovalDto) {
     return this.offers.rejectApproval(auth, id, dto);
   }

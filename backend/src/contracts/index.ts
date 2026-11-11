@@ -29,3 +29,4 @@ export * from './integrations';
 export * from './custom-fields';
 export * from './report-builder';
 export * from './billing';
+export * from './entities';

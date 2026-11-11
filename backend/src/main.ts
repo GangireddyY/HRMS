@@ -13,7 +13,9 @@ import { JsonLogger } from './infrastructure/observability/json-logger';
 import { ApprovalSlaJob } from './modules/approvals/approval-sla.job';
 import { TimesheetReminderJob } from './modules/attendance/timesheet-reminder.job';
 import { LeaveAccrualJob } from './modules/leave/leave-accrual.job';
+import { NotificationDigestService } from './modules/notifications/digest.service';
 import { PrivacyRetentionJob } from './modules/privacy/privacy-retention.job';
+import { ReportSchedulesService } from './modules/reports/schedules/report-schedules.service';
 
 async function bootstrap(): Promise<void> {
   // Read before the config module loads: the logger is needed while the app is being built.
@@ -34,6 +36,8 @@ async function bootstrap(): Promise<void> {
   app.get(PrivacyRetentionJob).start();
   app.get(LeaveAccrualJob).start();
   app.get(ApprovalSlaJob).start();
+  app.get(NotificationDigestService).start();
+  app.get(ReportSchedulesService).start();
   Logger.log(`HRMS API listening on http://localhost:${port}/api/v1 (docs: /api/docs)${errors.enabled ? '; error reporting on' : ''}${tracingEnabled ? '; tracing on' : ''}`, 'Bootstrap');
 }
 

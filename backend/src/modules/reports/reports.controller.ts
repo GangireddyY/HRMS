@@ -6,8 +6,9 @@ import { CurrentAuth, RequirePermissions } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
 import { ReportExportQueryDto, ReportQueryDto } from './dto/reports.dto';
 import { ReportsService } from './reports.service';
-import { BuilderExportDto, BuilderQueryDto, SaveReportDto } from './builder/report-builder.dto';
+import { BuilderExportDto, BuilderQueryDto, ReportScheduleDto, SaveReportDto } from './builder/report-builder.dto';
 import { ReportBuilderService } from './builder/report-builder.service';
+import { ReportSchedulesService } from './schedules/report-schedules.service';
 
 const attachment = (name: string) => `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 const KEY = new ParseEnumPipe(Object.fromEntries(REPORT_KEYS.map((k) => [k, k])));
@@ -19,6 +20,7 @@ export class ReportsController {
   constructor(
     private readonly reports: ReportsService,
     private readonly builder: ReportBuilderService,
+    private readonly schedulesService: ReportSchedulesService,
   ) {}
 
   @Get('headcount')
@@ -106,6 +108,50 @@ export class ReportsController {
   @RequirePermissions('reports.view')
   removeReport(@CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) {
     return this.builder.remove(auth, id);
+  }
+
+  // ---- Scheduled reports -----------------------------------------------------------------------
+
+  @Get('schedules')
+  @RequirePermissions('reports.view', 'reports.export')
+  @ApiOperation({ summary: 'Your scheduled reports' })
+  schedules(@CurrentAuth() auth: AuthContext) {
+    return this.schedulesService.list(auth);
+  }
+
+  @Get('schedules/recipients')
+  @RequirePermissions('reports.view', 'reports.export')
+  @ApiOperation({ summary: 'Members to send a scheduled report to (each gets only what their own access allows)' })
+  scheduleRecipients(@Query('q') q?: string) {
+    return this.schedulesService.candidates((q ?? '').slice(0, 100));
+  }
+
+  @Post('schedules')
+  @RequirePermissions('reports.view', 'reports.export')
+  @ApiOperation({ summary: 'Email one of your saved reports daily, weekly or monthly' })
+  createSchedule(@CurrentAuth() auth: AuthContext, @Body() dto: ReportScheduleDto) {
+    return this.schedulesService.create(auth, dto);
+  }
+
+  @Put('schedules/:id')
+  @RequirePermissions('reports.view', 'reports.export')
+  updateSchedule(@CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ReportScheduleDto) {
+    return this.schedulesService.update(auth, id, dto);
+  }
+
+  @Delete('schedules/:id')
+  @RequirePermissions('reports.view', 'reports.export')
+  @HttpCode(204)
+  async removeSchedule(@CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) {
+    await this.schedulesService.remove(auth, id);
+  }
+
+  @Post('schedules/:id/send')
+  @RequirePermissions('reports.view', 'reports.export')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Send it now to its recipients (the schedule is unchanged)' })
+  sendSchedule(@CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.schedulesService.sendNow(auth, id);
   }
 
   @Get(':key/export')

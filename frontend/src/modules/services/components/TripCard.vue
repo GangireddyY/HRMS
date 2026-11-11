@@ -4,7 +4,7 @@ import { ArrowRight, BedDouble, CalendarRange, Wallet } from '@lucide/vue';
 import { rupees } from '@/modules/payroll/utils/payroll-format';
 import type { Trip } from '@/modules/services/types';
 import { nights, TRAVEL_MODE_ICONS, TRAVEL_MODE_LABELS, TRAVEL_STATUS_LABELS, travelStatusTone, tripDates } from '@/modules/services/utils/services-format';
-import { AppBadge } from '@/shared/components';
+import { AppApprovalProgress, AppBadge } from '@/shared/components';
 
 /** A trip at a glance: route, dates, mode, cost and status; actions go in the default slot. */
 const props = defineProps<{ trip: Trip; showEmployee?: boolean }>();
@@ -47,6 +47,7 @@ const stay = computed(() => nights(props.trip.departureDate, props.trip.returnDa
     <p v-if="trip.bookingNotes" class="flex gap-2 border-t border-line/70 px-4 py-2.5 text-xs whitespace-pre-line text-fg">
       <BedDouble :size="14" class="mt-0.5 shrink-0 text-fg-subtle" aria-hidden="true" /><span>{{ trip.bookingNotes }}</span>
     </p>
+    <AppApprovalProgress v-if="trip.chain && trip.chain.status !== 'CANCELLED'" :progress="trip.chain" class="border-t border-line/70 px-4 py-3" />
     <p v-if="trip.reviewNote" class="border-t border-line/70 px-4 py-2.5 text-xs text-fg-muted">{{ trip.reviewedBy }}: “{{ trip.reviewNote }}”</p>
     <div v-if="$slots.default" class="mt-auto flex flex-wrap justify-end gap-2 border-t border-line/70 bg-surface-muted/40 px-4 py-2.5"><slot /></div>
   </article>

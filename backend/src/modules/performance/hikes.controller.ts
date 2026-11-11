@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
-import { CompensationDto, DecideHikeDto, HikeDto, HikeQueryDto } from './dto/performance.dto';
+import { CompensationBudgetsService } from './compensation-budgets.service';
+import { CompensationDto, CompensationPoolsDto, DecideHikeDto, HikeDto, HikeQueryDto, SuccessionPlanDto, SuccessorDto, UpdateSuccessorDto } from './dto/performance.dto';
 import { HikesService } from './hikes.service';
+import { SuccessionService } from './succession.service';
 
 const UUID = new ParseUUIDPipe();
 
@@ -17,7 +19,11 @@ function requireAny(auth: AuthContext, ...permissions: string[]) {
 @ApiBearerAuth()
 @Controller({ path: 'performance', version: '1' })
 export class HikesController {
-  constructor(private readonly hikes: HikesService) {}
+  constructor(
+    private readonly hikes: HikesService,
+    private readonly budgets: CompensationBudgetsService,
+    private readonly successionService: SuccessionService,
+  ) {}
 
   @Get('cycles/:id/compensation')
   @RequireTenant()
@@ -73,5 +79,76 @@ export class HikesController {
   @RequirePermissions('employee.salary.revise')
   reject(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: DecideHikeDto) {
     return this.hikes.decide(auth, id, false, dto);
+  }
+
+  // ---- Compensation budgets ----------------------------------------------------------------------
+
+  @Get('cycles/:id/budgets')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Increase pools per department for the cycle, with planned and committed amounts' })
+  budgetPools(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth, 'performance.configure', 'employee.salary.revise');
+    return this.budgets.pools(auth, id);
+  }
+
+  @Put('cycles/:id/budgets')
+  @RequirePermissions('performance.configure')
+  @ApiOperation({ summary: 'Set the increase pool per department (replaces all pools of the cycle)' })
+  setBudgetPools(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: CompensationPoolsDto) {
+    return this.budgets.setPools(auth, id, dto.pools);
+  }
+
+  // ---- Succession planning -----------------------------------------------------------------------
+
+  @Get('succession')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Succession plans you can see, with bench strength' })
+  succession(@CurrentAuth() auth: AuthContext) {
+    requireAny(auth, 'performance.succession.view', 'performance.succession.manage');
+    return this.successionService.list(auth);
+  }
+
+  @Get('succession/:id')
+  @RequireTenant()
+  successionPlan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    requireAny(auth, 'performance.succession.view', 'performance.succession.manage');
+    return this.successionService.get(auth, id);
+  }
+
+  @Post('succession')
+  @RequirePermissions('performance.succession.manage')
+  createSuccessionPlan(@CurrentAuth() auth: AuthContext, @Body() dto: SuccessionPlanDto) {
+    return this.successionService.create(auth, dto);
+  }
+
+  @Put('succession/:id')
+  @RequirePermissions('performance.succession.manage')
+  updateSuccessionPlan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: SuccessionPlanDto) {
+    return this.successionService.update(auth, id, dto);
+  }
+
+  @Delete('succession/:id')
+  @RequirePermissions('performance.succession.manage')
+  @HttpCode(204)
+  async removeSuccessionPlan(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
+    await this.successionService.remove(auth, id);
+  }
+
+  @Post('succession/:id/successors')
+  @RequirePermissions('performance.succession.manage')
+  addSuccessor(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: SuccessorDto) {
+    return this.successionService.addSuccessor(auth, id, dto);
+  }
+
+  @Patch('succession/:id/successors/:candidateId')
+  @RequirePermissions('performance.succession.manage')
+  updateSuccessor(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Param('candidateId', UUID) candidateId: string, @Body() dto: UpdateSuccessorDto) {
+    return this.successionService.updateSuccessor(auth, id, candidateId, dto);
+  }
+
+  @Delete('succession/:id/successors/:candidateId')
+  @RequirePermissions('performance.succession.manage')
+  removeSuccessor(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Param('candidateId', UUID) candidateId: string) {
+    return this.successionService.removeSuccessor(auth, id, candidateId);
   }
 }

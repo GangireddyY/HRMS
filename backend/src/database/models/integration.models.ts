@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { BuilderDataset, BuilderQuery, CustomFieldEntity, CustomFieldType } from '../../contracts';
+import type { BuilderDataset, BuilderQuery, CustomFieldEntity, CustomFieldType, ReportFrequency, ReportPeriod, ReportRunStatus } from '../../contracts';
 
 /** A report-builder report someone saved. */
 @Table({ tableName: 'saved_reports', underscored: true })
@@ -15,6 +15,31 @@ export class SavedReport extends Model<InferAttributes<SavedReport>, InferCreati
   @Column(DataType.STRING(30)) dataset: BuilderDataset;
   @Column(DataType.JSONB) definition: Omit<BuilderQuery, 'dataset'>;
   @Column(DataType.BOOLEAN) shared: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
+/** A saved report emailed on a schedule (each recipient gets what their own access allows). */
+@Table({ tableName: 'report_schedules', underscored: true })
+export class ReportSchedule extends Model<InferAttributes<ReportSchedule>, InferCreationAttributes<ReportSchedule>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.UUID) savedReportId: string;
+  @Column(DataType.UUID) ownerId: string;
+  @Column(DataType.STRING(8)) frequency: ReportFrequency;
+  @Column(DataType.SMALLINT) dayOfWeek: CreationOptional<number | null>;
+  @Column(DataType.SMALLINT) dayOfMonth: CreationOptional<number | null>;
+  @Column(DataType.SMALLINT) hour: CreationOptional<number>;
+  @Column(DataType.STRING(4)) format: CreationOptional<'csv' | 'xlsx'>;
+  @Column(DataType.STRING(16)) period: CreationOptional<ReportPeriod>;
+  @Column(DataType.JSONB) recipientIds: CreationOptional<string[]>;
+  @Column(DataType.BOOLEAN) isActive: CreationOptional<boolean>;
+  @Column(DataType.DATE) nextRunAt: CreationOptional<Date | null>;
+  @Column(DataType.DATE) lastRunAt: CreationOptional<Date | null>;
+  @Column(DataType.STRING(8)) lastStatus: CreationOptional<ReportRunStatus | null>;
+  @Column(DataType.STRING(500)) lastError: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
 }

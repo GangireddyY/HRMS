@@ -242,6 +242,8 @@ export class OrganizationMembership extends Model<InferAttributes<OrganizationMe
   @Column(DataType.DATE) invitedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) joinedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) suspendedAt: CreationOptional<Date | null>;
+  /** SHA-256 of the secret in the member's calendar feed URL (null = no feed). */
+  @Column(DataType.STRING(64)) calendarFeedTokenHash: CreationOptional<string | null>;
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) createdById: CreationOptional<string | null>;

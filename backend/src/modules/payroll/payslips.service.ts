@@ -106,6 +106,7 @@ export class PayslipsService implements OnModuleInit {
       gross: p.gross,
       totalDeductions: p.totalDeductions,
       netPay: p.netPay,
+      currency: p.currency,
     };
   }
 
@@ -130,6 +131,7 @@ export class PayslipsService implements OnModuleInit {
       gross: Number(p.gross),
       totalDeductions: Number(p.totalDeductions),
       netPay: Number(p.netPay),
+      currency: p.currency,
     }));
   }
 
@@ -148,6 +150,8 @@ export class PayslipsService implements OnModuleInit {
       gross: Number(p.gross),
       totalDeductions: Number(p.totalDeductions),
       netPay: Number(p.netPay),
+      /** Null = the organization's currency. */
+      currency: p.currency,
       excluded: p.excluded,
       excludeReason: p.excludeReason,
       warnings: p.warnings,

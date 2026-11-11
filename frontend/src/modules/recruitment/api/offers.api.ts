@@ -1,4 +1,4 @@
-import type { OfferApprovalStatus, OfferStatus, PrejoiningDocumentCategory } from '@contracts';
+import type { ApprovalChainProgress, OfferApprovalStatus, OfferStatus, PrejoiningDocumentCategory } from '@contracts';
 import { downloadFile, http, openDocument } from '@/core/http/http-client';
 
 export interface OfferDetail {
@@ -16,7 +16,18 @@ export interface OfferDetail {
   respondedAt: string | null;
   declineReason: string | null;
   createdById: string | null;
-  approval: { status: OfferApprovalStatus; required: string | null; requestedBy: string | null; requestedAt: string | null; decidedBy: string | null; decidedAt: string | null; note: string | null };
+  approval: {
+    status: OfferApprovalStatus;
+    required: string | null;
+    requestedBy: string | null;
+    requestedAt: string | null;
+    decidedBy: string | null;
+    decidedAt: string | null;
+    note: string | null;
+    /** You can approve or reject it now (your chain step, or offer approval rights without a chain). */
+    canDecide: boolean;
+    chain: ApprovalChainProgress | null;
+  };
   signature: { name: string; at: string; ip: string | null; letterHash: string } | null;
   portal: { active: boolean; expiresAt: string | null };
   prejoining: { submittedAt: string | null; documents: number };

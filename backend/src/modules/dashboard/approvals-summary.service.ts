@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ModuleKey } from '../../contracts';
+import type { ApprovalSubject, ModuleKey } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { OvertimeQueryDto, RegularizationQueryDto, ShiftSwapQueryDto, TimesheetQueryDto, WorkFromHomeQueryDto } from '../attendance/dto/attendance.dto';
 import { OvertimeService } from '../attendance/overtime.service';
@@ -23,6 +23,8 @@ import { ReimbursementsService } from '../payroll/reimbursements.service';
 import { SalariesService } from '../payroll/salaries.service';
 import { RequisitionQueryDto } from '../recruitment/dto/recruitment.dto';
 import { RequisitionsService } from '../recruitment/requisitions.service';
+import { ApprovalChainsService } from '../approvals/approval-chains.service';
+import { OffersService } from '../recruitment/offers.service';
 import { AssetsService } from '../services/assets.service';
 import { AssetRequestQueryDto, TravelQueryDto } from '../services/services.dto';
 import { TravelService } from '../services/travel.service';
@@ -32,6 +34,8 @@ interface Source {
   key: string;
   /** Any of these (with the feature) lets the person decide; the same rule as the menu. */
   allowed: (auth: AuthContext) => boolean;
+  /** Approval-chain steps of this kind also count (their approvers may hold none of the permissions). */
+  chain?: { subject: ApprovalSubject; feature: ModuleKey };
   count: (auth: AuthContext) => Promise<number>;
 }
 
@@ -72,12 +76,14 @@ export class ApprovalsSummaryService {
     travel: TravelService,
     assets: AssetsService,
     probation: ProbationService,
+    offers: OffersService,
+    private readonly chains: ApprovalChainsService,
   ) {
     const attendance = (a: AuthContext) => has(a, 'attendance.regularize.approve') && on(a, 'attendance');
     this.sources = [
       { key: 'bank-changes', allowed: (a) => has(a, 'employee.update', 'employee.sensitive.view'), count: async (a) => (await bank.list(a)).filter((r: { canReview?: boolean }) => r.canReview).length },
       { key: 'salary-revisions', allowed: (a) => has(a, 'employee.salary.approve', 'employee.salary.view') && on(a, 'payroll'), count: async (a) => (await salaries.revisions(a, 'PENDING')).filter((r: { canReview?: boolean }) => r.canReview).length },
-      { key: 'leave', allowed: (a) => has(a, 'leave.approve') && on(a, 'leave'), count: (a) => total(leave.list(a, q(LeaveRequestQueryDto, { view: 'team', status: 'PENDING' }))) },
+      { key: 'leave', allowed: (a) => has(a, 'leave.approve') && on(a, 'leave'), chain: { subject: 'LEAVE', feature: 'leave' }, count: (a) => total(leave.list(a, q(LeaveRequestQueryDto, { view: 'team', status: 'PENDING' }))) },
       { key: 'encashments', allowed: (a) => has(a, 'leave.allocate') && on(a, 'leave'), count: (a) => total(encashments.list(a, q(EncashmentQueryDto, { view: 'all', status: 'PENDING' }))) },
       { key: 'comp-off', allowed: (a) => has(a, 'leave.approve') && on(a, 'leave'), count: (a) => total(compOffs.list(a, q(CompOffQueryDto, { view: 'team', status: 'PENDING' }))) },
       { key: 'regularizations', allowed: attendance, count: (a) => total(regularizations.list(a, q(RegularizationQueryDto, { view: 'team', status: 'PENDING' }))) },
@@ -85,20 +91,22 @@ export class ApprovalsSummaryService {
       { key: 'overtime', allowed: attendance, count: (a) => total(overtime.list(a, q(OvertimeQueryDto, { view: 'team', status: 'PENDING' }))) },
       { key: 'swaps', allowed: attendance, count: (a) => total(swaps.list(a, q(ShiftSwapQueryDto, { view: 'team', status: 'PENDING' }))) },
       { key: 'timesheets', allowed: (a) => has(a, 'attendance.timesheet.approve') && on(a, 'attendance'), count: (a) => total(timesheets.list(a, q(TimesheetQueryDto, { view: 'team', status: 'SUBMITTED' }))) },
-      { key: 'claims', allowed: (a) => has(a, 'payroll.reimbursement.approve') && on(a, 'payroll'), count: (a) => total(claims.list(a, q(ClaimQueryDto, { view: 'approve', status: 'PENDING' }))) },
+      { key: 'claims', allowed: (a) => has(a, 'payroll.reimbursement.approve') && on(a, 'payroll'), chain: { subject: 'EXPENSE', feature: 'payroll' }, count: (a) => total(claims.list(a, q(ClaimQueryDto, { view: 'approve', status: 'PENDING' }))) },
       { key: 'claims-finance', allowed: (a) => has(a, 'payroll.reimbursement.finance') && on(a, 'payroll'), count: (a) => total(claims.list(a, q(ClaimQueryDto, { view: 'finance' }))) },
       { key: 'loans', allowed: (a) => has(a, 'payroll.loan.approve') && on(a, 'payroll'), count: (a) => total(loans.list(a, q(LoanQueryDto, { view: 'approve' }))) },
       { key: 'payroll', allowed: (a) => has(a, 'payroll.approve') && on(a, 'payroll'), count: () => total(runs.list(q(RunQueryDto, { status: 'SUBMITTED' }))) },
       { key: 'requisitions', allowed: (a) => has(a, 'recruitment.requisition.approve') && on(a, 'recruitment'), count: (a) => total(requisitions.list(a, q(RequisitionQueryDto, { view: 'approve' }))) },
-      { key: 'exits', allowed: (a) => (has(a, 'exit.approve') || has(a, 'exit.manage')) && on(a, 'exit'), count: (a) => total(exits.list(a, q(ExitQueryDto, { view: 'approve' }))) },
-      { key: 'travel', allowed: (a) => has(a, 'travel.approve') && on(a, 'travel'), count: (a) => total(travel.list(a, q(TravelQueryDto, { view: 'team', status: 'PENDING' }))) },
+      { key: 'exits', allowed: (a) => (has(a, 'exit.approve') || has(a, 'exit.manage')) && on(a, 'exit'), chain: { subject: 'EXIT', feature: 'exit' }, count: (a) => total(exits.list(a, q(ExitQueryDto, { view: 'approve' }))) },
+      { key: 'offers', allowed: (a) => has(a, 'recruitment.offer.approve') && on(a, 'recruitment'), chain: { subject: 'OFFER', feature: 'recruitment' }, count: async (a) => (await offers.awaitingMe(a)).length },
+      { key: 'travel', allowed: (a) => has(a, 'travel.approve') && on(a, 'travel'), chain: { subject: 'TRAVEL', feature: 'travel' }, count: (a) => total(travel.list(a, q(TravelQueryDto, { view: 'team', status: 'PENDING' }))) },
       { key: 'asset-requests', allowed: (a) => has(a, 'assets.manage') && on(a, 'assets'), count: (a) => total(assets.requests(a, q(AssetRequestQueryDto, { view: 'all', status: 'PENDING' }))) },
       { key: 'probation', allowed: (a) => has(a, 'onboarding.confirmation.approve') && on(a, 'onboarding'), count: (a) => total(probation.list(a, q(ProbationReviewQueryDto, { view: 'approve' }))) },
     ];
   }
 
   async summary(auth: AuthContext): Promise<{ key: string; count: number; failed?: true }[]> {
-    const mine = this.sources.filter((s) => s.allowed(auth));
+    const waiting = await this.chains.subjectsWaitingFor(auth).catch(() => new Set<ApprovalSubject>());
+    const mine = this.sources.filter((s) => s.allowed(auth) || (!!s.chain && waiting.has(s.chain.subject) && on(auth, s.chain.feature)));
     const results = await Promise.allSettled(mine.map((s) => s.count(auth)));
     return mine.map((s, i) => {
       const r = results[i]!;

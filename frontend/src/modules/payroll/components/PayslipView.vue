@@ -2,11 +2,14 @@
 import { computed } from 'vue';
 import { apiAssetUrl } from '@/core/http/http-client';
 import type { PayslipDetail, PayslipLine } from '@/modules/payroll/types';
-import { REGIME_LABELS, rupees } from '@/modules/payroll/utils/payroll-format';
+import { formatAmount } from '@/core/locale/currency';
+import { REGIME_LABELS } from '@/modules/payroll/utils/payroll-format';
 import { formatDate } from '@/shared/utils/format';
 
 /** Payslip as printed: employee details, attendance, earnings, deductions, net pay, employer contributions and the TDS working. */
 const props = defineProps<{ payslip: PayslipDetail; showTax?: boolean }>();
+/** In the payslip's own currency (entities abroad pay in theirs). */
+const rupees = (n: number | null | undefined) => formatAmount(n, { currency: props.payslip.currency ?? undefined });
 const p = computed(() => props.payslip);
 const lop = computed(() => p.value.lopOverride ?? p.value.lopDays);
 const final = computed(() => p.value.runStatus === 'APPROVED' || p.value.runStatus === 'PAID');

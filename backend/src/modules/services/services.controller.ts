@@ -38,6 +38,11 @@ function requireAny(auth: AuthContext, module: ModuleKey, ...permissions: string
   if (!permissions.some(has)) throw AppError.forbidden();
 }
 
+/** Only the module check; the service decides per request (approval-chain approvers may hold no travel permission). */
+function requireModule(auth: AuthContext, module: ModuleKey) {
+  if (!auth.features.has(module)) throw AppError.forbidden('This module is not enabled for your organization');
+}
+
 @ApiTags('Assets')
 @ApiBearerAuth()
 @Controller({ path: 'assets', version: '1' })
@@ -233,7 +238,7 @@ export class TravelController {
   @RequireTenant()
   @ApiOperation({ summary: 'Your trips, those you approve (view=team) or all (view=all, travel desk)' })
   list(@CurrentAuth() auth: AuthContext, @Query() query: TravelQueryDto) {
-    requireAny(auth, 'travel', 'travel.request', 'travel.approve', 'travel.manage');
+    requireModule(auth, 'travel');
     return this.travel.list(auth, query);
   }
 
@@ -246,20 +251,20 @@ export class TravelController {
   @Get(':id')
   @RequireTenant()
   get(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
-    requireAny(auth, 'travel', 'travel.request', 'travel.approve', 'travel.manage');
+    requireModule(auth, 'travel');
     return this.travel.get(auth, id);
   }
 
   @Post(':id/approve')
   @HttpCode(200)
-  @RequirePermissions('travel.approve')
+  @RequireTenant()
   approve(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OptionalNoteDto) {
     return this.travel.approve(auth, id, dto);
   }
 
   @Post(':id/reject')
   @HttpCode(200)
-  @RequirePermissions('travel.approve')
+  @RequireTenant()
   reject(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: NoteDto) {
     return this.travel.reject(auth, id, dto);
   }

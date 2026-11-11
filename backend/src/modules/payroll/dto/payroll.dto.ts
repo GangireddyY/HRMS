@@ -283,6 +283,7 @@ export class PayGroupDto {
   @ApiProperty({ example: 'Contractors' }) @Transform(trim) @IsString() @Length(2, 80) name!: string;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(300) description?: string | null;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+  @ApiPropertyOptional({ nullable: true, description: 'The legal entity that pays this group (its currency and statutory rules)' }) @optionalNullable @IsUUID() legalEntityId?: string | null;
 }
 export class UpdatePayGroupDto extends PartialType(PayGroupDto) {}
 
@@ -350,8 +351,13 @@ export class ClaimDto {
   @ApiProperty({ enum: REIMBURSEMENT_CATEGORIES }) @IsIn(REIMBURSEMENT_CATEGORIES) category!: ReimbursementCategory;
   @ApiProperty() @Transform(trim) @IsString() @Length(2, 150) title!: string;
   @ApiProperty({ example: '2026-11-03' }) @IsISO8601(DATE) expenseDate!: string;
-  @ApiProperty() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(10_000_000) amount!: number;
+  @ApiProperty({ description: 'In `currency` when given, else in your pay currency' }) @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) @Max(10_000_000) amount!: number;
   @ApiPropertyOptional({ nullable: true }) @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(1000) description?: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'USD', description: "The receipt's currency, when not your pay currency (converted at the rate on the expense date)" })
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' && value.trim() ? value.trim().toUpperCase() : null))
+  @optionalNullable
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be an ISO 4217 code' })
+  currency?: string | null;
 }
 
 export class ExpensePolicyRuleDto {

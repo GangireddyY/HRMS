@@ -63,6 +63,7 @@ type TaxFigures,
 } from './payroll-engine';
 import { MONTHS,periodLabel,proofsApply,sum,type VerifiedDeductions } from './payroll-period';
 import { SalariesService } from './salaries.service';
+import { EntitiesService } from '../entities/entities.service';
 
 const mask = (v: string | null, keep = 4) => (v ? `${'•'.repeat(Math.max(0, v.length - keep))}${v.slice(-keep)}` : null);
 
@@ -125,6 +126,10 @@ export interface CalcContext {
   attendanceLop: boolean;
   /** Timesheet rules when the organization requires timesheets (and uses attendance). */
   timesheets: TimesheetRules | null;
+  /** The paying entity's currency (payslips are in it). */
+  currency: string;
+  /** Indian statutory deductions (PF, ESI, PT, LWF, TDS) apply: the paying entity is in India. */
+  statutory: boolean;
 }
 
 /**
@@ -138,15 +143,19 @@ export class PayrollCalculationService {
     private readonly salaries: SalariesService,
     private readonly rules: AttendanceRulesService,
     private readonly crypto: EncryptionService,
+    private readonly entities: EntitiesService,
   ) {}
 
   async context(auth: AuthContext, run: PayrollRun): Promise<CalcContext> {
     const { from, to, days } = monthRange(run.year, run.month);
-    const [settings, org, today] = await Promise.all([
+    const [configured, org, today, pay] = await Promise.all([
       this.config.settings(auth.organizationId!),
       Organization.findByPk(auth.organizationId!, { attributes: ['state'] }),
       this.salaries.today(auth.organizationId!),
+      this.entities.payContextForGroup(auth.organizationId!, run.payGroupId ?? null),
     ]);
+    // Outside India none of the Indian statutory deductions apply.
+    const settings = pay.statutory ? configured : { ...configured, pfEnabled: false, esiEnabled: false, ptEnabled: false, lwfEnabled: false };
     const attendanceLop = settings.lopFromAttendance && auth.features.has('attendance');
     if (attendanceLop && !(await AttendancePeriod.count({ where: { year: run.year, month: run.month } }))) {
       throw AppError.conflict(`Close attendance for ${periodLabel(run.year, run.month)} first (loss of pay is taken from attendance)`);
@@ -155,7 +164,7 @@ export class PayrollCalculationService {
       settings.timesheetsRequired && auth.features.has('attendance')
         ? { required: true, from: settings.timesheetsFrom, dueWeekday: settings.timesheetDueWeekday, missedAction: settings.timesheetMissedAction }
         : null;
-    return { run, settings, orgState: org?.state ?? null, from, to, days, today, attendanceLop, timesheets };
+    return { run, settings, orgState: org?.state ?? null, from, to, days, today, attendanceLop, timesheets, currency: pay.currency, statutory: pay.statutory };
   }
 
   /** Days a timesheet must cover: employed, not a holiday or weekly off, and not a full day of leave. */
@@ -334,8 +343,8 @@ export class PayrollCalculationService {
       });
       const bank = bankWarning.get(e.id);
       if (bank) values.warnings.push(bank);
-      if (prior) await prior.update({ ...values, ...hold }, { transaction });
-      else await Payslip.create({ organizationId: auth.organizationId!, runId: run.id, employeeId: e.id, ...values, ...hold }, { transaction });
+      if (prior) await prior.update({ ...values, ...hold, currency: ctx.currency }, { transaction });
+      else await Payslip.create({ organizationId: auth.organizationId!, runId: run.id, employeeId: e.id, ...values, ...hold, currency: ctx.currency }, { transaction });
     }
 
     // Approved claims are paid by this run (unless the employee is held); others go back to the queue.
@@ -550,15 +559,17 @@ export class PayrollCalculationService {
     }
     let tax: ReturnType<typeof monthlyTds> | null = null;
     let tds = 0;
-    try {
-      tax = monthlyTds({ fy: input.fy, age: ageOn(e.dateOfBirth, `${input.fy + 1}-03-31`), declaration, ytd: ytdFigures, current, recurring, remainingMonths });
-      tds = tax.thisMonth;
-      if (!e.panEncrypted && tax.tax.total > 0) {
-        tds = Math.max(tds, Math.round(current.taxable * 0.2));
-        warnings.push('No PAN recorded: tax deducted at 20% (section 206AA)');
+    if (ctx.statutory) {
+      try {
+        tax = monthlyTds({ fy: input.fy, age: ageOn(e.dateOfBirth, `${input.fy + 1}-03-31`), declaration, ytd: ytdFigures, current, recurring, remainingMonths });
+        tds = tax.thisMonth;
+        if (!e.panEncrypted && tax.tax.total > 0) {
+          tds = Math.max(tds, Math.round(current.taxable * 0.2));
+          warnings.push('No PAN recorded: tax deducted at 20% (section 206AA)');
+        }
+      } catch (err) {
+        warnings.push(`! Income tax could not be worked out: ${(err as Error).message}`);
       }
-    } catch (err) {
-      warnings.push(`! Income tax could not be worked out: ${(err as Error).message}`);
     }
 
     // Deductions & employer contributions

@@ -44,6 +44,9 @@ import {
   OkrObjective,
   OneOnOne,
   OneOnOneItem,
+  CompensationBudget,
+  SuccessionPlan,
+  SuccessionCandidate,
   PerformanceCycle,
   PerformanceFeedback,
   PerformanceGoal,
@@ -67,7 +70,8 @@ import { OrganizationSsoConfig, SsoLoginState } from './sso.models';
 import { Invoice, InvoicePayment, OrganizationSubscription } from './billing.models';
 import { PushSubscription } from './push.models';
 import { ApprovalChain, ApprovalInstance } from './approval-chain.models';
-import { ApiKey, CustomFieldDefinition, SavedReport, WebhookDelivery, WebhookEndpoint } from './integration.models';
+import { ApiKey, CustomFieldDefinition, ReportSchedule, SavedReport, WebhookDelivery, WebhookEndpoint } from './integration.models';
+import { ExchangeRate, LegalEntity } from './entity.models';
 
 export * from './activity.models';
 export * from './attendance.models';
@@ -93,6 +97,7 @@ export * from './billing.models';
 export * from './push.models';
 export * from './approval-chain.models';
 export * from './integration.models';
+export * from './entity.models';
 
 export const ALL_MODELS = [
   User,
@@ -124,6 +129,9 @@ export const ALL_MODELS = [
   WebhookDelivery,
   CustomFieldDefinition,
   SavedReport,
+  ReportSchedule,
+  LegalEntity,
+  ExchangeRate,
   Permission,
   Role,
   RolePermission,
@@ -214,6 +222,9 @@ export const ALL_MODELS = [
   OneOnOne,
 
   OneOnOneItem,
+  CompensationBudget,
+  SuccessionPlan,
+  SuccessionCandidate,
   TrainingCourse,
   TrainingQuestion,
   TrainingSession,
@@ -276,6 +287,9 @@ export const TENANT_MODELS = [
   WebhookDelivery,
   CustomFieldDefinition,
   SavedReport,
+  ReportSchedule,
+  LegalEntity,
+  ExchangeRate,
   OrganizationLogo,
   OrganizationFeature,
   OrganizationMembership,
@@ -364,6 +378,9 @@ export const TENANT_MODELS = [
   OneOnOne,
 
   OneOnOneItem,
+  CompensationBudget,
+  SuccessionPlan,
+  SuccessionCandidate,
   TrainingCourse,
   TrainingQuestion,
   TrainingSession,
