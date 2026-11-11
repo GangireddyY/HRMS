@@ -16,6 +16,12 @@
     "db:seed": "npm --prefix backend run db:seed",
     "test": "npm --prefix backend run test && npm --prefix backend run test:e2e && npm --prefix frontend run test",
     "test:e2e:frontend": "npm --prefix backend run build && npm --prefix frontend run test:e2e",
-    "docs:rbac": "npm --prefix backend run docs:rbac"
+    "docs:rbac": "npm --prefix backend run docs:rbac",
+    "hooks:install": "npm install --no-fund --no-audit && git config core.hooksPath .githooks && node -e \"require('fs').chmodSync('.githooks/commit-msg', 0o755)\"",
+    "commitlint": "commitlint --from origin/main --to HEAD --verbose"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1"
   }
 }

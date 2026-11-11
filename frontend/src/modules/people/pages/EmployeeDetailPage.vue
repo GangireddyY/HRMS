@@ -43,6 +43,7 @@ import {
 } from '@lucide/vue';
 import type { LifecycleAction } from '@contracts';
 import { documentsApi, employeesApi, profileApi } from '@/modules/people/api/people.api';
+import CustomFieldsCard from '@/modules/people/components/CustomFieldsCard.vue';
 import DocumentsCard from '@/modules/people/components/DocumentsCard.vue';
 import EmployeeFactGrid, { type EmployeeFact } from '@/modules/people/components/EmployeeFactGrid.vue';
 import EmployeeHistoryTimeline from '@/modules/people/components/EmployeeHistoryTimeline.vue';
@@ -58,7 +59,8 @@ import { useAuthStore } from '@/core/auth/auth.store';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
 import { COUNTRY_OPTIONS } from '@/shared/utils/options';
-import { membershipTone, statusLabel } from '@/shared/utils/status';
+import { membershipTone, statusLabel } from '@/shared/utils/status';
+
 import { profileCover } from '@/shared/utils/profile-cover';
 
 /** HR's view of one employee: profile header with key facts and actions, tabbed record, and a side panel of people, dates and activity. */
@@ -369,6 +371,7 @@ const CIRCUMFERENCE = 2 * Math.PI * 18;
             <AppCard title="Personal & contact" :icon="UserRound" description="Visible to HR and the employee.">
               <EmployeeFactGrid :items="personalFacts" />
             </AppCard>
+            <CustomFieldsCard :key="employee.data.value.id" :employee-id="employee.data.value.id" />
             <SensitiveDetailsCard
               v-if="auth.can('employee.sensitive.view')"
               :employee-id="employee.data.value.id"

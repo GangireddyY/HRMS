@@ -32,6 +32,7 @@ export class TravelService {
     private readonly audit: AuditService,
     private readonly scope: EmployeeScopeService,
     private readonly notifications: NotificationsService,
+    private readonly chains: ApprovalChainsService,
   ) {}
 
   async create(auth: AuthContext, dto: TravelRequestDto) {
@@ -68,7 +69,10 @@ export class TravelService {
         { action: 'travel.requested', entityType: 'TravelRequest', entityId: r.id, summary: `${reference}: ${dto.fromCity} → ${dto.toCity}, ${dto.departureDate} to ${dto.returnDate}` },
         transaction,
       );
-      const approvers = await managerAndCover(self.managerId, transaction);
+      // A configured approval chain, when one applies, replaces the single manager approval.
+      const requester = await Employee.findByPk(self.id, { attributes: ['id', 'managerId', 'departmentId', 'membershipId'], transaction });
+      const chain = await this.chains.start('TRAVEL', r.id, requester!, { amount: dto.estimatedCost }, transaction);
+      const approvers = chain ? await this.chains.usersOf(chain.steps[0]!.approverMembershipIds, transaction) : await managerAndCover(self.managerId, transaction);
       for (const userId of approvers.length ? approvers : await usersWithPermission('travel.approve', transaction, ['ORGANIZATION'])) {
         if (userId === auth.userId) continue;
         await this.notifications.notify(
@@ -96,9 +100,12 @@ export class TravelService {
       if (!self) return new PaginatedResult([], paginationMeta(query, 0));
       filters.push({ employeeId: self.id });
     } else if (view === 'team') {
-      const scoped = await this.scope.where(auth, 'travel.approve', 'employeeId');
-      if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
-      filters.push(scoped);
+      // Requests on an approval chain show for their current step's approvers only (and stay visible in scope once decided).
+      const [scoped, mine, managed] = await Promise.all([this.scope.where(auth, 'travel.approve', 'employeeId'), this.chains.waitingFor(auth, 'TRAVEL'), this.chains.managedPending('TRAVEL')]);
+      const legacy = scoped ? (managed.length ? { [Op.and]: [scoped, { id: { [Op.notIn]: managed } }] } : scoped) : null;
+      const any = [...(legacy ? [legacy] : []), ...(mine.length ? [{ id: mine }] : [])];
+      if (!any.length) return new PaginatedResult([], paginationMeta(query, 0));
+      filters.push({ [Op.or]: any });
       if (self) filters.push({ employeeId: { [Op.ne]: self.id } });
     } else if (!auth.permissions.has('travel.manage')) throw AppError.forbidden();
     if (query.status) filters.push({ status: query.status });
@@ -127,8 +134,9 @@ export class TravelService {
     });
     const names = await userNames(rows.map((r) => r.reviewedById));
     const today = await organizationToday(auth.organizationId!);
+    const chains = await this.chains.forMany('TRAVEL', rows.map((r) => r.id));
     return new PaginatedResult(
-      await Promise.all(rows.map((r) => this.present(auth, r, names, self?.id ?? null, today))),
+      await Promise.all(rows.map((r) => this.present(auth, r, names, self?.id ?? null, today, chains.get(r.id) ?? null))),
       paginationMeta(query, count),
     );
   }
@@ -138,12 +146,14 @@ export class TravelService {
     if (!r) throw AppError.notFound('Travel request');
     const self = await this.scope.self(auth);
     const own = self?.id === r.employeeId;
-    if (!own && !auth.permissions.has('travel.manage') && !(await this.scope.covers(auth, 'travel.approve', r.employee!))) throw AppError.notFound('Travel request');
-    return this.present(auth, r, await userNames([r.reviewedById]), self?.id ?? null, await organizationToday(auth.organizationId!));
+    const chain = await this.chains.find('TRAVEL', id);
+    const onChain = !!chain && (this.chains.canDecide(auth, chain) || chain.decisions.some((d) => d.membershipId === auth.membershipId));
+    if (!own && !onChain && !auth.permissions.has('travel.manage') && !(await this.scope.covers(auth, 'travel.approve', r.employee!))) throw AppError.notFound('Travel request');
+    return this.present(auth, r, await userNames([r.reviewedById]), self?.id ?? null, await organizationToday(auth.organizationId!), chain);
   }
 
   async approve(auth: AuthContext, id: string, dto: OptionalNoteDto) {
-    await this.review(auth, id, async (r, transaction) => {
+    await this.review(auth, id, 'APPROVED', dto.note ?? null, async (r, transaction) => {
       await r.update({ status: 'APPROVED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note ?? null }, { transaction });
       await this.audit.record({ action: 'travel.approved', entityType: 'TravelRequest', entityId: id, summary: `${r.reference} approved` }, transaction);
       await this.tell(r, `Your trip ${r.reference} to ${r.toCity} was approved`, dto.note ?? (Number(r.advanceAmount) ? 'The travel desk will arrange bookings and your advance.' : undefined), transaction);
@@ -160,7 +170,7 @@ export class TravelService {
   }
 
   async reject(auth: AuthContext, id: string, dto: NoteDto) {
-    await this.review(auth, id, async (r, transaction) => {
+    await this.review(auth, id, 'REJECTED', dto.note, async (r, transaction) => {
       await r.update({ status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note }, { transaction });
       await this.audit.record({ action: 'travel.rejected', entityType: 'TravelRequest', entityId: id, summary: `${r.reference} rejected` }, transaction);
       await this.tell(r, `Your trip ${r.reference} to ${r.toCity} was not approved`, dto.note, transaction);
@@ -178,6 +188,7 @@ export class TravelService {
       if (r.status !== 'PENDING' && r.status !== 'APPROVED') throw AppError.conflict(`This trip is already ${r.status.toLowerCase()}`);
       if (r.status === 'APPROVED' && r.departureDate <= today) throw AppError.conflict('The trip has started. Mark it complete instead.');
       await r.update({ status: 'CANCELLED' }, { transaction });
+      await this.chains.cancel('TRAVEL', id, transaction);
       await this.audit.record({ action: 'travel.cancelled', entityType: 'TravelRequest', entityId: id, summary: `${r.reference} cancelled` }, transaction);
       if (r.reviewedById && r.reviewedById !== auth.userId) {
         await this.notifications.notify(r.reviewedById, { organizationId: r.organizationId, type: 'travel.request', title: `${self.firstName} cancelled the trip ${r.reference}`, link: '/hr/travel?view=team' }, transaction);
@@ -229,18 +240,56 @@ export class TravelService {
     return this.get(auth, id);
   }
 
-  private async review(auth: AuthContext, id: string, fn: (r: TravelRequest, transaction: Transaction) => Promise<void>) {
+  /**
+   * One decision. On an approval chain the current step's approvers decide, and `onFinal` runs only for the last approval
+   * (or a rejection); otherwise anyone with `travel.approve` covering the traveller decides at once.
+   */
+  private async review(auth: AuthContext, id: string, decision: 'APPROVED' | 'REJECTED', note: string | null, onFinal: (r: TravelRequest, transaction: Transaction) => Promise<void>) {
+    if (!auth.features.has('travel')) throw AppError.forbidden('Travel is not enabled for this organization');
+    let next: { approvers: string[]; label: string } | null = null;
+    let request: TravelRequest | null = null;
     await this.db.transaction(async (transaction) => {
       const r = await TravelRequest.findByPk(id, {
         include: [{ model: Employee, attributes: EMPLOYEE_ATTRS }],
         transaction,
         lock: { level: transaction.LOCK.UPDATE, of: TravelRequest },
       });
-      if (!r || !(await this.scope.covers(auth, 'travel.approve', r.employee!))) throw AppError.notFound('Travel request');
+      if (!r) throw AppError.notFound('Travel request');
+      const chain = await this.chains.find('TRAVEL', id, transaction);
+      const onChain = chain?.status === 'PENDING';
+      if (onChain) {
+        const blocked = this.chains.blockReason(auth, chain);
+        if (blocked) {
+          if (await this.scope.covers(auth, 'travel.approve', r.employee!)) throw AppError.forbidden(blocked);
+          throw AppError.notFound('Travel request');
+        }
+      } else {
+        const approves = auth.permissions.has('travel.approve') || (auth.delegated ?? []).some((d) => d.permission === 'travel.approve');
+        if (!approves) throw AppError.forbidden();
+        if (!(await this.scope.covers(auth, 'travel.approve', r.employee!))) throw AppError.notFound('Travel request');
+      }
       if (auth.membershipId && r.employee!.membershipId === auth.membershipId) throw AppError.forbidden("You can't approve your own travel");
       if (r.status !== 'PENDING') throw AppError.conflict(`This request is already ${r.status.toLowerCase()}`);
-      await fn(r, transaction);
+      if (onChain) {
+        const result = await this.chains.decide(auth, chain, decision, note, transaction);
+        if (!result.final) {
+          next = { approvers: result.nextApprovers, label: result.nextLabel! };
+          request = r;
+          await this.audit.record({ action: 'travel.step_approved', entityType: 'TravelRequest', entityId: id, summary: `${r.reference} approved; ${result.nextLabel} next` }, transaction);
+          await this.tell(r, `Your trip ${r.reference} was approved; ${result.nextLabel} approves next`, note ?? undefined, transaction);
+          return;
+        }
+      }
+      await onFinal(r, transaction);
     });
+    const pending = next as { approvers: string[]; label: string } | null;
+    const r = request as TravelRequest | null;
+    if (pending && r) {
+      for (const userId of await this.chains.usersOf(pending.approvers)) {
+        if (userId === auth.userId) continue;
+        await this.notifications.notify(userId, { organizationId: r.organizationId, type: 'travel.request', title: `${pending.label} approval needed: ${fullName(r.employee!)} to ${r.toCity} (${r.departureDate})`, body: r.purpose, link: '/hr/travel?view=team' });
+      }
+    }
   }
 
   private async tell(r: TravelRequest, title: string, body: string | undefined, transaction: Transaction) {
@@ -248,9 +297,10 @@ export class TravelService {
     if (userId) await this.notifications.notify(userId, { organizationId: r.organizationId, type: 'travel.request', title, body, link: '/me/travel' }, transaction);
   }
 
-  private async present(auth: AuthContext, r: TravelRequest, names: Map<string, string>, selfId: string | null, today: string) {
+  private async present(auth: AuthContext, r: TravelRequest, names: Map<string, string>, selfId: string | null, today: string, chain: ApprovalInstance | null = null) {
     const own = r.employeeId === selfId;
-    const canReview = r.status === 'PENDING' && !own && !!r.employee && (await this.scope.covers(auth, 'travel.approve', r.employee));
+    const onChain = chain?.status === 'PENDING';
+    const canReview = r.status === 'PENDING' && !own && !!r.employee && (onChain ? this.chains.canDecide(auth, chain) : await this.scope.covers(auth, 'travel.approve', r.employee));
     return {
       id: r.id,
       reference: r.reference,
@@ -274,6 +324,7 @@ export class TravelService {
       advanceReference: r.advanceReference,
       completedAt: r.completedAt,
       createdAt: r.createdAt,
+      chain: this.chains.present(chain),
       permissions: {
         approve: canReview,
         cancel: own && (r.status === 'PENDING' || (r.status === 'APPROVED' && r.departureDate > today)),

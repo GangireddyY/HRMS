@@ -10,7 +10,8 @@ import { LOG_ARCHIVE_MAX_RECORDS, type LogArchiveKind } from '../../contracts';
 import { DatabaseService } from '../../database/database.service';
 import { AuditLog, LogArchive, LoginEvent, Organization, User } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { StorageService } from '../../infrastructure/storage/storage.service';
+import { StorageService, type Retention } from '../../infrastructure/storage/storage.service';
+import { AppConfig } from '../../config/app-config.service';
 
 const BATCH = 5_000;
 const LABEL: Record<LogArchiveKind, { title: string; file: string }> = {
@@ -64,6 +65,7 @@ export class LogArchivesService {
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
+    private readonly config: AppConfig,
   ) {}
 
   async list(auth: AuthContext, kind?: LogArchiveKind) {
@@ -119,7 +121,10 @@ export class LogArchivesService {
       createdById: auth.userId,
     });
     archive.storageKey = `organizations/${auth.organizationId}/log-archives/${archive.id}.csv`;
-    await this.storage.put(archive.storageKey, data, 'text/csv; charset=utf-8', { generated: true });
+    const days = this.config.get('AUDIT_ARCHIVE_RETENTION_DAYS');
+    const retention: Retention | undefined = days > 0 ? { until: new Date(Date.now() + days * 86_400_000), mode: this.config.get('AUDIT_ARCHIVE_LOCK_MODE') } : undefined;
+    archive.lockedUntil = retention?.until ?? null;
+    await this.storage.put(archive.storageKey, data, 'text/csv; charset=utf-8', { generated: true, retention });
     try {
       await this.db.transaction(async (transaction) => {
         await archive.save({ transaction });
@@ -252,6 +257,7 @@ export class LogArchivesService {
       fileName: a.fileName,
       sizeBytes: a.sizeBytes,
       sha256: a.sha256,
+      lockedUntil: a.lockedUntil ?? null,
       status: a.status,
       downloadedAt: a.downloadedAt ?? null,
       purgedAt: a.purgedAt ?? null,

@@ -1,5 +1,5 @@
 import { labourWelfareState, professionalTaxState } from '../../contracts';
-import { proofsApply } from './payroll-runs.service';
+import { proofsApply } from './payroll-period';
 import {
   ageOn,
   earnedComponents,

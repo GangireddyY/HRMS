@@ -111,6 +111,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('core', 'organization.profile', 'organization.update', 'Update organization profile and settings'),
   def('core', 'organization.security', 'organization.security.manage', 'Manage password, session and MFA policies'),
   def('core', 'organization.integrations', 'integration.manage', 'Manage API keys and webhooks'),
+  def('core', 'approvals', 'approvals.configure', 'Configure approval chains (steps, conditions, deadlines)'),
+  def('core', 'organization.billing', 'billing.view', 'View the subscription, seats and invoices'),
+  def('core', 'organization.billing', 'billing.manage', 'Update billing contact details'),
   def('core', 'organization.structure', 'organization.structure.manage', 'Manage branches, locations, departments, designations, grades and cost centers'),
   def('core', 'organization.calendar', 'organization.calendar.manage', 'Manage holidays and working-day calendars'),
   // Core: users & roles
@@ -135,6 +138,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   def('employee', 'employees.directory', 'employee.delete', 'Delete or archive employees'),
   def('employee', 'employees.directory', 'employee.import', 'Bulk import employees'),
   def('employee', 'employees.directory', 'employee.export', 'Export employee data'),
+  def('employee', 'employees.custom_fields', 'employee.fields.manage', 'Define custom employee fields'),
   def('employee', 'employees.lifecycle', 'employee.lifecycle.manage', 'Transfers, promotions, manager and status changes', S),
   def('employee', 'employees.compensation', 'employee.salary.view', 'View employee salary details', S),
   def('employee', 'employees.compensation', 'employee.salary.revise', 'Revise employee salary'),
@@ -277,6 +281,7 @@ export const PLATFORM_PERMISSIONS = [
   'platform.organizations.view',
   'platform.organizations.manage',
   'platform.plans.manage',
+  'platform.billing.manage',
   'platform.audit.view',
 ] as const;
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];

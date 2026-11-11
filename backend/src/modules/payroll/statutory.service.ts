@@ -10,7 +10,7 @@ import { ctx as fields } from '../../infrastructure/crypto/encrypted-fields';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { PayrollConfigService } from './payroll-config.service';
 import { ageOn, monthlyTds, type TaxFigures } from './payroll-engine';
-import { periodLabel, proofsApply, type VerifiedDeductions } from './payroll-runs.service';
+import { periodLabel, proofsApply, type VerifiedDeductions } from './payroll-period';
 import { SalariesService } from './salaries.service';
 import { form12bbHtml, form16Html, type Form16Data } from './statutory-documents';
 

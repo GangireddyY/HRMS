@@ -19,6 +19,15 @@ function loadTestEnv() {
   // Uploaded files never go to real storage from tests.
   process.env.STORAGE_DRIVER = 'local';
   process.env.STORAGE_LOCAL_DIR = process.env.STORAGE_LOCAL_DIR || 'uploads-test';
+  // No calls to the breached-password API; tests that need it stub the lookup.
+  process.env.PASSWORD_BREACH_CHECK = 'false';
+  process.env.METRICS_TOKEN = process.env.METRICS_TOKEN || 'test-metrics-token-0123456789';
+  // Web Push is on in tests (the push service itself is stubbed); a throwaway key pair per run.
+  if (!process.env.VAPID_PUBLIC_KEY) {
+    const keys = require('web-push').generateVAPIDKeys();
+    process.env.VAPID_PUBLIC_KEY = keys.publicKey;
+    process.env.VAPID_PRIVATE_KEY = keys.privateKey;
+  }
   const dbName = process.env.DB_NAME || '';
   if (!/test/i.test(dbName)) {
     throw new Error(`Refusing to run integration tests against non-test database "${dbName}"`);

@@ -4,7 +4,8 @@ import type { AuthContext } from '../../../common/auth/auth-context';
 import { AppError } from '../../../common/errors/app-error';
 import { AppConfig } from '../../../config/app-config.service';
 import { DatabaseService } from '../../../database/database.service';
-import { MembershipRole, Organization, OrganizationMembership, OrganizationSsoConfig, Plan, Role, SsoLoginState, User } from '../../../database/models';
+import { MembershipRole, Organization, OrganizationMembership, OrganizationSsoConfig, Role, SsoLoginState, User } from '../../../database/models';
+import { seatLimit } from '../../billing/seats';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { ctx as fields } from '../../../infrastructure/crypto/encrypted-fields';
 import { EncryptionService } from '../../../infrastructure/crypto/encryption.service';
@@ -211,8 +212,7 @@ export class SsoService {
     }
     if (membership) throw new SsoSignInError('account_disabled', 'Your access to this organization is suspended');
     if (!c.autoProvision) throw new SsoSignInError('no_account', 'You are not a member of this organization yet. Ask your HR team for an invitation.');
-    const org = await Organization.findByPk(orgId, { attributes: ['id'], include: [{ model: Plan, attributes: ['maxUsers'] }] });
-    const maxUsers = org?.plan?.maxUsers;
+    const maxUsers = await seatLimit(orgId);
     if (maxUsers && (await OrganizationMembership.count({ where: { organizationId: orgId, status: ['ACTIVE', 'INVITED'] }, ...CROSS_TENANT })) >= maxUsers) {
       throw new SsoSignInError('seat_limit', 'Your organization has no free seats. Contact your administrator.');
     }

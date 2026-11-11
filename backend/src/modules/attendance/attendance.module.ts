@@ -35,6 +35,6 @@ import { WorkFromHomeService } from './work-from-home.service';
     TimesheetsService,
     TimesheetReminderJob,
   ],
-  exports: [AttendanceRulesService, TimesheetsService],
+  exports: [AttendanceRulesService, TimesheetsService, RegularizationService, WorkFromHomeService, OvertimeService, ShiftSwapsService],
 })
 export class AttendanceModule {}

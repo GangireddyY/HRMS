@@ -220,9 +220,14 @@ function dispositionName(header: string | null): string | null {
   return /filename="?([^";]+)"?/.exec(header)?.[1] ?? null;
 }
 
-/** Downloads a file from an authenticated endpoint and saves it in the browser. */
-export async function downloadFile(path: string, query: Query | undefined, fallbackName: string): Promise<void> {
-  const request = () => fetch(buildUrl(path, query), { headers: { Authorization: `Bearer ${hooks?.getToken() ?? ''}` }, credentials: 'same-origin' });
+/** Downloads a file from an authenticated endpoint and saves it in the browser (POSTs `body` as JSON when given). */
+export async function downloadFile(path: string, query: Query | undefined, fallbackName: string, body?: unknown): Promise<void> {
+  const request = () =>
+    fetch(buildUrl(path, query), {
+      ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
+      headers: { Authorization: `Bearer ${hooks?.getToken() ?? ''}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      credentials: 'same-origin',
+    });
   let res: Response;
   try {
     res = await request();

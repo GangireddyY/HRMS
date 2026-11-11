@@ -1,3 +1,5 @@
+// Must stay first: tracing patches modules as they are loaded.
+import { tracingEnabled } from './tracing';
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -8,6 +10,7 @@ import { AppConfig } from './config/app-config.service';
 import { JobQueueService } from './infrastructure/jobs/job-queue.service';
 import { ErrorReporter } from './infrastructure/observability/error-reporter';
 import { JsonLogger } from './infrastructure/observability/json-logger';
+import { ApprovalSlaJob } from './modules/approvals/approval-sla.job';
 import { TimesheetReminderJob } from './modules/attendance/timesheet-reminder.job';
 import { LeaveAccrualJob } from './modules/leave/leave-accrual.job';
 import { PrivacyRetentionJob } from './modules/privacy/privacy-retention.job';
@@ -30,7 +33,8 @@ async function bootstrap(): Promise<void> {
   app.get(TimesheetReminderJob).start();
   app.get(PrivacyRetentionJob).start();
   app.get(LeaveAccrualJob).start();
-  Logger.log(`HRMS API listening on http://localhost:${port}/api/v1 (docs: /api/docs)${errors.enabled ? '; error reporting on' : ''}`, 'Bootstrap');
+  app.get(ApprovalSlaJob).start();
+  Logger.log(`HRMS API listening on http://localhost:${port}/api/v1 (docs: /api/docs)${errors.enabled ? '; error reporting on' : ''}${tracingEnabled ? '; tracing on' : ''}`, 'Bootstrap');
 }
 
 void bootstrap();

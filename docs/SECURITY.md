@@ -87,7 +87,8 @@ Privacy & employment regulations (India DPDP Act 2023, GDPR where applicable, PO
 ## 6. Backup & recovery
 
 * PostgreSQL: daily full backups (`pg_dump -Fc` or managed snapshots) + continuous WAL archiving for point-in-time recovery (RPO ≤ 15 min, RTO ≤ 4 h targets). Backups encrypted at rest, stored in a separate account/region, retained 35 days.
-* Restore drills quarterly into an isolated environment; verify with `node dist/database/migrate.js status` and the health endpoint.
+* Scripted: `scripts/db-backup.sh` (dump, checksum, optional GPG and S3 upload, local rotation) and `scripts/db-restore-verify.sh` (checksum, restore into a scratch database, migration count and key-table row counts compared with the source). CI backs up and restores the test database on every build, so the scripts stay working.
+* Restore drills quarterly into an isolated environment with `db-restore-verify.sh` (`COMPARE_SOURCE=0`, `KEEP_RESTORE=1`); then check `node dist/database/migrate.js status` and the health endpoint against the restored database.
 * `DATA_ENCRYPTION_KEY` and JWT secrets are backed up in the secret manager — without the encryption key, encrypted columns cannot be recovered.
 * Redis holds only rebuildable state (rate limits, queues); queue jobs are idempotent.
 

@@ -2,6 +2,7 @@ import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAtt
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
 import type {
   BloodGroup,
+  CustomFieldValue,
   DocumentCategory,
   DocumentContentType,
   DocumentStatus,
@@ -164,6 +165,8 @@ export class Employee extends Model<InferAttributes<Employee>, InferCreationAttr
   @Column({ type: DataType.STRING(4), field: 'bank_account_last4' }) bankAccountLast4: CreationOptional<string | null>;
   @Column(DataType.STRING(11)) bankIfsc: CreationOptional<string | null>;
   @Column(DataType.STRING(100)) bankName: CreationOptional<string | null>;
+  /** Values of the organization's custom fields, by key. */
+  @Column(DataType.JSONB) customFields: CreationOptional<Record<string, CustomFieldValue>>;
   @ForeignKey(() => Grade) @Column(DataType.UUID) gradeId: CreationOptional<string | null>;
   /** Paid in this pay group's own payroll runs; null = the main run. */
   @Column(DataType.UUID) payGroupId: CreationOptional<string | null>;

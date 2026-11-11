@@ -32,7 +32,7 @@ const bases: { value: BonusBasis; label: string; description: string }[] = [
   {
     value: 'STATUTORY',
     label: 'Statutory bonus (Payment of Bonus Act)',
-    description: `Basic up to ₹${STATUTORY_BONUS.eligibleUpTo.toLocaleString('en-IN')}: rate × min(Basic, ₹${STATUTORY_BONUS.calculationCeiling.toLocaleString('en-IN')}) per month worked this financial year`,
+    description: `Basic up to ${rupees(STATUTORY_BONUS.eligibleUpTo)}: rate × min(Basic, ${rupees(STATUTORY_BONUS.calculationCeiling)}) per month worked this financial year`,
   },
 ];
 const valueLabel = computed(() => (form.basis === 'FIXED' ? 'Amount (₹)' : form.basis === 'STATUTORY' ? `Rate (${STATUTORY_BONUS.minRate}–${STATUTORY_BONUS.maxRate}%)` : 'Percentage'));

@@ -1,41 +1,18 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import {
-  ArrowDown,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ClipboardList,
-  Flag,
-  Gauge,
-  Hourglass,
-  MessageSquarePlus,
-  MessageSquareText,
-  Pencil,
-  PenLine,
-  Plus,
-  Quote,
-  Scale,
-  Send,
-  Star,
-  Target,
-  Trash2,
-  TrendingUp,
-  Undo2,
-  UserCog,
-  UserRound,
-  UsersRound,
-} from '@lucide/vue';
-import { POTENTIAL_LABELS, type ReviewStage } from '@contracts';
+import { Check, CheckCircle2, ClipboardList, Gauge, Pencil, PenLine, Plus, Quote, Scale, Send, Target, Trash2, TrendingUp, Undo2, UserCog, UserRound } from '@lucide/vue';
+import { POTENTIAL_LABELS } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import ColleaguePicker from '@/modules/performance/components/ColleaguePicker.vue';
 import GoalFormModal from '@/modules/performance/components/GoalFormModal.vue';
 import RatingChip from '@/modules/performance/components/RatingChip.vue';
 import RatingInput from '@/modules/performance/components/RatingInput.vue';
+import ReviewSidebar from '@/modules/performance/components/ReviewSidebar.vue';
+import ReviewWorkflowCard from '@/modules/performance/components/ReviewWorkflowCard.vue';
 import type { CompetencyRating, Goal, ReviewDetail } from '@/modules/performance/types';
-import { STAGE_LABELS, STAGE_ORDER, ratingText, stageTone } from '@/modules/performance/utils/performance-format';
-import { RATING_FILL, RATING_TEXT, pct, plural, relativeDay, todayIso } from '@/modules/performance/utils/performance-ops';
+import { STAGE_LABELS, ratingText, stageTone } from '@/modules/performance/utils/performance-format';
+import { RATING_FILL, RATING_TEXT, relativeDay, todayIso } from '@/modules/performance/utils/performance-ops';
 import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppErrorState, AppInput, AppModal, AppPageHeader, AppSegmented, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -197,98 +174,12 @@ async function acknowledge() {
   await act('ack', () => performanceApi.acknowledge(id.value, ackComment.value || null), 'Review acknowledged');
 }
 
-// ---- Workflow summary ------------------------------------------------------------------------------------------
 const first = (name: string | undefined) => name?.split(' ')[0] ?? '';
-const STEP_LABELS: Record<ReviewStage, string> = { GOAL_SETTING: 'Set goals', GOAL_APPROVAL: 'Goal approval', SELF_REVIEW: 'Self-review', MANAGER_REVIEW: 'Manager review', COMPLETED: 'Completed', ACKNOWLEDGED: 'Acknowledged' };
-const steps = computed(() => {
-  const d = r.value;
-  if (!d) return [];
-  const at = STAGE_ORDER.indexOf(d.stage);
-  const c = d.cycle;
-  const when: Partial<Record<ReviewStage, { done: string | null | undefined; due: string | null | undefined }>> = {
-    GOAL_SETTING: { done: d.goalsSubmittedAt, due: c.goalsDue },
-    GOAL_APPROVAL: { done: d.goalsApprovedAt, due: c.goalsDue },
-    SELF_REVIEW: { done: d.self.submittedAt, due: c.selfReviewDue },
-    MANAGER_REVIEW: { done: d.manager?.submittedAt, due: c.managerReviewDue },
-    ACKNOWLEDGED: { done: d.acknowledgedAt, due: null },
-  };
-  return STAGE_ORDER.map((s, i) => {
-    const state = i < at || d.stage === 'ACKNOWLEDGED' ? 'done' : i === at ? 'current' : 'upcoming';
-    const w = when[s];
-    const date = state === 'done' ? (w?.done ? `Done ${formatDate(w.done)}` : null) : w?.due && c.status === 'ACTIVE' ? `Due ${formatDate(w.due)}` : null;
-    return { key: s, label: STEP_LABELS[s], state, date, late: state !== 'done' && c.status === 'ACTIVE' && !!w?.due && w.due < today };
-  });
-});
-
-const goalProgress = computed(() => (totalWeight.value ? Math.round((r.value?.goals ?? []).reduce((s, g) => s + g.progress * g.weight, 0) / totalWeight.value) : 0));
-const stats = computed(() => {
-  const d = r.value!;
-  const selfDone = !!d.self.submittedAt;
-  const beforeSelf = STAGE_ORDER.indexOf(d.stage) < STAGE_ORDER.indexOf('SELF_REVIEW');
-  const rating = d.manager?.rating ?? null;
-  return [
-    { key: 'goals', label: 'Goals', value: d.goals.length, hint: d.goals.length ? `Weights total ${totalWeight.value}%` : 'None added yet', icon: Target, tone: 'text-accent-fg bg-accent-soft' },
-    { key: 'progress', label: 'Goal progress', value: `${goalProgress.value}%`, hint: d.goalsApprovedAt ? 'Weighted by goal importance' : 'Tracked once goals are approved', icon: TrendingUp, tone: goalProgress.value >= 70 ? 'text-success-fg bg-success-soft' : 'text-info-fg bg-info-soft' },
-    { key: 'self', label: 'Self-assessment', value: selfDone ? 'Submitted' : beforeSelf ? 'Not started' : 'In progress', hint: selfDone ? formatDate(d.self.submittedAt) : d.cycle.selfReviewDue ? `Due ${formatDate(d.cycle.selfReviewDue)}` : 'No deadline set', icon: UserRound, tone: selfDone ? 'text-success-fg bg-success-soft' : 'text-fg-muted bg-surface-muted' },
-    {
-      key: 'rating',
-      label: 'Overall rating',
-      value: rating ? `${rating} / 5` : '—',
-      hint: rating ? `${labels.value[rating - 1] ?? ''}${d.manager?.calibratedRating ? ' · calibrated' : ''}` : d.manager?.submittedAt ? 'Not visible yet' : 'After the manager review',
-      icon: Star,
-      tone: rating ? `${RATING_TEXT[rating]} bg-surface-muted` : 'text-fg-muted bg-surface-muted',
-    },
-  ];
-});
-
 function scrollTo(section: string) {
   document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-/** What this viewer should do next (or who it is waiting on), for the bar under the stepper. */
-const next = computed(() => {
-  const d = r.value;
-  if (!d) return null;
-  const p = d.permissions;
-  const emp = first(d.employee.name);
-  const rev = d.reviewer ? first(d.reviewer.name) : 'the reviewer';
-  const subject = d.viewer.isSubject;
-  switch (d.stage) {
-    case 'GOAL_SETTING':
-      if (p.editGoals && subject) return { you: true, title: d.goalsReturnNote ? 'Update your goals and submit them again' : `Set your goals and submit them to ${rev}`, cta: 'Go to goals', target: 'goals' };
-      return { you: !!p.editGoals, title: `${emp} is setting goals`, detail: d.cycle.goalsDue ? `Due ${formatDate(d.cycle.goalsDue)}` : undefined, cta: 'View goals', target: 'goals' };
-    case 'GOAL_APPROVAL':
-      if (p.approveGoals) return { you: true, title: `Approve ${emp}'s goals`, detail: 'Approve them, edit them, or send them back with a note.', cta: 'Review goals', target: 'goals' };
-      return { you: false, title: `Goals are with ${rev} for approval`, detail: d.goalsSubmittedAt ? `Submitted ${formatDate(d.goalsSubmittedAt)}` : undefined, cta: 'View goals', target: 'goals' };
-    case 'SELF_REVIEW':
-      if (p.selfAssess) return { you: true, title: 'Rate yourself on each goal and competency', detail: d.cycle.selfReviewDue ? `Due ${formatDate(d.cycle.selfReviewDue)}` : 'Save a draft any time, then submit.', cta: 'Start self-review', target: 'self' };
-      return { you: false, title: `${emp} is completing the self-assessment`, detail: p.managerAssess ? 'You can draft your review now and submit it once the self-assessment is in.' : undefined, cta: p.managerAssess ? 'Draft your review' : undefined, target: 'manager' };
-    case 'MANAGER_REVIEW':
-      if (p.submitManagerReview || p.managerAssess) return { you: true, title: `Write your review of ${emp}`, detail: d.cycle.managerReviewDue ? `Due ${formatDate(d.cycle.managerReviewDue)}` : 'Rate each goal and competency.', cta: 'Write review', target: 'manager' };
-      return { you: false, title: subject ? `${rev} is writing your review` : `With ${rev} for the manager review`, detail: subject ? "You'll be notified when it's complete and HR releases the results." : undefined, target: 'manager' };
-    case 'COMPLETED':
-      if (p.acknowledge) return { you: true, title: 'Read your review, then acknowledge it', detail: 'Add a comment if you would like to respond.', cta: 'Read review', target: 'manager' };
-      if (subject && !d.cycle.resultsReleased) return { you: false, title: 'Review completed', detail: "Your manager has submitted the review. You'll see the results once HR releases them." };
-      if (p.calibrate) return { you: true, title: 'Calibrate the rating if needed', detail: 'Align ratings across teams before HR releases the results.', cta: 'See the review', target: 'manager' };
-      return { you: false, title: d.cycle.resultsReleased ? `Waiting for ${emp} to acknowledge` : 'Review completed', detail: d.cycle.resultsReleased ? 'Results are released.' : 'The employee sees it once HR releases the results.', cta: 'See the review', target: 'manager' };
-    default:
-      return { you: false, title: 'Review closed', detail: d.acknowledgedAt ? `Acknowledged ${formatDate(d.acknowledgedAt)}` : undefined, cta: 'See the review', target: 'manager' };
-  }
-});
-
-const keyDates = computed(() => {
-  const c = r.value?.cycle;
-  if (!c) return [];
-  return [
-    { label: 'Review period starts', date: c.periodStart, tone: 'bg-brand-500', deadline: false },
-    { label: 'Goals due', date: c.goalsDue, tone: 'bg-warning', deadline: true },
-    { label: 'Self-review due', date: c.selfReviewDue, tone: 'bg-info', deadline: true },
-    { label: 'Manager review due', date: c.managerReviewDue, tone: 'bg-special', deadline: true },
-    { label: 'Review period ends', date: c.periodEnd, tone: 'bg-fg-subtle', deadline: false },
-  ].filter((k): k is { label: string; date: string; tone: string; deadline: boolean } => !!k.date);
-});
 const selfComp = (key: string) => r.value?.self.competencies.find((c) => c.key === key)?.rating ?? null;
 const mgrComp = (key: string) => r.value?.manager?.competencies.find((c) => c.key === key) ?? null;
-const feedbackGiven = computed(() => (r.value?.feedback ?? []).filter((f) => f.status === 'SUBMITTED').length);
 </script>
 
 <template>
@@ -316,55 +207,7 @@ const feedbackGiven = computed(() => (r.value?.feedback ?? []).filter((f) => f.s
         </template>
       </AppPageHeader>
 
-      <!-- Workflow -->
-      <section class="card mb-4 overflow-hidden" aria-label="Review progress">
-        <nav class="scrollbar-none overflow-x-auto border-b border-line/70 px-3 py-3" aria-label="Review stages">
-          <ol class="flex min-w-[52rem] items-center gap-1">
-            <template v-for="(s, i) in steps" :key="s.key">
-              <li class="flex shrink-0 items-center gap-2 rounded-lg px-2 py-1 whitespace-nowrap" :class="s.state === 'current' && 'bg-accent-soft/60 ring-1 ring-brand-500/25 ring-inset'" :aria-current="s.state === 'current' ? 'step' : undefined">
-                <span
-                  :class="[
-                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                    s.state === 'done' ? 'bg-success text-white' : s.state === 'current' ? (s.late ? 'bg-danger text-white' : 'bg-brand-600 text-white') : 'bg-surface-muted text-fg-muted ring-1 ring-line ring-inset',
-                  ]"
-                  aria-hidden="true"
-                >
-                  <Check v-if="s.state === 'done'" :size="14" :stroke-width="3" />
-                  <template v-else>{{ i + 1 }}</template>
-                </span>
-                <span>
-                  <span class="block text-sm font-medium" :class="s.state === 'upcoming' ? 'text-fg-muted' : 'text-fg'">{{ s.label }}<span class="sr-only"> ({{ s.state === 'done' ? 'done' : s.state === 'current' ? 'current step' : 'to come' }})</span></span>
-                  <span v-if="s.date" class="block text-2xs" :class="s.late ? 'font-medium text-danger-fg' : 'text-fg-muted'">{{ s.date }}<template v-if="s.late"> · overdue</template></span>
-                </span>
-              </li>
-              <li v-if="i < steps.length - 1" :class="['h-px min-w-3 flex-1', s.state === 'done' ? 'bg-success/60' : 'bg-line']" aria-hidden="true" />
-            </template>
-          </ol>
-        </nav>
-
-        <div class="grid grid-cols-2 gap-px bg-line/70 xl:grid-cols-4">
-          <div v-for="s in stats" :key="s.key" class="flex items-center gap-3 bg-surface px-4 py-3.5 sm:px-5">
-            <span :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded-lg max-sm:hidden', s.tone]" aria-hidden="true"><component :is="s.icon" :size="17" /></span>
-            <div class="min-w-0">
-              <p class="text-xl leading-6 font-semibold text-fg tabular-nums">{{ s.value }}</p>
-              <p class="truncate text-xs font-medium text-fg-muted">{{ s.label }}</p>
-              <p class="truncate text-2xs text-fg-subtle">{{ s.hint }}</p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="next" :class="['flex flex-wrap items-center gap-3 border-t border-line/70 px-5 py-3', next.you ? 'bg-accent-soft/40' : 'bg-surface-muted/50']">
-          <span :class="['flex h-8 w-8 shrink-0 items-center justify-center rounded-full', next.you ? 'bg-brand-600 text-white' : 'bg-surface text-fg-muted ring-1 ring-line']" aria-hidden="true">
-            <component :is="next.you ? Flag : Hourglass" :size="15" />
-          </span>
-          <div class="min-w-0 flex-1">
-            <p :class="['text-2xs font-semibold tracking-wide uppercase', next.you ? 'text-accent-fg' : 'text-fg-muted']">{{ next.you ? 'Your next step' : 'Waiting on others' }}</p>
-            <p class="text-sm font-medium text-fg">{{ next.title }}</p>
-            <p v-if="next.detail" class="text-xs text-fg-muted">{{ next.detail }}</p>
-          </div>
-          <AppButton v-if="next.cta && next.target" size="sm" :variant="next.you ? 'primary' : 'secondary'" :icon-right="ArrowDown" @click="scrollTo(next.target)">{{ next.cta }}</AppButton>
-        </div>
-      </section>
+      <ReviewWorkflowCard :review="r" @go="scrollTo" />
 
       <div v-if="(r.stage === 'GOAL_SETTING' && r.goalsReturnNote) || (r.viewer.isSubject && !r.reviewer)" class="mb-4 space-y-3">
         <AppAlert v-if="r.stage === 'GOAL_SETTING' && r.goalsReturnNote" tone="warning" title="Goals sent back">{{ r.goalsReturnNote }}</AppAlert>
@@ -650,93 +493,7 @@ const feedbackGiven = computed(() => (r.value?.feedback ?? []).filter((f) => f.s
           </section>
         </div>
 
-        <aside class="space-y-4">
-          <AppCard title="People" :icon="UsersRound">
-            <ul class="space-y-3">
-              <li class="flex items-center gap-3">
-                <AppAvatar :name="r.employee.name" size="md" />
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium text-fg">{{ r.employee.name }}</p>
-                  <p class="truncate text-xs text-fg-muted">Employee · <span class="font-mono">{{ r.employee.employeeCode }}</span></p>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <AppAvatar v-if="r.reviewer" :name="r.reviewer.name" size="md" />
-                <span v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning-fg" aria-hidden="true"><UserCog :size="16" /></span>
-                <div class="min-w-0 flex-1">
-                  <p :class="['truncate text-sm font-medium', r.reviewer ? 'text-fg' : 'text-warning-fg']">{{ r.reviewer?.name ?? 'Not assigned' }}</p>
-                  <p class="truncate text-xs text-fg-muted">Reviewer<template v-if="r.reviewer"> · <span class="font-mono">{{ r.reviewer.employeeCode }}</span></template></p>
-                </div>
-                <AppButton v-if="r.permissions.reassign" size="xs" variant="ghost" @click="newReviewer = null; reassignOpen = true">{{ r.reviewer ? 'Change' : 'Assign' }}</AppButton>
-              </li>
-            </ul>
-          </AppCard>
-
-          <AppCard title="Rating scale" :icon="Star" description="Used for goals and competencies">
-            <ol class="space-y-1.5">
-              <li v-for="n in [5, 4, 3, 2, 1]" :key="n" :class="['flex items-center gap-2.5 rounded-md px-2 py-1 text-sm', r.manager?.rating === n && 'bg-accent-soft/60 ring-1 ring-brand-500/20 ring-inset']">
-                <span :class="['flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold text-white tabular-nums', RATING_FILL[n]]" aria-hidden="true">{{ n }}</span>
-                <span class="min-w-0 flex-1 truncate text-fg">{{ labels[n - 1] }}</span>
-                <span v-if="r.manager?.rating === n" class="text-2xs font-medium text-accent-fg">Final</span>
-              </li>
-            </ol>
-            <div class="mt-4 border-t border-line/70 pt-3">
-              <p class="mb-1.5 flex justify-between text-2xs text-fg-muted"><span>Goals {{ r.cycle.goalsWeight }}%</span><span v-if="r.cycle.competencies.length && r.cycle.goalsWeight < 100">Competencies {{ 100 - r.cycle.goalsWeight }}%</span></p>
-              <div class="flex h-1.5 overflow-hidden rounded-full bg-surface-muted" role="img" :aria-label="`Score weighting: goals ${r.cycle.goalsWeight}%, competencies ${100 - r.cycle.goalsWeight}%`">
-                <span class="h-full bg-brand-500" :style="{ width: `${r.cycle.goalsWeight}%` }" />
-                <span class="h-full bg-special" :style="{ width: `${r.cycle.competencies.length ? 100 - r.cycle.goalsWeight : 0}%` }" />
-              </div>
-            </div>
-          </AppCard>
-
-          <AppCard v-if="keyDates.length" title="Key dates" :icon="CalendarDays">
-            <ol class="relative space-y-4 border-s border-line ps-5">
-              <li v-for="k in keyDates" :key="k.label" class="relative">
-                <span :class="['absolute -start-[25.5px] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-surface', k.tone]" aria-hidden="true" />
-                <p class="text-sm font-medium text-fg">{{ k.label }}</p>
-                <p class="text-xs" :class="k.date < today ? 'text-fg-subtle' : 'text-fg-muted'">{{ formatDate(k.date) }} · {{ relativeDay(k.date) }}</p>
-              </li>
-            </ol>
-          </AppCard>
-
-          <AppCard title="360 feedback" :icon="MessageSquareText" :description="r.viewer.isSubject && !r.cycle.resultsReleased ? `${r.feedbackRequested} requested · shared anonymously with your results` : r.feedback.length ? `${feedbackGiven} of ${plural(r.feedback.length, 'request')} answered` : undefined" :padded="false">
-            <template v-if="r.permissions.requestFeedback" #actions><AppButton size="sm" variant="secondary" :icon="MessageSquarePlus" @click="requestIds = []; requestOpen = true">Request</AppButton></template>
-            <div v-if="r.feedback.length && !(r.viewer.isSubject && !r.cycle.resultsReleased)" class="border-b border-line/70 px-4 py-2.5">
-              <div class="h-1.5 overflow-hidden rounded-full bg-surface-muted" role="img" :aria-label="`${feedbackGiven} of ${r.feedback.length} answered`">
-                <div class="h-full rounded-full bg-success" :style="{ width: `${pct(feedbackGiven, r.feedback.length)}%` }" />
-              </div>
-            </div>
-            <p v-if="!r.feedback.length" class="p-4 text-sm text-fg-muted">{{
-                r.viewer.isSubject
-                  ? r.feedbackRequested
-                    ? 'Feedback from colleagues is shared with you, without their names, when HR releases the results.'
-                    : 'Ask colleagues you work with for feedback.'
-                  : r.permissions.requestFeedback
-                    ? 'Ask colleagues who work with them for feedback. Their names are not shown to the employee.'
-                    : 'No feedback requested for this review.'
-              }}</p>
-            <ul v-else class="divide-y divide-line/60">
-              <li v-for="f in r.feedback" :key="f.id" class="px-4 py-3 text-sm">
-                <div class="flex items-center gap-2.5">
-                  <AppAvatar v-if="f.giver" :name="f.giver.name" size="sm" />
-                  <span v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-subtle" aria-hidden="true"><UserRound :size="14" /></span>
-                  <span class="min-w-0 flex-1 truncate font-medium text-fg">{{ f.giver?.name ?? 'A colleague' }}</span>
-                  <AppBadge size="sm" dot :tone="f.status === 'SUBMITTED' ? 'success' : f.status === 'DECLINED' ? 'neutral' : 'warning'">{{ f.status === 'SUBMITTED' ? (f.rating ? `Rated ${f.rating}` : 'Given') : f.status === 'DECLINED' ? 'Declined' : 'Requested' }}</AppBadge>
-                </div>
-                <div v-if="f.status === 'SUBMITTED'" class="mt-2 space-y-2 ps-9.5">
-                  <div>
-                    <p class="text-2xs font-semibold tracking-wide text-success-fg uppercase">Strengths</p>
-                    <p class="text-fg">{{ f.strengths }}</p>
-                  </div>
-                  <div>
-                    <p class="text-2xs font-semibold tracking-wide text-warning-fg uppercase">To improve</p>
-                    <p class="text-fg">{{ f.improvements }}</p>
-                  </div>
-                </div>
-              </li>
-            </ul>
-          </AppCard>
-        </aside>
+        <ReviewSidebar :review="r" @reassign="newReviewer = null; reassignOpen = true" @request-feedback="requestIds = []; requestOpen = true" />
       </div>
 
       <GoalFormModal :open="goalOpen" :review-id="r.id" :goal="editingGoal" :remaining-weight="100 - totalWeight + (editingGoal?.weight ?? 0)" :period-start="r.cycle.periodStart" :period-end="r.cycle.periodEnd" @close="goalOpen = false" @saved="onGoalSaved" />

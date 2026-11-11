@@ -17,6 +17,39 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Browser notifications (Web Push): { title, body, url, tag } from the API; grievance pushes carry no details.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: event.data ? event.data.text() : 'HRMS' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'HRMS', {
+      body: data.body || undefined,
+      tag: data.tag || undefined,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: data.url || '/me/notifications' },
+    }),
+  );
+});
+
+// Clicking a notification focuses an open HRMS tab (navigating it) or opens one; only same-origin paths are followed.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const raw = (event.notification.data && event.notification.data.url) || '/me/notifications';
+  const target = new URL(raw.startsWith('/') ? raw : '/me/notifications', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((tabs) => {
+      const tab = tabs.find((t) => new URL(t.url).origin === self.location.origin);
+      if (tab) return tab.focus().then((t) => (t && 'navigate' in t ? t.navigate(target) : undefined));
+      return self.clients.openWindow(target);
+    }),
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);

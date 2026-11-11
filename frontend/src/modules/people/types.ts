@@ -1,5 +1,7 @@
 import type {
   BloodGroup,
+  CustomFieldType,
+  CustomFieldValue,
   DocumentCategory,
   DocumentContentType,
   DocumentStatus,
@@ -12,6 +14,40 @@ import type {
   LifecycleEventType,
   MaritalStatus,
 } from '@contracts';
+
+export interface CustomFieldDefinition {
+  id: string;
+  key: string;
+  label: string;
+  type: CustomFieldType;
+  options: string[];
+  required: boolean;
+  sensitive: boolean;
+  employeeEditable: boolean;
+  section: string | null;
+  helpText: string | null;
+  sortOrder: number;
+  archived: boolean;
+}
+
+export interface CustomFieldDefinitionInput {
+  key: string;
+  label: string;
+  type: CustomFieldType;
+  options?: string[];
+  required?: boolean;
+  sensitive?: boolean;
+  employeeEditable?: boolean;
+  section?: string | null;
+  helpText?: string | null;
+}
+
+export interface CustomFieldWithValue extends CustomFieldDefinition {
+  value: CustomFieldValue;
+  /** Sensitive and not visible to the viewer. */
+  hidden: boolean;
+  editable: boolean;
+}
 
 export interface Grade {
   id: string;

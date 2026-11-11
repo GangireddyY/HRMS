@@ -5,6 +5,7 @@ import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { DatabaseService } from '../../database/database.service';
 import { AuditLog, Organization, OrganizationMembership, OrganizationSecurityPolicy, Plan, Role, User, UserSession } from '../../database/models';
+import { seatLimit } from '../billing/seats';
 import { AuditService, diff } from '../../infrastructure/audit/audit.service';
 import { OrganizationProfileDto, UpdateSecurityPolicyDto } from './dto/organization.dto';
 
@@ -90,8 +91,9 @@ export class OrganizationsService {
       rejectOnEmpty: true,
     });
     const userCount = await OrganizationMembership.count({ where: { status: { [Op.in]: ['ACTIVE', 'INVITED'] } } });
+    const seats = await seatLimit(org.id);
     return {
-      plan: org.plan,
+      plan: org.plan ? { ...org.plan.get({ plain: true }), maxUsers: seats } : org.plan,
       userCount,
       modules: MODULES.map((m) => ({ key: m.key, name: m.name, description: m.description, core: m.core, entitled: auth.features.has(m.key) })),
     };

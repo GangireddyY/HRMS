@@ -11,6 +11,8 @@ export interface LogArchive {
   fileName: string;
   sizeBytes: number;
   sha256: string;
+  /** The stored file can't be deleted or changed until then (Object Lock); null when retention is off. */
+  lockedUntil: string | null;
   status: LogArchiveStatus;
   downloadedAt: string | null;
   purgedAt: string | null;

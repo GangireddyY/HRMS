@@ -14,6 +14,7 @@ import { peopleAdminRoutes, peopleHrRoutes, peopleSelfRoutes } from '@/modules/p
 import { platformRoutes } from '@/modules/platform/platform.routes';
 import { privacyRoutes } from '@/modules/privacy/privacy.routes';
 import { integrationsRoutes } from '@/modules/integrations/integrations.routes';
+import { approvalChainsRoutes } from '@/modules/approval-chains/approval-chains.routes';
 import { payrollHrRoutes, payrollSelfRoutes } from '@/modules/payroll/payroll.routes';
 import { performanceHrRoutes, performanceSelfRoutes } from '@/modules/performance/performance.routes';
 import { trainingHrRoutes, trainingSelfRoutes } from '@/modules/training/training.routes';
@@ -24,6 +25,7 @@ import { complianceHrRoutes, complianceSelfRoutes } from '@/modules/compliance/c
 import { exitHrRoutes, exitSelfRoutes } from '@/modules/exit/exit.routes';
 import { servicesHrRoutes, servicesSelfRoutes } from '@/modules/services/services.routes';
 import { reportsHrRoutes } from '@/modules/reports/reports.routes';
+import { importsHrRoutes } from '@/modules/imports/imports.routes';
 import { careersRoutes, recruitmentHrRoutes, recruitmentSelfRoutes } from '@/modules/recruitment/recruitment.routes';
 import { rolesRoutes } from '@/modules/roles/roles.routes';
 import { usersRoutes } from '@/modules/users/users.routes';
@@ -50,13 +52,13 @@ export const routes: RouteRecordRaw[] = [
     path: '/admin',
     component: () => import('@/layouts/AdminLayout.vue'),
     meta: { access: { permissions: ADMIN_PERMISSIONS } },
-    children: [...organizationRoutes, ...peopleAdminRoutes, ...attendanceAdminRoutes, ...usersRoutes, ...rolesRoutes, ...auditRoutes, ...privacyRoutes, ...integrationsRoutes],
+    children: [...organizationRoutes, ...peopleAdminRoutes, ...attendanceAdminRoutes, ...usersRoutes, ...rolesRoutes, ...auditRoutes, ...privacyRoutes, ...integrationsRoutes, ...approvalChainsRoutes],
   },
   {
     path: '/hr',
     component: () => import('@/layouts/HrLayout.vue'),
     meta: { access: { permissions: HR_OPERATIONS_PERMISSIONS, scope: 'TEAM' } },
-    children: [...hrRoutes, ...peopleHrRoutes, ...recruitmentHrRoutes, ...onboardingHrRoutes, ...attendanceHrRoutes, ...leaveHrRoutes, ...payrollHrRoutes, ...performanceHrRoutes, ...trainingHrRoutes, ...engagementHrRoutes, ...grievanceHrRoutes, ...benefitsHrRoutes, ...complianceHrRoutes, ...exitHrRoutes, ...servicesHrRoutes, ...reportsHrRoutes],
+    children: [...hrRoutes, ...peopleHrRoutes, ...recruitmentHrRoutes, ...onboardingHrRoutes, ...attendanceHrRoutes, ...leaveHrRoutes, ...payrollHrRoutes, ...performanceHrRoutes, ...trainingHrRoutes, ...engagementHrRoutes, ...grievanceHrRoutes, ...benefitsHrRoutes, ...complianceHrRoutes, ...exitHrRoutes, ...servicesHrRoutes, ...reportsHrRoutes, ...importsHrRoutes],
   },
   {
     path: '/me',

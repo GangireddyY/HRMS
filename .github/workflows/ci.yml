@@ -10,6 +10,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commits:
+    # Conventional Commits (commitlint.config.cjs) for every commit a pull request adds.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - name: Check commit messages
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -115,6 +133,14 @@ jobs:
 
       - name: Backend integration tests (PostgreSQL)
         run: npm --prefix backend run test:e2e
+
+      - name: Backup and verified restore
+        # Same client version as the server (postgres:17), on the runner's network.
+        run: |
+          docker run --rm --network host -v "$PWD:/work" -w /work \
+            -e DB_HOST=localhost -e DB_PORT=5432 -e DB_NAME=hrms_test -e DB_USER=hrms -e PGPASSWORD=hrms_ci \
+            -e MIGRATIONS_DIR=backend/src/database/migrations \
+            postgres:17-alpine sh -c 'dump=$(sh scripts/db-backup.sh /tmp/backups) && sh scripts/db-restore-verify.sh "$dump"'
 
       - name: Frontend unit tests
         run: npm --prefix frontend run test

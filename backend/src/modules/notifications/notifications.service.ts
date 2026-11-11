@@ -9,6 +9,7 @@ import { EMAIL_CATEGORIES, DEFAULT_MUTED_CATEGORIES, type NotificationSettings, 
 import { Notification, Organization, User } from '../../database/models';
 import { MailService } from '../../infrastructure/mail/mail.service';
 import { notificationEmail } from '../../infrastructure/mail/templates';
+import { PushService } from './push.service';
 
 export interface NotificationInput {
   type: string;
@@ -36,6 +37,7 @@ export class NotificationsService {
     @Optional() private readonly bus?: NotificationBus,
     @Optional() private readonly mail?: MailService,
     @Optional() private readonly config?: AppConfig,
+    @Optional() private readonly push?: PushService,
   ) {}
 
   async notify(userId: string, input: NotificationInput, transaction?: Transaction): Promise<void> {
@@ -51,6 +53,7 @@ export class NotificationsService {
       { transaction },
     );
     await this.email(userId, input, transaction);
+    await this.push?.queue(userId, input, transaction);
     // Open sessions refresh once the notification is visible to them.
     if (transaction) transaction.afterCommit(() => this.bus?.publish(userId));
     else this.bus?.publish(userId);
@@ -95,11 +98,13 @@ export class NotificationsService {
     return present(user.notificationSettings);
   }
 
-  async updateSettings(userId: string, input: { email: boolean; muted: string[] }) {
+  async updateSettings(userId: string, input: { email: boolean; muted: string[]; push?: boolean }) {
     const known = new Set<string>(EMAIL_CATEGORIES.map((c) => c.key));
     const unknown = input.muted.filter((m) => !known.has(m));
     if (unknown.length) throw AppError.badRequest(`Unknown notification categories: ${unknown.join(', ')}`);
-    const next: NotificationSettings = { email: input.email, muted: [...new Set(input.muted)] };
+    const current = await User.findByPk(userId, { attributes: ['notificationSettings'] });
+    const push = input.push ?? current?.notificationSettings?.push;
+    const next: NotificationSettings = { email: input.email, muted: [...new Set(input.muted)], ...(push === undefined ? {} : { push }) };
     const [count] = await User.update({ notificationSettings: next }, { where: { id: userId } });
     if (count === 0) throw AppError.notFound('User');
     return present(next);
@@ -145,6 +150,7 @@ export class NotificationsService {
 function present(settings: NotificationSettings | null | undefined) {
   return {
     email: settings?.email !== false,
+    push: settings?.push !== false,
     muted: settings?.muted ?? [...DEFAULT_MUTED_CATEGORIES],
     categories: EMAIL_CATEGORIES.map((c) => ({ key: c.key, label: c.label, description: c.description })),
   };

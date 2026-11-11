@@ -7,7 +7,8 @@ import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { containsPattern } from '../../common/utils/like';
 import { DatabaseService } from '../../database/database.service';
-import { Employee, LoginEvent, MembershipRole, Organization, OrganizationMembership, Permission, Plan, Role, RolePermission, User } from '../../database/models';
+import { Employee, LoginEvent, MembershipRole, Organization, OrganizationMembership, Permission, Role, RolePermission, User } from '../../database/models';
+import { seatLimit } from '../billing/seats';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { SessionService } from '../auth/session.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -309,8 +310,7 @@ export class UsersService {
   }
 
   private async assertWithinPlanLimit(organizationId: string): Promise<void> {
-    const org = await Organization.findByPk(organizationId, { attributes: ['id'], include: [{ model: Plan, attributes: ['maxUsers'] }], rejectOnEmpty: true });
-    const maxUsers = org.plan?.maxUsers;
+    const maxUsers = await seatLimit(organizationId);
     if (!maxUsers) return;
     const count = await OrganizationMembership.count({ where: { status: { [Op.in]: ['ACTIVE', 'INVITED'] } } });
     if (count >= maxUsers) {

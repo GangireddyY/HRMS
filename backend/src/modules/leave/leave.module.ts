@@ -14,6 +14,6 @@ import { LeaveController } from './leave.controller';
   imports: [EmployeesModule, AttendanceModule, RbacModule],
   controllers: [LeaveController],
   providers: [LeaveTypesService, LeaveBalanceService, LeaveRequestsService, CompOffService, EncashmentsService, LeaveAccrualJob],
-  exports: [LeaveBalanceService],
+  exports: [LeaveBalanceService, LeaveRequestsService, EncashmentsService, CompOffService],
 })
 export class LeaveModule {}

@@ -77,6 +77,18 @@ export class EnvironmentVariables {
   @IsOptional() @IsString()
   DATA_ENCRYPTION_PREVIOUS_KEYS?: string;
 
+  /**
+   * env: the keys above are the base64 keys. aws-kms (envelope encryption): they are KMS-encrypted data keys
+   * (`aws kms generate-data-key --key-spec AES_256 --encryption-context app=hrms,purpose=data-encryption-key`),
+   * decrypted at startup with the API's IAM role.
+   */
+  @IsIn(['env', 'aws-kms'])
+  DATA_ENCRYPTION_KEY_SOURCE: 'env' | 'aws-kms' = 'env';
+
+  /** Region of the KMS key (defaults to the AWS SDK's region resolution). */
+  @IsOptional() @IsString()
+  KMS_REGION?: string;
+
   @Transform(toBool) @IsBoolean()
   COOKIE_SECURE = false;
 
@@ -92,6 +104,14 @@ export class EnvironmentVariables {
 
   @IsString()
   DEFAULT_PLAN_CODE = 'starter';
+
+  /** New passwords are checked against breached passwords (Have I Been Pwned, k-anonymity). Off in tests. */
+  @Transform(toBoolDefaultTrue) @IsBoolean()
+  PASSWORD_BREACH_CHECK = true;
+
+  /** Development without SendGrid: also write the links in logged emails (they carry one-time tokens). */
+  @Transform(toBool) @IsBoolean()
+  MAIL_LOG_LINKS = false;
 
   /** SendGrid API key. Required in production; when empty in development, emails are written to the API log. */
   @IsOptional() @IsString()
@@ -129,6 +149,17 @@ export class EnvironmentVariables {
   @Transform(toBool) @IsBoolean()
   S3_FORCE_PATH_STYLE = false;
 
+  /**
+   * Audit and login-history archives are written once and can't be deleted or overwritten for this many days
+   * (S3 Object Lock; the bucket must have Object Lock enabled). 0 = no retention lock (not allowed in production).
+   */
+  @Transform(toInt) @IsInt() @Min(0) @Max(36_500)
+  AUDIT_ARCHIVE_RETENTION_DAYS = 2557;
+
+  /** COMPLIANCE: nobody can shorten the lock, not even the bucket owner. GOVERNANCE: principals with bypass permission can. */
+  @IsIn(['COMPLIANCE', 'GOVERNANCE'])
+  AUDIT_ARCHIVE_LOCK_MODE: 'COMPLIANCE' | 'GOVERNANCE' = 'COMPLIANCE';
+
   /** Malware scanning of uploads before they are stored: clamav (required in production) or off (test signature only). */
   @IsIn(['off', 'clamav'])
   UPLOAD_SCAN: 'off' | 'clamav' = 'off';
@@ -141,6 +172,21 @@ export class EnvironmentVariables {
 
   @Transform(toInt) @IsInt() @Min(1000) @Max(120_000)
   CLAMAV_TIMEOUT_MS = 30_000;
+
+  /** Web Push (VAPID) keys: `npx web-push generate-vapid-keys`. Unset = browser notifications off. */
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  VAPID_PUBLIC_KEY?: string;
+
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  VAPID_PRIVATE_KEY?: string;
+
+  /** Contact for push services, `mailto:` or https URL. */
+  @IsString()
+  VAPID_SUBJECT = 'mailto:no-reply@hrms.local';
+
+  /** Bearer token Prometheus scrapes `GET /api/v1/metrics` with (at least 24 characters); unset = endpoint off. Required in production. */
+  @Transform(emptyToUndefined) @IsOptional() @IsString() @MinLength(24)
+  METRICS_TOKEN?: string;
 
   /** Error reporting to Sentry (or a compatible service); unset = off. */
   @IsOptional() @IsString()
@@ -158,17 +204,20 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
     const details = errors.map((e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`);
     throw new Error(`Invalid environment configuration:\n  ${details.join('\n  ')}`);
   }
+  const plainKeys = env.DATA_ENCRYPTION_KEY_SOURCE === 'env';
   const key = Buffer.from(env.DATA_ENCRYPTION_KEY, 'base64');
-  if (key.length !== 32) throw new Error('DATA_ENCRYPTION_KEY must be 32 bytes encoded as base64');
+  if (plainKeys && key.length !== 32) throw new Error('DATA_ENCRYPTION_KEY must be 32 bytes encoded as base64');
+  if (!plainKeys && key.length < 64) throw new Error('DATA_ENCRYPTION_KEY must be the base64 CiphertextBlob of a KMS data key when DATA_ENCRYPTION_KEY_SOURCE is aws-kms');
   parseDsn(env.SENTRY_DSN);
   const previous = parseKeyRing(env.DATA_ENCRYPTION_PREVIOUS_KEYS);
   for (const [version, k] of previous) {
-    if (Buffer.from(k, 'base64').length !== 32) throw new Error(`DATA_ENCRYPTION_PREVIOUS_KEYS: key ${version} must be 32 bytes encoded as base64`);
+    if (plainKeys && Buffer.from(k, 'base64').length !== 32) throw new Error(`DATA_ENCRYPTION_PREVIOUS_KEYS: key ${version} must be 32 bytes encoded as base64`);
     if (version === env.DATA_ENCRYPTION_KEY_VERSION) throw new Error(`DATA_ENCRYPTION_PREVIOUS_KEYS must not reuse the current version ${version}`);
   }
   if (env.SENDGRID_API_KEY && !env.SENDGRID_API_KEY.startsWith('SG.')) {
     throw new Error('SENDGRID_API_KEY must be a SendGrid API key (starts with "SG.")');
   }
+  if (!!env.VAPID_PUBLIC_KEY !== !!env.VAPID_PRIVATE_KEY) throw new Error('Set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (or neither) for browser notifications');
   if (env.STORAGE_DRIVER === 's3' && (!env.S3_BUCKET || !env.S3_REGION)) throw new Error('S3_BUCKET and S3_REGION are required when STORAGE_DRIVER is s3');
   if (env.NODE_ENV === 'production') {
     if (env.STORAGE_DRIVER !== 's3') throw new Error('STORAGE_DRIVER must be s3 in production (local disk is not shared between instances)');
@@ -182,6 +231,8 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
     }
     if (!env.REDIS_URL) throw new Error('REDIS_URL is required in production (rate limits are shared between API instances)');
     if (env.UPLOAD_SCAN !== 'clamav') throw new Error('UPLOAD_SCAN must be clamav in production (uploads are scanned for malware before they are stored)');
+    if (!env.METRICS_TOKEN) throw new Error('METRICS_TOKEN is required in production (Prometheus scrapes /api/v1/metrics with it)');
+    if (env.AUDIT_ARCHIVE_RETENTION_DAYS < 1) throw new Error('AUDIT_ARCHIVE_RETENTION_DAYS must be at least 1 in production (archives are immutable)');
     if (env.DB_MIGRATION_USER && env.DB_MIGRATION_USER === env.DB_USER) {
       throw new Error('DB_USER (the API) must differ from DB_MIGRATION_USER (the schema owner) in production');
     }

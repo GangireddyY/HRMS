@@ -1,5 +1,6 @@
 import type { Component } from 'vue';
 import { ArrowLeftRight, Banknote, BadgeCheck, Briefcase, CalendarCheck, CalendarClock, CalendarHeart, Clock, HandCoins, House, Landmark, Laptop, LogOut, Luggage, Receipt, Timer, Wallet } from '@lucide/vue';
+import { http } from '@/core/http/http-client';
 import { employeesApi } from '@/modules/people/api/people.api';
 import type { useAuthStore } from '@/core/auth/auth.store';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
@@ -71,13 +72,14 @@ const SOURCES: Source[] = [
 /** Counts of what's waiting for this user's decision, for the kinds they may decide; a lookup that failed is `failed` (count 0). */
 export async function loadApprovals(auth: Auth): Promise<ApprovalCount[]> {
   const sources = SOURCES.filter((s) => s.allowed(auth));
-  const results = await Promise.allSettled(sources.map((s) => s.count()));
-  return sources.map(({ allowed: _a, count: _c, ...s }, i) => {
-    const r = results[i]!;
-    return r.status === 'fulfilled' ? { ...s, count: r.value } : { ...s, count: 0, failed: true };
+  if (!sources.length) return [];
+  // One request for every count (the server applies the same scopes and approval cover as the lists).
+  const counts = new Map((await http.get<{ key: string; count: number; failed?: boolean }[]>('/dashboard/approvals')).map((c) => [c.key, c]));
+  return sources.map(({ allowed: _a, count: _c, ...s }) => {
+    const c = counts.get(s.key);
+    return c && !c.failed ? { ...s, count: c.count } : { ...s, count: 0, failed: true };
   });
 }
-
 export const canApproveAnything = (auth: Auth) => SOURCES.some((s) => s.allowed(auth));
 
 export { addDaysIso, daysUntil, localToday };

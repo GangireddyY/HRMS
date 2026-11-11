@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { APPEARANCE_PREFERENCE_KEYS, type AccessContext, type AppearancePreferences, type DelegatedGrant, type LoginResult, type OrganizationSummary, type PasswordPolicy } from '../../contracts';
 import { literal, type Transaction } from 'sequelize';
 import { AppConfig } from '../../config/app-config.service';
+import { authFailures } from '../../infrastructure/observability/metrics';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { PaginationQueryDto, paginationArgs, paginationMeta } from '../../common/dto/pagination.dto';
 import { AppError } from '../../common/errors/app-error';
@@ -580,6 +581,7 @@ export class AuthService {
     meta: ClientMeta,
     extra: { userId?: string; organizationId?: string | null; reason?: string } = {},
   ): Promise<void> {
+    if (outcome === 'FAILURE' || outcome === 'LOCKED') authFailures.inc({ outcome });
     const organizationId = extra.organizationId !== undefined ? extra.organizationId : extra.userId ? await this.soleOrganization(extra.userId) : null;
     await LoginEvent.create(
       {

@@ -20,6 +20,7 @@ export const EMAIL_CATEGORIES = [
   { key: 'travel', label: 'Travel', description: 'Travel requests to approve, decisions and bookings' },
   { key: 'assets', label: 'Assets', description: 'Assets handed to you, requests and returns' },
   { key: 'engagement', label: 'Announcements & surveys', description: 'Company news, surveys, recognition' },
+  { key: 'billing', label: 'Billing', description: 'Invoices and payments for your organization (billing admins)' },
 ] as const;
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number]['key'];
 
@@ -29,11 +30,21 @@ export const DEFAULT_MUTED_CATEGORIES: EmailCategory[] = ['engagement'];
 export interface NotificationSettings {
   /** False: no notification emails at all. */
   email?: boolean;
+  /** False: no browser (Web Push) notifications on any device. */
+  push?: boolean;
   /** Categories not emailed (in-app only). Undefined means the defaults. */
   muted?: string[];
 }
 
 export const categoryOf = (type: string) => type.split('.')[0]!;
+
+/** Browser notifications follow the same categories as email (a muted category stays in the app). */
+export function wantsPush(settings: NotificationSettings | null | undefined, type: string): boolean {
+  const category = categoryOf(type);
+  if (!EMAIL_CATEGORIES.some((c) => c.key === category)) return false;
+  if (settings?.push === false) return false;
+  return !(settings?.muted ?? DEFAULT_MUTED_CATEGORIES).includes(category);
+}
 
 export function wantsEmail(settings: NotificationSettings | null | undefined, type: string): boolean {
   const category = categoryOf(type);

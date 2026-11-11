@@ -15,7 +15,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { ApproveLoanDto, CreateLoanDto, DeferLoanDto, DisburseLoanDto, LoanQueryDto, LoanRepaymentDto, LoanRequestDto, RejectLoanDto } from './dto/payroll.dto';
 import { closeRepaidLoans, loanBalances, type LoanBalance } from './loan-balances';
 import { loanEmi, monthIndex, nextInstalment, repaymentSchedule } from './loan-rules';
-import { periodLabel } from './payroll-runs.service';
+import { periodLabel } from './payroll-period';
 import { SalariesService } from './salaries.service';
 
 const LABEL: Record<LoanType, string> = { LOAN: 'loan', ADVANCE: 'salary advance' };

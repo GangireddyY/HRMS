@@ -136,7 +136,8 @@ const rule14 = computed(() => {
             <p class="text-xs text-fg-muted">Items (a) to (c) come from the case records; add (d) and (e) when filing.</p>
           </div>
         </header>
-        <table class="w-full text-sm">
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[32rem] text-sm">
           <caption class="sr-only">Contents of the annual report</caption>
           <thead class="border-b border-line bg-surface-muted/70 text-xs text-fg-muted">
             <tr>
@@ -158,6 +159,7 @@ const rule14 = computed(() => {
             </tr>
           </tbody>
         </table>
+        </div>
         <p class="flex items-start gap-2 border-t border-line/70 bg-surface-muted/50 px-4 py-2.5 text-xs text-fg-muted">
           <AlertTriangle :size="13" class="mt-0.5 shrink-0" aria-hidden="true" />The report contains figures only — no names or case details. Submit it to the employer and the District Officer, and include the figures in the employer's annual report (section 22).
         </p>

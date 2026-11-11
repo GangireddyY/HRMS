@@ -61,7 +61,7 @@ export class MailService implements OnModuleInit {
       return;
     }
     if (!this.client) {
-      this.logger.warn(`SENDGRID_API_KEY not set – email to ${message.to} not sent.\nSubject: ${message.subject}\n${message.text}`);
+      this.logger.warn(`SENDGRID_API_KEY not set – email to ${message.to} not sent.\nSubject: ${message.subject}\n${this.config.get('MAIL_LOG_LINKS') ? message.text : redactLinks(message.text)}`);
       return;
     }
     try {
@@ -82,6 +82,11 @@ export class MailService implements OnModuleInit {
       throw new Error(`Email delivery failed: ${reason}`);
     }
   }
+}
+
+/** Logged emails keep where a link goes but not its query (one-time tokens). */
+export function redactLinks(text: string): string {
+  return text.replace(/(https?:\/\/[^\s?#]+)[?#]\S*/g, '$1?[redacted]');
 }
 
 /** SendGrid errors carry the HTTP status and API messages; never include credentials. */

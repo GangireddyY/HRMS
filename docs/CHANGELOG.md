@@ -10,6 +10,33 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
   - **Matching people:** people are matched to their membership by verified email, and a pending invitation is accepted on the way. With "add new people automatically", someone from an allowed domain joins with a chosen role (within the plan's seats).
   - **Requiring SSO:** with SSO required, members can't use a password, while organization admins keep theirs as a fallback.
   - **Step-up:** an SSO sign-in counts as a fresh step-up.
+- **API keys** (Administration → Integrations, new `integration.manage` permission):
+  - **Access:** read-only keys for reporting tools and scripts (`Authorization: Bearer hrms_…`). A key can call GET endpoints only, with view permissions its creator chooses and holds, and acts as its creator: if they lose a permission or leave, so does the key.
+  - **Safety:** the key is shown once and only its hash is stored. Keys show their last use, can expire, can be revoked, and never pass a step-up.
+- **Webhooks**:
+  - **Events:** the organization's events (every audited action, e.g. `employee.created`, `leave.request_approved`, `exit.settlement_paid`) are POSTed as JSON to subscribed endpoints, by module (`leave.*`), everything, or exact events. Sign-ins, grievances, privacy and integration changes are never sent.
+  - **Signing:** each request is signed (`X-HRMS-Signature: t=…,v1=HMAC-SHA256`). The secret is shown once and can be rotated.
+  - **Delivery:** deliveries are queued with the change, retried with backoff, logged with the response, and can be redelivered or test-pinged. An endpoint failing 25 times in a row is switched off. In production endpoints must be HTTPS and can't point at private networks.
+- **Custom employee fields** (Administration → Custom fields, new `employee.fields.manage` permission, which HR roles have):
+  - **Definitions:** fields are text, long text, number, date, yes/no, one or several choices, email or web address. They're grouped in sections and ordered.
+  - **Options:** a field can be required, sensitive (seen only with access to bank and statutory details, and by the employee), or filled in by employees themselves on My profile.
+  - **Values:** values are checked against their type and shown on the employee's profile under "Additional details". Changes are audited, without the values of sensitive fields. Archiving a field hides it and keeps its values.
+- **Report builder** (Reports → Report builder):
+  - **Building a report:** pick a dataset (employees with custom fields, leave requests, attendance, expense claims, payslips), the columns, and filters (is, is one of, contains, at least / at most, empty). Sort it, or summarize it with one row per value, a count and totals.
+  - **Preview and export:** the preview shows 500 rows; CSV or Excel exports take up to 20,000 and are audited.
+  - **Saving:** reports can be saved and shared with the organization.
+  - **Access:** every dataset is limited to what the person may see with that module's permission and scope (managers see their team; payslips need payroll reporting access), and sensitive custom fields only appear for organization-wide sensitive access.
+- **Bulk import per module** (HR Operations → People → Bulk import, `/imports`):
+  - **What can be imported:** opening leave balances or corrections, salaries (CTC from a date, with the structure and PF), assets (optionally handed over to someone), and custom employee field values. Each import is offered only to people with that module's permissions.
+  - **Templates:** each import has a downloadable template. Employees are matched by `employee_code` (case-insensitive), and leave types, salary structures and locations by name or code.
+  - **Checking first:** the whole file is checked first and every problem is listed by row and column. Nothing is saved until every row is valid (up to 5,000 rows and 10 MB).
+  - **Applying:** rows are applied through the same rules as the screens (audited, notified). Salary raises above the approval threshold go for approval, and rows refused when saving are reported back.
+- **Billing (manual)** (Platform → Billing, new `platform.billing.manage` permission):
+  - **Subscription terms:** each organization's subscription sets its status (trial, active, cancelled), billing cycle (monthly, quarterly, yearly), seat limit and monthly price (both default to the plan's), discount, GST rate, payment terms, trial end and billing contact. The seat limit applies to invitations and SSO sign-ups.
+  - **Invoices:** an invoice is drafted for the next period, with the plan for the cycle plus extra lines or credits, then the discount and tax. It's then issued: numbered `INV-2026-0001`, the bill-to is fixed, it's due after the payment terms, and the subscription moves on a period. Issued invoices are emailed as a PDF to the billing contact, and members who can see billing are notified.
+  - **Payments:** payments received (bank transfer, UPI, cheque…) are recorded in full or in part, and an organization's first payment ends its trial. An invoice can be voided until a payment is recorded, which reopens its period.
+  - **Overview:** monthly recurring revenue, outstanding and overdue amounts, collections this month, every organization's subscription and all invoices.
+  - **For organizations** (Organization settings → Billing & invoices, new `billing.view` / `billing.manage` permissions): organizations see their charge, balance, overdue amounts and next invoice, open each invoice with its payments, download PDFs, and keep their billing contact and GSTIN up to date.
 - **Notification emails**: workflow notifications (leave, attendance, payroll, performance, hiring, policies, exit…) are also emailed, queued with the change so nothing is sent if it rolls back. Everyone chooses what they get under Notifications → Email settings (all off, or per category; announcements and surveys are off by default). Grievance emails never include case details; security alerts are always sent.
 - **Holidays per location**: a holiday applies to every location or only the chosen ones (regional holidays); attendance, leave day counts, timesheets and payroll use the holidays of each person's location. Official holidays can be imported for chosen locations.
 - **Approval cover** (Account → Approval cover, `/approvals/delegations`): someone who approves for a team hands those approvals (leave and comp-off, attendance corrections / work from home / overtime, timesheets, expense claims) to a colleague for up to 90 days. The colleague sees the team's requests marked "on behalf of", is notified of new ones, can decline; never the delegator's own requests, never payroll, salary or loan approvals, no chains. Applied centrally in the access layer (`AuthContext.delegated`, `EmployeeScopeService`).
@@ -63,8 +90,31 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
   - **Marking paid:** settlements are then marked paid together with the transfer reference. Each employee is notified, and any that couldn't be marked are reported back.
 - **Compensatory off**: mark a leave type as comp-off (validity in days; the recommended set adds "Compensatory off", 90 days). People who worked a holiday or weekly off ask for the day back from My leave (a full shift earns a day, half a shift half a day, within 30 days); approvers decide under Leave requests → Comp-off; approval credits the balance and each credit expires on its own.
 
+- **Browser notifications (Web Push):** people turn them on per browser under Notifications → settings. Each notification is then pushed to their browsers through the job queue, even when HRMS isn't open, for the same kinds they get by email. There's an account-wide switch as well. Grievance pushes carry no case details. Clicking a notification opens the page in an existing tab, or a new one. Browsers whose push service reports them gone (404/410) are dropped. Set up with `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`.
+
+### Changed
+- **One request for approval counts:** the HR dashboard, account home and assistant get every approval count from one request (`GET /dashboard/approvals`) instead of up to 19. The counts come from each module's own list logic, so scopes and approval cover match the lists, and a source that fails is marked instead of failing them all.
+- **Fixes from the consistency review:** the POSH report table scrolls instead of clipping on narrow screens, and statutory bonus amounts use the region's number format.
+- **Payroll service split:** `payroll-runs.service.ts` (1,534 lines) is now four parts: `PayrollCalculationService` (payslip calculation, arrears), `PayslipsService` (access, PDF, emailed copies), `PayrollExportsService` (register, bank file, PF ECR) and the run workflow, plus `payroll-period.ts` and `payroll-recipients.ts` helpers. Behaviour is unchanged.
+- **Review page split:** the performance review page's stepper and next-step bar (`ReviewWorkflowCard`) and side panels (`ReviewSidebar`) are separate components.
+
+### Operations
+- **Metrics:** Prometheus metrics at `GET /api/v1/metrics`, protected by `METRICS_TOKEN` (required in production). They cover HTTP requests and latency by route pattern, background job outcomes and backlog, failed sign-ins, and process and event-loop metrics. Alert rules ship in `deploy/prometheus/alerts.yml`: instance down, error rate, latency, failed jobs, job backlog, sign-in attacks, memory and event-loop lag.
+- **Tracing:** optional OpenTelemetry tracing (set `OTEL_EXPORTER_OTLP_ENDPOINT`) of HTTP, Express, PostgreSQL and Redis spans, without request bodies or SQL parameters.
+- **Scripted backups:** `scripts/db-backup.sh` takes a custom-format dump with a checksum, optionally GPG-encrypted and copied to S3. `scripts/db-restore-verify.sh` restores a dump into a scratch database and checks the migration count and key-table row counts against the source. CI backs up and restores the test database on every build.
+- **Commit messages:** Conventional Commits are checked by commitlint in CI for every commit in a pull request; `npm run hooks:install` checks them locally too.
+
+### Security
+- **Breached passwords are refused:** new passwords (sign-up, reset, change, invitation) are checked against Have I Been Pwned's breached-password corpus with k-anonymity: only the first five characters of the SHA-1 are sent, with response padding. If the service doesn't answer in 2.5 s the check is skipped. Turn it off with `PASSWORD_BREACH_CHECK=false`.
+- **Row-level security:** PostgreSQL row-level security on all 137 organization-owned tables, enforced behind the ORM tenant hooks. Before each statement the API sets `app.organization_id` on its connection, transaction-local inside transactions and sent only when it changes. The setting is the request's organization, or empty for statements that opt out of tenant scoping (identity, platform, jobs). Rows of other organizations can then be neither read nor written, including through raw SQL and nested includes. Policies are forced on the table owner too. A test checks that every tenant table is covered.
+- **Immutable log archives:** audit and login-history archives are stored write-once for `AUDIT_ARCHIVE_RETENTION_DAYS` (7 years by default; required in production) using S3 Object Lock (`AUDIT_ARCHIVE_LOCK_MODE`, COMPLIANCE by default) with a SHA-256 checksum. Until then not even the API's own credentials can delete or overwrite them. The archive shows its "write-once until" date, and the local driver enforces the same rule.
+- **KMS envelope encryption:** with `DATA_ENCRYPTION_KEY_SOURCE=aws-kms`, the configuration holds only KMS-encrypted data keys (current and previous). The API and `db:reencrypt` decrypt them at startup through AWS KMS with a fixed encryption context, and startup fails clearly if KMS refuses.
+- **Email logs hide tokens:** emails written to the development log no longer include link query strings, which carry one-time reset and invitation tokens. Set `MAIL_LOG_LINKS=true` locally to see them.
+
 ### Fixed
+- The production `Permissions-Policy` allowed no camera access, which blocked photo punches; the camera is now allowed for the app's own origin.
 - The sidebar highlights only the most specific matching link (e.g. "OKRs", not "Performance" as well).
+- The re-encrypt job (`db:reencrypt`) handles tables keyed by something other than `id` (the SSO client secret, keyed by organization), so it no longer stops at that table.
 - Payroll calculation no longer runs several queries at once on its transaction (deprecated in the database driver).
 - Newly launched modules are added to the standard plans even when the database already knew about them (migration `20261111091000`).
 

@@ -7,7 +7,8 @@
  */
 import type { Sequelize } from 'sequelize-typescript';
 import { ENCRYPTED_FIELDS, type EncryptedField } from '../infrastructure/crypto/encrypted-fields';
-import { EncryptionService, parseKeyRing } from '../infrastructure/crypto/encryption.service';
+import { EncryptionService } from '../infrastructure/crypto/encryption.service';
+import { resolveDataKeys } from '../infrastructure/crypto/key-source';
 import { loadEnvFile } from './env-file';
 import { createSequelize, databaseConnectionFromEnv } from './sequelize';
 
@@ -28,12 +29,13 @@ export async function reencryptAll(sequelize: Sequelize, crypto: EncryptionServi
 async function reencryptField(sequelize: Sequelize, crypto: EncryptionService, f: EncryptedField, opts: { dryRun?: boolean; log?: (line: string) => void }): Promise<ReencryptResult> {
   const result = { field: `${f.table}.${f.column}`, rewritten: 0, failed: 0 };
   const current = `k${crypto.currentVersion}:%`;
+  const pk = f.rowId ?? 'id';
   let after = '00000000-0000-0000-0000-000000000000';
   for (;;) {
     const [rows] = (await sequelize.query(
-      `SELECT "id", "${f.key}" AS "key", "${f.column}" AS "value" FROM "${f.table}"
-        WHERE "${f.column}" IS NOT NULL AND "${f.column}" NOT LIKE :current AND "id" > :after
-        ORDER BY "id" LIMIT ${BATCH}`,
+      `SELECT "${pk}" AS "id", "${f.key}" AS "key", "${f.column}" AS "value" FROM "${f.table}"
+        WHERE "${f.column}" IS NOT NULL AND "${f.column}" NOT LIKE :current AND "${pk}" > :after
+        ORDER BY "${pk}" LIMIT ${BATCH}`,
       { replacements: { current, after } },
     )) as [{ id: string; key: string; value: string }[], unknown];
     if (!rows.length) break;
@@ -51,7 +53,7 @@ async function reencryptField(sequelize: Sequelize, crypto: EncryptionService, f
         continue;
       }
       if (!opts.dryRun) {
-        await sequelize.query(`UPDATE "${f.table}" SET "${f.column}" = :next WHERE "id" = :id AND "${f.column}" = :old`, {
+        await sequelize.query(`UPDATE "${f.table}" SET "${f.column}" = :next WHERE "${pk}" = :id AND "${f.column}" = :old`, {
           replacements: { next: crypto.encrypt(plain, context), id: row.id, old: row.value },
         });
       }
@@ -65,7 +67,8 @@ async function main(): Promise<void> {
   loadEnvFile();
   const env = process.env;
   if (!env.DATA_ENCRYPTION_KEY) throw new Error('DATA_ENCRYPTION_KEY is required');
-  const crypto = new EncryptionService(env.DATA_ENCRYPTION_KEY, Number(env.DATA_ENCRYPTION_KEY_VERSION || 1), parseKeyRing(env.DATA_ENCRYPTION_PREVIOUS_KEYS));
+  const keys = await resolveDataKeys({ source: env.DATA_ENCRYPTION_KEY_SOURCE === 'aws-kms' ? 'aws-kms' : 'env', key: env.DATA_ENCRYPTION_KEY, previous: env.DATA_ENCRYPTION_PREVIOUS_KEYS, kmsRegion: env.KMS_REGION });
+  const crypto = new EncryptionService(keys.key, Number(env.DATA_ENCRYPTION_KEY_VERSION || 1), keys.previous);
   const dryRun = process.argv.includes('--dry-run');
   const sequelize = createSequelize(databaseConnectionFromEnv(), { withModels: false });
   try {

@@ -15,6 +15,8 @@ export interface EncryptedField {
   key: string;
   context: (key: string) => string;
   plainLegacy?: boolean;
+  /** The table's UUID primary key (default `id`); the job pages and updates rows by it. */
+  rowId?: string;
 }
 
 export const ctx = {
@@ -63,6 +65,6 @@ export const ENCRYPTED_FIELDS: EncryptedField[] = [
   { table: 'grievance_cases', column: 'resolution_encrypted', key: 'id', context: (id) => ctx.grievanceCase('resolution', id) },
   { table: 'grievance_notes', column: 'body_encrypted', key: 'id', context: ctx.grievanceNote },
   { table: 'offers', column: 'prejoining_encrypted', key: 'id', context: ctx.offerPrejoining },
-  { table: 'organization_sso_configs', column: 'client_secret_encrypted', key: 'organization_id', context: ctx.ssoClientSecret },
+  { table: 'organization_sso_configs', column: 'client_secret_encrypted', key: 'organization_id', rowId: 'organization_id', context: ctx.ssoClientSecret },
   { table: 'webhook_endpoints', column: 'secret_encrypted', key: 'id', context: ctx.webhookSecret },
 ];

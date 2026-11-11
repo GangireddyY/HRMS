@@ -1,5 +1,6 @@
 import { Sequelize } from 'sequelize-typescript';
 import { ALL_MODELS, TENANT_MODELS } from './models';
+import { installRowLevelSecurity } from './row-level-security';
 import { installTenantHooks } from './tenant-scope';
 
 export interface DatabaseConnection {
@@ -51,6 +52,9 @@ export function createSequelize(
     define: { underscored: true },
     models: opts.withModels ? ALL_MODELS : [],
   });
-  if (opts.withModels) installTenantHooks(TENANT_MODELS);
+  if (opts.withModels) {
+    installTenantHooks(TENANT_MODELS);
+    installRowLevelSecurity(sequelize);
+  }
   return sequelize;
 }

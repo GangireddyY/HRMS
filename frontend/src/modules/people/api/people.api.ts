@@ -1,8 +1,12 @@
 import type { DocumentCategory } from '@contracts';
 import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
+import type { CustomFieldValue } from '@contracts';
 import type {
   BankChangeRequest,
   CostCenter,
+  CustomFieldDefinition,
+  CustomFieldDefinitionInput,
+  CustomFieldWithValue,
   Department,
   Designation,
   Employee,
@@ -88,6 +92,15 @@ export const profileApi = {
   update: <S extends ProfileSection>(employeeId: string, section: S, id: string, body: Record<string, unknown>) =>
     http.patch<ProfileSectionItem[S]>(`/employees/${employeeId}/${section}/${id}`, body),
   remove: (employeeId: string, section: ProfileSection, id: string) => http.delete<{ deleted: boolean }>(`/employees/${employeeId}/${section}/${id}`),
+};
+
+/** Custom employee fields: definitions, and values per employee (or `me`). */
+export const customFieldsApi = {
+  definitions: (archived = false) => http.get<CustomFieldDefinition[]>('/custom-fields', archived ? { archived: 'true' } : undefined),
+  create: (body: CustomFieldDefinitionInput) => http.post<CustomFieldDefinition>('/custom-fields', body),
+  update: (id: string, body: Partial<CustomFieldDefinitionInput> & { sortOrder?: number; archived?: boolean }) => http.patch<CustomFieldDefinition>(`/custom-fields/${id}`, body),
+  values: (employeeId: string | 'me') => http.get<CustomFieldWithValue[]>(`/employees/${employeeId}/custom-fields`),
+  setValues: (employeeId: string | 'me', values: Record<string, CustomFieldValue>) => http.put<CustomFieldWithValue[]>(`/employees/${employeeId}/custom-fields`, { values }),
 };
 
 export const documentsApi = {

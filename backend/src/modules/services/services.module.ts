@@ -10,5 +10,6 @@ import { TravelService } from './travel.service';
   imports: [EmployeesModule],
   controllers: [AssetsController, HelpdeskController, TravelController],
   providers: [AssetsService, HelpdeskService, TravelService],
+  exports: [AssetsService, TravelService],
 })
 export class ServicesModule {}

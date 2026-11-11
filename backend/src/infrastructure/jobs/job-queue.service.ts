@@ -6,6 +6,7 @@ import { RequestContext } from '../../common/context/request-context';
 import { AppConfig } from '../../config/app-config.service';
 import { DatabaseService } from '../../database/database.service';
 import { ErrorReporter } from '../observability/error-reporter';
+import { jobRuns } from '../observability/metrics';
 
 export interface Job<T = unknown> {
   id: string;
@@ -151,9 +152,15 @@ export class JobQueueService implements OnModuleDestroy {
 
   private async execute(job: Job): Promise<void> {
     const handler = this.handlers.get(job.type);
-    if (!handler) throw new Error(`No handler for job type "${job.type}"`);
-    if (job.organizationId) await RequestContext.runForTenant(job.organizationId, () => handler(job.payload, job), { requestId: `job-${job.id}` });
-    else await RequestContext.run({ requestId: `job-${job.id}` }, () => handler(job.payload, job));
+    try {
+      if (!handler) throw new Error(`No handler for job type "${job.type}"`);
+      if (job.organizationId) await RequestContext.runForTenant(job.organizationId, () => handler(job.payload, job), { requestId: `job-${job.id}` });
+      else await RequestContext.run({ requestId: `job-${job.id}` }, () => handler(job.payload, job));
+      jobRuns.inc({ type: job.type, outcome: 'done' });
+    } catch (e) {
+      jobRuns.inc({ type: job.type, outcome: job.attempts >= job.maxAttempts ? 'failed' : 'retry' });
+      throw e;
+    }
   }
 
   private async cleanup(): Promise<void> {

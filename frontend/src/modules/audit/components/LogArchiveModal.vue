@@ -160,6 +160,7 @@ const facts = computed<Fact[]>(() => {
     { label: 'To', value: formatDateTime(a.lastRecordAt) },
     { label: 'Size', value: formatBytes(a.sizeBytes) },
     { label: 'SHA-256', value: a.sha256, mono: true },
+    { label: 'Write-once until', value: a.lockedUntil ? formatDate(a.lockedUntil) : 'Not locked' },
   ];
 });
 const confirmed = computed(() => !!current.value && confirmText.value.replace(/[\s,]/g, '') === String(current.value.recordCount));

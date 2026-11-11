@@ -19,6 +19,7 @@ const production = {
   S3_REGION: 'ap-south-1',
   DB_SSL: 'true',
   UPLOAD_SCAN: 'clamav',
+  METRICS_TOKEN: 'm'.repeat(32),
 };
 
 describe('validateEnv (production)', () => {
@@ -33,6 +34,17 @@ describe('validateEnv (production)', () => {
 
   it('requires malware scanning of uploads', () => {
     expect(() => validateEnv({ ...production, UPLOAD_SCAN: 'off' })).toThrow(/UPLOAD_SCAN must be clamav/);
+  });
+
+  it('requires a metrics token and write-once log archives', () => {
+    expect(() => validateEnv({ ...production, METRICS_TOKEN: '' })).toThrow(/METRICS_TOKEN is required/);
+    expect(() => validateEnv({ ...production, METRICS_TOKEN: 'short' })).toThrow(/METRICS_TOKEN/);
+    expect(() => validateEnv({ ...production, AUDIT_ARCHIVE_RETENTION_DAYS: '0' })).toThrow(/AUDIT_ARCHIVE_RETENTION_DAYS/);
+  });
+
+  it('takes a KMS-encrypted data key with the aws-kms key source', () => {
+    expect(() => validateEnv({ ...production, DATA_ENCRYPTION_KEY_SOURCE: 'aws-kms' })).toThrow(/CiphertextBlob/);
+    expect(() => validateEnv({ ...production, DATA_ENCRYPTION_KEY_SOURCE: 'aws-kms', DATA_ENCRYPTION_KEY: Buffer.alloc(184, 7).toString('base64') })).not.toThrow();
   });
 
   it('refuses running the API as the schema owner', () => {

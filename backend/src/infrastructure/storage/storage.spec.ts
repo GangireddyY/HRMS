@@ -3,7 +3,10 @@ import { createServer, type AddressInfo, type Server } from 'node:net';
 import { Readable } from 'node:stream';
 import { AppError } from '../../common/errors/app-error';
 import { ClamAvScanner, TestSignatureScanner, type MalwareScanner } from './malware-scanner';
-import { StorageService, type StorageDriver } from './storage.service';
+import { LocalStorageDriver, RetentionLockedError, S3StorageDriver, StorageService, type StorageDriver } from './storage.service';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const EICAR = 'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
 
@@ -46,6 +49,34 @@ describe('StorageService upload scanning', () => {
     expect(driver.objects.size).toBe(0);
     await storage.put('organizations/org-1/audit/archive.csv', Buffer.from('a,b'), 'text/csv', { generated: true });
     expect(driver.objects.size).toBe(1);
+  });
+});
+
+describe('Write-once retention', () => {
+  it('local driver refuses to delete a locked object until its retention ends', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hrms-lock-'));
+    try {
+      const driver = new LocalStorageDriver(dir);
+      await driver.put('a/locked.csv', Buffer.from('x'), 'text/csv', { until: new Date(Date.now() + 60_000), mode: 'COMPLIANCE' });
+      await expect(driver.delete('a/locked.csv')).rejects.toBeInstanceOf(RetentionLockedError);
+      await expect(driver.put('a/locked.csv', Buffer.from('y'), 'text/csv')).rejects.toThrow(/EEXIST/);
+      await driver.put('a/expired.csv', Buffer.from('x'), 'text/csv', { until: new Date(Date.now() - 1000), mode: 'COMPLIANCE' });
+      await driver.delete('a/expired.csv');
+      await expect(driver.get('a/expired.csv')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('S3 driver writes Object Lock retention with a checksum', async () => {
+    const driver = new S3StorageDriver('bucket', { region: 'ap-south-1' });
+    const sent: { input: Record<string, unknown> }[] = [];
+    (driver as unknown as { client: { send: (c: { input: Record<string, unknown> }) => Promise<void> } }).client = { send: async (c) => void sent.push(c) };
+    const until = new Date('2033-11-11T00:00:00Z');
+    await driver.put('org/archive.csv', Buffer.from('x'), 'text/csv', { until, mode: 'COMPLIANCE' });
+    await driver.put('org/doc.pdf', Buffer.from('x'), 'application/pdf');
+    expect(sent[0]!.input).toMatchObject({ ObjectLockMode: 'COMPLIANCE', ObjectLockRetainUntilDate: until, ChecksumAlgorithm: 'SHA256', ServerSideEncryption: 'AES256' });
+    expect(sent[1]!.input.ObjectLockMode).toBeUndefined();
   });
 });
 

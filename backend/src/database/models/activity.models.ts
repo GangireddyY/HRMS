@@ -56,6 +56,8 @@ export class LogArchive extends Model<InferAttributes<LogArchive>, InferCreation
   @Column(DataType.STRING(500)) storageKey: string;
   @Column(DataType.INTEGER) sizeBytes: number;
   @Column(DataType.CHAR(64)) sha256: string;
+  /** The stored file is write-once until then (Object Lock). */
+  @Column(DataType.DATE) lockedUntil: CreationOptional<Date | null>;
   @Column(DataType.STRING(20)) status: CreationOptional<LogArchiveStatus>;
   @Column(DataType.DATE) downloadedAt: CreationOptional<Date | null>;
   @Column(DataType.DATE) purgedAt: CreationOptional<Date | null>;

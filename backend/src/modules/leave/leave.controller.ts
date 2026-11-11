@@ -149,13 +149,13 @@ export class LeaveController {
   }
 
   @Post('requests/:id/approve')
-  @RequirePermissions('leave.approve')
+  @RequireTenant()
   approve(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewLeaveDto) {
     return this.requests.approve(auth, id, dto);
   }
 
   @Post('requests/:id/reject')
-  @RequirePermissions('leave.approve')
+  @RequireTenant()
   reject(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectLeaveDto) {
     return this.requests.reject(auth, id, dto);
   }

@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { ActionToken, AuditLog, LoginEvent, User, UserSession } from '../src/database/models';
+import { BreachedPasswordService } from '../src/infrastructure/crypto/breached-password.service';
 import {
   API,
   PASSWORD,
@@ -278,6 +280,31 @@ describe('Authentication (e2e)', () => {
       const s = await login(ctx, admin.email);
       const res = await ctx.http().post(`${API}/auth/change-password`).set(bearer(s.accessToken)).send({ currentPassword: PASSWORD, newPassword: 'Olivia-Secret-2026!' });
       expect(res.status).toBe(422);
+    });
+
+    it('rejects passwords found in data breaches (sending only a hash prefix)', async () => {
+      const { admin } = await createOrgWithAdmin(ctx);
+      const s = await login(ctx, admin.email);
+      const breached = ctx.app.get(BreachedPasswordService);
+      const leaked = createHash('sha1').update('Summer-Holiday-2024!').digest('hex').toUpperCase();
+      const asked: string[] = [];
+      const enabled = jest.spyOn(breached, 'enabled', 'get').mockReturnValue(true);
+      const original = breached.fetchRange;
+      breached.fetchRange = async (prefix) => {
+        asked.push(prefix);
+        return `${leaked.slice(5)}:731\r\n0123456789ABCDEF0123456789ABCDEF012:3`;
+      };
+      try {
+        const res = await ctx.http().post(`${API}/auth/change-password`).set(bearer(s.accessToken)).send({ currentPassword: PASSWORD, newPassword: 'Summer-Holiday-2024!' });
+        expect(res.status).toBe(422);
+        expect(res.body.error.details[0].message).toMatch(/appeared in a data breach/);
+        expect(asked).toEqual([leaked.slice(0, 5)]);
+        // A password not in the response passes.
+        expect((await ctx.http().post(`${API}/auth/change-password`).set(bearer(s.accessToken)).send({ currentPassword: PASSWORD, newPassword: 'Quiet-Lantern-Orbit-58' })).status).toBe(200);
+      } finally {
+        enabled.mockRestore();
+        breached.fetchRange = original;
+      }
     });
   });
 

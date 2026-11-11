@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppConfig } from './config/app-config.service';
 import { createValidationPipe } from './common/pipes/validation.pipe';
+import { httpMetrics } from './infrastructure/observability/metrics';
 
 /** HTTP-level configuration shared by the server entry point and integration tests. */
 export function configureApp(app: NestExpressApplication): INestApplication {
@@ -12,6 +13,7 @@ export function configureApp(app: NestExpressApplication): INestApplication {
 
   app.set('trust proxy', config.get('TRUST_PROXY'));
   app.disable('x-powered-by');
+  app.use(httpMetrics);
   app.use(helmet());
   app.use(cookieParser());
   app.useBodyParser('json', { limit: '1mb' });

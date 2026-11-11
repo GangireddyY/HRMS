@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { DEFAULT_PASSWORD_POLICY, PasswordPolicy, strictestPolicy, validatePassword } from '../../contracts';
 import { Op, type Transaction } from 'sequelize';
 import { AppError } from '../../common/errors/app-error';
 import { OrganizationMembership, OrganizationSecurityPolicy, PasswordHistory, User } from '../../database/models';
 import { AppConfig } from '../../config/app-config.service';
+import { BreachedPasswordService } from '../../infrastructure/crypto/breached-password.service';
 import { PasswordHasher } from '../../infrastructure/crypto/password-hasher.service';
 import type { SessionLimits } from './session.service';
 
@@ -85,6 +86,7 @@ export class SecurityPolicyService {
   constructor(
     private readonly hasher: PasswordHasher,
     private readonly config: AppConfig,
+    @Optional() private readonly breached?: BreachedPasswordService,
   ) {}
 
   /** Two-factor sign-in is required by any of the user's organizations, and always for platform staff. */
@@ -131,6 +133,10 @@ export class SecurityPolicyService {
           break;
         }
       }
+    }
+
+    if (!issues.length && (await this.breached?.timesSeen(password))) {
+      issues.push('This password has appeared in a data breach. Choose a different one.');
     }
 
     if (issues.length) {

@@ -11,5 +11,6 @@ import { SettlementsService } from './settlements.service';
   imports: [EmployeesModule, LeaveModule],
   controllers: [ExitController, AlumniController],
   providers: [ExitsService, SettlementsService, ExitLettersService, AlumniService],
+  exports: [ExitsService],
 })
 export class ExitModule {}

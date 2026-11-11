@@ -71,6 +71,20 @@ export function payslipEmail(to: string, name: string, organization: string, per
   };
 }
 
+/** An issued subscription invoice, to the organization's billing contact. */
+export function invoiceEmail(to: string, organization: string, number: string, amount: string, dueDate: string, url: string, pdf: { filename: string; content: string }): MailMessage {
+  return {
+    to,
+    subject: `Invoice ${number} for ${organization}: ${amount} due ${dueDate}`,
+    text: `Hello,\n\nInvoice ${number} for ${organization}'s HRMS subscription is attached. Amount due: ${amount} by ${dueDate}.\n\nYou can also see your invoices under Organization settings → Billing:\n${url}\n`,
+    html: layout(
+      `Invoice ${number}`,
+      `<p>Hello,</p><p>Invoice <strong>${escapeHtml(number)}</strong> for ${escapeHtml(organization)}'s HRMS subscription is attached.</p><p>Amount due: <strong>${escapeHtml(amount)}</strong> by ${escapeHtml(dueDate)}.</p>${button(url, 'View billing')}`,
+    ),
+    attachments: [{ filename: pdf.filename, content: pdf.content, type: 'application/pdf' }],
+  };
+}
+
 /** Sent to the employee whenever their salary bank account is changed or a change is requested. */
 export function bankDetailsEmail(to: string, name: string, event: string): MailMessage {
   return {

@@ -1,5 +1,48 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
+import type { BuilderDataset, BuilderQuery, CustomFieldEntity, CustomFieldType } from '../../contracts';
+
+/** A report-builder report someone saved. */
+@Table({ tableName: 'saved_reports', underscored: true })
+export class SavedReport extends Model<InferAttributes<SavedReport>, InferCreationAttributes<SavedReport>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.UUID) ownerId: string;
+  @Column(DataType.STRING(120)) name: string;
+  @Column(DataType.STRING(500)) description: CreationOptional<string | null>;
+  @Column(DataType.STRING(30)) dataset: BuilderDataset;
+  @Column(DataType.JSONB) definition: Omit<BuilderQuery, 'dataset'>;
+  @Column(DataType.BOOLEAN) shared: CreationOptional<boolean>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
+/** An extra field the organization defines on employees. */
+@Table({ tableName: 'custom_field_definitions', underscored: true })
+export class CustomFieldDefinition extends Model<InferAttributes<CustomFieldDefinition>, InferCreationAttributes<CustomFieldDefinition>> {
+  @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)
+  id: CreationOptional<string>;
+
+  @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(20)) entity: CreationOptional<CustomFieldEntity>;
+  @Column(DataType.STRING(40)) key: string;
+  @Column(DataType.STRING(80)) label: string;
+  @Column(DataType.STRING(12)) type: CustomFieldType;
+  @Column(DataType.ARRAY(DataType.STRING(80))) options: CreationOptional<string[]>;
+  @Column(DataType.BOOLEAN) required: CreationOptional<boolean>;
+  @Column(DataType.BOOLEAN) sensitive: CreationOptional<boolean>;
+  @Column(DataType.BOOLEAN) employeeEditable: CreationOptional<boolean>;
+  @Column(DataType.STRING(60)) section: CreationOptional<string | null>;
+  @Column(DataType.STRING(200)) helpText: CreationOptional<string | null>;
+  @Column(DataType.SMALLINT) sortOrder: CreationOptional<number>;
+  @Column(DataType.DATE) archivedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) createdById: CreationOptional<string | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
 
 /** A read-only API key acting for its creator, limited to its permissions (and to what the creator still holds). */
 @Table({ tableName: 'api_keys', underscored: true })

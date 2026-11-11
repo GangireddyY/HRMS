@@ -1,0 +1,62 @@
+# Prometheus alerting rules for the HRMS API (metrics from GET /api/v1/metrics, see docs/DEPLOYMENT.md).
+# Load with `rule_files: [alerts.yml]`; route the `severity` label in Alertmanager (page = on-call, ticket = next day).
+groups:
+  - name: hrms-api
+    rules:
+      - alert: HrmsApiDown
+        expr: up{job="hrms-api"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: 'HRMS API instance {{ $labels.instance }} is not answering scrapes'
+
+      - alert: HrmsHighErrorRate
+        expr: |
+          sum(rate(hrms_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(hrms_http_requests_total[5m])), 1) > 0.02
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: 'More than 2% of API requests fail with a server error'
+
+      - alert: HrmsSlowRequests
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(hrms_http_request_duration_seconds_bucket{route!~".*/(export|bank-file|pdf|file).*"}[10m]))) > 1.5
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'p95 API latency above 1.5 s (exports excluded)'
+
+      - alert: HrmsJobsFailing
+        expr: increase(hrms_jobs_total{outcome="failed"}[30m]) > 0
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Background job {{ $labels.type }} failed after all retries (emails, payslips, webhooks may not have gone out)'
+
+      - alert: HrmsJobBacklog
+        expr: max(hrms_job_queue{state="oldest_due_seconds"}) > 900
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: 'The oldest due background job has waited more than 15 minutes (workers stuck or down)'
+
+      - alert: HrmsSignInAttack
+        expr: sum(rate(hrms_auth_failures_total[5m])) * 60 > 30
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: 'More than 30 failed sign-ins per minute (credential stuffing?)'
+
+      - alert: HrmsMemoryHigh
+        expr: process_resident_memory_bytes{job="hrms-api"} > 1.5e9
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'API instance {{ $labels.instance }} uses more than 1.5 GB of memory'
+
+      - alert: HrmsEventLoopLag
+        expr: nodejs_eventloop_lag_p99_seconds{job="hrms-api"} > 0.5
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Event loop lag p99 above 500 ms on {{ $labels.instance }}'

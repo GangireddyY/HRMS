@@ -48,6 +48,8 @@ import { LoansService } from './loans.service';
 import { PayGroupsService } from './pay-groups.service';
 import { PayrollConfigService } from './payroll-config.service';
 import { PayrollRunsService } from './payroll-runs.service';
+import { PayrollExportsService } from './payroll-exports.service';
+import { PayslipsService } from './payslips.service';
 import { ReimbursementsService, type UploadedReceipt } from './reimbursements.service';
 import { ExpensePolicyService } from './expense-policy.service';
 import { SalariesService } from './salaries.service';
@@ -71,6 +73,8 @@ export class PayrollController {
     private readonly config: PayrollConfigService,
     private readonly salaries: SalariesService,
     private readonly runs: PayrollRunsService,
+    private readonly payslipService: PayslipsService,
+    private readonly exports: PayrollExportsService,
     private readonly claims: ReimbursementsService,
     private readonly loans: LoansService,
     private readonly payGroups: PayGroupsService,
@@ -385,7 +389,7 @@ export class PayrollController {
   @Get('runs/:id/register')
   @RequirePermissions('payroll.view')
   async register(@Param('id', UUID) id: string) {
-    return csvFile(await this.runs.registerCsv(id));
+    return csvFile(await this.exports.registerCsv(id));
   }
 
   @Get('runs/:id/bank-file')
@@ -393,7 +397,7 @@ export class PayrollController {
   @RequireStepUp()
   @ApiOperation({ summary: "Salary transfer file (CSV, generic or a bank's bulk layout) with account numbers – audited; needs a fresh step-up" })
   async bankFile(@Param('id', UUID) id: string, @Query() query: BankFileQueryDto) {
-    return csvFile(await this.runs.bankFileCsv(id, query.format));
+    return csvFile(await this.exports.bankFileCsv(id, query.format));
   }
 
   @Get('runs/:id/pf-ecr')
@@ -401,7 +405,7 @@ export class PayrollController {
   @RequireStepUp()
   @ApiOperation({ summary: 'EPFO ECR text file for the month (decrypted UANs; needs a fresh step-up)' })
   async pfEcr(@Param('id', UUID) id: string) {
-    const f = await this.runs.pfEcr(id);
+    const f = await this.exports.pfEcr(id);
     return new StreamableFile(Buffer.from(f.content, 'utf8'), { type: 'text/plain; charset=utf-8', disposition: attachment(f.fileName) });
   }
 
@@ -410,14 +414,14 @@ export class PayrollController {
   @Get('me/payslips')
   @RequirePermissions('payroll.payslip.view')
   myPayslips(@CurrentAuth() auth: AuthContext) {
-    return this.runs.myPayslips(auth);
+    return this.payslipService.myPayslips(auth);
   }
 
   @Get('payslips/:id')
   @RequireTenant()
   payslip(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
     requireAny(auth, 'payroll.view', 'payroll.payslip.view');
-    return this.runs.payslip(auth, id);
+    return this.payslipService.payslip(auth, id);
   }
 
   @Get('payslips/:id/pdf')
@@ -425,7 +429,7 @@ export class PayrollController {
   @ApiOperation({ summary: 'The payslip as a PDF' })
   async payslipPdf(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string) {
     requireAny(auth, 'payroll.view', 'payroll.payslip.view');
-    const { fileName, data } = await this.runs.payslipPdfFile(auth, id);
+    const { fileName, data } = await this.payslipService.payslipPdfFile(auth, id);
     return new StreamableFile(data, { type: 'application/pdf', length: data.length, disposition: attachment(fileName) });
   }
 
@@ -466,14 +470,12 @@ export class PayrollController {
   @RequireTenant()
   @ApiOperation({ summary: "The manager's approval, or finance's for claims above the finance threshold" })
   approveClaim(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewClaimDto) {
-    requireAny(auth, 'payroll.reimbursement.approve', 'payroll.reimbursement.finance');
     return this.claims.approve(auth, id, dto);
   }
 
   @Post('reimbursements/:id/reject')
   @RequireTenant()
   rejectClaim(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: ReviewClaimDto) {
-    requireAny(auth, 'payroll.reimbursement.approve', 'payroll.reimbursement.finance');
     return this.claims.reject(auth, id, dto);
   }
 

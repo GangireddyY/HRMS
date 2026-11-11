@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseEnumPipe, Query, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseEnumPipe, ParseUUIDPipe, Post, Put, Query, StreamableFile } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { REPORT_KEYS, REPORT_PERMISSIONS, type ReportKey } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
@@ -6,6 +6,8 @@ import { CurrentAuth, RequirePermissions } from '../../common/auth/decorators';
 import { AppError } from '../../common/errors/app-error';
 import { ReportExportQueryDto, ReportQueryDto } from './dto/reports.dto';
 import { ReportsService } from './reports.service';
+import { BuilderExportDto, BuilderQueryDto, SaveReportDto } from './builder/report-builder.dto';
+import { ReportBuilderService } from './builder/report-builder.service';
 
 const attachment = (name: string) => `attachment; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 const KEY = new ParseEnumPipe(Object.fromEntries(REPORT_KEYS.map((k) => [k, k])));
@@ -14,7 +16,10 @@ const KEY = new ParseEnumPipe(Object.fromEntries(REPORT_KEYS.map((k) => [k, k]))
 @ApiBearerAuth()
 @Controller({ path: 'reports', version: '1' })
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly builder: ReportBuilderService,
+  ) {}
 
   @Get('headcount')
   @RequirePermissions('reports.view')
@@ -49,6 +54,58 @@ export class ReportsController {
   @ApiOperation({ summary: 'Applications, hires, offers and time to hire over a period' })
   recruitment(@CurrentAuth() auth: AuthContext, @Query() query: ReportQueryDto) {
     return this.reports.recruitment(auth, query);
+  }
+
+  // ---- Report builder --------------------------------------------------------------------------
+
+  @Get('builder/datasets')
+  @RequirePermissions('reports.view')
+  @ApiOperation({ summary: 'Datasets you can build reports on, with their columns' })
+  datasets(@CurrentAuth() auth: AuthContext) {
+    return this.builder.catalog(auth);
+  }
+
+  @Post('builder/run')
+  @RequirePermissions('reports.view')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Run a report: the first 500 rows, and the total' })
+  runBuilder(@CurrentAuth() auth: AuthContext, @Body() dto: BuilderQueryDto) {
+    return this.builder.run(auth, dto);
+  }
+
+  @Post('builder/export')
+  @RequirePermissions('reports.view', 'reports.export')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'The whole report as CSV or Excel (up to 20,000 rows)' })
+  async exportBuilder(@CurrentAuth() auth: AuthContext, @Body() dto: BuilderExportDto) {
+    const { format, title, ...query } = dto;
+    const f = await this.builder.export(auth, query, format ?? 'csv', title);
+    return new StreamableFile(f.content, { type: f.contentType, length: f.content.length, disposition: attachment(f.fileName) });
+  }
+
+  @Get('saved')
+  @RequirePermissions('reports.view')
+  @ApiOperation({ summary: 'Your saved reports and those shared with you' })
+  saved(@CurrentAuth() auth: AuthContext) {
+    return this.builder.saved(auth);
+  }
+
+  @Post('saved')
+  @RequirePermissions('reports.view')
+  saveReport(@CurrentAuth() auth: AuthContext, @Body() dto: SaveReportDto) {
+    return this.builder.save(auth, dto);
+  }
+
+  @Put('saved/:id')
+  @RequirePermissions('reports.view')
+  updateReport(@CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Body() dto: SaveReportDto) {
+    return this.builder.save(auth, dto, id);
+  }
+
+  @Delete('saved/:id')
+  @RequirePermissions('reports.view')
+  removeReport(@CurrentAuth() auth: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.builder.remove(auth, id);
   }
 
   @Get(':key/export')

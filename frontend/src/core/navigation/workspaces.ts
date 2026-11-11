@@ -17,6 +17,8 @@ import {
   ClipboardList,
   Clock,
   Crosshair,
+  ListPlus,
+  TableProperties,
   Webhook,
   ClockAlert,
   DoorOpen,
@@ -29,6 +31,7 @@ import {
   FileText,
   FileWarning,
   Gauge,
+  GitBranch,
   GraduationCap,
   Grid3x3,
   HandCoins,
@@ -50,6 +53,7 @@ import {
   Palette,
   Plane,
   Receipt,
+  ReceiptText,
   RefreshCcw,
   Rocket,
   ScrollText,
@@ -62,6 +66,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Target,
+  Upload,
   User,
   UserSearch,
   Users,
@@ -69,6 +74,7 @@ import {
 } from '@lucide/vue';
 import { DELEGABLE_PERMISSIONS } from '@contracts';
 import { isAllowed, type AccessRule, type AccessSubject } from '@/core/navigation/access-rules';
+import { IMPORT_PERMISSIONS } from '@/modules/imports/imports.routes';
 
 export type WorkspaceKey = 'platform' | 'admin' | 'hr' | 'me';
 
@@ -113,7 +119,7 @@ export const HR_OPERATIONS_PERMISSIONS = [
   'engagement.announcement.manage', 'engagement.survey.manage', 'grievance.view', 'grievance.manage', 'grievance.posh.access', 'benefits.manage', 'compliance.manage', 'exit.view', 'exit.approve', 'exit.manage', 'exit.clearance.manage', 'payroll.settlement.manage', 'reports.view', 'reports.payroll.view', 'reports.recruitment.view',
 ];
 
-export const ADMIN_PERMISSIONS = ['organization.update', 'organization.security.manage', 'user.view', 'role.view', 'audit.view', 'audit.login_history.view', 'privacy.manage'];
+export const ADMIN_PERMISSIONS = ['approvals.configure', 'organization.update', 'organization.security.manage', 'user.view', 'role.view', 'audit.view', 'audit.login_history.view', 'privacy.manage'];
 
 export const WORKSPACES: Workspace[] = [
   {
@@ -131,6 +137,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Organizations', to: '/platform/organizations', icon: Building2 },
           { label: 'Plans & entitlements', to: '/platform/plans', icon: CreditCard },
+          { label: 'Billing', to: '/platform/billing', icon: ReceiptText },
         ],
       },
       { title: 'Governance', items: [{ label: 'Audit log', to: '/platform/audit-logs', icon: FileClock, access: { platform: 'platform.audit.view' } }] },
@@ -151,6 +158,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Settings', to: '/admin/organization', icon: Building2, access: { permissions: ['organization.view'] } },
           { label: 'Structure', to: '/admin/structure', icon: Network, access: { permissions: ['organization.view'] } },
+          { label: 'Custom fields', to: '/admin/custom-fields', icon: ListPlus, access: { permissions: ['employee.fields.manage'] } },
           { label: 'Holidays', to: '/admin/holidays', icon: CalendarDays, access: { permissions: ['organization.view'] } },
         ],
       },
@@ -159,6 +167,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Users', to: '/admin/users', icon: Users, access: { permissions: ['user.view'] } },
           { label: 'Roles & permissions', to: '/admin/roles', icon: ShieldCheck, access: { permissions: ['role.view'] } },
+          { label: 'Approval chains', to: '/admin/approval-chains', icon: GitBranch, access: { permissions: ['approvals.configure'] } },
         ],
       },
       {
@@ -198,6 +207,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Employees', to: '/hr/employees', icon: Users, access: { permissions: ['employee.view'], scope: 'TEAM' } },
           { label: 'Org chart', to: '/hr/org-chart', icon: Network, access: { permissions: ['employee.view'], scope: 'TEAM' } },
           { label: 'Document expiry', to: '/hr/documents/expiring', icon: FileWarning, access: { permissions: ['employee.document.manage'] } },
+          { label: 'Bulk import', to: '/hr/imports', icon: Upload, access: { permissions: IMPORT_PERMISSIONS } },
         ],
       },
       {
@@ -316,6 +326,7 @@ export const WORKSPACES: Workspace[] = [
         title: 'Insights',
         items: [
           { label: 'Reports', to: '/hr/reports', icon: BarChart3, access: { permissions: ['reports.view', 'reports.payroll.view', 'reports.recruitment.view'], scope: 'TEAM', feature: 'reports' } },
+          { label: 'Report builder', to: '/hr/reports/builder', icon: TableProperties, access: { permissions: ['reports.view'], scope: 'TEAM', feature: 'reports' } },
         ],
       },
     ],

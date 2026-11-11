@@ -64,7 +64,10 @@ import { CostCenter, Department, Designation, Employee, EmployeeDocument, Employ
 import { ApprovalDelegation, MembershipRole, Permission, Role, RolePermission } from './rbac.models';
 import { Asset, AssetAssignment, AssetRequest, HelpdeskMessage, HelpdeskTicket, TravelRequest } from './services.models';
 import { OrganizationSsoConfig, SsoLoginState } from './sso.models';
-import { ApiKey, WebhookDelivery, WebhookEndpoint } from './integration.models';
+import { Invoice, InvoicePayment, OrganizationSubscription } from './billing.models';
+import { PushSubscription } from './push.models';
+import { ApprovalChain, ApprovalInstance } from './approval-chain.models';
+import { ApiKey, CustomFieldDefinition, SavedReport, WebhookDelivery, WebhookEndpoint } from './integration.models';
 
 export * from './activity.models';
 export * from './attendance.models';
@@ -86,6 +89,9 @@ export * from './people.models';
 export * from './rbac.models';
 export * from './services.models';
 export * from './sso.models';
+export * from './billing.models';
+export * from './push.models';
+export * from './approval-chain.models';
 export * from './integration.models';
 
 export const ALL_MODELS = [
@@ -106,10 +112,18 @@ export const ALL_MODELS = [
   OrganizationLogo,
   OrganizationMembership,
   OrganizationSsoConfig,
+  PushSubscription,
+  ApprovalChain,
+  ApprovalInstance,
   SsoLoginState,
+  OrganizationSubscription,
+  Invoice,
+  InvoicePayment,
   ApiKey,
   WebhookEndpoint,
   WebhookDelivery,
+  CustomFieldDefinition,
+  SavedReport,
   Permission,
   Role,
   RolePermission,
@@ -251,10 +265,17 @@ export const ALL_MODELS = [
  */
 export const TENANT_MODELS = [
   OrganizationSecurityPolicy,
+  ApprovalChain,
+  ApprovalInstance,
   OrganizationSsoConfig,
+  OrganizationSubscription,
+  Invoice,
+  InvoicePayment,
   ApiKey,
   WebhookEndpoint,
   WebhookDelivery,
+  CustomFieldDefinition,
+  SavedReport,
   OrganizationLogo,
   OrganizationFeature,
   OrganizationMembership,

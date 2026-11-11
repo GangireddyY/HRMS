@@ -23,6 +23,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import { HealthController } from './modules/health/health.controller';
+import { MetricsController } from './modules/health/metrics.controller';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PlatformModule } from './modules/platform/platform.module';
@@ -42,6 +43,9 @@ import { BenefitsModule } from './modules/benefits/benefits.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
 import { ExitModule } from './modules/exit/exit.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ImportsModule } from './modules/imports/imports.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrgStructureModule } from './modules/org-structure/org-structure.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
@@ -95,12 +99,15 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
     ComplianceModule,
     ExitModule,
     ReportsModule,
+    ImportsModule,
+    BillingModule,
+    DashboardModule,
     PrivacyModule,
     ApprovalsModule,
     ServicesModule,
     IntegrationsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     // Outermost first: idempotency replays the enveloped response.

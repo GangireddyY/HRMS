@@ -14,6 +14,7 @@ import {
   LockKeyhole,
   MapPin,
   Palette,
+  Receipt,
   Save,
   ShieldCheck,
   Timer,
@@ -25,6 +26,7 @@ import OrganizationBrandColor from '@/modules/organization/components/Organizati
 import OrganizationLogoUploader from '@/modules/organization/components/OrganizationLogoUploader.vue';
 import OrganizationProfileForm from '@/modules/organization/components/OrganizationProfileForm.vue';
 import SsoSettingsCard from '@/modules/organization/components/SsoSettingsCard.vue';
+import BillingCard from '@/modules/billing/components/BillingCard.vue';
 import { AppAlert, AppBadge, AppButton, AppErrorState, AppInput, AppPageHeader, AppSkeleton, AppSwitch } from '@/shared/components';
 import { apiAssetUrl } from '@/core/http/http-client';
 import { useAsync } from '@/shared/composables/use-async';
@@ -198,6 +200,7 @@ const nav: { title: string; items: NavItem[] }[] = [
     items: [
       { id: 'plan', label: 'Plan & seats', icon: CreditCard },
       { id: 'modules', label: 'Modules', icon: Boxes },
+      ...(auth.can('billing.view') ? [{ id: 'billing', label: 'Billing & invoices', icon: Receipt }] : []),
     ],
   },
 ];
@@ -589,6 +592,8 @@ if (wanted) {
             </template>
           </div>
         </section>
+
+        <BillingCard v-if="auth.can('billing.view')" :id="anchorId('billing')" class="scroll-mt-20 lg:scroll-mt-4" />
 
         <!-- Unsaved changes: appears only when a form has changes, and stays in view while scrolling. -->
         <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="translate-y-3 opacity-0" leave-active-class="transition duration-150" leave-to-class="translate-y-3 opacity-0">

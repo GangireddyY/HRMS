@@ -1,14 +1,15 @@
-import { Body, Controller, Get, HttpCode, type MessageEvent, Param, ParseUUIDPipe, Post, Put, Query, Sse } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, type MessageEvent, Param, ParseUUIDPipe, Post, Put, Query, Sse } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Observable } from 'rxjs';
 import { NotificationBus } from '../../infrastructure/realtime/notification-bus';
-import { Transform } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength, ValidateNested } from 'class-validator';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AllowRestrictedSession, Authenticated, CurrentAuth } from '../../common/auth/decorators';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { NotificationsService } from './notifications.service';
+import { PushService } from './push.service';
 
 class NotificationQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional()
@@ -29,6 +30,32 @@ class NotificationSettingsDto {
   @IsString({ each: true })
   @MaxLength(40, { each: true })
   muted: string[];
+
+  @ApiPropertyOptional({ description: 'False turns off browser notifications on every device' })
+  @IsOptional()
+  @IsBoolean()
+  push?: boolean;
+}
+
+class PushKeysDto {
+  @ApiProperty() @IsString() @MaxLength(200) p256dh: string;
+  @ApiProperty() @IsString() @MaxLength(100) auth: string;
+}
+
+class PushSubscriptionDto {
+  @ApiProperty({ description: 'PushSubscription.endpoint from the browser' })
+  @IsUrl({ protocols: ['https'], require_protocol: true, require_tld: true })
+  @MaxLength(1000)
+  endpoint: string;
+
+  @ApiProperty({ type: PushKeysDto })
+  @ValidateNested()
+  @Type(() => PushKeysDto)
+  keys: PushKeysDto;
+}
+
+class PushEndpointDto {
+  @ApiProperty() @IsString() @MaxLength(1000) endpoint: string;
 }
 
 @ApiTags('Notifications')
@@ -40,6 +67,7 @@ export class NotificationsController {
   constructor(
     private readonly notifications: NotificationsService,
     private readonly bus: NotificationBus,
+    private readonly push: PushService,
   ) {}
 
   @Get()
@@ -57,6 +85,25 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Choose which notifications are also emailed to you' })
   updateSettings(@CurrentAuth() auth: AuthContext, @Body() dto: NotificationSettingsDto) {
     return this.notifications.updateSettings(auth.userId, dto);
+  }
+
+  @Get('push')
+  @ApiOperation({ summary: 'Whether browser notifications are available, the VAPID public key and your subscribed devices' })
+  pushStatus(@CurrentAuth() auth: AuthContext) {
+    return this.push.status(auth.userId);
+  }
+
+  @Post('push/subscriptions')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Turn on browser notifications for this browser' })
+  subscribe(@CurrentAuth() auth: AuthContext, @Body() dto: PushSubscriptionDto, @Headers('user-agent') userAgent?: string) {
+    return this.push.subscribe(auth.userId, dto, userAgent);
+  }
+
+  @Post('push/unsubscribe')
+  @HttpCode(200)
+  unsubscribe(@CurrentAuth() auth: AuthContext, @Body() dto: PushEndpointDto) {
+    return this.push.unsubscribe(auth.userId, dto.endpoint);
   }
 
   @Get('unread-count')

@@ -44,7 +44,7 @@ Full instructions: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Scripts
 
-The root `package.json` has no dependencies; its scripts just run the matching script inside each folder.
+The root `package.json` only holds commitlint (dev); its other scripts run the matching script inside each folder.
 
 | Command (from the root) | Purpose |
 |---|---|
@@ -56,6 +56,11 @@ The root `package.json` has no dependencies; its scripts just run the matching s
 | `npm run test` | Backend unit, backend integration, frontend unit tests |
 | `npm run test:e2e:frontend` | Build the backend, then run Playwright end-to-end tests |
 | `npm run docs:rbac` | Regenerate the RBAC matrix in `docs/RBAC.md` |
+| `npm run hooks:install` | Check commit messages locally (Conventional Commits) with the `.githooks/commit-msg` hook |
+
+## Commits
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org): `type(scope): summary`, for example `feat(payroll): pay settlements by bank file` or `fix(auth): refuse breached passwords`. Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; scopes are the module names in `commitlint.config.cjs`. CI checks every commit in a pull request.
 
 ## Documentation
 

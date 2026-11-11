@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { Save } from '@lucide/vue';
 import { authApi } from '@/modules/auth/api/auth.api';
 import AvatarUploader from '@/modules/account/components/AvatarUploader.vue';
+import CustomFieldsCard from '@/modules/people/components/CustomFieldsCard.vue';
 import MyEmploymentCard from '@/modules/people/components/MyEmploymentCard.vue';
 import { AppAlert, AppBadge, AppButton, AppCard, AppInput, AppPageHeader } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
@@ -84,5 +85,6 @@ async function save() {
       </AppCard>
     </div>
     <MyEmploymentCard v-if="auth.organization" class="mt-4" compact />
+    <CustomFieldsCard v-if="auth.organization" class="mt-4" employee-id="me" />
   </div>
 </template>

@@ -7,8 +7,9 @@ import { AppError } from '../../common/errors/app-error';
 import { PaginatedResult } from '../../common/interceptors/response-envelope.interceptor';
 import { addDays, monthRange } from '../../common/utils/zoned-time';
 import { DatabaseService } from '../../database/database.service';
-import { AttendancePeriod, Department, Employee, Holiday, LeaveLedgerEntry, LeaveRequest, LeaveType, Location, User } from '../../database/models';
+import { AttendancePeriod, Department, Employee, Holiday, LeaveLedgerEntry, LeaveRequest, LeaveType, Location, User, type ApprovalInstance } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ApprovalChainsService } from '../approvals/approval-chains.service';
 import { AttendanceRulesService, holidayAppliesAt } from '../attendance/attendance-rules.service';
 import { managerAndCover, usersWithPermission } from '../employees/employee-people';
 import { EmployeeScopeService } from '../employees/employee-scope.service';
@@ -52,6 +53,7 @@ export class LeaveRequestsService {
     private readonly rules: AttendanceRulesService,
     private readonly balances: LeaveBalanceService,
     private readonly notifications: NotificationsService,
+    private readonly chains: ApprovalChainsService,
   ) {}
 
   // ---- Applying --------------------------------------------------------------------------------
@@ -71,7 +73,7 @@ export class LeaveRequestsService {
     const first = await this.evaluate(auth, employee, type, dto, ctx);
     if (first.issues.length) throw AppError.validation(first.issues);
 
-    const request = await this.db.transaction(async (transaction) => {
+    const { created: request, chain } = await this.db.transaction(async (transaction) => {
       await this.balances.lockEmployee(employee.id, transaction);
       // Re-check balance and overlaps under the lock (another request may have been submitted meanwhile).
       const again = await this.evaluate(auth, employee, type, dto, ctx, undefined, transaction);
@@ -93,14 +95,18 @@ export class LeaveRequestsService {
         },
         { transaction },
       );
+      // A configured approval chain, when one applies, replaces the leave type's levels.
+      const chain = await this.chains.start('LEAVE', created.id, employee, { days: again.days, leaveTypeId: type.id }, transaction);
+      if (chain) await created.update({ approvalLevels: chain.steps.length }, { transaction });
       await this.audit.record(
         { action: 'leave.requested', entityType: 'LeaveRequest', entityId: created.id, summary: `${type.code} ${this.range(created)} (${plural(again.days)}) requested by ${fullName(employee)}` },
         transaction,
       );
-      return created;
+      return { created, chain };
     });
 
-    for (const approver of await managerAndCover(employee.managerId)) {
+    const firstApprovers = chain ? await this.chains.usersOf(chain.steps[0]!.approverMembershipIds) : await managerAndCover(employee.managerId);
+    for (const approver of firstApprovers) {
       if (approver === auth.userId) continue;
       await this.notifications.notify(approver, {
         organizationId: auth.organizationId,
@@ -116,11 +122,12 @@ export class LeaveRequestsService {
   // ---- Reviewing -------------------------------------------------------------------------------
 
   async approve(auth: AuthContext, id: string, dto: ReviewLeaveDto) {
-    const { request, employee, type } = await this.forReview(auth, id);
+    const { request, employee, type, chain } = await this.forReview(auth, id);
     await this.assertMonthsOpen(request.startDate, request.endDate);
     await this.balances.ensure(auth.organizationId!, [employee], request.leaveYear);
     const step = { level: request.approvalLevel, userId: auth.userId, name: (await this.actorName(auth.userId)) ?? 'Approver', at: new Date().toISOString(), note: dto.note ?? null };
-    const final = request.approvalLevel >= request.approvalLevels;
+    let final = request.approvalLevel >= request.approvalLevels;
+    let next = { label: APPROVAL_LEVEL_LABELS[request.approvalLevel + 1] ?? 'the next level', approvers: [] as string[] };
     await this.db.transaction(async (transaction) => {
       await this.balances.lockEmployee(employee.id, transaction);
       const fresh = await LeaveRequest.findByPk(id, { transaction });
@@ -131,6 +138,11 @@ export class LeaveRequestsService {
           throw AppError.conflict(`${fullName(employee)} has only ${plural(available)} of ${type.name.toLowerCase()} left, so ${plural(Number(request.days))} cannot be approved.`);
         }
       }
+      if (chain) {
+        const decided = await this.chains.decide(auth, chain, 'APPROVED', dto.note ?? null, transaction);
+        final = decided.final;
+        if (!final) next = { label: decided.nextLabel!, approvers: decided.nextApprovers };
+      }
       const trail = [...(fresh!.approvalTrail ?? []), step];
       if (!final) {
         await fresh!.update({ approvalLevel: request.approvalLevel + 1, approvalTrail: trail }, { transaction });
@@ -139,7 +151,7 @@ export class LeaveRequestsService {
             action: 'leave.approved_level',
             entityType: 'LeaveRequest',
             entityId: id,
-            summary: `${type.code} ${this.range(request)} for ${fullName(employee)} approved at level ${step.level}; waiting for ${APPROVAL_LEVEL_LABELS[step.level + 1]}`,
+            summary: `${type.code} ${this.range(request)} for ${fullName(employee)} approved at level ${step.level}; waiting for ${next.label}`,
           },
           transaction,
         );
@@ -167,15 +179,15 @@ export class LeaveRequestsService {
       await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved`, dto.note);
       return this.get(id);
     }
-    const next = APPROVAL_LEVEL_LABELS[step.level + 1]!;
-    await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved by ${step.name}; ${next} approves next`, dto.note);
-    // The next level: people who approve leave department- or organization-wide (not the one who just approved).
-    for (const userId of await usersWithPermission('leave.approve', undefined, ['DEPARTMENT', 'ORGANIZATION'])) {
+    await this.notifyEmployee(auth, request, `Your ${type.name.toLowerCase()} for ${this.range(request)} was approved by ${step.name}; ${next.label} approves next`, dto.note);
+    // The next level: the chain's next approvers, else people who approve leave department- or organization-wide.
+    const recipients = chain ? await this.chains.usersOf(next.approvers) : await usersWithPermission('leave.approve', undefined, ['DEPARTMENT', 'ORGANIZATION']);
+    for (const userId of recipients) {
       if (userId === auth.userId || userId === request.requestedById) continue;
       await this.notifications.notify(userId, {
         organizationId: auth.organizationId,
         type: 'leave.request',
-        title: `${fullName(employee)}'s ${type.name.toLowerCase()} (${plural(Number(request.days))}) needs ${next} approval`,
+        title: `${fullName(employee)}'s ${type.name.toLowerCase()} (${plural(Number(request.days))}) needs ${next.label} approval`,
         body: `${this.range(request)}. Approved by ${step.name}.`,
         link: '/hr/leave/requests',
       });
@@ -184,8 +196,9 @@ export class LeaveRequestsService {
   }
 
   async reject(auth: AuthContext, id: string, dto: RejectLeaveDto) {
-    const { request, employee, type } = await this.forReview(auth, id, 'reject');
+    const { request, employee, type, chain } = await this.forReview(auth, id, 'reject');
     await this.db.transaction(async (transaction) => {
+      if (chain) await this.chains.decide(auth, chain, 'REJECTED', dto.note, transaction);
       const [count] = await LeaveRequest.update({ status: 'REJECTED', reviewedById: auth.userId, reviewedAt: new Date(), reviewNote: dto.note }, { where: { id, status: 'PENDING' }, transaction });
       if (!count) throw AppError.conflict('This request is no longer pending');
       await this.audit.record({ action: 'leave.rejected', entityType: 'LeaveRequest', entityId: id, summary: `${type.code} ${this.range(request)} for ${fullName(employee)} rejected` }, transaction);
@@ -224,6 +237,7 @@ export class LeaveRequestsService {
         { where: { id, status: request.status }, transaction },
       );
       if (!count) throw AppError.conflict('This request changed meanwhile; refresh and try again');
+      await this.chains.cancel('LEAVE', id, transaction);
       if (wasApproved) {
         await LeaveLedgerEntry.create(
           {
@@ -279,8 +293,17 @@ export class LeaveRequestsService {
       filters.push({ employeeId: self.id });
     } else {
       const scoped = await this.scope.where(auth, view === 'team' ? 'leave.approve' : 'leave.view', 'employeeId');
-      if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
-      filters.push(scoped);
+      if (view === 'team') {
+        // Requests on an approval chain show for their current step's approvers only; the rest as before.
+        const [mine, managed] = await Promise.all([this.chains.waitingFor(auth, 'LEAVE'), this.chains.managedPending('LEAVE')]);
+        const legacy = scoped ? (managed.length ? { [Op.and]: [scoped, { id: { [Op.notIn]: managed } }] } : scoped) : null;
+        const any = [...(legacy ? [legacy] : []), ...(mine.length ? [{ id: mine }] : [])];
+        if (!any.length) return new PaginatedResult([], paginationMeta(query, 0));
+        filters.push({ [Op.or]: any });
+      } else {
+        if (!scoped) return new PaginatedResult([], paginationMeta(query, 0));
+        filters.push(scoped);
+      }
       // Approvers never act on their own requests.
       if (view === 'team' && self) filters.push({ employeeId: { [Op.ne]: self.id } });
     }
@@ -301,12 +324,16 @@ export class LeaveRequestsService {
       ...paginationArgs(query),
     });
     const names = await this.actorNames(rows);
+    const chains = await this.chains.forMany('LEAVE', rows.map((r) => r.id));
     const reviewable = new Map<string, boolean>();
     if (view === 'team') {
-      for (const r of rows) if (r.status === 'PENDING' && r.employee) reviewable.set(r.id, !(await this.levelBlock(auth, r, r.employee)));
+      for (const r of rows) {
+        const chain = chains.get(r.id);
+        if (r.status === 'PENDING' && r.employee) reviewable.set(r.id, chain?.status === 'PENDING' ? this.chains.canDecide(auth, chain) : !(await this.levelBlock(auth, r, r.employee)));
+      }
     }
     return new PaginatedResult(
-      rows.map((r) => ({ ...this.present(r, names, self?.id), canApprove: reviewable.get(r.id) ?? false, onBehalfOf: r.employee ? this.scope.delegatedBy(auth, 'leave.approve', r.employee) : null })),
+      rows.map((r) => ({ ...this.present(r, names, self?.id, chains.get(r.id)), canApprove: reviewable.get(r.id) ?? false, onBehalfOf: r.employee ? this.scope.delegatedBy(auth, 'leave.approve', r.employee) : null })),
       paginationMeta(query, count),
     );
   }
@@ -475,18 +502,28 @@ export class LeaveRequestsService {
     return type;
   }
 
-  /** Any approver in scope can reject; approving also has to fit the request's current level. */
+  /**
+   * Any approver in scope can reject; approving also has to fit the request's current level. A request on an approval
+   * chain is decided only by the current step's approvers (they may be outside the usual scope, e.g. a named person).
+   */
   private async forReview(auth: AuthContext, id: string, action: 'approve' | 'reject' = 'approve') {
+    if (!auth.features.has('leave')) throw AppError.forbidden('Leave is not enabled for this organization');
     const request = await LeaveRequest.findByPk(id, { include: [{ model: LeaveType }] });
     if (!request) throw AppError.notFound('Leave request');
     const employee = await Employee.findByPk(request.employeeId, { attributes: LEAVE_EMPLOYEE_ATTRS });
-    if (!employee || !(await this.scope.covers(auth, 'leave.approve', employee))) throw AppError.notFound('Leave request');
+    if (!employee) throw AppError.notFound('Leave request');
+    const chain = await this.chains.find('LEAVE', id);
+    const onChain = !!chain && chain.status === 'PENDING';
+    const chainApprover = onChain && this.chains.canDecide(auth, chain);
+    const approves = auth.permissions.has('leave.approve') || (auth.delegated ?? []).some((d) => d.permission === 'leave.approve');
+    if (!approves && !chainApprover) throw AppError.forbidden();
+    if (!(await this.scope.covers(auth, 'leave.approve', employee)) && !(onChain && this.chains.canDecide(auth, chain))) throw AppError.notFound('Leave request');
     const self = await this.scope.self(auth);
     if (self?.id === employee.id) throw AppError.forbidden('You cannot review your own leave');
     if (request.status !== 'PENDING') throw AppError.conflict(`This request is already ${request.status.toLowerCase()}`);
-    const blocked = action === 'approve' ? await this.levelBlock(auth, request, employee) : null;
+    const blocked = onChain ? this.chains.blockReason(auth, chain) : action === 'approve' ? await this.levelBlock(auth, request, employee) : null;
     if (blocked) throw AppError.forbidden(blocked);
-    return { request, employee, type: request.leaveType! };
+    return { request, employee, type: request.leaveType!, chain: onChain ? chain : null };
   }
 
   /**
@@ -508,10 +545,11 @@ export class LeaveRequestsService {
 
   private async get(id: string) {
     const r = await LeaveRequest.findByPk(id, { include: REQUEST_INCLUDE });
-    return this.present(r!, await this.actorNames([r!]));
+    return this.present(r!, await this.actorNames([r!]), undefined, (await this.chains.find('LEAVE', id)) ?? undefined);
   }
 
-  private present(r: LeaveRequest, names: Map<string, string>, selfId?: string) {
+  private present(r: LeaveRequest, names: Map<string, string>, selfId?: string, chain?: ApprovalInstance) {
+    const flow = this.chains.present(chain ?? null);
     return {
       id: r.id,
       employee: r.employee ? { id: r.employee.id, name: fullName(r.employee), employeeCode: r.employee.employeeCode, department: r.employee.department?.name ?? null } : null,
@@ -535,8 +573,9 @@ export class LeaveRequestsService {
       approval: {
         level: r.approvalLevel,
         levels: r.approvalLevels,
-        awaiting: r.status === 'PENDING' ? (APPROVAL_LEVEL_LABELS[r.approvalLevel] ?? null) : null,
+        awaiting: r.status === 'PENDING' ? (flow ? (chain!.steps[chain!.currentStep]?.label ?? null) : (APPROVAL_LEVEL_LABELS[r.approvalLevel] ?? null)) : null,
         trail: (r.approvalTrail ?? []).map((s) => ({ level: s.level, name: s.name, at: s.at, note: s.note })),
+        chain: flow,
       },
     };
   }

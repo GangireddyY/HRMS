@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { AuditLog, Permission, Role, RolePermission } from '../src/database/models';
+import { AuditLog, LogArchive, Permission, Role, RolePermission } from '../src/database/models';
+import { RetentionLockedError, StorageService } from '../src/infrastructure/storage/storage.service';
 import { API, PASSWORD, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase, uniqueEmail } from './helpers';
 
 describe('Audit log archives (e2e)', () => {
@@ -45,6 +46,11 @@ describe('Audit log archives (e2e)', () => {
     expect(created.status).toBe(201);
     const archive = created.body.data;
     expect(archive).toMatchObject({ recordCount: 2, status: 'ARCHIVED', downloadedAt: null });
+    // The file is write-once for the retention period (7 years by default): it can't be deleted, even by the API.
+    const lockedDays = (new Date(archive.lockedUntil).getTime() - Date.now()) / 86_400_000;
+    expect(Math.round(lockedDays)).toBe(2557);
+    const stored = await LogArchive.findByPk(archive.id, RAW);
+    await expect(ctx.app.get(StorageService).delete(stored!.storageKey)).rejects.toBeInstanceOf(RetentionLockedError);
     expect(await AuditLog.count({ where: { organizationId: s.org.organization.id, action: 'test.old' }, ...RAW })).toBe(3);
 
     // Not deletable before the file was downloaded; the download needs a fresh step-up.

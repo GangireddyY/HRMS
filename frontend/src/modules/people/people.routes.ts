@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router';
 /** Administration workspace (/admin): organization structure. */
 export const peopleAdminRoutes: RouteRecordRaw[] = [
   { path: 'structure', name: 'admin-structure', component: () => import('./pages/StructurePage.vue'), meta: { title: 'Organization structure', access: { permissions: ['organization.view'] } } },
+  { path: 'custom-fields', name: 'admin-custom-fields', component: () => import('./pages/CustomFieldsPage.vue'), meta: { title: 'Custom fields', access: { permissions: ['employee.fields.manage'] } } },
 ];
 
 /** HR operations workspace (/hr): employee directory and records. */

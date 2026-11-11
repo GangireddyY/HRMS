@@ -9,6 +9,6 @@ import { ProbationService } from './probation.service';
   imports: [EmployeesModule],
   controllers: [OnboardingController],
   providers: [OnboardingTemplatesService, OnboardingCasesService, ProbationService],
-  exports: [OnboardingCasesService],
+  exports: [OnboardingCasesService, ProbationService],
 })
 export class OnboardingModule {}
