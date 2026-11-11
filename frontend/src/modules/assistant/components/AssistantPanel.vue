@@ -6,12 +6,16 @@ import { useAccessSubject } from '@/core/auth/use-access-subject';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { accessibleWorkspaces, visibleSections } from '@/core/navigation/workspaces';
 import { useAssistantStore } from '@/modules/assistant/assistant.store';
-import { answer, suggestions, type Page } from '@/modules/assistant/engine';
+import type { AssistantChatMessage, AssistantStatus } from '@contracts';
+import { assistantApi } from '@/modules/assistant/assistant.api';
+import { answer, suggestions, type Page, type Reply } from '@/modules/assistant/engine';
 import { AppBadge } from '@/shared/components';
+import { useFeedbackStore } from '@/shared/stores/feedback.store';
 
 /** Slide-over assistant: ask in plain language, get answers from live data with links to act. Ctrl/⌘+J toggles it. */
 const store = useAssistantStore();
 const auth = useAuthStore();
+const feedback = useFeedbackStore();
 const subject = useAccessSubject();
 const route = useRoute();
 const input = ref('');
@@ -25,16 +29,48 @@ const pages = computed<Page[]>(() =>
 const ctx = computed(() => ({ auth, pages: pages.value }));
 const prompts = computed(() => suggestions(ctx.value));
 
+// AI answers when the server has a model and the organization turned it on; otherwise the built-in keyword assistant.
+const status = ref<AssistantStatus | null>(null);
+async function loadStatus() {
+  if (!auth.organization) return;
+  try {
+    status.value = await assistantApi.status();
+  } catch {
+    status.value = null;
+  }
+}
+async function setAi(enabled: boolean) {
+  if (enabled && !(await feedback.confirm({ title: 'Turn on AI answers?', message: `Questions and the HR data the assistant looks up for them (within each person's own access) are sent to the AI provider${status.value?.model ? ` (${status.value.model})` : ''}. You can turn it off any time.`, confirmLabel: 'Turn on' }))) return;
+  try {
+    status.value = await assistantApi.setEnabled(enabled);
+    feedback.success(enabled ? 'AI answers are on for your organization' : 'AI answers are off');
+  } catch (e) {
+    feedback.error('Could not change the setting', e);
+  }
+}
+
+async function aiAnswer(question: string, history: AssistantChatMessage[]): Promise<Reply | null> {
+  const out = await assistantApi.chat([...history, { role: 'user', content: question.slice(0, 2000) }]);
+  return out.mode === 'ai' ? { text: out.text, actions: out.links } : null;
+}
+
 async function ask(text: string) {
   const question = text.trim();
   if (!question || busy.value) return;
   input.value = '';
+  // The conversation so far (before this question), for follow-up questions.
+  const history: AssistantChatMessage[] = store.messages
+    .filter((m) => !m.pending && m.text)
+    .slice(-12)
+    .map((m) => ({ role: m.role, content: m.text.slice(0, 2000) }));
   store.add({ role: 'user', text: question });
   const id = store.add({ role: 'assistant', text: '', pending: true });
   busy.value = true;
   await scrollDown();
   try {
-    const reply = await answer(question, ctx.value);
+    let reply: Reply | null = null;
+    if (status.value?.ai) reply = await aiAnswer(question, history).catch(() => null);
+    reply ??= await answer(question, ctx.value);
     store.update(id, { text: reply.text, reply, pending: false });
   } finally {
     busy.value = false;
@@ -77,6 +113,7 @@ watch(
   () => store.open,
   async (open) => {
     if (!open) return;
+    if (!status.value) void loadStatus();
     await nextTick();
     field.value?.focus();
     await scrollDown();
@@ -109,7 +146,7 @@ watch(() => route.fullPath, () => {
       <header class="bg-ai-wash flex items-center gap-3 border-b border-line px-4 py-3">
         <span class="ai-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-md"><Sparkles :size="16" aria-hidden="true" /></span>
         <div class="min-w-0 flex-1">
-          <h2 id="assistant-title" class="text-gradient text-sm font-semibold">HRMS Assistant</h2>
+          <h2 id="assistant-title" class="text-gradient flex items-center gap-1.5 text-sm font-semibold">HRMS Assistant<AppBadge v-if="status?.ai" size="sm" tone="info">AI</AppBadge></h2>
           <p class="truncate text-xs text-fg-muted">Answers from your live HR data, within your access</p>
         </div>
         <button v-if="store.messages.length" type="button" class="rounded-md p-2 text-fg-subtle transition hover:bg-surface-muted hover:text-fg" aria-label="Clear the conversation" title="Clear" @click="store.clear()">
@@ -125,6 +162,10 @@ watch(() => route.fullPath, () => {
           <div class="rounded-lg bg-surface-muted/60 p-4">
             <p class="text-sm font-medium text-fg">Hi {{ auth.user?.firstName }}, what can I help with?</p>
             <p class="mt-1 text-sm text-fg-muted">Ask about leave, attendance, approvals, people, payslips, jobs, holidays or policies — or tell me what you want to do.</p>
+          </div>
+          <div v-if="status?.canConfigure && status.available" class="flex items-center gap-3 rounded-lg border border-line p-3 text-xs text-fg-muted">
+            <p class="flex-1">{{ status.enabled ? 'AI answers are on for your organization: the assistant understands free-form questions and policy text.' : 'An AI model is available: free-form questions and answers from your policies. Off until you turn it on.' }}</p>
+            <button type="button" class="shrink-0 rounded-md border border-line px-2.5 py-1 font-medium text-fg transition hover:bg-surface-muted" @click="setAi(!status.enabled)">{{ status.enabled ? 'Turn off' : 'Turn on' }}</button>
           </div>
           <div>
             <p class="mb-2 text-xs font-medium text-fg-subtle">Try asking</p>

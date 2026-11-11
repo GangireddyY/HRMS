@@ -210,6 +210,26 @@ export class EnvironmentVariables {
   @IsString()
   WHATSAPP_API_URL = 'https://graph.facebook.com/v21.0';
 
+  /**
+   * AI assistant: openai = any OpenAI-compatible Chat Completions API with tool calling (OpenAI, Azure OpenAI via its
+   * /openai/v1 endpoint, OpenRouter, a self-hosted vLLM or Ollama); off = the built-in keyword assistant only.
+   * Organizations still opt in (Administration).
+   */
+  @IsIn(['off', 'openai'])
+  ASSISTANT_PROVIDER: 'off' | 'openai' = 'off';
+
+  @IsString()
+  ASSISTANT_API_URL = 'https://api.openai.com/v1';
+
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  ASSISTANT_API_KEY?: string;
+
+  @IsString() @MinLength(1)
+  ASSISTANT_MODEL = 'gpt-4o-mini';
+
+  @Transform(toInt) @IsInt() @Min(5_000) @Max(120_000)
+  ASSISTANT_TIMEOUT_MS = 30_000;
+
   /** Bearer token Prometheus scrapes `GET /api/v1/metrics` with (at least 24 characters); unset = endpoint off. Required in production. */
   @Transform(emptyToUndefined) @IsOptional() @IsString() @MinLength(24)
   METRICS_TOKEN?: string;

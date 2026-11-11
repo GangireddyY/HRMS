@@ -119,6 +119,8 @@ export class Organization extends Model<InferAttributes<Organization>, InferCrea
   @Column(DataType.STRING(50)) registrationNumber: CreationOptional<string | null>;
   /** Offers need approval (recruitment.offer.approve) before release; they always do above the requisition's budget. */
   @Column(DataType.BOOLEAN) offerApprovalRequired: CreationOptional<boolean>;
+  /** The assistant answers with the configured language model (questions and looked-up data go to the provider). */
+  @Column(DataType.BOOLEAN) assistantAiEnabled: CreationOptional<boolean>;
   @Column(DataType.STRING(50)) taxId: CreationOptional<string | null>;
   @Column({ type: DataType.STRING(200), field: 'address_line1' }) addressLine1: CreationOptional<string | null>;
   @Column({ type: DataType.STRING(200), field: 'address_line2' }) addressLine2: CreationOptional<string | null>;

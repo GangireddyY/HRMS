@@ -168,6 +168,21 @@ Migrations:
 | `20261104063303_mfa_replay_protection` | `users.mfa_last_used_step` |
 | `20261104064557_audit_log_append_only` | Trigger `audit_logs_append_only` rejecting UPDATE/DELETE |
 
+### Added since (approval chains to the AI assistant)
+
+Every new tenant table has `organization_id`, forced row-level security (`tenant_isolation` policy) and is listed in `TENANT_MODELS`.
+
+| Migration | Content |
+|---|---|
+| `20261111230000_approval_chains` | `approval_chains` (per kind of request: priority, conditions, steps); `approval_instances` (one per request on a chain: resolved approvers per step, current step, deadline, escalation, decisions), unique per `(organization_id, subject, subject_id)` |
+| `20261112090000_report_schedules` | `report_schedules`: a saved report emailed daily / weekly / monthly at a local hour to member user ids (`recipient_ids`), with the rolling period, format, next and last run and its outcome; cascades with `saved_reports` |
+| `20261112100000_calendar_feeds` | `organization_memberships.calendar_feed_token_hash` (SHA-256 of the private feed URL's secret; unique when set) |
+| `20261112110000_compensation_succession` | `compensation_budgets` (increase pool per cycle and department, unique per `(cycle_id, department_id)` with null = no department); `succession_plans` (critical role, holder or vacant, criticality, risk of loss; one plan per holder); `succession_candidates` (ranked successors with readiness, unique per plan and employee) |
+| `20261112120000_legal_entities` | `legal_entities` (country, currency, registrations, one default per organization); `employees.legal_entity_id`, `pay_groups.legal_entity_id`; `exchange_rates` (base-currency units per unit, by effective date); `reimbursement_claims.currency` / `original_amount` / `exchange_rate`; `payslips.currency` |
+| `20261112130000_assistant_ai` | `organizations.assistant_ai_enabled` (the organization's opt-in to AI answers) |
+
+Notification preferences (digest frequency, hour, weekday, timezone, WhatsApp number and its pending code hash, calendar invites) live in `users.notification_settings` (JSONB); the verification code is stored hashed and never returned.
+
 ## 4. Planned schema (Phases 2–9)
 
 All tables below carry `organization_id`, audit columns and composite tenant FKs. Names are indicative; each phase finalises its schema in a migration and updates this document.

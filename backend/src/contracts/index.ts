@@ -30,3 +30,4 @@ export * from './custom-fields';
 export * from './report-builder';
 export * from './billing';
 export * from './entities';
+export * from './assistant';

@@ -10,9 +10,9 @@ import { reportsApi } from '@/modules/reports/api/reports.api';
 import { formatDate, formatMoney } from '@/shared/utils/format';
 
 /**
- * The HRMS assistant: understands common questions and requests in plain language (by recognising intents from
- * keywords, not a language model) and answers them from live data through the same APIs and permissions as the
- * screens, with links to act. What it can't answer, it says so and points to the closest pages.
+ * The built-in assistant, used when AI answers are off or unavailable (see AssistantPanel): understands common
+ * questions and requests by recognising intents from keywords and answers them from live data through the same APIs
+ * and permissions as the screens, with links to act. What it can't answer, it says so and points to the closest pages.
  */
 type Auth = ReturnType<typeof useAuthStore>;
 

@@ -170,7 +170,7 @@ test.describe('responsive layout', () => {
     await page.goto('/hr/payroll/runs');
     await page.waitForLoadState('networkidle');
     const run = page.getByRole('row').nth(1);
-    test.skip(!(await run.isVisible().catch(() => false)) || (await run.textContent())?.includes('No payroll runs'), 'needs a payroll run (created by payroll.spec.ts)');
+    test.skip(!(await run.isVisible().catch(() => false)) || !!(await run.textContent())?.includes('No payroll runs'), 'needs a payroll run (created by payroll.spec.ts)');
     await run.click();
     await expect(page).toHaveURL(/\/hr\/payroll\/runs\/[0-9a-f-]+$/);
     await checkCurrent(page, testInfo, 'payroll-run');

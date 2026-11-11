@@ -188,3 +188,27 @@ Legend: 🔓 public · 🔑 authenticated · `perm` required permission · ⚙ p
 | GET | `/users/:id/avatar?v=…` | 🔓 (needs the photo URL's `v`) | Profile photo image |
 | POST | `/recruitment/resumes/parse` | `recruitment.manage` | Multipart `file` (PDF / .docx, ≤ 5 MB): details read from a resume to prefill the candidate form (`{parsed, readable}`); the file isn't kept |
 | GET | `/reports/:key/export?format=csv\|xlsx\|pdf` | `reports.export` + the report's permission | CSV (tables), Excel (summary sheet + a sheet per table, typed cells) or PDF (A4 landscape with the headline figures) |
+
+### Approval chains, channels, schedules, calendars, compensation, entities and the AI assistant
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| GET | `/approvals/waiting` | 🔑 member | Requests waiting at an approval-chain step you decide (or cover), across leave, expenses, travel, resignations and offers |
+| GET | `/recruitment/offers/awaiting-approval` | 🔑 member (recruitment on) | Offers waiting for your approval (your chain step, or any pending offer with `recruitment.offer.approve`) |
+| POST | `/travel/requests/:id/approve` · `reject`, `/exits/:id/approve`, `/recruitment/offers/:id/approve` · `reject-approval` | on a chain: its current step's approvers; otherwise as before | One decision; middle steps keep the request pending and notify the next approvers |
+| POST | `/notifications/whatsapp/verify` · `confirm` · `remove` | 🔑 R | Send a 6-digit code to a WhatsApp number (3 an hour), confirm it (messages switch on), or remove it |
+| PUT | `/notifications/settings` | 🔑 R | Adds `emailDigest` (`OFF` / `DAILY` / `WEEKLY`), `digestHour`, `digestDay`, `timezone`, `whatsapp`, `calendarInvites` |
+| GET · POST | `/reports/schedules` | `reports.view` + `reports.export` | Your scheduled report emails; schedule one of your saved reports (frequency, day, hour, format, rolling period, member recipients) |
+| PUT · DELETE · POST | `/reports/schedules/:id` · `…/send` | owner | Edit, delete or send now (each recipient gets only their own rows) |
+| GET | `/reports/schedules/recipients?q=` | `reports.view` + `reports.export` | Members to pick as recipients |
+| GET · POST | `/calendar/feed` · `/calendar/feed/remove` | 🔑 member | Whether you have a calendar feed; a new private feed URL (shown once) or switch it off |
+| GET | `/calendar/feed/:token.ics` | 🔓 the URL's secret | iCalendar feed: your leave, team leave, 1:1s, interviews, holidays |
+| GET · PUT | `/performance/cycles/:id/budgets` | `performance.configure` or `employee.salary.revise` (+ org-wide salary access); write: `performance.configure` | Increase pools per department with planned / committed / remaining; set all pools |
+| POST | `/performance/hikes/:id/approve` | `employee.salary.revise` | Adds `overBudget: true` to approve beyond the department's pool (audited); without it, 409 |
+| GET · POST · PUT · DELETE | `/performance/succession[/:id]` | view: `performance.succession.view` in scope; write: `performance.succession.manage` | Succession plans with bench strength (never your own role's plan unless you manage) |
+| POST · PATCH · DELETE | `/performance/succession/:id/successors[/:candidateId]` | `performance.succession.manage` | Name successors, change readiness / rank / notes, remove |
+| GET · POST · PUT · DELETE | `/legal-entities[/:id]` | 🔑 member; write: `organization.update` | Legal entities (country, currency, registrations, default) |
+| POST | `/legal-entities/assign` | `organization.update` + `employee.update` | Move employees to an entity (null = default) |
+| GET · PUT · DELETE | `/exchange-rates[/:id]` | 🔑 member; write: `payroll.configure` | Exchange rates into the base currency by date (the rate in force per currency) |
+| GET · PUT | `/assistant/status` · `/assistant/settings` | 🔑 member; write: `organization.update` | Whether AI answers are on; turn them on or off for the organization |
+| POST | `/assistant/chat` | 🔑 member (20 / minute) | `{messages}` → `{mode: 'ai', text, links, sources}` or `{mode: 'fallback', reason}` |

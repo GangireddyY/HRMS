@@ -5,6 +5,28 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ## [Unreleased]
 
 ### Added
+- **Approval chains everywhere**:
+  - **Coverage:** configurable chains now also decide travel requests, resignations (each step accepts; the last one sets the last working day) and job offers (matched on CTC and department; the requisition's hiring manager is "the manager"). A matching offer chain makes approval required. Withdrawing a resignation, changing or withdrawing an offer, or cancelling a trip closes its chain.
+  - **My approvals** (My Workspace → My approvals, `GET /approvals/waiting`): every chain step waiting for you, whatever the kind, with what's needed to decide, approved or rejected right there. Named approvers who hold no module role can act this way too.
+  - **Notifications and counts:** chain notifications link to My approvals. The dashboard counts include chain steps (and offers), and every request detail shows the chain's progress.
+- **Notification digests and WhatsApp** (Notifications → settings):
+  - **Digests:** choose a daily or weekly summary instead of one email per notification, at your local hour (and weekday). It lists what you haven't read since the last one, grouped by organization. Grievance items carry no details.
+  - **WhatsApp:** add your number and confirm it with a 6-digit code sent there (3 codes an hour, 5 tries, hashed, 10 minutes). Notifications in your email categories are then sent as a WhatsApp template message (title and link) through the WhatsApp Business Cloud API (`WHATSAPP_PROVIDER=meta`), or written to the log in development.
+- **Scheduled reports** (Report builder → Scheduled emails): email a saved report daily, weekly or monthly at a local hour, as Excel or CSV, to members of the organization. Each recipient gets only the rows their own access allows, and anyone without report export rights or access to the data is skipped (shown on the schedule). Dated reports cover a rolling period (yesterday, last week, last month, month to date, last 30 days). You can send one now, pause it or edit it.
+- **Calendar invites and feeds**:
+  - **Invites:** approved leave (all-day, out of office), interviews (candidate and panel) and 1:1s are emailed as iCalendar invites. Calendars add them, update them when they change (same UID, rising sequence) and remove them when cancelled. Removed panelists get a cancellation. People can switch invites off.
+  - **Calendar subscription:** a private feed URL (Notifications → settings) for Google Calendar, Outlook or Apple Calendar. It has your leave, your team's leave, 1:1s, interviews you sit on and holidays. Only the URL's hash is stored, and it can be replaced or switched off.
+- **Compensation budgets** (Salary increases → Department pools): split a cycle's increase money into a pool per department, suggested from the department's payroll and the cycle's budget %. Each pool shows what's planned and committed. Approving an increase that would overspend its pool needs an explicit, audited override.
+- **Succession planning** (HR Operations → Performance → Succession, new `performance.succession.view` / `.manage` permissions):
+  - **Plans:** critical roles (held by someone, or vacant) record how critical they are and the risk of losing the holder, with a ranked bench of successors, their readiness (now, in 1 to 2 years, in 3+), development notes and 9-box placement from their latest review.
+  - **Bench strength:** each plan shows whether a successor is ready, at risk or missing. HR manages plans; department managers see the plans in their department, never the one for their own role.
+- **Legal entities and currencies** (Administration → Entities & currencies):
+  - **Entities:** the companies you employ people through, each with its country, currency and registrations, and one default. Employees and pay groups belong to an entity.
+  - **Payroll:** payslips are in the paying entity's currency (screens and PDF), and Indian statutory deductions (PF, ESI, PT, LWF, TDS) apply only to entities in India.
+  - **Exchange rates:** dated rates into the base currency. Expense receipts in another currency are converted at the rate on the expense date (receipt amount and rate kept). The report builder's payslips gain the currency and net pay in the base currency for consolidated figures.
+- **AI assistant** (opt-in per organization): with an OpenAI-compatible provider configured (`ASSISTANT_PROVIDER=openai`: OpenAI, Azure OpenAI, OpenRouter, vLLM or Ollama) and an admin's consent, the assistant answers free-form questions and policy questions.
+  - **Grounding:** it reads only through tools run with the person's own access: profile, leave, holidays, policies, payslips, approvals, team leave and colleagues. It's told to answer only from their results, and links only to app pages.
+  - **Fallback:** without a provider, with the switch off, or when the provider fails, the built-in keyword assistant answers as before.
 - **Single sign-on (OpenID Connect)** (Organization settings → Single sign-on): connect any OIDC provider (Microsoft Entra ID, Google Workspace, Okta, Keycloak…) with its issuer URL, client ID and secret (stored encrypted), for chosen email domains.
   - **Sign-in:** people choose "Sign in with SSO" and enter their work email. The sign-in uses the authorization-code flow with PKCE, a single-use state and a nonce, and the ID token's signature, issuer, audience and expiry are checked.
   - **Matching people:** people are matched to their membership by verified email, and a pending invitation is accepted on the way. With "add new people automatically", someone from an allowed domain joins with a chosen role (within the plan's seats).

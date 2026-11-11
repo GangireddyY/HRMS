@@ -30,6 +30,9 @@ function loadTestEnv() {
   }
   // WhatsApp is on in tests with its sender stubbed (the log provider never calls out).
   process.env.WHATSAPP_PROVIDER = 'log';
+  // The assistant's model is stubbed in tests; the provider only has to be "configured".
+  process.env.ASSISTANT_PROVIDER = 'openai';
+  process.env.ASSISTANT_API_URL = 'http://127.0.0.1:9/v1';
   const dbName = process.env.DB_NAME || '';
   if (!/test/i.test(dbName)) {
     throw new Error(`Refusing to run integration tests against non-test database "${dbName}"`);

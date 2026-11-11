@@ -14,5 +14,6 @@ import { DashboardController } from './dashboard.controller';
   imports: [EmployeesModule, LeaveModule, AttendanceModule, PayrollModule, RecruitmentModule, ExitModule, ServicesModule, OnboardingModule],
   controllers: [DashboardController],
   providers: [ApprovalsSummaryService],
+  exports: [ApprovalsSummaryService],
 })
 export class DashboardModule {}
