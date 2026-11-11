@@ -123,7 +123,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Operations
 - **Metrics:** Prometheus metrics at `GET /api/v1/metrics`, protected by `METRICS_TOKEN` (required in production). They cover HTTP requests and latency by route pattern, background job outcomes and backlog, failed sign-ins, and process and event-loop metrics. Alert rules ship in `deploy/prometheus/alerts.yml`: instance down, error rate, latency, failed jobs, job backlog, sign-in attacks, memory and event-loop lag.
 - **Tracing:** optional OpenTelemetry tracing (set `OTEL_EXPORTER_OTLP_ENDPOINT`) of HTTP, Express, PostgreSQL and Redis spans, without request bodies or SQL parameters.
-- **Scripted backups:** `scripts/db-backup.sh` takes a custom-format dump with a checksum, optionally GPG-encrypted and copied to S3. `scripts/db-restore-verify.sh` restores a dump into a scratch database and checks the migration count and key-table row counts against the source. CI backs up and restores the test database on every build.
+- **Scripted backups:** `scripts/db-backup.sh` takes a custom-format dump with a checksum, optionally GPG-encrypted and copied to S3. `scripts/db-restore-verify.sh` restores a dump into a scratch database and checks the migration count and key-table row counts against the source. CI backs up and restores the test database on every build. The dump runs with `--enable-row-security`, because `pg_dump` otherwise refuses to read tables with forced row-level security when connected as a non-superuser owner.
 - **Commit messages:** Conventional Commits are checked by commitlint in CI for every commit in a pull request; `npm run hooks:install` checks them locally too.
 
 ### Security

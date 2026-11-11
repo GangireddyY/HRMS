@@ -23,8 +23,10 @@ mkdir -p "$out_dir"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 file="$out_dir/$DB_NAME-$stamp.dump"
 
+# Tables use forced row-level security. With no app.organization_id set the policies show every row, so the dump is
+# complete; pg_dump only needs to be allowed to read under the policies (it refuses by default).
 pg_dump --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" --dbname="$DB_NAME" \
-  --format=custom --compress=6 --no-password --file="$file"
+  --format=custom --compress=6 --no-password --enable-row-security --file="$file"
 
 # The dump must be readable before it counts as a backup.
 pg_restore --list "$file" >/dev/null
