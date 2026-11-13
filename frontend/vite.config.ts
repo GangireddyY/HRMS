@@ -30,6 +30,15 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       include: ['src/**/*.spec.ts'],
       restoreMocks: true,
+      // Pages and components are covered by Playwright; this gate covers TypeScript logic.
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.ts'],
+        exclude: ['src/**/*.spec.ts', 'src/**/*.d.ts', 'src/**/*.routes.ts', 'src/**/api/**', 'src/**/*.api.ts', 'src/**/types.ts', 'src/main.ts'],
+        reportsDirectory: 'coverage',
+        // Ratchet: set at the current level; raise as tests are added, never lower.
+        thresholds: { statements: 31, branches: 80, functions: 63, lines: 31 },
+      },
     },
   };
 });

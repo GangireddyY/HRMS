@@ -257,14 +257,14 @@ export class TravelController {
 
   @Post(':id/approve')
   @HttpCode(200)
-  @RequireTenant()
+  @RequirePermissions('travel.approve')
   approve(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OptionalNoteDto) {
     return this.travel.approve(auth, id, dto);
   }
 
   @Post(':id/reject')
   @HttpCode(200)
-  @RequireTenant()
+  @RequirePermissions('travel.approve')
   reject(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: NoteDto) {
     return this.travel.reject(auth, id, dto);
   }

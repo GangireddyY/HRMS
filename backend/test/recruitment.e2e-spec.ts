@@ -166,6 +166,23 @@ describe('Recruitment (e2e)', () => {
     expect((await ctx.http().get(`${API}/careers/${slug}/jobs/${job.id}`)).body.data.job.description).toContain('payment services');
     expect((await ctx.http().get(`${API}/careers/no-such-org`)).status).toBe(404);
 
+    // The same jobs as an XML feed for job boards, linking to the careers page.
+    const feed = await ctx.http().get(`${API}/careers/${slug}/jobs.xml`).buffer(true).parse((res, cb) => {
+      let xml = '';
+      res.on('data', (c: Buffer) => (xml += c.toString()));
+      res.on('end', () => cb(null, xml));
+    });
+    expect(feed.status).toBe(200);
+    expect(feed.headers['content-type']).toMatch(/^application\/xml/);
+    const xml = feed.body as string;
+    expect(xml).toMatch(/^<\?xml version="1.0" encoding="utf-8"\?>\n<source>/);
+    expect(xml.match(/<job>/g)).toHaveLength(1);
+    expect(xml).toContain('<title><![CDATA[Backend Engineer]]></title>');
+    expect(xml).toMatch(new RegExp(`<url><!\\[CDATA\\[https?://[^\\]]+/careers/${slug}/jobs/${job.id}]]></url>`));
+    expect(xml).toContain('<category><![CDATA[Engineering]]></category>');
+    expect(xml).toContain('payment services');
+    expect((await ctx.http().get(`${API}/careers/no-such-org/jobs.xml`)).status).toBe(404);
+
     const form = (consent: string) => ctx.http().post(`${API}/careers/${slug}/jobs/${job.id}/apply`).field('firstName', 'Asha').field('lastName', 'Rao').field('email', 'asha.rao@example.com').field('consent', consent);
     expect((await form('false').attach('file', PDF, 'asha.pdf')).status).toBe(422);
     expect((await form('true')).status).toBe(422);

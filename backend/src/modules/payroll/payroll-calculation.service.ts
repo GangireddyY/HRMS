@@ -13,6 +13,7 @@ financialYearOf,
 labourWelfareState,
 professionalTaxState,
 weekStartOf,
+type ContributionRates,
 type ProfessionalTaxState,
 type TimesheetStatus
 } from '../../contracts';
@@ -63,6 +64,8 @@ type TaxFigures,
 } from './payroll-engine';
 import { MONTHS,periodLabel,proofsApply,sum,type VerifiedDeductions } from './payroll-period';
 import { SalariesService } from './salaries.service';
+import { StatutoryRatesService } from './statutory-rates.service';
+import type { YearRules } from './tax-rules';
 import { EntitiesService } from '../entities/entities.service';
 
 const mask = (v: string | null, keep = 4) => (v ? `${'•'.repeat(Math.max(0, v.length - keep))}${v.slice(-keep)}` : null);
@@ -130,6 +133,10 @@ export interface CalcContext {
   currency: string;
   /** Indian statutory deductions (PF, ESI, PT, LWF, TDS) apply: the paying entity is in India. */
   statutory: boolean;
+  /** PF / ESI rates in force on the first day of the month. */
+  contributionRates: ContributionRates;
+  /** The financial year's income-tax rules (undefined = the built-in ones, which refuse years before they start). */
+  taxRules?: YearRules;
 }
 
 /**
@@ -144,15 +151,18 @@ export class PayrollCalculationService {
     private readonly rules: AttendanceRulesService,
     private readonly crypto: EncryptionService,
     private readonly entities: EntitiesService,
+    private readonly statutoryRates: StatutoryRatesService,
   ) {}
 
   async context(auth: AuthContext, run: PayrollRun): Promise<CalcContext> {
     const { from, to, days } = monthRange(run.year, run.month);
-    const [configured, org, today, pay] = await Promise.all([
+    const [configured, org, today, pay, contributionRates, taxRules] = await Promise.all([
       this.config.settings(auth.organizationId!),
       Organization.findByPk(auth.organizationId!, { attributes: ['state'] }),
       this.salaries.today(auth.organizationId!),
       this.entities.payContextForGroup(auth.organizationId!, run.payGroupId ?? null),
+      this.statutoryRates.contributionRates(run.year, run.month),
+      this.statutoryRates.taxRules(financialYearOf(run.year, run.month)).catch(() => undefined),
     ]);
     // Outside India none of the Indian statutory deductions apply.
     const settings = pay.statutory ? configured : { ...configured, pfEnabled: false, esiEnabled: false, ptEnabled: false, lwfEnabled: false };
@@ -164,7 +174,7 @@ export class PayrollCalculationService {
       settings.timesheetsRequired && auth.features.has('attendance')
         ? { required: true, from: settings.timesheetsFrom, dueWeekday: settings.timesheetDueWeekday, missedAction: settings.timesheetMissedAction }
         : null;
-    return { run, settings, orgState: org?.state ?? null, from, to, days, today, attendanceLop, timesheets, currency: pay.currency, statutory: pay.statutory };
+    return { run, settings, orgState: org?.state ?? null, from, to, days, today, attendanceLop, timesheets, currency: pay.currency, statutory: pay.statutory, contributionRates, taxRules };
   }
 
   /** Days a timesheet must cover: employed, not a holiday or weekly off, and not a full day of leave. */
@@ -485,15 +495,16 @@ export class PayrollCalculationService {
     const age = ageOn(e.dateOfBirth, ctx.from);
     const pfWageEarned = sum(earned.filter((c) => c.pfWage).map((c) => c.amount)) + arrears.pfWage;
     const pfOn = settings.pfEnabled && latest.pfApplicable;
-    const pf = pfOn ? pfContribution(pfWageEarned, { restrictToCeiling: settings.pfRestrictToCeiling, age }) : null;
+    const rates = ctx.contributionRates;
+    const pf = pfOn ? pfContribution(pfWageEarned, { restrictToCeiling: settings.pfRestrictToCeiling, age, rates }) : null;
     if (pfOn && !e.uanEncrypted) warnings.push('No UAN recorded (needed for the PF return)');
 
     // ESI
     const grossRate = Number(latest.monthlyGross);
     const coveredEarlier = input.esiEarlier.length ? input.esiEarlier.some((p) => (p.statutory as { esiCovered?: boolean }).esiCovered) : null;
-    const covered = esiCovered({ enabled: settings.esiEnabled, grossRate, month: run.month, coveredEarlierInPeriod: coveredEarlier });
+    const covered = esiCovered({ enabled: settings.esiEnabled, grossRate, month: run.month, coveredEarlierInPeriod: coveredEarlier, rates });
     const esiWage = sum(earned.filter((c) => c.esiWage).map((c) => c.amount)) + arrears.esiWage;
-    const esi = covered ? esiContribution(esiWage) : { employee: 0, employer: 0 };
+    const esi = covered ? esiContribution(esiWage, rates) : { employee: 0, employer: 0 };
 
     // Professional tax
     const ptState: ProfessionalTaxState | null = settings.ptEnabled ? (professionalTaxState(e.location?.state) ?? professionalTaxState(settings.ptState) ?? professionalTaxState(ctx.orgState)) : null;
@@ -533,7 +544,7 @@ export class PayrollCalculationService {
       taxable: sum(earned.filter((c) => c.taxable).map((c) => c.rate)),
       basic: byRole('BASIC', 'rate'),
       hra: byRole('HRA', 'rate'),
-      employeePf: pfOn ? pfContribution(sum(earned.filter((c) => c.pfWage).map((c) => c.rate)), { restrictToCeiling: settings.pfRestrictToCeiling, age }).employee : 0,
+      employeePf: pfOn ? pfContribution(sum(earned.filter((c) => c.pfWage).map((c) => c.rate)), { restrictToCeiling: settings.pfRestrictToCeiling, age, rates }).employee : 0,
       professionalTax: professionalTax(ptState, rateGross, e.gender ?? null, 1),
     };
     const ytdFigures = input.ytd.reduce(
@@ -561,7 +572,7 @@ export class PayrollCalculationService {
     let tds = 0;
     if (ctx.statutory) {
       try {
-        tax = monthlyTds({ fy: input.fy, age: ageOn(e.dateOfBirth, `${input.fy + 1}-03-31`), declaration, ytd: ytdFigures, current, recurring, remainingMonths });
+        tax = monthlyTds({ fy: input.fy, age: ageOn(e.dateOfBirth, `${input.fy + 1}-03-31`), declaration, ytd: ytdFigures, current, recurring, remainingMonths, taxRules: ctx.taxRules });
         tds = tax.thisMonth;
         if (!e.panEncrypted && tax.tax.total > 0) {
           tds = Math.max(tds, Math.round(current.taxable * 0.2));

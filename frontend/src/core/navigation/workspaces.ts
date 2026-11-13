@@ -142,7 +142,13 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Billing', to: '/platform/billing', icon: ReceiptText },
         ],
       },
-      { title: 'Governance', items: [{ label: 'Audit log', to: '/platform/audit-logs', icon: FileClock, access: { platform: 'platform.audit.view' } }] },
+      {
+        title: 'Governance',
+        items: [
+          { label: 'Statutory rates', to: '/platform/statutory-rates', icon: Landmark, access: { platform: 'platform.statutory.manage' } },
+          { label: 'Audit log', to: '/platform/audit-logs', icon: FileClock, access: { platform: 'platform.audit.view' } },
+        ],
+      },
     ],
   },
   {

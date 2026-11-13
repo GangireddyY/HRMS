@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
   let refreshInFlight: Promise<boolean> | null = null;
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   const sessionEndedHandlers: (() => void)[] = [];
+  const beforeLogoutHandlers: (() => Promise<void>)[] = [];
 
   const isAuthenticated = computed(() => !!accessToken.value && !!context.value);
   const user = computed(() => context.value?.user ?? null);
@@ -125,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(): Promise<void> {
     try {
+      await Promise.allSettled(beforeLogoutHandlers.map((h) => h()));
       await authApi.logout();
     } catch (e) {
       if (!(e instanceof ApiError)) throw e;
@@ -135,6 +137,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   function onSessionEnded(handler: () => void): void {
     sessionEndedHandlers.push(handler);
+  }
+
+  /** Runs while still signed in, e.g. so the phone app stops receiving this person's notifications. */
+  function beforeLogout(handler: () => Promise<void>): void {
+    beforeLogoutHandlers.push(handler);
   }
 
   function sessionEnded(): void {
@@ -165,6 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
     switchOrganization,
     logout,
     onSessionEnded,
+    beforeLogout,
     sessionEnded,
   };
 });

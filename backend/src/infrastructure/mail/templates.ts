@@ -138,15 +138,18 @@ export function scheduledReportEmail(to: string, name: string, report: { title: 
   };
 }
 
-/** An iCalendar invite (or cancellation); calendars show it with add / update / remove buttons. */
-export function calendarInviteEmail(to: string, name: string, e: { title: string; when: string; organization: string; cancelled: boolean }, ics: string, method: 'REQUEST' | 'CANCEL'): MailMessage {
+/**
+ * An iCalendar invite (or cancellation); calendars show it with add / update / remove buttons. The attachment type
+ * has no parameters (SendGrid rejects `;` in it): calendars read the method from the file's METHOD line.
+ */
+export function calendarInviteEmail(to: string, name: string, e: { title: string; when: string; organization: string; cancelled: boolean }, ics: string): MailMessage {
   const head = e.cancelled ? `Cancelled: ${e.title}` : e.title;
   return {
     to,
     subject: `${head} · ${e.when}`,
     text: `Hi ${name},\n\n${e.cancelled ? 'This has been cancelled and is removed from your calendar' : 'This has been added to your calendar'}: ${e.title}, ${e.when}.\n\n${e.organization}\n`,
     html: layout(head, `<p>Hi ${escapeHtml(name)},</p><p>${e.cancelled ? 'This has been cancelled' : 'This has been added to your calendar'}:</p><p><strong>${escapeHtml(e.title)}</strong><br>${escapeHtml(e.when)}</p><p style="color:#6b7280;font-size:12px">${escapeHtml(e.organization)}</p>`),
-    attachments: [{ filename: e.cancelled ? 'cancel.ics' : 'invite.ics', content: Buffer.from(ics, 'utf8').toString('base64'), type: `text/calendar; method=${method}; charset=UTF-8` }],
+    attachments: [{ filename: e.cancelled ? 'cancel.ics' : 'invite.ics', content: Buffer.from(ics, 'utf8').toString('base64'), type: 'text/calendar' }],
   };
 }
 

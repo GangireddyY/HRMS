@@ -28,6 +28,7 @@ import { EmployeeScopeService } from '../employees/employee-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { SalaryDto, SalaryListQueryDto, SalaryPreviewDto, TaxDeclarationDto } from './dto/payroll.dto';
 import { PayrollConfigService } from './payroll-config.service';
+import { StatutoryRatesService } from './statutory-rates.service';
 import { salaryBreakdown, StructureError, type SalaryBreakdown, type SalaryComponent, type TaxDeclaration } from './payroll-engine';
 import { fullName } from '../../common/utils/names';
 
@@ -66,6 +67,7 @@ export class SalariesService {
     private readonly scope: EmployeeScopeService,
     private readonly config: PayrollConfigService,
     private readonly notifications: NotificationsService,
+    private readonly statutoryRates: StatutoryRatesService,
   ) {}
 
   async today(organizationId: string): Promise<string> {
@@ -76,12 +78,15 @@ export class SalariesService {
   async preview(auth: AuthContext, dto: SalaryPreviewDto): Promise<SalaryBreakdown> {
     const { lines } = await this.config.linesFor(dto.structureId);
     const settings = await this.config.settings(auth.organizationId!);
+    const [y, m] = (await this.today(auth.organizationId!)).split('-').map(Number) as [number, number];
+    const rates = await this.statutoryRates.contributionRates(y, m);
     try {
       return salaryBreakdown(dto.annualCtc, lines, {
         pfEnabled: settings.pfEnabled,
         pfApplicable: dto.pfApplicable ?? true,
         pfRestrictToCeiling: settings.pfRestrictToCeiling,
         esiEnabled: settings.esiEnabled,
+        rates,
       });
     } catch (e) {
       if (e instanceof StructureError) throw AppError.validation([{ field: 'annualCtc', message: e.message }]);

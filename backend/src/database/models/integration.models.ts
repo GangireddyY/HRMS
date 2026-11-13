@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { BuilderDataset, BuilderQuery, CustomFieldEntity, CustomFieldType, ReportFrequency, ReportPeriod, ReportRunStatus } from '../../contracts';
+import type { BuilderDataset, BuilderQuery, CustomFieldEntity, CustomFieldType, ReportFrequency, ReportPeriod, ReportRunStatus, WebhookFormat } from '../../contracts';
 
 /** A report-builder report someone saved. */
 @Table({ tableName: 'saved_reports', underscored: true })
@@ -96,7 +96,10 @@ export class WebhookEndpoint extends Model<InferAttributes<WebhookEndpoint>, Inf
   id: CreationOptional<string>;
 
   @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  /** For Slack / Teams, a masked copy; the real URL is in urlEncrypted. */
   @Column(DataType.STRING(500)) url: string;
+  @Column(DataType.STRING(8)) format: CreationOptional<WebhookFormat>;
+  @Column(DataType.TEXT) urlEncrypted: CreationOptional<string | null>;
   @Column(DataType.STRING(200)) description: CreationOptional<string | null>;
   @Column(DataType.ARRAY(DataType.STRING(100))) events: string[];
   @Column(DataType.TEXT) secretEncrypted: string;

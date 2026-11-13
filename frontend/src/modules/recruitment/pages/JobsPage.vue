@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { BriefcaseBusiness, CalendarClock, Globe, MapPin, Plus, X } from '@lucide/vue';
+import { BriefcaseBusiness, CalendarClock, Globe, MapPin, Plus, Rss, X } from '@lucide/vue';
 import type { ApplicationStage, JobStatus } from '@contracts';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import JobFormModal from '@/modules/recruitment/components/JobFormModal.vue';
@@ -24,6 +24,16 @@ const feedback = useFeedbackStore();
 const canManage = computed(() => auth.can('recruitment.manage'));
 const table = useTable((q) => recruitmentApi.jobs(q), { filters: { status: 'OPEN' as JobStatus | undefined } });
 const careersPath = computed(() => (auth.organization?.slug ? `/careers/${auth.organization.slug}` : null));
+/** XML feed of the public jobs (Indeed format) that job boards and aggregators import. */
+const feedUrl = computed(() => (auth.organization?.slug ? `${window.location.origin}/api/v1/careers/${auth.organization.slug}/jobs.xml` : null));
+async function copyFeed() {
+  try {
+    await navigator.clipboard.writeText(feedUrl.value!);
+    feedback.success('Job-board feed link copied', 'Give it to Indeed, Jooble, Adzuna or another board that imports XML feeds; public open jobs update on their own.');
+  } catch {
+    feedback.info('Job-board feed link', feedUrl.value!);
+  }
+}
 
 const formOpen = ref(false);
 async function onCreated(job: JobDetail) {
@@ -70,6 +80,7 @@ const place = (j: Job) => [j.requisition.department?.name, j.requisition.locatio
     <AppPageHeader title="Jobs" description="Openings created from approved requisitions, and their hiring pipelines.">
       <template #actions>
         <AppButton v-if="careersPath" variant="ghost" :icon="Globe" :to="careersPath">Careers page</AppButton>
+        <AppButton v-if="feedUrl" variant="ghost" :icon="Rss" title="Copy the XML feed link for job boards" @click="copyFeed">Job-board feed</AppButton>
         <AppButton v-if="canManage" :icon="Plus" @click="formOpen = true">Open a job</AppButton>
       </template>
     </AppPageHeader>

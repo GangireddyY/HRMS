@@ -19,4 +19,8 @@ export interface PushStatus {
   /** The person's account-wide switch. */
   on: boolean;
   devices: number;
+  /** The server can push to the phone app (Firebase). */
+  nativeEnabled: boolean;
+  /** Phone app installs signed in as this person. */
+  apps: number;
 }

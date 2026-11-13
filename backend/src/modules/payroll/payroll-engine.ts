@@ -1,17 +1,5 @@
-import {
-  EPS_MAX_AGE,
-  EPS_RATE,
-  ESI_EMPLOYEE_RATE,
-  ESI_EMPLOYER_RATE,
-  ESI_WAGE_LIMIT,
-  PF_RATE,
-  PF_WAGE_CEILING,
-  type ComponentCalculation,
-  type LabourWelfareState,
-  type ProfessionalTaxState,
-  type TaxRegime,
-} from '../../contracts';
-import { incomeTax, OLD_REGIME_CAPS, taxRules, type IncomeTax } from './tax-rules';
+import { BUILT_IN_CONTRIBUTION_RATES, EPS_MAX_AGE, type ComponentCalculation, type ContributionRates, type LabourWelfareState, type ProfessionalTaxState, type TaxRegime } from '../../contracts';
+import { incomeTax, OLD_REGIME_CAPS, taxRules, type IncomeTax, type YearRules } from './tax-rules';
 
 /** Pure payroll arithmetic (no database): salary structure breakdowns, monthly earnings, PF, ESI, professional tax and TDS. */
 
@@ -37,6 +25,8 @@ export interface StatutoryOptions {
   /** Contribute on wages up to the ceiling only. */
   pfRestrictToCeiling: boolean;
   esiEnabled: boolean;
+  /** Rates in force (default: the built-in set). */
+  rates?: ContributionRates;
 }
 
 /** One earning in a salary snapshot (monthly amount at full attendance). */
@@ -64,8 +54,8 @@ export class StructureError extends Error {}
 
 const rupees = (n: number) => Math.round(n);
 
-export function pfBase(pfWage: number, restrictToCeiling: boolean): number {
-  return restrictToCeiling ? Math.min(pfWage, PF_WAGE_CEILING) : pfWage;
+export function pfBase(pfWage: number, restrictToCeiling: boolean, rates: ContributionRates = BUILT_IN_CONTRIBUTION_RATES): number {
+  return restrictToCeiling ? Math.min(pfWage, rates.pfWageCeiling) : pfWage;
 }
 
 /**
@@ -87,17 +77,18 @@ export function salaryBreakdown(annualCtc: number, lines: StructureLine[], opts:
   const fixed = lines.filter((l) => l.calculation !== 'BALANCE').map((l) => ({ line: l, monthly: l === basicLine ? basic : rupees(amountOf(l, basic)) }));
 
   const pfWage = fixed.filter((f) => f.line.pfWage).reduce((n, f) => n + f.monthly, 0);
-  const employerPf = opts.pfEnabled && opts.pfApplicable ? rupees(pfBase(pfWage, opts.pfRestrictToCeiling) * PF_RATE) : 0;
+  const rates = opts.rates ?? BUILT_IN_CONTRIBUTION_RATES;
+  const employerPf = opts.pfEnabled && opts.pfApplicable ? rupees(pfBase(pfWage, opts.pfRestrictToCeiling, rates) * rates.pfRate) : 0;
   const remaining = rupees(monthlyCtc) - employerPf;
 
   let gross = remaining;
   let employerEsi = 0;
   if (opts.esiEnabled) {
-    let g = Math.floor(remaining / (1 + ESI_EMPLOYER_RATE));
-    while (g + Math.ceil(g * ESI_EMPLOYER_RATE) > remaining) g--;
-    if (g <= ESI_WAGE_LIMIT) {
+    let g = Math.floor(remaining / (1 + rates.esiEmployerRate));
+    while (g + Math.ceil(g * rates.esiEmployerRate) > remaining) g--;
+    if (g <= rates.esiWageLimit) {
       gross = g;
-      employerEsi = Math.ceil(g * ESI_EMPLOYER_RATE);
+      employerEsi = Math.ceil(g * rates.esiEmployerRate);
     }
   }
   const fixedTotal = fixed.reduce((n, f) => n + f.monthly, 0);
@@ -189,26 +180,27 @@ export interface PfContribution {
   employerEps: number;
 }
 
-export function pfContribution(pfWageEarned: number, opts: { restrictToCeiling: boolean; age: number | null }): PfContribution {
-  const base = pfBase(pfWageEarned, opts.restrictToCeiling);
-  const capped = Math.min(pfWageEarned, PF_WAGE_CEILING);
-  const employer = rupees(base * PF_RATE);
-  const eps = opts.age !== null && opts.age >= EPS_MAX_AGE ? 0 : Math.min(rupees(capped * EPS_RATE), employer);
-  return { pfWage: base, epsWage: eps ? capped : 0, edliWage: capped, employee: rupees(base * PF_RATE), employerEpf: employer - eps, employerEps: eps };
+export function pfContribution(pfWageEarned: number, opts: { restrictToCeiling: boolean; age: number | null; rates?: ContributionRates }): PfContribution {
+  const rates = opts.rates ?? BUILT_IN_CONTRIBUTION_RATES;
+  const base = pfBase(pfWageEarned, opts.restrictToCeiling, rates);
+  const capped = Math.min(pfWageEarned, rates.pfWageCeiling);
+  const employer = rupees(base * rates.pfRate);
+  const eps = opts.age !== null && opts.age >= EPS_MAX_AGE ? 0 : Math.min(rupees(capped * rates.epsRate), employer);
+  return { pfWage: base, epsWage: eps ? capped : 0, edliWage: capped, employee: rupees(base * rates.pfRate), employerEpf: employer - eps, employerEps: eps };
 }
 
 /** ESI contributions are rounded up to the next rupee. */
-export function esiContribution(esiWage: number): { employee: number; employer: number } {
+export function esiContribution(esiWage: number, rates: ContributionRates = BUILT_IN_CONTRIBUTION_RATES): { employee: number; employer: number } {
   if (esiWage <= 0) return { employee: 0, employer: 0 };
-  return { employee: Math.ceil(esiWage * ESI_EMPLOYEE_RATE - 1e-9), employer: Math.ceil(esiWage * ESI_EMPLOYER_RATE - 1e-9) };
+  return { employee: Math.ceil(esiWage * rates.esiEmployeeRate - 1e-9), employer: Math.ceil(esiWage * rates.esiEmployerRate - 1e-9) };
 }
 
 /** Coverage is fixed per contribution period (April–September, October–March) by the gross rate at its start. */
-export function esiCovered(opts: { enabled: boolean; grossRate: number; month: number; coveredEarlierInPeriod: boolean | null }): boolean {
+export function esiCovered(opts: { enabled: boolean; grossRate: number; month: number; coveredEarlierInPeriod: boolean | null; rates?: ContributionRates }): boolean {
   if (!opts.enabled) return false;
   const periodStart = opts.month === 4 || opts.month === 10;
   if (!periodStart && opts.coveredEarlierInPeriod !== null) return opts.coveredEarlierInPeriod;
-  return opts.grossRate <= ESI_WAGE_LIMIT;
+  return opts.grossRate <= (opts.rates ?? BUILT_IN_CONTRIBUTION_RATES).esiWageLimit;
 }
 
 export function professionalTax(state: ProfessionalTaxState | null, gross: number, gender: string | null, month: number): number {
@@ -255,6 +247,8 @@ export interface TdsInput {
   recurring: TaxFigures;
   /** Months left in the financial year after this one while employed. */
   remainingMonths: number;
+  /** The year's income-tax rules (default: the built-in ones). */
+  taxRules?: YearRules;
 }
 
 export interface TdsResult {
@@ -280,7 +274,7 @@ export function monthlyTds(input: TdsInput): TdsResult {
   const months = input.remainingMonths;
   const project = (k: keyof TaxFigures) => input.ytd[k] + input.current[k] + input.recurring[k] * months;
   const projectedGross = d.previousEmployerIncome + project('taxable');
-  const { rules, rulesYear } = taxRules(input.fy, d.regime);
+  const { rules, rulesYear } = taxRules(input.fy, d.regime, input.taxRules);
   const age = input.age ?? 0;
 
   let hraExemption = 0;
@@ -299,7 +293,7 @@ export function monthlyTds(input: TdsInput): TdsResult {
   }
   const standardDeduction = Math.min(rules.standardDeduction, projectedGross);
   const taxable = projectedGross - hraExemption - standardDeduction - Object.values(deductions).reduce((n, v) => n + v, 0);
-  const tax = incomeTax(taxable, d.regime, age, input.fy);
+  const tax = incomeTax(taxable, d.regime, age, input.fy, input.taxRules);
   const alreadyDeducted = d.previousEmployerTds + input.ytd.tds;
   const remainingTax = Math.max(0, tax.total - alreadyDeducted);
   const monthsLeftIncludingThis = months + 1;

@@ -4,6 +4,7 @@ import { setAppCurrency } from '@/core/locale/currency';
 import App from '@/App.vue';
 import { configureHttpAuth } from '@/core/http/http-client';
 import { router } from '@/app/router';
+import { initNativeApp } from '@/app/native-app';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { requestStepUp } from '@/core/auth/step-up';
 import { useThemeStore } from '@/core/theme/theme.store';
@@ -44,6 +45,7 @@ app.config.errorHandler = (err) => {
 
 app.use(router);
 app.mount('#app');
+void initNativeApp(router, auth);
 
 // Installable app and offline shell (production builds only: the dev server serves unhashed modules).
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

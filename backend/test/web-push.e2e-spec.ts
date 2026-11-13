@@ -1,4 +1,5 @@
-import { PushSubscription } from '../src/database/models';
+import { NativePushToken, PushSubscription } from '../src/database/models';
+import { DeviceGoneError } from '../src/modules/notifications/fcm.client';
 import { NotificationsService } from '../src/modules/notifications/notifications.service';
 import { PushService, type PushPayload } from '../src/modules/notifications/push.service';
 import { API, RAW, TestContext, bearer, createOrgWithAdmin, createTestApp, login, resetDatabase } from './helpers';
@@ -32,6 +33,7 @@ describe('Web Push notifications (e2e)', () => {
 
   const device = (n: number) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/device-${n}`, keys: { p256dh: 'BOr4_' + 'x'.repeat(80), auth: 'a'.repeat(22) } });
   const flush = () => new Promise((r) => setTimeout(r, 200));
+  const notifications = () => ctx.app.get(NotificationsService);
 
   it('pushes notifications to the browsers a person subscribed, within their preferences', async () => {
     const { admin, organization } = await createOrgWithAdmin(ctx);
@@ -81,5 +83,65 @@ describe('Web Push notifications (e2e)', () => {
     expect(sent.map((s) => s.endpoint)).toEqual([device(2).endpoint]);
     expect(await PushSubscription.count({ where: { userId: admin.id }, ...RAW })).toBe(1);
     expect((await ctx.http().post(`${API}/notifications/push/unsubscribe`).set(h).send({ endpoint: device(2).endpoint })).body.data.devices).toBe(0);
+  });
+
+  it('pushes to the phone app (FCM on Android, APNs on iOS), moves a reused install to the new user and drops gone tokens', async () => {
+    const appSent: { token: string; payload: PushPayload }[] = [];
+    const goneTokens = new Set<string>();
+    const before = push.nativeSenders;
+    push.nativeSenders = {
+      ANDROID: async (token, payload) => {
+        if (goneTokens.has(token)) throw new DeviceGoneError('UNREGISTERED');
+        appSent.push({ token, payload });
+      },
+    };
+    try {
+      const { admin, organization } = await createOrgWithAdmin(ctx);
+      const h = bearer((await login(ctx, admin.email)).accessToken);
+      const phone = { platform: 'ANDROID', token: `fcm:${'a'.repeat(140)}`, deviceName: 'Pixel 8', appVersion: '1.13.0' };
+      const iphone = { platform: 'IOS', token: 'f'.repeat(64), deviceName: 'Apple iPhone15,2' };
+      expect((await ctx.http().post(`${API}/notifications/push/native`).set(h).send({ ...phone, platform: 'WEB' })).status).toBe(422);
+      expect((await ctx.http().post(`${API}/notifications/push/native`).set(h).send({ ...phone, token: 'bad token <>' })).status).toBe(422);
+      // Only the platforms the server is set up for.
+      expect((await ctx.http().post(`${API}/notifications/push/native`).set(h).send(iphone)).status).toBe(409);
+      const registered = await ctx.http().post(`${API}/notifications/push/native`).set(h).send(phone);
+      expect(registered.status).toBe(200);
+      expect(registered.body.data).toMatchObject({ nativeEnabled: true, nativePlatforms: ['ANDROID'], apps: 1 });
+      push.nativeSenders.IOS = async (token, payload) => void appSent.push({ token, payload });
+      expect((await ctx.http().post(`${API}/notifications/push/native`).set(h).send(iphone)).body.data).toMatchObject({ nativePlatforms: ['ANDROID', 'IOS'], apps: 2 });
+      await notifications().notify(admin.id, { type: 'leave.request', title: 'Both phones', organizationId: organization.id });
+      await flush();
+      expect(appSent.map((s) => s.token).sort()).toEqual([iphone.token, phone.token].sort());
+      appSent.length = 0;
+      await ctx.http().post(`${API}/notifications/push/native/remove`).set(h).send({ token: iphone.token });
+      delete push.nativeSenders.IOS;
+      expect((await ctx.http().post(`${API}/notifications/push/native`).set(h).send(phone)).body.data.apps).toBe(1);
+
+      await notifications().notify(admin.id, { type: 'leave.request', title: 'Ravi asked for leave', body: '3 days', link: '/hr/leave/requests', organizationId: organization.id });
+      await flush();
+      expect(appSent).toEqual([{ token: phone.token, payload: { title: 'Ravi asked for leave', body: '3 days', url: '/hr/leave/requests', tag: 'leave.request' } }]);
+
+      // Someone else signs in on the same phone: the install now belongs to them.
+      const other = await createOrgWithAdmin(ctx);
+      const h2 = bearer((await login(ctx, other.admin.email)).accessToken);
+      expect((await ctx.http().post(`${API}/notifications/push/native`).set(h2).send(phone)).body.data.apps).toBe(1);
+      expect((await ctx.http().get(`${API}/notifications/push`).set(h)).body.data.apps).toBe(0);
+      appSent.length = 0;
+      await notifications().notify(admin.id, { type: 'payroll.payslip', title: 'For the first user', organizationId: organization.id });
+      await notifications().notify(other.admin.id, { type: 'payroll.payslip', title: 'For the second user', organizationId: other.organization.id });
+      await flush();
+      expect(appSent.map((s) => s.payload.title)).toEqual(['For the second user']);
+
+      // Firebase reports the token gone: it's dropped. Sign-out removes one explicitly.
+      goneTokens.add(phone.token);
+      await notifications().notify(other.admin.id, { type: 'payroll.payslip', title: 'Gone', organizationId: other.organization.id });
+      await flush();
+      expect(await NativePushToken.count({ ...RAW })).toBe(0);
+      goneTokens.clear();
+      await ctx.http().post(`${API}/notifications/push/native`).set(h2).send(phone);
+      expect((await ctx.http().post(`${API}/notifications/push/native/remove`).set(h2).send({ token: phone.token })).body.data.apps).toBe(0);
+    } finally {
+      push.nativeSenders = before;
+    }
   });
 });

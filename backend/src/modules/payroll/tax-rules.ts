@@ -1,29 +1,15 @@
-import type { TaxRegime } from '../../contracts';
+import type { TaxRegime, TaxRegimeRules, TaxRuleSet, TaxSlab } from '../../contracts';
 
-/** Income-tax rules for salaried individuals (residents), per financial year (starting year) and regime. */
-interface Slab {
-  /** Upper bound of the slab (inclusive); null = no upper bound. */
-  upTo: number | null;
-  rate: number;
-}
-
-interface RegimeRules {
-  standardDeduction: number;
-  slabs(age: number): Slab[];
-  /** Section 87A: full rebate of the tax up to `rebateMax` when taxable income is at or below `rebateIncomeLimit`. */
-  rebateIncomeLimit: number;
-  rebateMax: number;
-  /** New regime: just above the limit, tax can't exceed the income above the limit. */
-  rebateMarginalRelief: boolean;
-  surcharge: { above: number; rate: number }[];
-}
-
+/**
+ * Income-tax rules for salaried individuals (residents), per financial year (starting year) and regime. The built-in
+ * years are below; platform administrators add later years (Platform → Statutory rates) as data in the same shape.
+ */
 const L = 100_000;
 const CR = 10_000_000;
 
-const NEW_REGIME_2025: RegimeRules = {
+const NEW_REGIME_2025: TaxRegimeRules = {
   standardDeduction: 75_000,
-  slabs: () => [
+  slabs: [
     { upTo: 4 * L, rate: 0 },
     { upTo: 8 * L, rate: 0.05 },
     { upTo: 12 * L, rate: 0.1 },
@@ -42,12 +28,25 @@ const NEW_REGIME_2025: RegimeRules = {
   ],
 };
 
-const OLD_REGIME: RegimeRules = {
+const OLD_REGIME: TaxRegimeRules = {
   standardDeduction: 50_000,
-  slabs: (age) => {
-    const exempt = age >= 80 ? 5 * L : age >= 60 ? 3 * L : 2.5 * L;
-    return [{ upTo: exempt, rate: 0 }, ...(exempt < 5 * L ? [{ upTo: 5 * L, rate: 0.05 }] : []), { upTo: 10 * L, rate: 0.2 }, { upTo: null, rate: 0.3 }];
-  },
+  slabs: [
+    { upTo: 2.5 * L, rate: 0 },
+    { upTo: 5 * L, rate: 0.05 },
+    { upTo: 10 * L, rate: 0.2 },
+    { upTo: null, rate: 0.3 },
+  ],
+  slabsSenior: [
+    { upTo: 3 * L, rate: 0 },
+    { upTo: 5 * L, rate: 0.05 },
+    { upTo: 10 * L, rate: 0.2 },
+    { upTo: null, rate: 0.3 },
+  ],
+  slabsSuperSenior: [
+    { upTo: 5 * L, rate: 0 },
+    { upTo: 10 * L, rate: 0.2 },
+    { upTo: null, rate: 0.3 },
+  ],
   rebateIncomeLimit: 5 * L,
   rebateMax: 12_500,
   rebateMarginalRelief: false,
@@ -59,29 +58,47 @@ const OLD_REGIME: RegimeRules = {
   ],
 };
 
+export const HEALTH_EDUCATION_CESS = 0.04;
+
 /**
  * Finance Act 2025 rates (FY 2025-26). FY 2026-27 onwards is under the Income-tax Act, 2025, which carried the same
- * slabs, standard deduction and rebate forward; update this table whenever a Finance Act changes them.
+ * slabs, standard deduction and rebate forward. Later Finance Acts are entered as data, not code.
  */
-const RULES: Record<number, Record<TaxRegime, RegimeRules>> = {
-  2025: { NEW: NEW_REGIME_2025, OLD: OLD_REGIME },
-  2026: { NEW: NEW_REGIME_2025, OLD: OLD_REGIME },
+export const BUILT_IN_TAX_RULES: Readonly<Record<number, TaxRuleSet>> = {
+  2025: { NEW: NEW_REGIME_2025, OLD: OLD_REGIME, cess: HEALTH_EDUCATION_CESS },
+  2026: { NEW: NEW_REGIME_2025, OLD: OLD_REGIME, cess: HEALTH_EDUCATION_CESS },
 };
-const FIRST_FY = Math.min(...Object.keys(RULES).map(Number));
-const LAST_FY = Math.max(...Object.keys(RULES).map(Number));
+export const FIRST_TAX_FY = Math.min(...Object.keys(BUILT_IN_TAX_RULES).map(Number));
+const LAST_BUILT_IN_FY = Math.max(...Object.keys(BUILT_IN_TAX_RULES).map(Number));
 
-export const HEALTH_EDUCATION_CESS = 0.04;
+/** A year's rules as used for a calculation: which year they are, and the rules themselves. */
+export interface YearRules {
+  year: number;
+  set: TaxRuleSet;
+}
 
 /** Section 80C (incl. employee PF), 80CCD(1B), 80D and 24(b) caps under the old regime; professional tax under 16(iii). */
 export const OLD_REGIME_CAPS = { section80c: 150_000, section80ccd1b: 50_000, section80d: 100_000, homeLoanInterest: 200_000, professionalTax: 2_500 };
 
-export function taxRules(fy: number, regime: TaxRegime): { rules: RegimeRules; rulesYear: number } {
-  if (fy < FIRST_FY) throw new Error(`Income-tax rules before FY ${FIRST_FY}-${(FIRST_FY + 1) % 100} are not available`);
-  const rulesYear = Math.min(fy, LAST_FY);
-  return { rules: RULES[rulesYear]![regime], rulesYear };
+/** The built-in rules for a financial year (later years use the last built-in year until rules are entered for them). */
+export function builtInRules(fy: number): YearRules {
+  if (fy < FIRST_TAX_FY) throw new Error(`Income-tax rules before FY ${FIRST_TAX_FY}-${(FIRST_TAX_FY + 1) % 100} are not available`);
+  const year = Math.min(fy, LAST_BUILT_IN_FY);
+  return { year, set: BUILT_IN_TAX_RULES[year]! };
 }
 
-function slabTax(income: number, slabs: Slab[]): number {
+export function taxRules(fy: number, regime: TaxRegime, rules: YearRules = builtInRules(fy)): { rules: TaxRegimeRules; rulesYear: number; cess: number } {
+  return { rules: rules.set[regime], rulesYear: rules.year, cess: rules.set.cess };
+}
+
+/** The slabs for a person's age (60+ and 80+ have their own old-regime slabs). */
+export function slabsFor(r: TaxRegimeRules, age: number): TaxSlab[] {
+  if (age >= 80 && r.slabsSuperSenior?.length) return r.slabsSuperSenior;
+  if (age >= 60 && r.slabsSenior?.length) return r.slabsSenior;
+  return r.slabs;
+}
+
+function slabTax(income: number, slabs: TaxSlab[]): number {
   let tax = 0;
   let lower = 0;
   for (const s of slabs) {
@@ -102,11 +119,11 @@ export interface IncomeTax {
 }
 
 /** Tax on taxable income (after deductions), with the 87A rebate, surcharge with marginal relief, and cess. */
-export function incomeTax(taxableIncomeRaw: number, regime: TaxRegime, age: number, fy: number): IncomeTax {
-  const { rules } = taxRules(fy, regime);
+export function incomeTax(taxableIncomeRaw: number, regime: TaxRegime, age: number, fy: number, yearRules?: YearRules): IncomeTax {
+  const { rules, cess: cessRate } = taxRules(fy, regime, yearRules);
   // Section 288A: taxable income is rounded to the nearest multiple of ten rupees.
   const income = Math.max(0, Math.round(taxableIncomeRaw / 10) * 10);
-  const slabs = rules.slabs(age);
+  const slabs = slabsFor(rules, age);
   const base = slabTax(income, slabs);
 
   let afterRebate = base;
@@ -124,7 +141,7 @@ export function incomeTax(taxableIncomeRaw: number, regime: TaxRegime, age: numb
     withSurcharge = Math.min(withSurcharge, atThreshold + (income - band.above));
   }
   const surcharge = withSurcharge - afterRebate;
-  const cess = withSurcharge * HEALTH_EDUCATION_CESS;
+  const cess = withSurcharge * cessRate;
   const r = (n: number) => Math.round(n);
   return { taxableIncome: income, slabTax: r(base), rebate: r(rebate), surcharge: r(surcharge), cess: r(cess), total: r(withSurcharge + cess) };
 }

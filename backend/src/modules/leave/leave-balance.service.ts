@@ -106,18 +106,26 @@ export class LeaveBalanceService {
    * Writes the accruals due so far in `year` and, at the start of a year, last year's carry-forward and lapse
    * (looking back `depth` years so a gap in activity cannot lose a carry-forward).
    */
-  async ensure(organizationId: string, employees: Accruing[], year: number, depth = 2, asOfOverride?: string): Promise<void> {
+  async ensure(
+    organizationId: string,
+    employees: Accruing[],
+    year: number,
+    depth = 2,
+    asOfOverride?: string,
+    loaded?: { ctx: LeaveYearContext; types: LeaveType[] },
+  ): Promise<void> {
     if (!employees.length) return;
-    const ctx = await this.yearContext(organizationId);
+    // Settings and types are read once per call and passed down to the earlier years.
+    const ctx = loaded?.ctx ?? (await this.yearContext(organizationId));
     const range = leaveYearRange(year, ctx.startMonth);
     const asOf = asOfOverride ?? (ctx.today < range.to ? ctx.today : range.to);
     if (asOf < range.from) return;
-    const types = (await LeaveType.findAll({ where: { unlimited: false } })).filter((t) => t.isActive);
+    const types = loaded?.types ?? (await LeaveType.findAll({ where: { unlimited: false } })).filter((t) => t.isActive);
     if (!types.length) return;
 
     const prev = leaveYearRange(year - 1, ctx.startMonth);
     const inPrev = employees.filter((e) => e.dateOfJoining <= prev.to && !(e.exitDate && e.exitDate < prev.from));
-    if (depth > 0 && inPrev.length) await this.ensure(organizationId, inPrev, year - 1, depth - 1, prev.to);
+    if (depth > 0 && inPrev.length) await this.ensure(organizationId, inPrev, year - 1, depth - 1, prev.to, { ctx, types });
 
     const planned: Planned[] = [];
     for (const e of employees) {

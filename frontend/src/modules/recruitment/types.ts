@@ -242,3 +242,10 @@ export interface PublicJob {
   closesOn: string | null;
   postedAt: string | null;
 }
+
+export interface PublicJobDetail extends PublicJob {
+  description: string;
+  requirements: string | null;
+  /** Of the job's office, when it has one. */
+  address?: { city: string | null; state: string | null; country: string | null };
+}

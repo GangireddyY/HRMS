@@ -342,13 +342,13 @@ export class RecruitmentController {
   }
 
   @Post('offers/:id/approve')
-  @RequireTenant()
+  @RequirePermissions('recruitment.offer.approve')
   approveOffer(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: OfferApprovalNoteDto) {
     return this.offers.approve(auth, id, dto);
   }
 
   @Post('offers/:id/reject-approval')
-  @RequireTenant()
+  @RequirePermissions('recruitment.offer.approve')
   rejectOfferApproval(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Body() dto: RejectOfferApprovalDto) {
     return this.offers.rejectApproval(auth, id, dto);
   }
@@ -475,6 +475,14 @@ export class CareersController {
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   page(@Param('slug') slug: string) {
     return this.careers.page(slug);
+  }
+
+  @Get(':slug/jobs.xml')
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Open public jobs as an XML job feed (Indeed format) for job boards and aggregators' })
+  async feed(@Param('slug') slug: string) {
+    return new StreamableFile(Buffer.from(await this.careers.feed(slug), 'utf8'), { type: 'application/xml; charset=utf-8' });
   }
 
   @Get(':slug/jobs/:jobId')

@@ -1,4 +1,32 @@
-import type { MembershipStatus, ModuleKey, OrganizationStatus } from '@contracts';
+import type { ContributionRates, MembershipStatus, ModuleKey, OrganizationStatus, TaxRuleSet } from '@contracts';
+
+export interface ContributionEntry extends ContributionRates {
+  id: string;
+  effectiveFrom: string;
+  source: string | null;
+  updatedAt: string;
+  upcoming: boolean;
+}
+
+export interface TaxYear {
+  financialYear: number;
+  label: string;
+  /** ENTERED = rules entered here; BUILT_IN = shipped with the release. */
+  source: 'ENTERED' | 'BUILT_IN';
+  /** False when the year borrows `rulesYear`'s rules because its own haven't been entered. */
+  confirmed: boolean;
+  rulesYear: number;
+  rules: TaxRuleSet;
+  note: string | null;
+  updatedAt: string | null;
+}
+
+export interface StatutoryOverview {
+  today: string;
+  currentFinancialYear: number;
+  contribution: { builtIn: ContributionRates; inForce: ContributionRates & { effectiveFrom: string | null }; entries: ContributionEntry[] };
+  tax: TaxYear[];
+}
 import type { DailyLoginStat } from '@/modules/audit/types';
 import type { OrganizationProfile } from '@/modules/organization/types';
 

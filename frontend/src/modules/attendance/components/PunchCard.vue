@@ -3,6 +3,7 @@ import { appLocale } from '@/core/locale/locale';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Camera, Clock, CloudOff, House, LogIn, LogOut, MapPin, Wifi, WifiOff } from '@lucide/vue';
 import { ApiError } from '@/core/http/http-client';
+import { currentPosition } from '@/core/native/native';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import { ON_TIME_MS, addPunchCorrection, queuePunch, queuedPunches, setQueuedPunches, type PunchKind, type QueuedPunch } from '@/modules/attendance/utils/offline-punches';
 import { localToday } from '@/shared/utils/dates';
@@ -96,18 +97,8 @@ async function loadWeek() {
 }
 watch(() => data.value?.date, loadWeek);
 
-/** Location is attached when the browser shares it; offices with a geofence need it, so we wait longer and ask for accuracy. */
-function position(): Promise<{ latitude?: number; longitude?: number }> {
-  if (!('geolocation' in navigator)) return Promise.resolve({});
-  const needed = !!data.value?.geofence;
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ latitude: Number(p.coords.latitude.toFixed(6)), longitude: Number(p.coords.longitude.toFixed(6)) }),
-      () => resolve({}),
-      { timeout: needed ? 10_000 : 4000, maximumAge: needed ? 0 : 60_000, enableHighAccuracy: needed },
-    );
-  });
-}
+/** Location is attached when the device shares it; offices with a geofence need it, so we wait longer and ask for accuracy. */
+const position = () => currentPosition({ accurate: !!data.value?.geofence });
 
 // ---- Offline punches ---------------------------------------------------------------------------------------------
 const userId = computed(() => auth.user?.id ?? '');

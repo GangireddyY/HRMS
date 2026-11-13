@@ -2,6 +2,10 @@ node_modules/
 dist/
 coverage/
 public/
+# Generated native projects (Capacitor); edited in Android Studio / Xcode.
+android/
+ios/
+native-shell/
 playwright-report/
 test-results/
 uploads/

@@ -1,6 +1,6 @@
 import type { CreationOptional, InferAttributes, InferCreationAttributes, NonAttribute } from 'sequelize';
 import { AllowNull, BelongsTo, Column, CreatedAt, DataType, Default, ForeignKey, HasMany, Model, PrimaryKey, Table, UpdatedAt } from 'sequelize-typescript';
-import type { AdjustmentCategory, ClaimApprovalStep, ComponentCalculation, DailyRateBasis, PayslipPdfPassword, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxProofSection, TaxProofStatus, TaxRegime, TimesheetMissedAction } from '../../contracts';
+import type { AdjustmentCategory, ClaimApprovalStep, LedgerSlot, ComponentCalculation, DailyRateBasis, PayslipPdfPassword, LoanRepaymentSource, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus, TaxProofSection, TaxProofStatus, TaxRegime, TimesheetMissedAction } from '../../contracts';
 import { Employee } from './people.models';
 
 /** Decimal columns come back from PostgreSQL as strings. */
@@ -44,6 +44,21 @@ export class PayrollSettings extends Model<InferAttributes<PayrollSettings>, Inf
   @CreatedAt createdAt: CreationOptional<Date>;
   @UpdatedAt updatedAt: CreationOptional<Date>;
   @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+}
+
+/** How payroll runs post to the organization's accounts (Tally journal export). */
+@Table({ tableName: 'accounting_settings', underscored: true })
+export class AccountingSettings extends Model<InferAttributes<AccountingSettings>, InferCreationAttributes<AccountingSettings>> {
+  @PrimaryKey @AllowNull(false) @Column(DataType.UUID) organizationId: string;
+  @Column(DataType.STRING(100)) tallyCompany: CreationOptional<string | null>;
+  @Column(DataType.STRING(60)) voucherType: CreationOptional<string>;
+  @Column(DataType.BOOLEAN) costCentres: CreationOptional<boolean>;
+  @Column(DataType.STRING(100)) costCategory: CreationOptional<string>;
+  @Column(DataType.JSONB) ledgers: CreationOptional<Partial<Record<LedgerSlot, string>>>;
+  @Column(DataType.JSONB) earningLedgers: CreationOptional<Record<string, string>>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
 }
 
 @Table({ tableName: 'salary_components', underscored: true })

@@ -1,5 +1,5 @@
 import { plainToInstance, Transform } from 'class-transformer';
-import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUrl, Max, Min, MinLength, validateSync } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUrl, Matches, Max, Min, MinLength, validateSync } from 'class-validator';
 import { parseKeyRing } from '../infrastructure/crypto/encryption.service';
 import { parseDsn } from '../infrastructure/observability/dsn';
 
@@ -23,6 +23,14 @@ export class EnvironmentVariables {
 
   @Transform(toInt) @IsInt() @Min(0)
   TRUST_PROXY = 0;
+
+  /** false = this instance only serves HTTP (another instance runs the job queue and schedules). */
+  @Transform(toBoolDefaultTrue) @IsBoolean()
+  RUN_BACKGROUND_JOBS = true;
+
+  /** Requests per minute per client (sign-in and other sensitive routes have their own lower limits). */
+  @Transform(toInt) @IsInt() @Min(10) @Max(1_000_000)
+  RATE_LIMIT_PER_MINUTE = 300;
 
   @IsString() @MinLength(1)
   DB_HOST = 'localhost';
@@ -185,6 +193,32 @@ export class EnvironmentVariables {
   VAPID_SUBJECT = 'mailto:no-reply@hrms.local';
 
   /**
+   * Phone app notifications: path to the Firebase project's service-account key (JSON, with the Cloud Messaging
+   * API enabled; iOS also needs the APNs key uploaded in Firebase). Unset = app notifications off.
+   */
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  FCM_CREDENTIALS_FILE?: string;
+
+  /**
+   * iPhone app notifications (Apple Push Notification service, token auth): the .p8 key file from Apple Developer →
+   * Keys, its key id, the team id and the app's bundle id. APNS_PRODUCTION=false for development builds.
+   */
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  APNS_KEY_FILE?: string;
+
+  @Transform(emptyToUndefined) @IsOptional() @Matches(/^[A-Z0-9]{10}$/)
+  APNS_KEY_ID?: string;
+
+  @Transform(emptyToUndefined) @IsOptional() @Matches(/^[A-Z0-9]{10}$/)
+  APNS_TEAM_ID?: string;
+
+  @Transform(emptyToUndefined) @IsOptional() @IsString()
+  APNS_TOPIC?: string;
+
+  @Transform(toBoolDefaultTrue) @IsBoolean()
+  APNS_PRODUCTION = true;
+
+  /**
    * WhatsApp notifications: meta (WhatsApp Business Cloud API), log (written to the server log; development) or off.
    * Business-initiated messages use approved templates: WHATSAPP_TEMPLATE takes {{1}} = title, {{2}} = link;
    * WHATSAPP_CODE_TEMPLATE (an authentication template) takes {{1}} = the verification code.
@@ -264,6 +298,8 @@ export function validateEnv(config: Record<string, unknown>): EnvironmentVariabl
     throw new Error('SENDGRID_API_KEY must be a SendGrid API key (starts with "SG.")');
   }
   if (!!env.VAPID_PUBLIC_KEY !== !!env.VAPID_PRIVATE_KEY) throw new Error('Set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (or neither) for browser notifications');
+  const apns = [env.APNS_KEY_FILE, env.APNS_KEY_ID, env.APNS_TEAM_ID, env.APNS_TOPIC];
+  if (apns.some(Boolean) && !apns.every(Boolean)) throw new Error('Set APNS_KEY_FILE, APNS_KEY_ID, APNS_TEAM_ID and APNS_TOPIC together (or none) for iPhone app notifications');
   if (env.WHATSAPP_PROVIDER === 'meta' && (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID)) throw new Error('WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID are required when WHATSAPP_PROVIDER is meta');
   if (env.STORAGE_DRIVER === 's3' && (!env.S3_BUCKET || !env.S3_REGION)) throw new Error('S3_BUCKET and S3_REGION are required when STORAGE_DRIVER is s3');
   if (env.NODE_ENV === 'production') {

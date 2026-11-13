@@ -31,14 +31,17 @@ async function bootstrap(): Promise<void> {
   });
   const port = config.get('PORT');
   await app.listen(port);
-  app.get(JobQueueService).start();
-  app.get(TimesheetReminderJob).start();
-  app.get(PrivacyRetentionJob).start();
-  app.get(LeaveAccrualJob).start();
-  app.get(ApprovalSlaJob).start();
-  app.get(NotificationDigestService).start();
-  app.get(ReportSchedulesService).start();
-  Logger.log(`HRMS API listening on http://localhost:${port}/api/v1 (docs: /api/docs)${errors.enabled ? '; error reporting on' : ''}${tracingEnabled ? '; tracing on' : ''}`, 'Bootstrap');
+  const jobs = config.get('RUN_BACKGROUND_JOBS');
+  if (jobs) {
+    app.get(JobQueueService).start();
+    app.get(TimesheetReminderJob).start();
+    app.get(PrivacyRetentionJob).start();
+    app.get(LeaveAccrualJob).start();
+    app.get(ApprovalSlaJob).start();
+    app.get(NotificationDigestService).start();
+    app.get(ReportSchedulesService).start();
+  }
+  Logger.log(`HRMS API listening on http://localhost:${port}/api/v1 (docs: /api/docs)${jobs ? '' : '; background jobs off'}${errors.enabled ? '; error reporting on' : ''}${tracingEnabled ? '; tracing on' : ''}`, 'Bootstrap');
 }
 
 void bootstrap();

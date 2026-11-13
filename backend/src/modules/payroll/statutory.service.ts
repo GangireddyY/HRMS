@@ -12,6 +12,7 @@ import { PayrollConfigService } from './payroll-config.service';
 import { ageOn, monthlyTds, type TaxFigures } from './payroll-engine';
 import { periodLabel, proofsApply, type VerifiedDeductions } from './payroll-period';
 import { SalariesService } from './salaries.service';
+import { StatutoryRatesService } from './statutory-rates.service';
 import { form12bbHtml, form16Html, type Form16Data } from './statutory-documents';
 
 const QUARTERS = [
@@ -47,6 +48,7 @@ export class StatutoryService {
     private readonly crypto: EncryptionService,
     private readonly config: PayrollConfigService,
     private readonly salaries: SalariesService,
+    private readonly statutoryRates: StatutoryRatesService,
   ) {}
 
   // ---- Form 16 ---------------------------------------------------------------------------------
@@ -80,7 +82,9 @@ export class StatutoryService {
     // Year-end: what was proven counts when proofs are required (March is always at or after the cut-off).
     const verified = proofsApply(settings.proofsFromMonth, 3) ? await this.verified(employee.id, fy) : null;
     const zero: TaxFigures = { taxable: 0, basic: 0, hra: 0, employeePf: 0, professionalTax: 0 };
+    const taxRules = await this.statutoryRates.taxRules(fy).catch(() => undefined);
     const result = monthlyTds({
+      taxRules,
       fy,
       age: ageOn(employee.dateOfBirth, `${fy + 1}-03-31`),
       declaration: {

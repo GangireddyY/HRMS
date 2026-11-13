@@ -51,7 +51,8 @@ describe('Calendar invites and feeds (e2e)', () => {
     await ctx.http().post(`${API}/leave/requests/${leave.id}/approve`).set(s.manager.h).send({});
     const [invite] = invitesTo(s.asha.user.email);
     const body = ics(invite);
-    expect(invite!.attachments![0]!.type).toContain('method=REQUEST');
+    // SendGrid rejects attachment types with parameters (`;`); the method travels in the file.
+    expect(invite!.attachments![0]!.type).toBe('text/calendar');
     expect(body).toContain('METHOD:REQUEST');
     expect(body).toContain(`UID:leave-${leave.id}@hrms`);
     expect(body).toContain(`DTSTART;VALUE=DATE:${monday(1).replace(/-/g, '')}`);

@@ -19,6 +19,7 @@ import {
 import { CompOffRequest, LeaveEncashment, LeaveLedgerEntry, LeaveRequest, LeaveType } from './leave.models';
 import { OnboardingCase, OnboardingTask, OnboardingTemplate, OnboardingTemplateTask, ProbationReview } from './onboarding.models';
 import {
+  AccountingSettings,
   EmployeeLoan,
   EmployeeLoanRepayment,
   EmployeeSalary,
@@ -68,10 +69,11 @@ import { ApprovalDelegation, MembershipRole, Permission, Role, RolePermission } 
 import { Asset, AssetAssignment, AssetRequest, HelpdeskMessage, HelpdeskTicket, TravelRequest } from './services.models';
 import { OrganizationSsoConfig, SsoLoginState } from './sso.models';
 import { Invoice, InvoicePayment, OrganizationSubscription } from './billing.models';
-import { PushSubscription } from './push.models';
+import { NativePushToken, PushSubscription } from './push.models';
 import { ApprovalChain, ApprovalInstance } from './approval-chain.models';
 import { ApiKey, CustomFieldDefinition, ReportSchedule, SavedReport, WebhookDelivery, WebhookEndpoint } from './integration.models';
 import { ExchangeRate, LegalEntity } from './entity.models';
+import { StatutoryContributionRate, StatutoryTaxRules } from './statutory.models';
 
 export * from './activity.models';
 export * from './attendance.models';
@@ -98,6 +100,7 @@ export * from './push.models';
 export * from './approval-chain.models';
 export * from './integration.models';
 export * from './entity.models';
+export * from './statutory.models';
 
 export const ALL_MODELS = [
   User,
@@ -118,6 +121,7 @@ export const ALL_MODELS = [
   OrganizationMembership,
   OrganizationSsoConfig,
   PushSubscription,
+  NativePushToken,
   ApprovalChain,
   ApprovalInstance,
   SsoLoginState,
@@ -189,6 +193,7 @@ export const ALL_MODELS = [
   OfferDocument,
   LetterTemplate,
   PayrollSettings,
+  AccountingSettings,
   SalaryComponentDef,
   SalaryStructure,
   SalaryStructureLine,
@@ -267,6 +272,8 @@ export const ALL_MODELS = [
   HelpdeskTicket,
   HelpdeskMessage,
   TravelRequest,
+  StatutoryContributionRate,
+  StatutoryTaxRules,
 ];
 
 /**
@@ -345,6 +352,7 @@ export const TENANT_MODELS = [
   OfferDocument,
   LetterTemplate,
   PayrollSettings,
+  AccountingSettings,
   SalaryComponentDef,
   SalaryStructure,
   SalaryStructureLine,

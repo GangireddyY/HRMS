@@ -56,6 +56,84 @@ export const ESI_EMPLOYER_RATE = 0.0325;
 /** Employees whose monthly gross is at or below this at the start of a contribution period are covered for the period. */
 export const ESI_WAGE_LIMIT = 21000;
 
+/**
+ * PF / EPS / ESI rates and limits in force from a date. Changes are notified with an effective date, so payroll for a
+ * month uses the set in force on its first day; the constants above are the built-in set.
+ */
+export interface ContributionRates {
+  pfRate: number;
+  epsRate: number;
+  pfWageCeiling: number;
+  esiEmployeeRate: number;
+  esiEmployerRate: number;
+  esiWageLimit: number;
+}
+export const BUILT_IN_CONTRIBUTION_RATES: ContributionRates = {
+  pfRate: PF_RATE,
+  epsRate: EPS_RATE,
+  pfWageCeiling: PF_WAGE_CEILING,
+  esiEmployeeRate: ESI_EMPLOYEE_RATE,
+  esiEmployerRate: ESI_EMPLOYER_RATE,
+  esiWageLimit: ESI_WAGE_LIMIT,
+};
+
+/** One income-tax slab: income up to `upTo` (inclusive; null = no upper bound) is taxed at `rate` (0.05 = 5%). */
+export interface TaxSlab {
+  upTo: number | null;
+  rate: number;
+}
+/** Income-tax rules of one regime for salaried residents. Old-regime slabs differ for 60+ and 80+. */
+export interface TaxRegimeRules {
+  standardDeduction: number;
+  slabs: TaxSlab[];
+  slabsSenior?: TaxSlab[];
+  slabsSuperSenior?: TaxSlab[];
+  /** Section 87A: full rebate up to `rebateMax` when taxable income is at or below `rebateIncomeLimit`. */
+  rebateIncomeLimit: number;
+  rebateMax: number;
+  /** Just above the limit, tax can't exceed the income above it (new regime). */
+  rebateMarginalRelief: boolean;
+  surcharge: { above: number; rate: number }[];
+}
+/** A financial year's income-tax rules (both regimes and the health and education cess). */
+export interface TaxRuleSet {
+  NEW: TaxRegimeRules;
+  OLD: TaxRegimeRules;
+  cess: number;
+}
+
+/** What is wrong with a set of contribution rates (null = valid). */
+export function contributionRatesProblem(r: ContributionRates): string | null {
+  const rate = (n: number) => Number.isFinite(n) && n >= 0 && n <= 0.5;
+  if (![r.pfRate, r.epsRate, r.esiEmployeeRate, r.esiEmployerRate].every(rate)) return 'Rates must be between 0 and 50% (0.12 = 12%)';
+  if (r.epsRate > r.pfRate) return 'The pension (EPS) share is part of the employer PF and cannot be larger than it';
+  if (!(Number.isInteger(r.pfWageCeiling) && r.pfWageCeiling > 0 && Number.isInteger(r.esiWageLimit) && r.esiWageLimit > 0)) return 'Wage ceilings must be whole rupee amounts above zero';
+  return null;
+}
+
+/** What is wrong with a financial year's income-tax rules (null = valid). */
+export function taxRuleSetProblem(set: TaxRuleSet): string | null {
+  if (!(set.cess >= 0 && set.cess <= 0.2)) return 'The cess must be between 0 and 20% (0.04 = 4%)';
+  for (const regime of ['NEW', 'OLD'] as const) {
+    const r = set[regime];
+    const name = regime === 'NEW' ? 'New regime' : 'Old regime';
+    if (!r) return `${name}: rules are missing`;
+    if (![r.standardDeduction, r.rebateIncomeLimit, r.rebateMax].every((n) => Number.isFinite(n) && n >= 0)) return `${name}: amounts can't be negative`;
+    for (const [label, slabs] of [['slabs', r.slabs], ['60+ slabs', r.slabsSenior], ['80+ slabs', r.slabsSuperSenior]] as const) {
+      if (slabs === undefined && label !== 'slabs') continue;
+      if (!slabs?.length) return `${name}: add at least one slab`;
+      if (slabs.at(-1)!.upTo !== null) return `${name} ${label}: the last slab must have no upper limit`;
+      if (slabs.some((s) => !(s.rate >= 0 && s.rate <= 0.6))) return `${name} ${label}: rates must be between 0 and 60%`;
+      const bounds = slabs.slice(0, -1).map((s) => s.upTo);
+      if (bounds.some((b, i) => b === null || b <= 0 || (i > 0 && b <= bounds[i - 1]!))) return `${name} ${label}: upper limits must rise from slab to slab`;
+    }
+    if (r.surcharge.some((s, i) => !(s.above > 0 && s.rate > 0 && s.rate <= 0.5) || (i > 0 && s.above <= r.surcharge[i - 1]!.above))) {
+      return `${name}: surcharge bands must rise, with rates up to 50%`;
+    }
+  }
+  return null;
+}
+
 /** Professional tax (state levy on salaries), monthly, on the gross earned in the month. */
 export interface ProfessionalTaxState {
   code: string;

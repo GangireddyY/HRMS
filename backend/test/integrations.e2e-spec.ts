@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { OrganizationMembership } from '../src/database/models';
+import { AuditLog, OrganizationMembership, WebhookEndpoint } from '../src/database/models';
 import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, resetDatabase } from './helpers';
 
 /** Collects webhook POSTs; answers with `status`. */
@@ -157,5 +157,42 @@ describe('Integrations: API keys and webhooks (e2e)', () => {
     await new Promise((r) => setTimeout(r, 300));
     expect(receiver.received).toHaveLength(before);
     expect((await ctx.http().get(base).set(s.mh)).status).toBe(403);
+  });
+
+  it('posts Slack and Teams alerts as chat messages and keeps their URLs secret', async () => {
+    const s = await setup();
+    const base = `${API}/integrations/webhooks`;
+    const slackUrl = `${receiver.url}/services/T000/B000/slacktoken1234`;
+    const slack = (await ctx.http().post(base).set(s.h).send({ url: slackUrl, format: 'SLACK', events: ['employee.*'] })).body.data;
+    expect(slack).toMatchObject({ format: 'SLACK', url: `${new URL(receiver.url).origin}/…1234` });
+    expect(slack.secret).toBeUndefined();
+    const teams = (await ctx.http().post(base).set(s.h).send({ url: `${receiver.url}/teams/flow-abcd`, format: 'TEAMS', events: ['employee.created'] })).body.data;
+    expect(teams.format).toBe('TEAMS');
+    // The real URLs are never returned, logged in the audit trail, or stored in plain text.
+    const listed = JSON.stringify((await ctx.http().get(base).set(s.h)).body.data);
+    expect(listed).not.toContain('slacktoken1234');
+    const stored = await WebhookEndpoint.findByPk(slack.id, RAW);
+    expect(stored!.url).not.toContain('slacktoken');
+    expect(stored!.urlEncrypted).not.toContain('slacktoken');
+    expect(JSON.stringify(await AuditLog.findAll({ where: { entityId: slack.id }, ...RAW }))).not.toContain('slacktoken');
+
+    const emp = await ctx.http().post(`${API}/employees`).set(s.h).send({ firstName: 'Kiran', lastName: 'Shah', dateOfJoining: '2026-11-02' });
+    expect(emp.status).toBe(201);
+    await settle(() => receiver.received.length >= 2);
+    const toSlack = receiver.received.find((r) => r.headers['x-hrms-signature'] === undefined && JSON.parse(r.body).blocks);
+    const toTeams = receiver.received.find((r) => JSON.parse(r.body).type === 'message');
+    expect(JSON.parse(toSlack!.body)).toMatchObject({ text: expect.stringContaining('Employee: created'), blocks: [expect.objectContaining({ type: 'section' }), expect.objectContaining({ type: 'context' })] });
+    expect(JSON.parse(toSlack!.body).blocks[0].text.text).toContain('Kiran Shah');
+    const card = JSON.parse(toTeams!.body).attachments[0];
+    expect(card).toMatchObject({ contentType: 'application/vnd.microsoft.card.adaptive', content: { type: 'AdaptiveCard', actions: [expect.objectContaining({ type: 'Action.OpenUrl', title: 'Open HRMS' })] } });
+
+    // Test message, a new URL, and no signing secret to rotate.
+    const ping = (await ctx.http().post(`${base}/${slack.id}/test`).set(s.h).send({})).body.data;
+    expect(ping).toMatchObject({ status: 'SUCCESS', responseStatus: 200 });
+    expect(JSON.parse(receiver.received.at(-1)!.body).text).toContain('Test message');
+    const moved = (await ctx.http().patch(`${base}/${slack.id}`).set(s.h).send({ url: `${receiver.url}/services/T1/B1/newtoken9876` })).body.data;
+    expect(moved.url).toMatch(/…9876$/);
+    expect((await ctx.http().post(`${base}/${slack.id}/rotate-secret`).set(s.h).send({})).status).toBe(409);
+    expect((await ctx.http().post(base).set(s.h).send({ url: receiver.url, format: 'DISCORD', events: ['*'] })).status).toBe(422);
   });
 });

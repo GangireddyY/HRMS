@@ -27,6 +27,7 @@ export const ctx = {
   offerPrejoining: (offerId: string) => fieldContext('offers', 'prejoining', offerId),
   ssoClientSecret: (organizationId: string) => fieldContext('organization_sso_configs', 'client_secret', organizationId),
   webhookSecret: (endpointId: string) => fieldContext('webhook_endpoints', 'secret', endpointId),
+  webhookUrl: (endpointId: string) => fieldContext('webhook_endpoints', 'url', endpointId),
 };
 
 export type EmployeeEncryptedColumn =
@@ -67,4 +68,5 @@ export const ENCRYPTED_FIELDS: EncryptedField[] = [
   { table: 'offers', column: 'prejoining_encrypted', key: 'id', context: ctx.offerPrejoining },
   { table: 'organization_sso_configs', column: 'client_secret_encrypted', key: 'organization_id', rowId: 'organization_id', context: ctx.ssoClientSecret },
   { table: 'webhook_endpoints', column: 'secret_encrypted', key: 'id', context: ctx.webhookSecret },
+  { table: 'webhook_endpoints', column: 'url_encrypted', key: 'id', context: ctx.webhookUrl },
 ];

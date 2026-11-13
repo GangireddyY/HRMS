@@ -64,4 +64,4 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 
 ## Documentation
 
-[PRD](docs/PRD.md) · [FRD](docs/FRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Database](docs/DATABASE.md) · [API](docs/API.md) · [RBAC](docs/RBAC.md) · [Security](docs/SECURITY.md) · [Deployment](docs/DEPLOYMENT.md) · [Testing](docs/TESTING.md) · [Changelog](docs/CHANGELOG.md)
+[User guide](docs/USER_GUIDE.md) · [PRD](docs/PRD.md) · [FRD](docs/FRD.md) · [Architecture](docs/ARCHITECTURE.md) · [Design decisions](docs/DECISIONS.md) · [Database](docs/DATABASE.md) · [API](docs/API.md) · [RBAC](docs/RBAC.md) · [Security](docs/SECURITY.md) · [Deployment](docs/DEPLOYMENT.md) · [Testing](docs/TESTING.md) · [Changelog](docs/CHANGELOG.md)

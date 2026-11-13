@@ -15,6 +15,7 @@ import {
   ExternalLink,
   FilePlus2,
   FileSpreadsheet,
+  BookOpenText,
   FileText,
   Gift,
   History,
@@ -35,6 +36,7 @@ import { appLocale } from '@/core/locale/locale';
 import { payrollApi } from '@/modules/payroll/api/payroll.api';
 import { statutoryApi } from '@/modules/payroll/api/statutory.api';
 import BonusPayoutModal from '@/modules/payroll/components/BonusPayoutModal.vue';
+import TallyJournalModal from '@/modules/payroll/components/TallyJournalModal.vue';
 import PaySplitBar, { type PaySegment } from '@/modules/payroll/components/PaySplitBar.vue';
 import PayslipGridCard from '@/modules/payroll/components/PayslipGridCard.vue';
 import PayslipView from '@/modules/payroll/components/PayslipView.vue';
@@ -96,6 +98,7 @@ async function refresh(next?: PayrollRunDetail) {
 
 const busy = ref<string | null>(null);
 const bonusOpen = ref(false);
+const journalOpen = ref(false);
 async function onBonus() {
   bonusOpen.value = false;
   await refresh();
@@ -203,6 +206,7 @@ const exportsList = computed(() => {
   if (!x) return [];
   return [
     { key: 'register', icon: FileSpreadsheet, label: 'Payroll register', hint: 'Every payslip line, CSV', available: true, run: () => payrollApi.downloadRegister(x.id) },
+    { key: 'journal', icon: BookOpenText, label: 'Accounting journal', hint: approved.value ? 'Preview and Tally import, XML' : 'Available once approved', available: approved.value, run: async () => void (journalOpen.value = true) },
     ...(auth.can('payroll.process')
       ? [
           { key: 'ecr', icon: FileText, label: 'PF return (ECR)', hint: approved.value ? 'For the EPFO portal, TXT' : 'Available once approved', available: approved.value, run: () => payrollApi.downloadPfEcr(x.id) },
@@ -313,6 +317,7 @@ const lop = (row: PayslipSummary) => row.lopOverride ?? row.lopDays;
             <template #trigger="{ toggle }"><AppButton variant="secondary" :icon="Download" :icon-right="ChevronDown" @click="toggle">Downloads</AppButton></template>
             <template #default="{ close }">
               <AppMenuItem @select="close(); download(() => payrollApi.downloadRegister(r!.id))">Payroll register (CSV)</AppMenuItem>
+              <AppMenuItem v-if="r.status === 'APPROVED' || r.status === 'PAID'" @select="close(); journalOpen = true">Accounting journal for Tally (XML)</AppMenuItem>
               <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.process')" @select="close(); download(() => payrollApi.downloadPfEcr(r!.id))">PF return – ECR (TXT)</AppMenuItem>
               <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.process')" @select="close(); download(() => statutoryApi.downloadEsiReturn(r!.id))">ESI return (CSV)</AppMenuItem>
               <AppMenuItem v-if="(r.status === 'APPROVED' || r.status === 'PAID') && auth.can('payroll.process')" @select="close(); download(() => statutoryApi.downloadStateLevies(r!.id))">Professional tax & LWF (CSV)</AppMenuItem>
@@ -568,6 +573,7 @@ const lop = (row: PayslipSummary) => row.lopOverride ?? row.lopDays;
         </div>
       </AppModal>
       <BonusPayoutModal :open="bonusOpen" :run-id="r.id" @close="bonusOpen = false" @saved="onBonus" />
+      <TallyJournalModal :open="journalOpen" :run-id="r.id" :can-configure="auth.can('payroll.configure')" @close="journalOpen = false" />
     </template>
   </div>
 </template>

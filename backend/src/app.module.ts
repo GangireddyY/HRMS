@@ -68,7 +68,7 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
       imports: [RedisModule],
       inject: [AppConfig, REDIS],
       useFactory: (config: AppConfig, redis: Redis | null) => ({
-        throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
+        throttlers: [{ name: 'default', ttl: 60_000, limit: config.get('RATE_LIMIT_PER_MINUTE') }],
         skipIf: () => config.isTest && process.env.TEST_ENABLE_THROTTLE !== '1',
         // Shared counters across instances when Redis is configured; in memory otherwise.
         ...(redis ? { storage: new RedisThrottlerStorage(redis) } : {}),

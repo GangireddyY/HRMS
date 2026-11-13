@@ -18,11 +18,14 @@
     "db:seed": "ts-node --transpile-only src/database/seed.ts",
     "db:seed:demo": "ts-node --transpile-only src/database/demo-seed.ts",
     "db:seed:demo-extras": "ts-node --transpile-only src/database/demo-extras.ts",
+    "db:seed:load": "ts-node --transpile-only src/database/load-seed.ts",
+    "load:run": "node load/run.mjs",
     "migrate": "node dist/database/migrate.js up",
     "bootstrap": "node dist/cli/bootstrap.js",
     "test": "jest",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config test/jest-e2e.config.js --runInBand",
+    "test:e2e:cov": "jest --config test/jest-e2e.config.js --runInBand --coverage --coverageReporters=text-summary",
     "docs:rbac": "nest build && node scripts/rbac-matrix.js"
   },
   "dependencies": {

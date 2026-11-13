@@ -180,6 +180,10 @@ Every new tenant table has `organization_id`, forced row-level security (`tenant
 | `20261112110000_compensation_succession` | `compensation_budgets` (increase pool per cycle and department, unique per `(cycle_id, department_id)` with null = no department); `succession_plans` (critical role, holder or vacant, criticality, risk of loss; one plan per holder); `succession_candidates` (ranked successors with readiness, unique per plan and employee) |
 | `20261112120000_legal_entities` | `legal_entities` (country, currency, registrations, one default per organization); `employees.legal_entity_id`, `pay_groups.legal_entity_id`; `exchange_rates` (base-currency units per unit, by effective date); `reimbursement_claims.currency` / `original_amount` / `exchange_rate`; `payslips.currency` |
 | `20261112130000_assistant_ai` | `organizations.assistant_ai_enabled` (the organization's opt-in to AI answers) |
+| `20261112150000_native_push_tokens` | `native_push_tokens` (personal, like `push_subscriptions`): phone app installs with platform (`ANDROID` / `IOS`), unique push token, device name, app version, last sent and failure count |
+| `20261112160000_chat_webhooks` | `webhook_endpoints.format` (`JSON` / `SLACK` / `TEAMS`) and `url_encrypted` (the real incoming-webhook URL of chat formats; `url` keeps a masked copy) |
+| `20261112170000_statutory_rates` | National, not tenant tables: `statutory_contribution_rates` (PF / EPS / ESI rates, PF wage ceiling and ESI limit, unique per `effective_from`; today's rates seeded) and `statutory_tax_rules` (a financial year's income-tax rules as JSONB, keyed by starting year) |
+| `20261112140000_accounting_settings` | `accounting_settings` (one row per organization): Tally company, voucher type, department cost centres and their category, `ledgers` (posting slot → ledger name; missing slots use the default) and `earning_ledgers` (component code → its own expense ledger) |
 
 Notification preferences (digest frequency, hour, weekday, timezone, WhatsApp number and its pending code hash, calendar invites) live in `users.notification_settings` (JSONB); the verification code is stored hashed and never returned.
 

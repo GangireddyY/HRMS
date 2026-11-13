@@ -285,5 +285,7 @@ export const PLATFORM_PERMISSIONS = [
   'platform.plans.manage',
   'platform.billing.manage',
   'platform.audit.view',
+  /** PF / ESI rates and income-tax rules that every organization's payroll uses. */
+  'platform.statutory.manage',
 ] as const;
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];

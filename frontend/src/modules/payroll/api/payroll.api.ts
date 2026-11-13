@@ -1,4 +1,4 @@
-import type { BankFileFormat, BonusBasis, ExpensePolicyRule, LoanStatus, LoanType, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus } from '@contracts';
+import type { AccountingSettingsView, BankFileFormat, BonusBasis, ExpensePolicyRule, LedgerSlot, LoanStatus, LoanType, PayrollJournal, PayrollRunStatus, ReimbursementCategory, ReimbursementStatus } from '@contracts';
 import { downloadFile, http, type ListQuery } from '@/core/http/http-client';
 import type {
   Claim,
@@ -29,6 +29,15 @@ import type {
   TaxDeclaration,
   TaxDeclarationInput,
 } from '../types';
+
+export interface AccountingSettingsInput {
+  tallyCompany?: string | null;
+  voucherType?: string;
+  costCentres?: boolean;
+  costCategory?: string;
+  ledgers?: { slot: LedgerSlot; name: string }[];
+  earningLedgers?: { code: string; name: string }[];
+}
 
 export const payrollApi = {
   settings: () => http.get<PayrollSettings>('/payroll/settings'),
@@ -85,6 +94,10 @@ export const payrollApi = {
   downloadRegister: (id: string) => downloadFile(`/payroll/runs/${id}/register`, undefined, 'payroll-register.csv'),
   downloadBankFile: (id: string, format: BankFileFormat = 'GENERIC') => downloadFile(`/payroll/runs/${id}/bank-file`, { format }, 'bank-transfer.csv'),
   downloadPfEcr: (id: string) => downloadFile(`/payroll/runs/${id}/pf-ecr`, undefined, 'pf-ecr.txt'),
+  journal: (id: string) => http.get<PayrollJournal>(`/payroll/runs/${id}/journal`),
+  downloadTally: (id: string, part: 'vouchers' | 'masters' = 'vouchers') => downloadFile(`/payroll/runs/${id}/tally`, { part }, part === 'masters' ? 'tally-masters.xml' : 'tally-journal.xml'),
+  accounting: () => http.get<AccountingSettingsView>('/payroll/accounting'),
+  updateAccounting: (body: AccountingSettingsInput) => http.put<AccountingSettingsView>('/payroll/accounting', body),
 
   myPayslips: () => http.get<MyPayslip[]>('/payroll/me/payslips'),
   payslip: (id: string) => http.get<PayslipDetail>(`/payroll/payslips/${id}`),

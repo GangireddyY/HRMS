@@ -3,17 +3,18 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import type { Transaction } from 'sequelize';
-import { WEBHOOK_EVENT_GROUPS, WEBHOOK_EXCLUDED_PREFIXES } from '../../contracts';
+import { CHAT_WEBHOOK_HOSTS, WEBHOOK_EVENT_GROUPS, WEBHOOK_EXCLUDED_PREFIXES, type WebhookFormat } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { ipAllowed } from '../../common/utils/networks';
 import { AppConfig } from '../../config/app-config.service';
 import { DatabaseService } from '../../database/database.service';
-import { AuditLog, WebhookDelivery, WebhookEndpoint } from '../../database/models';
+import { AuditLog, Organization, WebhookDelivery, WebhookEndpoint } from '../../database/models';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { ctx as fields } from '../../infrastructure/crypto/encrypted-fields';
 import { EncryptionService } from '../../infrastructure/crypto/encryption.service';
 import { JobQueueService, type Job } from '../../infrastructure/jobs/job-queue.service';
+import { chatMessage, maskUrl } from './chat-message';
 import type { UpdateWebhookDto, WebhookDto } from './integrations.dto';
 
 export const WEBHOOK_JOB = 'webhooks.deliver';
@@ -22,6 +23,7 @@ const DISABLE_AFTER_FAILURES = 25;
 const CACHE_MS = 30_000;
 const PRIVATE_NETWORKS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', '169.254.0.0/16', '100.64.0.0/10', '0.0.0.0/8', '::1/128', 'fc00::/7', 'fe80::/10'];
 const CROSS_TENANT = { skipTenantScope: true } as const;
+const FORMAT_LABEL: Record<WebhookFormat, string> = { JSON: 'Webhook', SLACK: 'Slack alert', TEAMS: 'Teams alert' };
 
 /** Whether an event (an audited action) matches the endpoint's patterns. */
 export function matchesEvent(patterns: string[], event: string): boolean {
@@ -39,6 +41,9 @@ export function signature(secret: string, body: string, at = Math.floor(Date.now
  * endpoints subscribed to them. Deliveries are queued with the change (so nothing is sent if it rolls back), retried
  * with backoff, logged, and can be redelivered. An endpoint failing 25 times in a row is switched off. In production,
  * endpoints must use HTTPS and may not point at private networks.
+ *
+ * Slack and Teams alerts are webhooks with another format: the same events are posted as a chat message to an
+ * incoming-webhook URL. That URL is a credential, so it is stored encrypted and only a masked copy is shown.
  */
 @Injectable()
 export class WebhooksService {
@@ -74,36 +79,44 @@ export class WebhooksService {
   }
 
   async create(auth: AuthContext, dto: WebhookDto) {
-    this.assertUrl(dto.url);
+    const format = dto.format ?? 'JSON';
+    this.assertUrl(dto.url, format);
     if ((await WebhookEndpoint.count()) >= MAX_ENDPOINTS) throw AppError.conflict(`An organization can have up to ${MAX_ENDPOINTS} webhooks`);
     const secret = `whsec_${randomBytes(24).toString('base64url')}`;
+    const chat = format !== 'JSON';
+    const shown = chat ? maskUrl(dto.url) : dto.url;
     const e = await this.db.transaction(async (transaction) => {
       const created = await WebhookEndpoint.create(
-        { organizationId: auth.organizationId!, url: dto.url, description: dto.description ?? null, events: dto.events, secretEncrypted: 'pending', enabled: dto.enabled ?? true, createdById: auth.userId },
+        { organizationId: auth.organizationId!, url: shown, format, urlEncrypted: chat ? 'pending' : null, description: dto.description ?? null, events: dto.events, secretEncrypted: 'pending', enabled: dto.enabled ?? true, createdById: auth.userId },
         { transaction },
       );
-      await created.update({ secretEncrypted: this.crypto.encrypt(secret, fields.webhookSecret(created.id)) }, { transaction });
-      await this.audit.record({ action: 'integration.webhook_created', entityType: 'WebhookEndpoint', entityId: created.id, summary: `Webhook to ${new URL(dto.url).host} created`, metadata: { url: dto.url, events: dto.events } }, transaction);
+      await created.update(
+        { secretEncrypted: this.crypto.encrypt(secret, fields.webhookSecret(created.id)), ...(chat ? { urlEncrypted: this.crypto.encrypt(dto.url, fields.webhookUrl(created.id)) } : {}) },
+        { transaction },
+      );
+      await this.audit.record({ action: 'integration.webhook_created', entityType: 'WebhookEndpoint', entityId: created.id, summary: `${FORMAT_LABEL[format]} to ${new URL(dto.url).host} created`, metadata: { url: shown, format, events: dto.events } }, transaction);
       return created;
     });
     this.cache.delete(auth.organizationId!);
-    return { ...this.present(e), secret };
+    return { ...this.present(e), ...(chat ? {} : { secret }) };
   }
 
   async update(auth: AuthContext, id: string, dto: UpdateWebhookDto) {
     const e = await this.find(id);
-    if (dto.url) this.assertUrl(dto.url);
+    const chat = e.format !== 'JSON';
+    if (dto.url) this.assertUrl(dto.url, e.format);
+    const shown = dto.url && chat ? maskUrl(dto.url) : dto.url;
     await this.db.transaction(async (transaction) => {
       await e.update(
         {
-          ...(dto.url ? { url: dto.url } : {}),
+          ...(dto.url ? { url: shown, ...(chat ? { urlEncrypted: this.crypto.encrypt(dto.url, fields.webhookUrl(e.id)) } : {}) } : {}),
           ...(dto.description !== undefined ? { description: dto.description } : {}),
           ...(dto.events ? { events: dto.events } : {}),
           ...(dto.enabled !== undefined ? { enabled: dto.enabled, ...(dto.enabled ? { consecutiveFailures: 0, disabledReason: null } : {}) } : {}),
         },
         { transaction },
       );
-      await this.audit.record({ action: 'integration.webhook_updated', entityType: 'WebhookEndpoint', entityId: id, summary: `Webhook to ${new URL(e.url).host} updated`, metadata: { ...dto } }, transaction);
+      await this.audit.record({ action: 'integration.webhook_updated', entityType: 'WebhookEndpoint', entityId: id, summary: `${FORMAT_LABEL[e.format as WebhookFormat]} to ${new URL(e.url).host} updated`, metadata: { ...dto, ...(dto.url ? { url: shown } : {}) } }, transaction);
     });
     this.cache.delete(auth.organizationId!);
     return this.get(id);
@@ -121,6 +134,7 @@ export class WebhooksService {
 
   async rotateSecret(auth: AuthContext, id: string) {
     const e = await this.find(id);
+    if (e.format !== 'JSON') throw AppError.conflict('Slack and Teams alerts are not signed; change the URL to replace the webhook instead');
     const secret = `whsec_${randomBytes(24).toString('base64url')}`;
     await this.db.transaction(async (transaction) => {
       await e.update({ secretEncrypted: this.crypto.encrypt(secret, fields.webhookSecret(e.id)) }, { transaction });
@@ -187,20 +201,13 @@ export class WebhooksService {
 
   /** One POST. Returns whether it was accepted (2xx). */
   private async attempt(d: WebhookDelivery, e: WebhookEndpoint, last: boolean): Promise<boolean> {
-    const body = JSON.stringify(d.payload);
     let status: number | null = null;
     let responseBody: string | null = null;
     let error: string | null = null;
     try {
-      await this.assertReachable(e.url);
-      const secret = this.crypto.decrypt(e.secretEncrypted, fields.webhookSecret(e.id));
-      const res = await fetch(e.url, {
-        method: 'POST',
-        redirect: 'manual',
-        signal: AbortSignal.timeout(10_000),
-        headers: { 'content-type': 'application/json', 'user-agent': 'HRMS-Webhooks/1.0', 'x-hrms-event': d.event, 'x-hrms-delivery': d.id, 'x-hrms-signature': signature(secret, body) },
-        body,
-      });
+      const { url, body, headers } = await this.request(d, e);
+      await this.assertReachable(url);
+      const res = await fetch(url, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(10_000), headers, body });
       status = res.status;
       responseBody = (await res.text()).slice(0, 1000);
     } catch (err) {
@@ -218,6 +225,21 @@ export class WebhooksService {
     return ok;
   }
 
+  /** JSON endpoints get the signed event; Slack / Teams get a chat message at their (decrypted) URL. */
+  private async request(d: WebhookDelivery, e: WebhookEndpoint) {
+    const base = { 'content-type': 'application/json', 'user-agent': 'HRMS-Webhooks/1.0' };
+    if (e.format === 'JSON') {
+      const body = JSON.stringify(d.payload);
+      const secret = this.crypto.decrypt(e.secretEncrypted, fields.webhookSecret(e.id));
+      return { url: e.url, body, headers: { ...base, 'x-hrms-event': d.event, 'x-hrms-delivery': d.id, 'x-hrms-signature': signature(secret, body) } };
+    }
+    const data = (d.payload.data ?? {}) as { summary?: string | null };
+    const org = await Organization.findByPk(e.organizationId, { attributes: ['name'], ...CROSS_TENANT });
+    const link = this.config.get('APP_URL').replace(/\/+$/, '');
+    const body = JSON.stringify(chatMessage(e.format, { event: d.event, summary: data.summary ?? null, organizationName: org?.name, link }));
+    return { url: this.crypto.decrypt(e.urlEncrypted!, fields.webhookUrl(e.id)), body, headers: base };
+  }
+
   private payload(id: string, event: string, organizationId: string, data: Record<string, unknown>, at = new Date()) {
     return { id, event, createdAt: at.toISOString(), organizationId, data };
   }
@@ -226,9 +248,12 @@ export class WebhooksService {
     return this.config.get('NODE_ENV') === 'production';
   }
 
-  private assertUrl(url: string) {
+  private assertUrl(url: string, format: WebhookFormat) {
     const u = new URL(url);
     if (this.production && u.protocol !== 'https:') throw AppError.validation([{ field: 'url', message: 'Webhooks must use https://' }]);
+    if (this.production && format !== 'JSON' && !CHAT_WEBHOOK_HOSTS[format].some((h) => (h.startsWith('.') ? u.hostname.endsWith(h) : u.hostname === h))) {
+      throw AppError.validation([{ field: 'url', message: format === 'SLACK' ? 'Use a Slack incoming-webhook URL (https://hooks.slack.com/…)' : 'Use a Microsoft Teams webhook URL (a Workflows or connector URL)' }]);
+    }
     if (this.production && (u.hostname === 'localhost' || (isIP(u.hostname) && ipAllowed(u.hostname, PRIVATE_NETWORKS)))) throw AppError.validation([{ field: 'url', message: 'Webhooks cannot point at a private network' }]);
   }
 
@@ -250,6 +275,7 @@ export class WebhooksService {
     return {
       id: e.id,
       url: e.url,
+      format: e.format,
       description: e.description,
       events: e.events,
       enabled: e.enabled,

@@ -27,7 +27,7 @@ import { EMPLOYMENT_TYPE_LABELS } from '@/modules/people/utils/labels';
 import { careersApi } from '@/modules/recruitment/api/recruitment.api';
 import CareersShell from '@/modules/recruitment/components/CareersShell.vue';
 import JobDescription from '@/modules/recruitment/components/JobDescription.vue';
-import { careersPlace, jobFlags } from '@/modules/recruitment/utils/careers';
+import { careersPlace, jobFlags, jobPostingLd } from '@/modules/recruitment/utils/careers';
 import { experience } from '@/modules/recruitment/utils/recruitment-format';
 import { dueText } from '@/modules/recruitment/utils/recruitment-ui';
 import { AppAlert, AppButton, AppCheckbox, AppErrorState, AppInput, AppTextarea } from '@/shared/components';
@@ -145,6 +145,23 @@ watch(applySection, (el) => {
   observer.observe(el);
 });
 onBeforeUnmount(() => observer?.disconnect());
+
+// Structured data for search engines' job listings (a data block, never executed).
+let ld: HTMLScriptElement | null = null;
+watch(
+  () => data.data.value,
+  (d) => {
+    ld?.remove();
+    ld = null;
+    if (!d) return;
+    ld = document.createElement('script');
+    ld.type = 'application/ld+json';
+    ld.textContent = JSON.stringify(jobPostingLd(d.organization, d.job, window.location.href.split('#')[0]!, logo.value ? new URL(logo.value, window.location.origin).href : null)).replace(/</g, '\\u003c');
+    document.head.appendChild(ld);
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => ld?.remove());
 
 const NEXT_STEPS = [
   { icon: FileText, title: 'We review your application', text: 'The hiring team reads every application, usually within a week.' },

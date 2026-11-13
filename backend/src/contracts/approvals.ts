@@ -46,6 +46,14 @@ export const APPROVAL_SUBJECT_PERMISSION: Record<ApprovalSubject, string> = {
   EXIT: 'exit.approve',
   OFFER: 'recruitment.offer.approve',
 };
+/** An approver on a chain must also hold one of these (any scope); others are left out of the chain's steps. */
+export const APPROVAL_DECIDE_PERMISSIONS: Record<ApprovalSubject, readonly string[]> = {
+  LEAVE: ['leave.approve'],
+  EXPENSE: ['payroll.reimbursement.approve', 'payroll.reimbursement.finance'],
+  TRAVEL: ['travel.approve'],
+  EXIT: ['exit.approve'],
+  OFFER: ['recruitment.offer.approve'],
+};
 
 /**
  * Who decides a step: the requester's manager, their manager's manager, people holding a permission department- or

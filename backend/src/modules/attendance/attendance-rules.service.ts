@@ -239,10 +239,13 @@ export class AttendanceRulesService {
     return { workedMinutes, status };
   }
 
-  /** Everything a record's punches amount to on a work date: shift, lateness, worked time, status and overtime. */
-  async evaluate(ctx: EmployeeContext, workDate: string, checkIn: Date, checkOut: Date | null, transaction?: Transaction): Promise<DayOutcome> {
+  /**
+   * Everything a record's punches amount to on a work date: shift, lateness, worked time, status and overtime.
+   * `calendar` = holidays already loaded for a range that includes the date (batch callers).
+   */
+  async evaluate(ctx: EmployeeContext, workDate: string, checkIn: Date, checkOut: Date | null, transaction?: Transaction, calendar?: HolidayCalendar): Promise<DayOutcome> {
     const shift = this.shiftOn(ctx, workDate);
-    const holiday = (await this.holidays(workDate, workDate, transaction)).on(workDate, ctx.locationId);
+    const holiday = (calendar ?? (await this.holidays(workDate, workDate, transaction))).on(workDate, ctx.locationId);
     const dayOff = (!!holiday && !holiday.isOptional) || this.isRestDay(ctx, workDate);
     const { workedMinutes, status } = this.outcome(checkIn, checkOut, shift);
     return { shiftId: shift.id, lateMinutes: dayOff ? 0 : this.lateMinutes(checkIn, workDate, ctx), workedMinutes, status, overtimeMinutes: overtimeMinutes(workedMinutes, shift, dayOff) };

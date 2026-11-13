@@ -8,5 +8,6 @@ export const platformRoutes: RouteRecordRaw[] = [
   { path: 'plans', name: 'platform-plans', component: () => import('./pages/PlansPage.vue'), meta: { title: 'Plans' } },
   { path: 'billing', name: 'platform-billing', component: () => import('@/modules/billing/pages/PlatformBillingPage.vue'), meta: { title: 'Billing' } },
   { path: 'billing/:id', name: 'platform-billing-organization', component: () => import('@/modules/billing/pages/OrganizationBillingPage.vue'), meta: { title: 'Organization billing' } },
+  { path: 'statutory-rates', name: 'platform-statutory-rates', component: () => import('./pages/StatutoryRatesPage.vue'), meta: { title: 'Statutory rates', access: { platform: 'platform.statutory.manage' } } },
   { path: 'audit-logs', name: 'platform-audit', component: () => import('./pages/PlatformAuditPage.vue'), meta: { title: 'Platform audit log', access: { platform: 'platform.audit.view' } } },
 ];

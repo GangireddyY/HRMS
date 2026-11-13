@@ -1,3 +1,5 @@
+import type { WebhookFormat } from '@contracts';
+
 export interface ApiKeyRow {
   id: string;
   name: string;
@@ -21,7 +23,9 @@ export interface GrantablePermission {
 
 export interface WebhookRow {
   id: string;
+  /** Masked for Slack and Teams (their URL is a credential). */
   url: string;
+  format: WebhookFormat;
   description: string | null;
   events: string[];
   enabled: boolean;
@@ -50,7 +54,8 @@ export interface WebhookDetail extends WebhookRow {
 }
 
 export interface WebhookInput {
-  url: string;
+  url?: string;
+  format?: WebhookFormat;
   description?: string | null;
   events: string[];
   enabled?: boolean;

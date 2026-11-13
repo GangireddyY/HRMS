@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { Ban, KeyRound, Pencil, Plus, Power, RefreshCw, RotateCcw, Send, Trash2, Webhook } from '@lucide/vue';
+import { computed, ref, type Component } from 'vue';
+import { Ban, Hash, KeyRound, MessagesSquare, Pencil, Plus, Power, RefreshCw, RotateCcw, Send, Trash2, Webhook } from '@lucide/vue';
+import type { WebhookFormat } from '@contracts';
 import ApiKeyModal from '@/modules/integrations/components/ApiKeyModal.vue';
 import SecretRevealModal from '@/modules/integrations/components/SecretRevealModal.vue';
 import WebhookModal from '@/modules/integrations/components/WebhookModal.vue';
@@ -20,7 +21,7 @@ const hooks = useAsync(() => integrationsApi.webhooks());
 const catalog = useAsync(() => integrationsApi.events());
 const tabs = computed(() => [
   { key: 'keys', label: 'API keys', icon: KeyRound, count: keys.data.value?.filter((k) => k.status === 'ACTIVE').length ?? null },
-  { key: 'webhooks', label: 'Webhooks', icon: Webhook, count: hooks.data.value?.length ?? null },
+  { key: 'webhooks', label: 'Webhooks & alerts', icon: Webhook, count: hooks.data.value?.length ?? null },
 ]);
 const origin = window.location.origin;
 
@@ -107,16 +108,18 @@ const host = (url: string) => {
     return url;
   }
 };
+const FORMAT_LABEL: Record<WebhookFormat, string> = { JSON: 'Webhook', SLACK: 'Slack', TEAMS: 'Teams' };
+const FORMAT_ICON: Record<WebhookFormat, Component> = { JSON: Webhook, SLACK: Hash, TEAMS: MessagesSquare };
 const statusTone = (s: number | null) => (s === null ? 'neutral' : s >= 200 && s < 300 ? 'success' : 'danger');
 const expanded = ref<string | null>(null);
 </script>
 
 <template>
   <div class="space-y-4">
-    <AppPageHeader title="Integrations" description="Connect other systems: read-only API keys for pulling data, and webhooks that push events as they happen.">
+    <AppPageHeader title="Integrations" description="Connect other systems: read-only API keys for pulling data, webhooks that push events as they happen, and alerts to Slack or Microsoft Teams channels.">
       <template #actions>
         <AppButton v-if="tab === 'keys'" :icon="Plus" @click="keyModal = true">New API key</AppButton>
-        <AppButton v-else :icon="Plus" @click="hookModal = { open: true, webhook: null }">Add webhook</AppButton>
+        <AppButton v-else :icon="Plus" @click="hookModal = { open: true, webhook: null }">Add webhook or alert</AppButton>
       </template>
     </AppPageHeader>
 
@@ -153,16 +156,19 @@ const expanded = ref<string | null>(null);
         <AppSkeleton v-if="hooks.loading.value && !hooks.data.value" :lines="4" />
         <AppErrorState v-else-if="hooks.error.value" :error="hooks.error.value" @retry="hooks.run" />
         <div v-else-if="!hooks.data.value?.length" class="card">
-          <AppEmptyState :icon="Webhook" title="No webhooks yet" description="Add an endpoint to receive events such as new joiners, approved leave or paid settlements.">
-            <AppButton size="sm" :icon="Plus" @click="hookModal = { open: true, webhook: null }">Add webhook</AppButton>
+          <AppEmptyState :icon="Webhook" title="No webhooks or alerts yet" description="Send events such as new joiners, approved leave or paid settlements to another system, or post them to a Slack or Teams channel.">
+            <AppButton size="sm" :icon="Plus" @click="hookModal = { open: true, webhook: null }">Add webhook or alert</AppButton>
           </AppEmptyState>
         </div>
         <ul v-else class="grid gap-3 lg:grid-cols-2">
           <li v-for="w in hooks.data.value" :key="w.id" class="card flex flex-col p-4">
             <div class="flex items-start gap-3">
-              <span :class="['mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', w.enabled ? 'bg-accent-soft text-accent-fg' : 'bg-surface-muted text-fg-subtle']" aria-hidden="true"><Webhook :size="17" /></span>
+              <span :class="['mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', w.enabled ? 'bg-accent-soft text-accent-fg' : 'bg-surface-muted text-fg-subtle']" aria-hidden="true"><component :is="FORMAT_ICON[w.format]" :size="17" /></span>
               <div class="min-w-0 flex-1">
-                <p class="truncate font-mono text-sm font-medium text-fg" :title="w.url">{{ host(w.url) }}</p>
+                <p class="flex items-center gap-2">
+                  <span class="truncate font-mono text-sm font-medium text-fg" :title="w.url">{{ host(w.url) }}</span>
+                  <AppBadge v-if="w.format !== 'JSON'" size="sm" tone="neutral">{{ FORMAT_LABEL[w.format] }}</AppBadge>
+                </p>
                 <p class="truncate text-xs text-fg-muted">{{ w.description ?? w.url }}</p>
               </div>
               <AppBadge :tone="w.enabled ? 'success' : 'neutral'" dot>{{ w.enabled ? 'On' : 'Off' }}</AppBadge>
@@ -194,7 +200,7 @@ const expanded = ref<string | null>(null);
       <div v-if="detail" class="space-y-4">
         <div class="flex flex-wrap gap-2">
           <AppButton size="sm" variant="secondary" :icon="Send" :loading="busy === 'ping'" @click="ping(detail)">Send test</AppButton>
-          <AppButton size="sm" variant="secondary" :icon="RotateCcw" :loading="busy === 'rotate'" @click="rotate(detail)">Rotate secret</AppButton>
+          <AppButton v-if="detail.format === 'JSON'" size="sm" variant="secondary" :icon="RotateCcw" :loading="busy === 'rotate'" @click="rotate(detail)">Rotate secret</AppButton>
           <AppButton size="sm" variant="secondary" :icon="Power" :loading="busy === 'toggle'" @click="toggle(detail)">{{ detail.enabled ? 'Switch off' : 'Switch on' }}</AppButton>
           <AppButton size="sm" variant="ghost" :icon="Trash2" :loading="busy === 'delete'" class="ms-auto" @click="remove(detail)">Delete</AppButton>
         </div>

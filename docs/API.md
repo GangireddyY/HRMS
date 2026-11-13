@@ -153,6 +153,24 @@ Legend: 🔓 public · 🔑 authenticated · `perm` required permission · ⚙ p
 
 `/employees`, `/recruitment`, `/careers` (public), `/onboarding`, `/attendance`, `/leaves`, `/payroll`, `/performance`, `/training`, `/skills`, `/engagement`, `/grievances`, `/benefits`, `/compliance`, `/exits`, `/alumni`, `/reports` — all following the conventions above. The full, always-current reference (every route, DTO and permission) is the OpenAPI document served at `/api/docs` (`/api/docs/openapi.json`); the tables below list the endpoints added in 1.10.
 
+### Integrations for other tools
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| POST | `/integrations/webhooks` | `integration.manage` | `format`: `JSON` (signed event, default), `SLACK` or `TEAMS` (chat message to an incoming-webhook URL; returned masked, no secret) |
+| GET | `/careers/:slug/jobs.xml` | 🔓 | Open public jobs as an XML job feed (Indeed format) for job boards and aggregators |
+| GET | `/payroll/runs/:id/tally` | `payroll.view` | Payroll journal as Tally XML vouchers |
+
+### Statutory rates
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| GET | `/platform/statutory-rates` | `platform.statutory.manage` | PF / ESI rates by effective date (in force now, scheduled), income-tax rules per financial year (entered, built in or borrowed) |
+| PUT | `/platform/statutory-rates/contribution` | `platform.statutory.manage` | Add or change the rates in force from `effectiveFrom` |
+| DELETE | `/platform/statutory-rates/contribution/:id` | `platform.statutory.manage` | Remove a set of rates (the previous set applies again) |
+| PUT · DELETE | `/platform/statutory-rates/tax/:fy` | `platform.statutory.manage` | Enter or remove a financial year's income-tax rules (`2027` = FY 2027-28) |
+| GET | `/payroll/statutory-rates?year=&month=` | `payroll.view` or `payroll.configure` | What payroll uses for that month |
+
 ### 1.10 additions
 
 | Method | Path | Access | Description |
@@ -212,3 +230,7 @@ Legend: 🔓 public · 🔑 authenticated · `perm` required permission · ⚙ p
 | GET · PUT · DELETE | `/exchange-rates[/:id]` | 🔑 member; write: `payroll.configure` | Exchange rates into the base currency by date (the rate in force per currency) |
 | GET · PUT | `/assistant/status` · `/assistant/settings` | 🔑 member; write: `organization.update` | Whether AI answers are on; turn them on or off for the organization |
 | POST | `/assistant/chat` | 🔑 member (20 / minute) | `{messages}` → `{mode: 'ai', text, links, sources}` or `{mode: 'fallback', reason}` |
+| POST | `/notifications/push/native` · `…/native/remove` | 🔑 R | Phone app install: `{platform: ANDROID \| IOS, token, deviceName?, appVersion?}` registers it for your notifications (409 when that platform isn't configured); remove on sign-out. `GET /notifications/push` adds `nativeEnabled`, `nativePlatforms`, `apps` |
+| GET · PUT | `/payroll/accounting` | `payroll.view` or `payroll.configure`; write: `payroll.configure` | Ledger names per posting, earning components with their own ledger, Tally company, voucher type, department cost centres |
+| GET | `/payroll/runs/:id/journal` | `payroll.view` | Balanced journal of an approved or paid run (409 before approval, or when a run pays in several currencies) |
+| GET | `/payroll/runs/:id/tally?part=vouchers\|masters` | `payroll.view` | Tally import XML: the journal voucher (`REMOTEID` = the run, so Tally refuses a second import), or the ledger and cost-centre masters it uses; audited |

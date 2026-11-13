@@ -1,20 +1,47 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import type { WebhookFormat } from '@contracts';
 import { integrationsApi } from '@/modules/integrations/integrations.api';
-import type { WebhookRow } from '@/modules/integrations/types';
-import { AppAlert, AppButton, AppCheckbox, AppInput, AppModal } from '@/shared/components';
+import type { WebhookInput, WebhookRow } from '@/modules/integrations/types';
+import { AppAlert, AppButton, AppCheckbox, AppInput, AppModal, AppSegmented } from '@/shared/components';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 
-/** Add a webhook (the signing secret is shown once after saving), or change its URL and events. */
+/**
+ * Add a webhook (the signing secret is shown once after saving) or a Slack / Teams alert, or change its URL and
+ * events. Chat URLs are credentials: they are never shown again, so editing leaves the field blank to keep the URL.
+ */
 const props = defineProps<{ open: boolean; webhook?: WebhookRow | null; groups: { key: string; label: string; pattern: string }[] }>();
 const emit = defineEmits<{ close: []; saved: [w: WebhookRow & { secret?: string }] }>();
 const { fieldErrors, formError, handle, reset } = useFormErrors();
+const format = ref<WebhookFormat>('JSON');
 const endpointUrl = ref('');
 const note = ref('');
 const everything = ref(false);
 const patterns = ref<string[]>([]);
 const specific = ref('');
 const saving = ref(false);
+const FORMATS: { value: WebhookFormat; label: string }[] = [
+  { value: 'JSON', label: 'Webhook' },
+  { value: 'SLACK', label: 'Slack' },
+  { value: 'TEAMS', label: 'Microsoft Teams' },
+];
+const COPY: Record<WebhookFormat, { url: string; placeholder: string; help?: string; description: string }> = {
+  JSON: { url: 'Endpoint URL', placeholder: 'https://hooks.example.com/hrms', description: 'We POST a signed JSON event to this URL whenever something it subscribes to happens.' },
+  SLACK: {
+    url: 'Slack incoming-webhook URL',
+    placeholder: 'https://hooks.slack.com/services/…',
+    help: 'In Slack: Apps → Incoming WebHooks → Add to a channel, then copy the Webhook URL.',
+    description: 'A short message is posted to a Slack channel whenever something it subscribes to happens.',
+  },
+  TEAMS: {
+    url: 'Teams webhook URL',
+    placeholder: 'https://…logic.azure.com/workflows/…',
+    help: 'In Teams: open the channel → ⋯ → Workflows → "Post to a channel when a webhook request is received", then copy the URL.',
+    description: 'A card is posted to a Teams channel whenever something it subscribes to happens.',
+  },
+};
+const chat = computed(() => format.value !== 'JSON');
+const copy = computed(() => COPY[format.value]);
 watch(
   () => props.open,
   (open) => {
@@ -22,7 +49,8 @@ watch(
     reset();
     const w = props.webhook;
     const known = new Set(props.groups.map((g) => g.pattern));
-    endpointUrl.value = w?.url ?? '';
+    format.value = w?.format ?? 'JSON';
+    endpointUrl.value = w && w.format === 'JSON' ? w.url : '';
     note.value = w?.description ?? '';
     everything.value = w?.events.includes('*') ?? false;
     patterns.value = (w?.events ?? []).filter((e) => known.has(e));
@@ -44,27 +72,41 @@ const events = computed(() =>
 function toggle(pattern: string, on: boolean) {
   patterns.value = on ? [...patterns.value, pattern] : patterns.value.filter((p) => p !== pattern);
 }
-const canSave = computed(() => /^https?:\/\/.+/i.test(endpointUrl.value.trim()) && events.value.length > 0);
+const keepUrl = computed(() => !!props.webhook && chat.value && !endpointUrl.value.trim());
+const canSave = computed(() => (keepUrl.value || /^https?:\/\/.+/i.test(endpointUrl.value.trim())) && events.value.length > 0);
 async function save() {
   reset();
   saving.value = true;
   try {
-    const body = { url: endpointUrl.value.trim(), description: note.value || null, events: [...new Set(events.value)] };
-    emit('saved', props.webhook ? await integrationsApi.updateWebhook(props.webhook.id, body) : await integrationsApi.createWebhook(body));
+    const body: WebhookInput = { ...(keepUrl.value ? {} : { url: endpointUrl.value.trim() }), description: note.value || null, events: [...new Set(events.value)] };
+    emit('saved', props.webhook ? await integrationsApi.updateWebhook(props.webhook.id, body) : await integrationsApi.createWebhook({ ...body, format: format.value }));
   } catch (e) {
-    handle(e, 'Could not save the webhook');
+    handle(e, 'Could not save');
   } finally {
     saving.value = false;
   }
 }
+const title = computed(() => {
+  const what = format.value === 'JSON' ? 'webhook' : `${format.value === 'SLACK' ? 'Slack' : 'Teams'} alert`;
+  return `${props.webhook ? 'Edit' : 'Add'} ${what}`;
+});
 </script>
 
 <template>
-  <AppModal :open="open" :title="webhook ? 'Edit webhook' : 'Add webhook'" description="We POST a signed JSON event to this URL whenever something it subscribes to happens." size="lg" @close="emit('close')">
+  <AppModal :open="open" :title="title" :description="copy.description" size="lg" @close="emit('close')">
     <form id="webhook-form" class="space-y-5" novalidate @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
-      <AppInput v-model="endpointUrl" label="Endpoint URL" required placeholder="https://hooks.example.com/hrms" :maxlength="500" :error="fieldErrors.url" />
-      <AppInput v-model="note" label="Description (optional)" :maxlength="200" placeholder="e.g. Sync new joiners to the IT service desk" />
+      <AppSegmented v-if="!webhook" v-model="format" :options="FORMATS" label="Send as" />
+      <AppInput
+        v-model="endpointUrl"
+        :label="copy.url"
+        :required="!webhook || !chat"
+        :placeholder="webhook && chat ? `Leave blank to keep ${webhook.url}` : copy.placeholder"
+        :maxlength="500"
+        :help="copy.help"
+        :error="fieldErrors.url"
+      />
+      <AppInput v-model="note" label="Description (optional)" :maxlength="200" :placeholder="chat ? 'e.g. #hr-alerts channel' : 'e.g. Sync new joiners to the IT service desk'" />
       <fieldset>
         <legend class="label">Events</legend>
         <p v-if="fieldErrors.events" class="error-text" role="alert">{{ fieldErrors.events }}</p>
@@ -84,7 +126,7 @@ async function save() {
     </form>
     <template #footer>
       <AppButton variant="secondary" @click="emit('close')">Cancel</AppButton>
-      <AppButton type="submit" form="webhook-form" :loading="saving" :disabled="!canSave">{{ webhook ? 'Save' : 'Add webhook' }}</AppButton>
+      <AppButton type="submit" form="webhook-form" :loading="saving" :disabled="!canSave">{{ webhook ? 'Save' : 'Add' }}</AppButton>
     </template>
   </AppModal>
 </template>

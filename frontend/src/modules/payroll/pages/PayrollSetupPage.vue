@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { AlertTriangle, BadgeCheck, Blocks, Building2, CalendarCheck, CalendarClock, CalendarX, Clock, Coins, Flag, HeartHandshake, HeartPulse, Home, Landmark, Layers, Mail, PauseCircle, Pencil, PiggyBank, Plus, Receipt, Scale, Sparkles, Trash2 } from '@lucide/vue';
+import { AlertTriangle, BadgeCheck, Blocks, BookOpenText, Building2, CalendarCheck, CalendarClock, CalendarX, Clock, Coins, Flag, HeartHandshake, HeartPulse, Home, Landmark, Layers, Mail, PauseCircle, Pencil, PiggyBank, Plus, Receipt, Scale, Sparkles, Trash2 } from '@lucide/vue';
 import { LABOUR_WELFARE_STATES, PROFESSIONAL_TAX_STATES, type DailyRateBasis, type PayslipPdfPassword, type TimesheetMissedAction } from '@contracts';
+import AccountingCard from '@/modules/payroll/components/AccountingCard.vue';
 import ExpensePolicyCard from '@/modules/payroll/components/ExpensePolicyCard.vue';
 import PayGroupsCard from '@/modules/payroll/components/PayGroupsCard.vue';
 import { MISSED_ACTION_LABELS, WEEKDAY_NAMES } from '@/modules/attendance/utils/timesheet-format';
@@ -23,13 +24,14 @@ const auth = useAuthStore();
 const feedback = useFeedbackStore();
 const canConfigure = computed(() => auth.can('payroll.configure'));
 const route = useRoute();
-const tab = ref(['structures', 'components', 'statutory'].includes(String(route.query.tab)) ? String(route.query.tab) : 'structures');
+const tab = ref(['structures', 'components', 'statutory', 'accounting'].includes(String(route.query.tab)) ? String(route.query.tab) : 'structures');
 const components = useAsync(() => payrollApi.components());
 const structures = useAsync(() => payrollApi.structures());
 const tabs = computed(() => [
   { key: 'structures', label: 'Salary structures', icon: Layers, count: structures.data.value?.length ?? null },
   { key: 'components', label: 'Components', icon: Blocks, count: components.data.value?.length ?? null },
   { key: 'statutory', label: 'Statutory settings', icon: Scale },
+  { key: 'accounting', label: 'Accounting (Tally)', icon: BookOpenText },
 ]);
 
 const seeding = ref(false);
@@ -348,7 +350,7 @@ const ruleTone = (calculation: string) => (calculation === 'BALANCE' ? 'bg-speci
         </AppCard>
       </template>
 
-      <template v-else>
+      <template v-else-if="tab === 'statutory'">
         <AppSkeleton v-if="settings.loading.value && !settings.data.value" :lines="6" />
         <AppErrorState v-else-if="settings.error.value" :error="settings.error.value" @retry="settings.run" />
         <form v-else class="grid items-start gap-4 lg:grid-cols-2" novalidate @submit.prevent="saveSettings">
@@ -513,6 +515,7 @@ const ruleTone = (calculation: string) => (calculation === 'BALANCE' ? 'bg-speci
           </div>
         </form>
       </template>
+      <AccountingCard v-else-if="tab === 'accounting'" :can-configure="canConfigure" />
     </AppTabs>
 
     <StructureFormModal :open="structureOpen" :structure="editingStructure" :components="components.data.value ?? []" @close="structureOpen = false" @saved="onStructureSaved" />

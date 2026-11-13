@@ -1,0 +1,3 @@
+CAPACITOR_DEBUG = true
+// The HRMS site the app loads (app-bound domain); release builds pass HRMS_HOST=... to xcodebuild.
+HRMS_HOST = hrms.example.com

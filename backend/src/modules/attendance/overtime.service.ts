@@ -29,8 +29,9 @@ export class OvertimeService {
   ) {}
 
   /** Keeps the overtime entry of a record in step with its punches. */
-  async sync(record: AttendanceRecord, transaction?: Transaction): Promise<void> {
-    const existing = await AttendanceOvertime.findOne({ where: { employeeId: record.employeeId, workDate: record.workDate }, transaction });
+  /** `preloaded` = the day's overtime row (or null) when the caller already loaded it; undefined = look it up. */
+  async sync(record: AttendanceRecord, transaction?: Transaction, preloaded?: AttendanceOvertime | null): Promise<void> {
+    const existing = preloaded !== undefined ? preloaded : await AttendanceOvertime.findOne({ where: { employeeId: record.employeeId, workDate: record.workDate }, transaction });
     const minutes = record.overtimeMinutes ?? 0;
     if (existing?.payrollRunId) return;
     if (!minutes) {

@@ -16,4 +16,6 @@ export const notificationsApi = {
   pushStatus: () => http.get<PushStatus>('/notifications/push'),
   subscribe: (body: { endpoint: string; keys: { p256dh: string; auth: string } }) => http.post<PushStatus>('/notifications/push/subscriptions', body),
   unsubscribe: (endpoint: string) => http.post<PushStatus>('/notifications/push/unsubscribe', { endpoint }),
+  registerApp: (body: { platform: 'ANDROID' | 'IOS'; token: string; deviceName?: string; appVersion?: string }) => http.post<PushStatus>('/notifications/push/native', body),
+  unregisterApp: (token: string) => http.post<PushStatus>('/notifications/push/native/remove', { token }),
 };

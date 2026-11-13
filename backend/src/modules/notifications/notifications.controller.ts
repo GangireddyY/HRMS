@@ -4,7 +4,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { Observable } from 'rxjs';
 import { NotificationBus } from '../../infrastructure/realtime/notification-bus';
 import { Transform, Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUrl, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUrl, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { EMAIL_DIGESTS, type EmailDigest } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AllowRestrictedSession, Authenticated, CurrentAuth } from '../../common/auth/decorators';
@@ -103,6 +103,17 @@ class PushEndpointDto {
   @ApiProperty() @IsString() @MaxLength(1000) endpoint: string;
 }
 
+class NativePushTokenDto {
+  @ApiProperty({ enum: ['ANDROID', 'IOS'] }) @IsIn(['ANDROID', 'IOS']) platform: 'ANDROID' | 'IOS';
+  @ApiProperty({ description: 'Firebase Cloud Messaging registration token' }) @IsString() @Matches(/^[\w:.-]{20,4096}$/) token: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) deviceName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) appVersion?: string;
+}
+
+class NativeTokenDto {
+  @ApiProperty() @IsString() @MaxLength(4096) token: string;
+}
+
 @ApiTags('Notifications')
 @ApiBearerAuth()
 @AllowRestrictedSession()
@@ -150,6 +161,20 @@ export class NotificationsController {
   @HttpCode(200)
   unsubscribe(@CurrentAuth() auth: AuthContext, @Body() dto: PushEndpointDto) {
     return this.push.unsubscribe(auth.userId, dto.endpoint);
+  }
+
+  @Post('push/native')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'The phone app registers its Firebase token for your notifications' })
+  registerNative(@CurrentAuth() auth: AuthContext, @Body() dto: NativePushTokenDto) {
+    return this.push.registerNative(auth.userId, dto);
+  }
+
+  @Post('push/native/remove')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'The phone app stops receiving your notifications (on sign-out)' })
+  unregisterNative(@CurrentAuth() auth: AuthContext, @Body() dto: NativeTokenDto) {
+    return this.push.unregisterNative(auth.userId, dto.token);
   }
 
   @Post('whatsapp/verify')

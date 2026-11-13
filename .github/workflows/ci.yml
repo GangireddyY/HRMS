@@ -128,8 +128,8 @@ jobs:
           grep -q '^Executed (0):' <<<"$status" || { echo "::error::Migrations still applied after full rollback"; exit 1; }
           npm run db:migrate
 
-      - name: Backend unit tests
-        run: npm --prefix backend run test
+      - name: Backend unit tests (with coverage gate)
+        run: npm --prefix backend run test:cov -- --coverageReporters=text-summary
 
       - name: Backend integration tests (PostgreSQL)
         run: npm --prefix backend run test:e2e
@@ -142,8 +142,8 @@ jobs:
             -e MIGRATIONS_DIR=backend/src/database/migrations \
             postgres:17-alpine sh -c 'dump=$(sh scripts/db-backup.sh /tmp/backups) && sh scripts/db-restore-verify.sh "$dump"'
 
-      - name: Frontend unit tests
-        run: npm --prefix frontend run test
+      - name: Frontend unit tests (with coverage gate)
+        run: npm --prefix frontend run test:cov
 
       - name: Build
         run: |
@@ -164,6 +164,61 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 7
+
+  android:
+    # The store app: the Capacitor Android project compiles (unsigned debug APK).
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: npm ci --prefix frontend
+      - name: Sync the native project
+        working-directory: frontend
+        env:
+          HRMS_APP_URL: https://hrms.example.com
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon -PHRMS_HOST=hrms.example.com
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hrms-android-debug
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+
+  ios:
+    # The store app: the Capacitor iOS project compiles for the simulator (no signing). macOS minutes: main only.
+    if: github.event_name == 'push'
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --prefix frontend
+      - name: Sync the native project
+        working-directory: frontend
+        env:
+          HRMS_APP_URL: https://hrms.example.com
+        run: npx cap sync ios
+      - name: Build for the simulator
+        working-directory: frontend/ios/App
+        run: xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug build CODE_SIGNING_ALLOWED=NO HRMS_HOST=hrms.example.com
 
   docker:
     runs-on: ubuntu-latest

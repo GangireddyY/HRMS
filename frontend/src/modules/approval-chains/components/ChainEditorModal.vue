@@ -97,7 +97,7 @@ async function save() {
 </script>
 
 <template>
-  <AppModal :open="open" :title="chain ? 'Edit approval chain' : 'New approval chain'" description="Steps run in order; anyone listed for the current step can decide. Requests already in progress keep the chain they started with." size="lg" @close="emit('close')">
+  <AppModal :open="open" :title="chain ? 'Edit approval chain' : 'New approval chain'" description="Steps run in order; anyone listed for the current step who also holds this kind of request's approve permission can decide (a step with nobody like that is skipped). Requests already in progress keep the chain they started with." size="lg" @close="emit('close')">
     <form id="chain-editor" class="space-y-6" @submit.prevent="save">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
       <div class="grid gap-4 sm:grid-cols-2">

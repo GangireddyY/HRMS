@@ -1,4 +1,4 @@
-import { ApprovalInstance, LeaveLedgerEntry, Notification } from '../src/database/models';
+import { ApprovalInstance, LeaveLedgerEntry, MembershipRole, Notification, Permission, Role, RolePermission } from '../src/database/models';
 import { ApprovalSlaJob } from '../src/modules/approvals/approval-sla.job';
 import { API, RAW, TestContext, addMember, bearer, createOrgWithAdmin, createTestApp, createUser, login, orgToday, resetDatabase, uniqueEmail } from './helpers';
 import { addDays } from '../src/common/utils/zoned-time';
@@ -42,11 +42,35 @@ describe('Approval chains (e2e)', () => {
     return { ...org, h, hr, manager, ravi, asha, type };
   }
 
+  /** Gives the person a role with just this approve permission (team scope) and signs them in again. */
+  async function grant(orgId: string, p: { membership: { id: string }; user: { email: string }; h: Record<string, string> }, key: string) {
+    const roleKey = `approver_${key.replace(/\W/g, '_')}`;
+    let role = await Role.findOne({ where: { organizationId: orgId, key: roleKey }, ...RAW });
+    if (!role) {
+      role = await Role.create({ organizationId: orgId, key: roleKey, name: `Approver (${key})` }, RAW);
+      const permission = (await Permission.findOne({ where: { key }, ...RAW }))!;
+      await RolePermission.create({ organizationId: orgId, roleId: role.id, permissionId: permission.id, scope: 'TEAM' }, RAW);
+    }
+    const link = await MembershipRole.create({ organizationId: orgId, membershipId: p.membership.id, roleId: role.id }, RAW);
+    p.h = bearer((await login(ctx, p.user.email)).accessToken);
+    return link;
+  }
+
+  /** A chain naming someone without the approve permission is refused. */
+  async function refusesUnentitled(h: Record<string, string>, subject: string, membershipId: string) {
+    const res = await ctx.http().post(`${API}/approvals/chains`).set(h).send({ subject, name: 'Named', steps: [{ label: 'Named', approver: 'USER', membershipId }] });
+    expect(res.status).toBe(422);
+    expect(JSON.stringify(res.body.error)).toMatch(/permission/);
+  }
+
   it('routes leave through a configured chain: steps in order, outside-scope approvers, rejection', async () => {
     const s = await setup();
     // Configuring chains needs approvals.configure; steps are validated.
     expect((await ctx.http().get(`${API}/approvals/chains`).set(s.asha.h)).status).toBe(403);
     expect((await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({ subject: 'LEAVE', name: 'Bad', steps: [{ label: 'HR', approver: 'PERMISSION' }] })).status).toBe(422);
+    // A named approver must hold the leave approve permission (any scope).
+    await refusesUnentitled(s.h, 'LEAVE', s.ravi.membership.id);
+    const raviRole = await grant(s.organization.id, s.ravi, 'leave.approve');
     const created = await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
       subject: 'LEAVE',
       name: 'Long leave',
@@ -83,8 +107,14 @@ describe('Approval chains (e2e)', () => {
     expect((await team(s.hr.h)).find((r) => r.id === long.id)?.canApprove).toBe(true);
     await ctx.http().post(`${API}/leave/requests/${long.id}/approve`).set(s.hr.h).send({});
 
-    // The named person decides the last step even without any leave permission.
+    // The named person decides the last step for someone outside their team; losing the permission stops them.
     expect((await team(s.ravi.h)).map((r) => r.id)).toEqual([long.id]);
+    await MembershipRole.destroy({ where: { id: raviRole.id }, ...RAW });
+    s.ravi.h = bearer((await login(ctx, s.ravi.user.email)).accessToken);
+    expect((await ctx.http().post(`${API}/leave/requests/${long.id}/approve`).set(s.ravi.h).send({})).status).toBe(403);
+    expect((await ctx.http().get(`${API}/approvals/waiting`).set(s.ravi.h)).body.data).toEqual([]);
+    await MembershipRole.create({ organizationId: s.organization.id, membershipId: s.ravi.membership.id, roleId: raviRole.roleId }, RAW);
+    s.ravi.h = bearer((await login(ctx, s.ravi.user.email)).accessToken);
     const done = (await ctx.http().post(`${API}/leave/requests/${long.id}/approve`).set(s.ravi.h).send({})).body.data;
     expect(done.status).toBe('APPROVED');
     expect(done.approval.chain.decisions.map((d: { decision: string }) => d.decision)).toEqual(['APPROVED', 'APPROVED', 'APPROVED']);
@@ -105,6 +135,8 @@ describe('Approval chains (e2e)', () => {
       await ctx.http().post(`${API}/employees`).set(s.h).send({ firstName: user.firstName, lastName: 'Person', dateOfJoining: '2020-01-06', membershipId: membership.id });
       return { user, membership, h: bearer((await login(ctx, user.email)).accessToken) };
     })();
+    await refusesUnentitled(s.h, 'EXPENSE', s.ravi.membership.id);
+    await grant(s.organization.id, s.ravi, 'payroll.reimbursement.approve');
     await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
       subject: 'EXPENSE',
       name: 'Large claims',
@@ -131,13 +163,13 @@ describe('Approval chains (e2e)', () => {
     const financeQueue = (await ctx.http().get(`${API}/payroll/reimbursements?view=approve`).set(finance.h)).body.data as { id: string; permissions: { review: boolean } }[];
     expect(financeQueue.find((c) => c.id === big.id)?.permissions.review).toBe(true);
     expect((await pay(finance.h)).body.data.chain.currentStep).toBe(2);
-    // The named budget owner (an employee without claim permissions) can open and approve it.
+    // The named budget owner (claim approver for their own team only) can open and approve it.
     expect((await ctx.http().get(`${API}/payroll/reimbursements/${big.id}`).set(s.ravi.h)).status).toBe(200);
     const done = (await pay(s.ravi.h)).body.data;
     expect(done.status).toBe('APPROVED');
     expect(done.chain.decisions).toHaveLength(3);
-    // Once settled, the named approver has no claim rights left.
-    expect((await pay(s.ravi.h)).status).toBe(403);
+    // Once settled, the named approver has no rights over the claim (outside their team, it isn't even visible).
+    expect((await pay(s.ravi.h)).status).toBe(404);
     expect((await pay(s.manager.h)).status).toBe(409);
   });
 
@@ -163,6 +195,8 @@ describe('Approval chains (e2e)', () => {
 
   it('routes expensive travel through the manager and a named approver', async () => {
     const s = await setup();
+    await refusesUnentitled(s.h, 'TRAVEL', s.ravi.membership.id);
+    await grant(s.organization.id, s.ravi, 'travel.approve');
     await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
       subject: 'TRAVEL',
       name: 'Costly trips',
@@ -180,7 +214,7 @@ describe('Approval chains (e2e)', () => {
 
     const big = (await trip(80_000)).body.data;
     expect(big.chain.steps.map((x: { label: string }) => x.label)).toEqual(['Manager', 'Budget owner']);
-    // The named approver holds no travel permission and sees nothing until it's their step.
+    // The named approver (travel approver for their own team only) sees nothing until it's their step.
     const queue = async (h: Record<string, string>) => ((await ctx.http().get(`${API}/travel/requests?view=team&status=PENDING`).set(h)).body.data as { id: string }[]).map((r) => r.id);
     expect(await queue(s.ravi.h)).toEqual([]);
     expect((await ctx.http().post(`${API}/travel/requests/${big.id}/approve`).set(s.ravi.h).send({})).status).toBe(404);
@@ -250,6 +284,10 @@ describe('Approval chains (e2e)', () => {
     const appId = candidate.applications[0].id as string;
     await ctx.http().post(`${API}/recruitment/applications/${appId}/stage`).set(recruiter.h).send({ stage: 'OFFER' });
 
+    await refusesUnentitled(s.h, 'OFFER', s.ravi.membership.id);
+    await grant(s.organization.id, s.ravi, 'recruitment.offer.approve');
+    // Department managers can't approve offers by default; the hiring manager step needs them to.
+    await grant(s.organization.id, s.manager, 'recruitment.offer.approve');
     await ctx.http().post(`${API}/approvals/chains`).set(s.h).send({
       subject: 'OFFER',
       name: 'Senior offers',
@@ -285,7 +323,7 @@ describe('Approval chains (e2e)', () => {
     await ctx.http().post(`${API}/recruitment/offers/${offer.id}/submit-approval`).set(recruiter.h);
     await decide(s.manager.h, 'approve');
     expect((await awaiting(s.ravi.h)).map((o) => o.id)).toEqual([offer.id]);
-    // The approvals summary counts it for the named approver, who holds no recruitment permission.
+    // The approvals summary counts it for the named approver.
     const summary = (await ctx.http().get(`${API}/dashboard/approvals`).set(s.ravi.h)).body.data as { key: string; count: number }[];
     expect(summary).toEqual([{ key: 'offers', count: 1 }]);
     expect((await ctx.http().get(`${API}/recruitment/offers/${offer.id}`).set(s.ravi.h)).body.data.approval.canDecide).toBe(true);

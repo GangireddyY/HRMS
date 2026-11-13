@@ -1,0 +1,7 @@
+# Run on Linux/macOS (CI, containers, git hooks): always LF, also when checked out on Windows.
+*.sh text eol=lf
+.githooks/* text eol=lf
+frontend/android/gradlew text eol=lf
+frontend/android/gradlew.bat text eol=crlf
+*.jar binary
+*.png binary

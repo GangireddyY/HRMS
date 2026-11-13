@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Op, type Transaction, type WhereOptions } from 'sequelize';
-import { APPROVAL_SUBJECT_LABELS, APPROVAL_SUBJECT_PERMISSION, type ApprovalChainConditions, type ApprovalChainStep, type ApprovalFacts, type ApprovalSubject } from '../../contracts';
+import { APPROVAL_DECIDE_PERMISSIONS, APPROVAL_SUBJECT_LABELS, APPROVAL_SUBJECT_PERMISSION, type ApprovalChainConditions, type ApprovalChainStep, type ApprovalFacts, type ApprovalSubject } from '../../contracts';
 import type { AuthContext } from '../../common/auth/auth-context';
 import { AppError } from '../../common/errors/app-error';
 import { fullName } from '../../common/utils/names';
@@ -80,8 +80,9 @@ export class ApprovalChainsService {
     // A request sent for approval again (an offer after changes) starts over; its finished round is replaced.
     await ApprovalInstance.destroy({ where: { subject, subjectId, status: { [Op.ne]: 'PENDING' } }, transaction });
     const steps: InstanceStep[] = [];
+    const entitled = await this.entitled(subject, transaction);
     for (const s of chain.steps) {
-      const approvers = (await this.resolve(s, requester, transaction)).filter((m) => m !== requester.membershipId);
+      const approvers = (await this.resolve(s, requester, transaction)).filter((m) => m !== requester.membershipId && entitled.has(m));
       // A step nobody can decide (no manager, nobody holding the permission) is skipped rather than blocking forever.
       if (approvers.length) steps.push({ label: s.label, approverMembershipIds: approvers, escalatedMembershipIds: [], slaHours: s.slaHours ?? null });
     }
@@ -116,7 +117,7 @@ export class ApprovalChainsService {
     const step = instance.steps[instance.currentStep];
     if (!step) return null;
     const allowed = [...step.approverMembershipIds, ...step.escalatedMembershipIds];
-    if (allowed.includes(auth.membershipId)) return auth.membershipId;
+    if (allowed.includes(auth.membershipId) && this.holdsDecidePermission(auth, instance.subject)) return auth.membershipId;
     const permission = APPROVAL_SUBJECT_PERMISSION[instance.subject];
     const cover = (auth.delegated ?? []).find((d) => d.permission === permission && allowed.includes(d.delegatorMembershipId));
     return cover?.delegatorMembershipId ?? null;
@@ -131,6 +132,10 @@ export class ApprovalChainsService {
     if (this.actingFor(auth, instance)) return null;
     if (instance.status !== 'PENDING') return `This request is already ${instance.status.toLowerCase()}`;
     if (instance.decisions.some((d) => d.membershipId === auth.membershipId)) return 'You already decided an earlier step of this request';
+    const step = instance.steps[instance.currentStep];
+    if (step && auth.membershipId && [...step.approverMembershipIds, ...step.escalatedMembershipIds].includes(auth.membershipId) && !this.holdsDecidePermission(auth, instance.subject)) {
+      return `Approving ${APPROVAL_SUBJECT_LABELS[instance.subject].toLowerCase()} needs the "${APPROVAL_DECIDE_PERMISSIONS[instance.subject][0]}" permission; ask an administrator`;
+    }
     return `This request is waiting for ${instance.steps[instance.currentStep]?.label ?? 'another approver'}`;
   }
 
@@ -234,7 +239,8 @@ export class ApprovalChainsService {
     const requester = instance.requesterMembershipId ? await Employee.findOne({ where: { membershipId: instance.requesterMembershipId }, attributes: ['id', 'managerId', 'departmentId', 'membershipId'] }) : null;
     const upward = requester ? await this.resolve({ label: '', approver: 'SKIP_MANAGER' }, requester) : [];
     const broad = await this.holders(APPROVAL_SUBJECT_PERMISSION[instance.subject], null, ['ORGANIZATION']);
-    const added = [...new Set([...upward, ...broad])].filter((m) => !step.approverMembershipIds.includes(m) && m !== instance.requesterMembershipId);
+    const entitled = await this.entitled(instance.subject);
+    const added = [...new Set([...upward, ...broad])].filter((m) => !step.approverMembershipIds.includes(m) && m !== instance.requesterMembershipId && entitled.has(m));
     const steps = instance.steps.map((s, i) => (i === instance.currentStep ? { ...s, escalatedMembershipIds: [...new Set([...s.escalatedMembershipIds, ...added])] } : s));
     await ApprovalInstance.update({ steps }, { where: { id: instance.id } });
     await this.audit.record({ action: 'approvals.escalated', entityType: 'ApprovalInstance', entityId: instance.id, organizationId: instance.organizationId, actorUserId: null, summary: `${APPROVAL_SUBJECT_LABELS[instance.subject]}: "${step.label}" passed its deadline and was escalated` });
@@ -272,6 +278,21 @@ export class ApprovalChainsService {
         return m ? [m.id] : [];
       }
     }
+  }
+
+  private holdsDecidePermission(auth: AuthContext, subject: ApprovalSubject): boolean {
+    return APPROVAL_DECIDE_PERMISSIONS[subject].some((p) => auth.permissions.has(p));
+  }
+
+  /** Active members holding one of the subject's approve permissions at any scope (who may be an approver at all). */
+  async entitled(subject: ApprovalSubject, transaction?: Transaction): Promise<Set<string>> {
+    const permissions = await Permission.findAll({ where: { key: [...APPROVAL_DECIDE_PERMISSIONS[subject]] }, attributes: ['id'], transaction });
+    if (!permissions.length) return new Set();
+    const grants = await RolePermission.findAll({ where: { permissionId: permissions.map((p) => p.id) }, attributes: ['roleId'], transaction });
+    if (!grants.length) return new Set();
+    const links = await MembershipRole.findAll({ where: { roleId: [...new Set(grants.map((g) => g.roleId))] }, attributes: ['membershipId'], transaction });
+    const members = await OrganizationMembership.findAll({ where: { id: [...new Set(links.map((l) => l.membershipId))], status: 'ACTIVE' }, attributes: ['id'], transaction });
+    return new Set(members.map((m) => m.id));
   }
 
   /** Active members holding the permission organization-wide, or department-wide in the requester's department. */

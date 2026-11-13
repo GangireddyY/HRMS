@@ -1,24 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Op } from 'sequelize';
+import { Op, QueryTypes, type QueryOptionsWithType } from 'sequelize';
 import { DELEGABLE_PERMISSIONS, MODULES, ModuleKey, PermissionScope, getPermission, maxScope, type DelegatedGrant } from '../../contracts';
 import { AppError } from '../../common/errors/app-error';
 import { fullName } from '../../common/utils/names';
 import { zonedParts } from '../../common/utils/zoned-time';
-import {
-  ApprovalDelegation,
-  Employee,
-  Feature,
-  MembershipRole,
-  Organization,
-  OrganizationFeature,
-  OrganizationMembership,
-  Permission,
-  Plan,
-  PlanFeature,
-  Role,
-  RolePermission,
-  User,
-} from '../../database/models';
+import { ApprovalDelegation, Employee, MembershipRole, Organization, OrganizationMembership, Permission, Role, RolePermission, User } from '../../database/models';
 
 export interface ResolvedAccess {
   organizationId: string;
@@ -56,6 +42,11 @@ export function computeEntitlements(planFeatureKeys: string[], overrides: { key:
   return new Set([...set].filter((k): k is ModuleKey => MODULES.some((m) => m.key === k)));
 }
 
+/** Flat rows read on every request; no model instances are built (they dominated the request's CPU time). */
+function select<T extends object>(sql: string, replacements: Record<string, unknown>): Promise<T[]> {
+  return Organization.sequelize!.query<T>(sql, { replacements, type: QueryTypes.SELECT, skipTenantScope: true } as QueryOptionsWithType<QueryTypes.SELECT>);
+}
+
 /**
  * Resolves a user's effective access in an organization. Runs on every authenticated request (before
  * a tenant context exists), so tenant auto-scoping is bypassed and organization filters are explicit.
@@ -63,17 +54,18 @@ export function computeEntitlements(planFeatureKeys: string[], overrides: { key:
 @Injectable()
 export class AccessService {
   async entitlements(organizationId: string): Promise<Set<ModuleKey>> {
-    const org = await Organization.findByPk(organizationId, {
-      attributes: ['id'],
-      include: [
-        { model: Plan, attributes: ['id'], include: [{ model: PlanFeature, include: [{ model: Feature, attributes: ['key'] }] }] },
-        { model: OrganizationFeature, attributes: ['enabled'], include: [{ model: Feature, attributes: ['key'] }] },
-      ],
-    });
-    if (!org) throw AppError.notFound('Organization');
+    const rows = await select<{ source: 'ORG' | 'PLAN' | 'OVERRIDE'; key: string | null; enabled: boolean }>(
+      `SELECT 'ORG' AS source, NULL AS key, true AS enabled FROM organizations WHERE id = :organizationId
+       UNION ALL
+       SELECT 'PLAN', f.key, true FROM organizations o JOIN plan_features pf ON pf.plan_id = o.plan_id JOIN features f ON f.id = pf.feature_id WHERE o.id = :organizationId
+       UNION ALL
+       SELECT 'OVERRIDE', f.key, x.enabled FROM organization_features x JOIN features f ON f.id = x.feature_id WHERE x.organization_id = :organizationId`,
+      { organizationId },
+    );
+    if (!rows.some((r) => r.source === 'ORG')) throw AppError.notFound('Organization');
     return computeEntitlements(
-      (org.plan?.features ?? []).map((f) => f.feature!.key),
-      (org.features ?? []).map((f) => ({ key: f.feature!.key, enabled: f.enabled })),
+      rows.filter((r) => r.source === 'PLAN').map((r) => r.key!),
+      rows.filter((r) => r.source === 'OVERRIDE').map((r) => ({ key: r.key!, enabled: r.enabled })),
     );
   }
 
@@ -83,28 +75,45 @@ export class AccessService {
    * honoured when the user genuinely belongs to it.
    */
   async resolve(userId: string, organizationId: string): Promise<ResolvedAccess> {
-    const membership = await OrganizationMembership.findOne({
-      where: { organizationId, userId },
-      attributes: ['id', 'status'],
-      include: [{ model: Organization, attributes: ['status', 'timezone'] }, ROLE_INCLUDE],
-      skipTenantScope: true,
-    });
+    const [[membership], grants, features] = await Promise.all([
+      select<{ id: string; status: string; organizationStatus: string; timezone: string | null }>(
+        `SELECT m.id, m.status, o.status AS "organizationStatus", o.timezone
+           FROM organization_memberships m JOIN organizations o ON o.id = m.organization_id
+          WHERE m.organization_id = :organizationId AND m.user_id = :userId`,
+        { organizationId, userId },
+      ),
+      select<{ roleId: string; roleKey: string; roleName: string; permission: string | null; scope: PermissionScope | null }>(
+        `SELECT r.id AS "roleId", r.key AS "roleKey", r.name AS "roleName", p.key AS permission, rp.scope
+           FROM organization_memberships m
+           JOIN membership_roles mr ON mr.membership_id = m.id
+           JOIN roles r ON r.id = mr.role_id
+           LEFT JOIN role_permissions rp ON rp.role_id = r.id
+           LEFT JOIN permissions p ON p.id = rp.permission_id
+          WHERE m.organization_id = :organizationId AND m.user_id = :userId`,
+        { organizationId, userId },
+      ),
+      this.entitlements(organizationId).catch((e: unknown) => e as Error),
+    ]);
 
     if (!membership) throw AppError.forbidden('You are not a member of this organization');
-    if (membership.organization?.status !== 'ACTIVE') {
+    if (membership.organizationStatus !== 'ACTIVE') {
       throw new AppError('ORGANIZATION_INACTIVE', 'This organization is not active');
     }
     if (membership.status !== 'ACTIVE') throw AppError.forbidden('Your access to this organization is not active');
+    if (features instanceof Error) throw features;
 
-    const features = await this.entitlements(organizationId);
-    const roles = (membership.roles ?? []).map((r) => r.role!);
-    const today = zonedParts(new Date(), membership.organization.timezone ?? 'UTC').date;
+    const roles = new Map<string, { id: string; key: string; name: string }>();
+    for (const g of grants) roles.set(g.roleId, { id: g.roleId, key: g.roleKey, name: g.roleName });
+    const today = zonedParts(new Date(), membership.timezone ?? 'UTC').date;
 
     return {
       organizationId,
       membershipId: membership.id,
-      roles: roles.map(({ id, key, name }) => ({ id, key, name })),
-      permissions: foldPermissions(grantsOf(membership), features),
+      roles: [...roles.values()],
+      permissions: foldPermissions(
+        grants.filter((g) => g.permission).map((g) => ({ key: g.permission!, scope: g.scope! })),
+        features,
+      ),
       features,
       delegated: await this.delegatedGrants(organizationId, membership.id, features, today),
     };

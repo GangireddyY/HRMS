@@ -110,7 +110,7 @@ export class CalendarService {
     const when = event.allDay ? (event.allDay.start === addDays(event.allDay.end, -1) ? event.allDay.start : `${event.allDay.start} to ${addDays(event.allDay.end, -1)}`) : this.formatWhen(event.start!, org?.timezone ?? 'UTC');
     for (const p of people) {
       const ics = buildCalendar([{ ...event, organizer, attendees: [p] }], { method });
-      await this.mail.queue(calendarInviteEmail(p.email, p.name.split(' ')[0] ?? p.name, { title: event.summary, when, organization: org?.name ?? '', cancelled: method === 'CANCEL' }, ics, method), { transaction });
+      await this.mail.queue(calendarInviteEmail(p.email, p.name.split(' ')[0] ?? p.name, { title: event.summary, when, organization: org?.name ?? '', cancelled: method === 'CANCEL' }, ics), { transaction });
     }
   }
 
