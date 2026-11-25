@@ -2,9 +2,8 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { onboardingApi } from '@/modules/onboarding/api/onboarding.api';
 import type { CaseDetail, ChecklistTemplate, JoinerRef } from '@/modules/onboarding/types';
-import { employeesApi } from '@/modules/people/api/people.api';
+import { usePersonSearch } from '@/modules/people/composables/use-person-search';
 import { AppAlert, AppButton, AppModal, AppSelect, AppTextarea } from '@/shared/components';
-import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 import { formatDate } from '@/shared/utils/format';
 
@@ -13,8 +12,10 @@ const emit = defineEmits<{ close: []; started: [detail: CaseDetail] }>();
 
 const { fieldErrors, formError, handle, reset } = useFormErrors();
 const saving = ref(false);
-const colleagues = useAsync(() => employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }), { immediate: false });
+const exclude = computed(() => props.employee?.id);
+const colleagues = usePersonSearch(exclude);
 const form = reactive({ templateId: '' as string, buddyId: null as string | null, notes: '' });
+watch(() => form.buddyId, (id) => colleagues.remember(id));
 
 watch(
   () => props.open,
@@ -23,7 +24,8 @@ watch(
     reset();
     const def = props.templates.find((t) => t.isDefault && t.isActive);
     Object.assign(form, { templateId: def?.id ?? (props.templates.find((t) => t.isActive)?.id ?? 'none'), buddyId: null, notes: '' });
-    if (!colleagues.data.value) void colleagues.run();
+    colleagues.pin(null);
+    colleagues.search('');
   },
   { immediate: true },
 );
@@ -32,7 +34,7 @@ const templateOptions = computed(() => [
   ...props.templates.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name, description: `${t.tasks.length} task${t.tasks.length === 1 ? '' : 's'}${t.isDefault ? ' · default' : ''}` })),
   { value: 'none', label: 'Empty checklist', description: 'Add tasks one by one' },
 ]);
-const buddyOptions = computed(() => (colleagues.data.value?.items ?? []).filter((e) => e.id !== props.employee?.id).map((e) => ({ value: e.id, label: e.fullName, description: e.designation?.name ?? e.employeeCode })));
+const buddyOptions = colleagues.options;
 
 async function start() {
   reset();
@@ -52,7 +54,7 @@ async function start() {
     <form id="start-onboarding-form" class="space-y-4" novalidate @submit.prevent="start">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
       <AppSelect v-model="form.templateId" label="Checklist" :options="templateOptions" :clearable="false" :error="fieldErrors.templateId" help="Due dates are set from the date of joining." />
-      <AppSelect v-model="form.buddyId" label="Buddy" placeholder="No buddy" :options="buddyOptions" searchable :error="fieldErrors.buddyId" help="A colleague who helps them settle in; they are notified." />
+      <AppSelect v-model="form.buddyId" label="Buddy" placeholder="No buddy" :options="buddyOptions" searchable remote :error="fieldErrors.buddyId" help="A colleague who helps them settle in; they are notified." @search="colleagues.search" />
       <AppTextarea v-model="form.notes" label="Notes for HR" :rows="2" :maxlength="1000" />
     </form>
     <template #footer>

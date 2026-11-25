@@ -131,7 +131,7 @@ export const WORKSPACES: Workspace[] = [
     icon: Server,
     home: '/platform',
     access: { platform: 'platform.organizations.view' },
-    mobileTabs: [{ to: '/platform', label: 'Overview' }, { to: '/platform/organizations', label: 'Tenants' }, { to: '/platform/plans', label: 'Plans' }, { to: '/platform/audit-logs', label: 'Audit' }],
+    mobileTabs: [{ to: '/platform', label: 'Overview' }, { to: '/platform/organizations', label: 'Tenants' }, { to: '/platform/billing', label: 'Billing' }, { to: '/platform/plans', label: 'Plans' }, { to: '/platform/audit-logs', label: 'Audit' }],
     sections: [
       { items: [{ label: 'Dashboard', to: '/platform', icon: LayoutDashboard, exact: true }] },
       {
@@ -216,6 +216,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Employees', to: '/hr/employees', icon: Users, access: { permissions: ['employee.view'], scope: 'TEAM' } },
           { label: 'Org chart', to: '/hr/org-chart', icon: Network, access: { permissions: ['employee.view'], scope: 'TEAM' } },
           { label: 'Document expiry', to: '/hr/documents/expiring', icon: FileWarning, access: { permissions: ['employee.document.manage'] } },
+          { label: 'Bank changes', to: '/hr/employees/bank-changes', icon: Landmark, access: { permissions: ['employee.sensitive.view'] } },
           { label: 'Bulk import', to: '/hr/imports', icon: Upload, access: { permissions: IMPORT_PERMISSIONS } },
         ],
       },
@@ -262,6 +263,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Payroll runs', to: '/hr/payroll/runs', icon: Banknote, access: { permissions: ['payroll.view'], feature: 'payroll' } },
           { label: 'Salaries', to: '/hr/payroll/salaries', icon: Wallet, access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } },
+          { label: 'Salary revisions', to: '/hr/payroll/salary-revisions', icon: BadgeCheck, access: { permissions: ['employee.salary.view'], scope: 'TEAM', feature: 'payroll' } },
           { label: 'Reimbursements', to: '/hr/payroll/reimbursements', icon: Receipt, access: { permissions: ['payroll.reimbursement.approve', 'payroll.reimbursement.finance', 'payroll.view'], scope: 'TEAM', feature: 'payroll' } },
           { label: 'Loans & advances', to: '/hr/payroll/loans', icon: HandCoins, access: { permissions: ['payroll.loan.approve', 'payroll.loan.manage', 'payroll.view'], feature: 'payroll' } },
           { label: 'Tax proofs & returns', to: '/hr/payroll/tax', icon: FileCheck2, access: { permissions: ['payroll.process'], feature: 'payroll' } },
@@ -354,6 +356,7 @@ export const WORKSPACES: Workspace[] = [
         items: [
           { label: 'Home', to: '/me', icon: Home, exact: true, access: { tenant: true } },
           { label: 'Company', to: '/me/engagement', icon: Megaphone, access: { permissions: ['engagement.view'], feature: 'engagement' } },
+          { label: 'Suggestions', to: '/me/engagement/suggestions', icon: Lightbulb, access: { permissions: ['engagement.view'], feature: 'engagement' } },
         ],
       },
       {

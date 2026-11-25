@@ -70,6 +70,30 @@ describe('workspaces', () => {
     expect(homePath(superAdmin)).toBe('/platform');
   });
 
+  it('puts suggestions in My Workspace and billing on the platform phone tabs', () => {
+    const me = WORKSPACES.find((w) => w.key === 'me')!;
+    const viewer = subject({ 'engagement.view': 'ORGANIZATION' }, { features: ['core', 'employee', 'engagement'] });
+    const labels = visibleSections(me, viewer).flatMap((s) => s.items.map((i) => i.label));
+    expect(labels).toContain('Suggestions');
+    const platform = WORKSPACES.find((w) => w.key === 'platform')!;
+    expect(platform.mobileTabs.map((t) => t.to)).toContain('/platform/billing');
+  });
+
+  it('lists bank account changes for people who can see sensitive employee details', () => {
+    const hr = WORKSPACES.find((w) => w.key === 'hr')!;
+    const viewer = subject({ 'employee.sensitive.view': 'ORGANIZATION' });
+    const labels = visibleSections(hr, viewer).flatMap((s) => s.items.map((i) => i.label));
+    expect(labels).toContain('Bank changes');
+  });
+
+  it('lists salary revisions next to salaries for team salary viewers', () => {
+    const hr = WORKSPACES.find((w) => w.key === 'hr')!;
+    const viewer = subject({ 'employee.salary.view': 'TEAM' }, { features: ['core', 'employee', 'payroll'] });
+    const labels = visibleSections(hr, viewer).flatMap((s) => s.items.map((i) => i.label));
+    expect(labels).toContain('Salary revisions');
+    expect(labels.indexOf('Salary revisions')).toBe(labels.indexOf('Salaries') + 1);
+  });
+
   it('opens the HR workspace only with team-or-wider HR permissions', () => {
     expect(accessibleWorkspaces(subject({ 'leave.approve': 'TEAM' })).some((w) => w.key === 'hr')).toBe(true);
     expect(accessibleWorkspaces(subject({ 'leave.view': 'OWN' })).some((w) => w.key === 'hr')).toBe(false);

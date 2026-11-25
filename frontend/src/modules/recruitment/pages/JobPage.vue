@@ -115,20 +115,39 @@ const visible = computed(() => {
       (!q || [a.candidate.name, a.candidate.email, a.candidate.currentTitle, a.candidate.currentCompany].some((v) => v?.toLowerCase().includes(q))),
   );
 });
+function byScore(a: ApplicationCard, b: ApplicationCard) {
+  if (a.averageRating === null && b.averageRating === null) return 0;
+  if (a.averageRating === null) return 1;
+  if (b.averageRating === null) return -1;
+  return b.averageRating - a.averageRating;
+}
 const byStage = computed(() => {
   const m = new Map<ApplicationStage, ApplicationCard[]>();
   for (const a of visible.value) m.set(a.stage, [...(m.get(a.stage) ?? []), a]);
+  for (const [stage, rows] of m) m.set(stage, [...rows].sort(byScore));
   return m;
 });
 const closedCount = computed(() => items.value.filter((a) => CLOSED.includes(a.stage)).length);
 const columnsShown = computed(() => [...ACTIVE, ...(showClosed.value ? CLOSED : [])]);
-const listRows = computed(() => visible.value.filter((a) => showClosed.value || isActive(a)));
+const listSort = ref('rating:desc');
+const listRows = computed(() => {
+  const rows = visible.value.filter((a) => showClosed.value || isActive(a));
+  const [field, dir] = listSort.value.split(':');
+  if (field !== 'rating') return rows;
+  const sign = dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    if (a.averageRating === null && b.averageRating === null) return 0;
+    if (a.averageRating === null) return 1;
+    if (b.averageRating === null) return -1;
+    return (a.averageRating - b.averageRating) * sign;
+  });
+});
 const listColumns: TableColumn<ApplicationCard>[] = [
   { key: 'candidate', label: 'Candidate' },
   { key: 'stage', label: 'Stage' },
   { key: 'source', label: 'Source' },
   { key: 'experience', label: 'Experience', align: 'right' },
-  { key: 'rating', label: 'Rating' },
+  { key: 'rating', label: 'Rating', sortField: 'rating' },
   { key: 'next', label: 'Next interview' },
   { key: 'age', label: 'In stage', align: 'right' },
 ];
@@ -295,7 +314,7 @@ const hiredPct = computed(() => {
                 v-for="s in columnsShown"
                 :key="s"
                 role="listitem"
-                :aria-label="`${STAGE_LABELS[s]}, ${byStage.get(s)?.length ?? 0} candidates`"
+                :aria-label="`${STAGE_LABELS[s]}, ${byStage.get(s)?.length ?? 0} candidates, highest scorecard first`"
                 :class="['flex min-h-[55vh] min-w-64 flex-1 basis-0 flex-col rounded-xl border border-line p-2.5', CLOSED.includes(s) ? 'bg-surface-muted/25' : 'bg-surface-muted/50']"
               >
                 <header class="mb-2.5 flex items-center gap-2 px-1">
@@ -314,7 +333,7 @@ const hiredPct = computed(() => {
 
             <!-- List -->
             <section v-else class="card overflow-hidden">
-              <AppDataTable :columns="listColumns" :rows="listRows" :grid="false" clickable caption="Candidates in this job" empty-title="No candidates" @row-click="open">
+              <AppDataTable v-model:sort="listSort" :columns="listColumns" :rows="listRows" :grid="false" clickable caption="Candidates in this job" empty-title="No candidates" @row-click="open">
                 <template #cell-candidate="{ row }">
                   <div class="flex items-center gap-3">
                     <AppAvatar :name="row.candidate.name" size="sm" />

@@ -12,6 +12,7 @@ import {
   Hash,
   LayoutGrid,
   Mail,
+  Receipt,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -255,8 +256,9 @@ const tabs = computed(() => [
               <li class="inline-flex items-center gap-1.5"><UsersRound :size="13" aria-hidden="true" />{{ num(activeUsers) }} active {{ activeUsers === 1 ? 'user' : 'users' }}</li>
             </ul>
           </div>
-          <div v-if="canManage && org.data.value.status !== 'ACTIVE'" class="flex flex-wrap items-center gap-2">
-            <AppButton :icon="RotateCcw" :loading="busy === 'activate'" @click="changeStatus('activate')">Activate</AppButton>
+          <div class="flex flex-wrap items-center gap-2">
+            <AppButton variant="secondary" :icon="Receipt" :to="`/platform/billing/${id}`">Billing</AppButton>
+            <AppButton v-if="canManage && org.data.value.status !== 'ACTIVE'" :icon="RotateCcw" :loading="busy === 'activate'" @click="changeStatus('activate')">Activate</AppButton>
           </div>
         </div>
       </section>

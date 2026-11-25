@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { ArrowLeft, ArrowRight, KeyRound, Mail } from '@lucide/vue';
 import { authApi } from '@/modules/auth/api/auth.api';
 import { AppAlert, AppButton, AppInput } from '@/shared/components';
@@ -9,9 +9,14 @@ const email = ref('');
 const sent = ref(false);
 const submitting = ref(false);
 const { fieldErrors, formError, handle, reset } = useFormErrors();
+const emailOk = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()));
 
 async function submit() {
   reset();
+  if (!emailOk.value) {
+    fieldErrors.value = { email: email.value.trim() ? 'Enter a valid email address' : 'Enter your work email' };
+    return;
+  }
   submitting.value = true;
   try {
     await authApi.forgotPassword(email.value);
@@ -40,7 +45,7 @@ async function submit() {
     <form v-else class="mt-4 space-y-5" novalidate @submit.prevent="submit">
       <AppAlert v-if="formError">{{ formError }}</AppAlert>
       <AppInput v-model="email" label="Work email" type="email" autocomplete="email" size="lg" :icon="Mail" placeholder="you@company.com" :error="fieldErrors.email" />
-      <AppButton type="submit" block size="lg" :icon-right="ArrowRight" :loading="submitting" :disabled="!email">Send reset link</AppButton>
+      <AppButton type="submit" block size="lg" :icon-right="ArrowRight" :loading="submitting" :disabled="!emailOk">Send reset link</AppButton>
     </form>
   </div>
 </template>

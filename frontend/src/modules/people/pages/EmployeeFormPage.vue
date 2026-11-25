@@ -5,6 +5,7 @@ import { Briefcase, Building2, Check, CircleAlert, HeartPulse, Info, KeyRound, M
 import type { BloodGroup, EmploymentType, Gender, MaritalStatus } from '@contracts';
 import { attendanceApi } from '@/modules/attendance/api/attendance.api';
 import { employeesApi, structureApi } from '@/modules/people/api/people.api';
+import { usePersonSearch } from '@/modules/people/composables/use-person-search';
 import type { EmployeeInput } from '@/modules/people/types';
 import { relativeDays } from '@/modules/people/utils/dates';
 import { EMPLOYMENT_TYPE_LABELS, bloodGroupOptions, employmentTypeOptions, genderOptions, maritalStatusOptions } from '@/modules/people/utils/labels';
@@ -33,7 +34,8 @@ const designations = useAsync(() => structureApi.designations());
 const locations = useAsync(() => structureApi.locations());
 const grades = useAsync(() => structureApi.grades());
 const costCenters = useAsync(() => structureApi.costCenters());
-const managers = useAsync(() => employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }));
+const { options: managerOptions, search: searchManagers, remember: rememberManager } = usePersonSearch(id);
+searchManagers('');
 const linkable = useAsync(() => (auth.can('employee.create') ? employeesApi.linkableMembers() : Promise.resolve([])));
 const shifts = useAsync(() => (auth.hasFeature('attendance') ? attendanceApi.shifts() : Promise.resolve([])));
 
@@ -68,6 +70,7 @@ const form = reactive({
   nationality: null as string | null,
   noticePeriodDays: '' as string | number,
 });
+watch(() => form.managerId, (managerId) => rememberManager(managerId));
 /** An empty permanent address means "the same as the current one". */
 const sameAddress = ref(true);
 watch(sameAddress, (same) => same && (form.permanentAddress = ''));
@@ -127,7 +130,6 @@ const gradeOptions = computed(() => active(grades.data.value));
 const costCenterOptions = computed(() => (costCenters.data.value ?? []).filter((c) => c.isActive).map((c) => ({ value: c.id, label: `${c.code} – ${c.name}` })));
 const shiftOptions = computed(() => (shifts.data.value ?? []).filter((s) => s.isActive || s.id === form.shiftId).map((s) => ({ value: s.id, label: s.name, description: `${s.startTime}–${s.endTime}` })));
 const defaultShift = computed(() => shifts.data.value?.find((s) => s.isDefault));
-const managerOptions = computed(() => (managers.data.value?.items ?? []).filter((m) => m.id !== id.value).map((m) => ({ value: m.id, label: `${m.fullName} (${m.employeeCode})`, description: m.designation?.name })));
 const accountOptions = computed(() => {
   const rows = (linkable.data.value ?? []).map((m) => ({ value: m.membershipId, label: `${m.firstName} ${m.lastName}`, description: m.email }));
   const linked = existing.data.value?.account;
@@ -321,7 +323,7 @@ const previewRole = computed(() => {
             <AppSelect v-model="form.departmentId" label="Department" placeholder="None" :options="departmentOptions" :error="fieldErrors.departmentId" />
             <AppSelect v-model="form.designationId" label="Designation" placeholder="None" :options="designationOptions" :error="fieldErrors.designationId" />
             <AppSelect v-model="form.locationId" label="Location" placeholder="None" :options="locationOptions" :error="fieldErrors.locationId" />
-            <AppSelect v-model="form.managerId" label="Reports to" placeholder="No manager" :options="managerOptions" searchable help="Their direct line manager." :error="fieldErrors.managerId" />
+            <AppSelect v-model="form.managerId" label="Reports to" placeholder="No manager" :options="managerOptions" searchable remote help="Their direct line manager. Search if they are not listed." :error="fieldErrors.managerId" @search="searchManagers" />
             <AppSelect v-model="form.gradeId" label="Grade" placeholder="None" :options="gradeOptions" :error="fieldErrors.gradeId" />
             <AppSelect v-model="form.costCenterId" label="Cost center" placeholder="None" :options="costCenterOptions" searchable :error="fieldErrors.costCenterId" />
           </div>

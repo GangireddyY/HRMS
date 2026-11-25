@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { CalendarDays, CalendarPlus, Check, CheckCircle2, CircleSlash, ClipboardCheck, FileText, Flag, Hourglass, LifeBuoy, ListChecks, MessagesSquare, Quote, UsersRound, XCircle } from '@lucide/vue';
+import { CalendarDays, CalendarPlus, Check, CheckCircle2, CircleSlash, ClipboardCheck, FileText, Flag, Hourglass, LifeBuoy, ListChecks, MessagesSquare, Pencil, Plus, Quote, Trash2, UsersRound, XCircle } from '@lucide/vue';
 import { PIP_PROGRESS, type PipProgress } from '@contracts';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import type { PipDetail } from '@/modules/performance/types';
 import { PIP_PROGRESS_LABELS, PIP_STATUS_LABELS, pipProgressTone, pipTone } from '@/modules/performance/utils/performance-format';
 import { daysBetween, pct, plural, relativeDay, todayIso } from '@/modules/performance/utils/performance-ops';
-import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppModal, AppPageHeader, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
+import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppCheckbox, AppDatePicker, AppErrorState, AppInput, AppModal, AppPageHeader, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDate } from '@/shared/utils/format';
@@ -42,6 +42,20 @@ async function saveCheckIn() {
   await act('checkin', () => performanceApi.checkIn(id.value, { checkInDate: checkIn.date!, progress: checkIn.progress, note: checkIn.note }), 'Check-in recorded');
 }
 const extendOpen = ref(false);
+const editOpen = ref(false);
+const editForm = reactive({ reason: '', objectives: [] as { title: string; measure: string }[] });
+const canSaveEdit = computed(() => editForm.reason.trim().length >= 10 && editForm.objectives.length > 0 && editForm.objectives.every((o) => o.title.trim().length >= 3));
+function openEdit() {
+  const plan = p.value;
+  if (!plan) return;
+  editForm.reason = plan.reason;
+  editForm.objectives = plan.objectives.map((o) => ({ title: o.title, measure: o.measure ?? '' }));
+  editOpen.value = true;
+}
+async function saveEdit() {
+  editOpen.value = false;
+  await act('edit', () => performanceApi.updatePip(id.value, { reason: editForm.reason.trim(), objectives: editForm.objectives.map((o) => ({ title: o.title.trim(), measure: o.measure.trim() || null })) }), 'Plan updated');
+}
 const newEnd = ref<string | undefined>(undefined);
 const closeOpen = ref(false);
 const outcome = reactive({ value: 'SUCCESSFUL' as 'SUCCESSFUL' | 'UNSUCCESSFUL' | 'CANCELLED', note: '', met: [] as boolean[] });
@@ -109,6 +123,7 @@ const stats = computed(() => {
         <template #actions>
           <template v-if="p.permissions.manage">
             <AppButton variant="ghost" :icon="CircleSlash" @click="openClose('CANCELLED')">Cancel plan</AppButton>
+            <AppButton v-if="p.status === 'ACTIVE'" variant="secondary" :icon="Pencil" @click="openEdit">Edit plan</AppButton>
             <AppButton variant="secondary" :icon="CalendarDays" @click="newEnd = p.endDate; extendOpen = true">Change end date</AppButton>
             <AppButton variant="secondary" :icon="CalendarPlus" @click="openCheckIn">Add check-in</AppButton>
             <AppButton variant="secondary" :icon="XCircle" @click="openClose('UNSUCCESSFUL')">Not met</AppButton>
@@ -289,6 +304,27 @@ const stats = computed(() => {
         <template #footer>
           <AppButton variant="secondary" @click="checkInOpen = false">Cancel</AppButton>
           <AppButton :loading="busy === 'checkin'" :disabled="!checkIn.date || checkIn.note.trim().length < 5" @click="saveCheckIn">Save</AppButton>
+        </template>
+      </AppModal>
+
+      <AppModal :open="editOpen && !!p" title="Edit plan" description="Reason and objectives can change while the plan is active. The employee sees the update." size="md" @close="editOpen = false">
+        <div class="space-y-4">
+          <AppTextarea v-model="editForm.reason" label="Why this plan" required :rows="3" :maxlength="2000" />
+          <div>
+            <p class="label">Objectives</p>
+            <ul class="space-y-2">
+              <li v-for="(o, i) in editForm.objectives" :key="i" class="grid items-start gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <AppInput v-model="o.title" :aria-label="`Objective ${i + 1}`" placeholder="Objective" :maxlength="200" />
+                <AppInput v-model="o.measure" :aria-label="`Objective ${i + 1} measure`" placeholder="How it will be measured" :maxlength="500" />
+                <AppButton variant="ghost" :icon="Trash2" :disabled="editForm.objectives.length === 1" :aria-label="`Remove objective ${i + 1}`" @click="editForm.objectives.splice(i, 1)" />
+              </li>
+            </ul>
+            <AppButton class="mt-2" size="sm" variant="secondary" :icon="Plus" :disabled="editForm.objectives.length >= 10" @click="editForm.objectives.push({ title: '', measure: '' })">Add objective</AppButton>
+          </div>
+        </div>
+        <template #footer>
+          <AppButton variant="secondary" @click="editOpen = false">Cancel</AppButton>
+          <AppButton :loading="busy === 'edit'" :disabled="!canSaveEdit" @click="saveEdit">Save</AppButton>
         </template>
       </AppModal>
 

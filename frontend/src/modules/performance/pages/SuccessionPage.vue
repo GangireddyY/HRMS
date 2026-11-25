@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { GitBranchPlus, Pencil, Plus, ShieldAlert, ShieldCheck, ShieldQuestion, Trash2, UserPlus, Users } from '@lucide/vue';
+import { ChevronDown, ChevronUp, GitBranchPlus, Pencil, Plus, ShieldAlert, ShieldCheck, ShieldQuestion, Trash2, UserPlus, Users } from '@lucide/vue';
 import { SUCCESSION_LEVEL_LABELS, SUCCESSION_LEVELS, SUCCESSOR_READINESS, SUCCESSOR_READINESS_LABELS, type BenchStrength, type SuccessionLevel, type SuccessionPlanView, type SuccessorReadiness } from '@contracts';
 import { useAuthStore } from '@/core/auth/auth.store';
-import { employeesApi } from '@/modules/people/api/people.api';
+import { employeesApi, structureApi } from '@/modules/people/api/people.api';
 import { performanceApi } from '@/modules/performance/api/performance.api';
 import { AppAlert, AppBadge, AppButton, AppDatePicker, AppEmptyState, AppErrorState, AppInput, AppModal, AppPageHeader, AppSelect, AppSkeleton, AppStatStrip, AppTextarea, type StripItem } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
@@ -52,17 +52,19 @@ function search(q: string) {
   }, 250);
 }
 
+const departments = useAsync(() => structureApi.departments());
+const departmentOptions = computed(() => (departments.data.value ?? []).filter((d) => d.isActive).map((d) => ({ value: d.id, label: d.name })));
 const LEVELS = SUCCESSION_LEVELS.map((l) => ({ value: l, label: SUCCESSION_LEVEL_LABELS[l] }));
 const READINESS = SUCCESSOR_READINESS.map((r) => ({ value: r, label: SUCCESSOR_READINESS_LABELS[r] }));
 
 // Plan editor.
 const planModal = ref(false);
 const editing = ref<SuccessionPlanView | null>(null);
-const planForm = reactive({ title: '', incumbentEmployeeId: null as string | null, criticality: 'HIGH' as SuccessionLevel, riskOfLoss: 'MEDIUM' as SuccessionLevel, reviewBy: undefined as string | undefined, notes: '' });
+const planForm = reactive({ title: '', incumbentEmployeeId: null as string | null, departmentId: null as string | null, criticality: 'HIGH' as SuccessionLevel, riskOfLoss: 'MEDIUM' as SuccessionLevel, reviewBy: undefined as string | undefined, notes: '' });
 function openPlan(p: SuccessionPlanView | null) {
   reset();
   editing.value = p;
-  Object.assign(planForm, { title: p?.title ?? '', incumbentEmployeeId: p?.incumbent?.id ?? null, criticality: p?.criticality ?? 'HIGH', riskOfLoss: p?.riskOfLoss ?? 'MEDIUM', reviewBy: p?.reviewBy ?? undefined, notes: p?.notes ?? '' });
+  Object.assign(planForm, { title: p?.title ?? '', incumbentEmployeeId: p?.incumbent?.id ?? null, departmentId: p?.department?.id ?? null, criticality: p?.criticality ?? 'HIGH', riskOfLoss: p?.riskOfLoss ?? 'MEDIUM', reviewBy: p?.reviewBy ?? undefined, notes: p?.notes ?? '' });
   people.value = p?.incumbent ? [{ value: p.incumbent.id, label: p.incumbent.name }] : [];
   search('');
   planModal.value = true;
@@ -72,7 +74,7 @@ async function savePlan() {
   reset();
   busy.value = true;
   try {
-    await performanceApi.saveSuccessionPlan({ title: planForm.title, incumbentEmployeeId: planForm.incumbentEmployeeId, departmentId: null, criticality: planForm.criticality, riskOfLoss: planForm.riskOfLoss, notes: planForm.notes || null, reviewBy: planForm.reviewBy ?? null }, editing.value?.id);
+    await performanceApi.saveSuccessionPlan({ title: planForm.title, incumbentEmployeeId: planForm.incumbentEmployeeId, departmentId: planForm.departmentId, criticality: planForm.criticality, riskOfLoss: planForm.riskOfLoss, notes: planForm.notes || null, reviewBy: planForm.reviewBy ?? null }, editing.value?.id);
     planModal.value = false;
     feedback.success(editing.value ? 'Plan updated' : 'Plan created');
     await data.run();
@@ -120,6 +122,40 @@ async function setReadiness(p: SuccessionPlanView, id: string, readiness: Succes
     feedback.error('Could not update readiness', e);
   }
 }
+async function moveRank(p: SuccessionPlanView, index: number, dir: -1 | 1) {
+  const order = [...p.successors];
+  const swap = order[index + dir];
+  if (!order[index] || !swap) return;
+  [order[index], order[index + dir]] = [swap, order[index]!];
+  try {
+    for (let i = 0; i < order.length; i++) {
+      if (order[i]!.rank !== i + 1) await performanceApi.updateSuccessor(p.id, order[i]!.id, { rank: i + 1 });
+    }
+    await data.run();
+  } catch (e) {
+    feedback.error('Could not change the order', e);
+  }
+}
+const notesFor = ref<{ planId: string; id: string; name: string } | null>(null);
+const notesText = ref('');
+function openNotes(p: SuccessionPlanView, s: SuccessionPlanView['successors'][number]) {
+  notesFor.value = { planId: p.id, id: s.id, name: s.employee.name };
+  notesText.value = s.developmentNotes ?? '';
+}
+async function saveNotes() {
+  if (!notesFor.value) return;
+  busy.value = true;
+  try {
+    await performanceApi.updateSuccessor(notesFor.value.planId, notesFor.value.id, { developmentNotes: notesText.value.trim() || null });
+    notesFor.value = null;
+    feedback.success('Development notes saved');
+    await data.run();
+  } catch (e) {
+    feedback.error('Could not save the notes', e);
+  } finally {
+    busy.value = false;
+  }
+}
 async function removeSuccessor(p: SuccessionPlanView, id: string, name: string) {
   if (!(await feedback.confirm({ title: `Remove ${name} from the bench?`, message: 'Their readiness and development notes for this role are removed.', confirmLabel: 'Remove' }))) return;
   await performanceApi.removeSuccessor(p.id, id);
@@ -159,15 +195,20 @@ async function removeSuccessor(p: SuccessionPlanView, id: string, name: string) 
             </div>
           </header>
           <ol v-if="p.successors.length" class="flex-1 divide-y divide-line/70" :aria-label="`Successors for ${p.title}`">
-            <li v-for="s in p.successors" :key="s.id" class="flex flex-wrap items-center gap-3 px-4 py-2.5">
-              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-2xs font-semibold text-fg-muted tabular-nums" aria-hidden="true">{{ s.rank }}</span>
+            <li v-for="(s, i) in p.successors" :key="s.id" class="flex flex-wrap items-center gap-3 px-4 py-2.5">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-2xs font-semibold text-fg-muted tabular-nums" aria-hidden="true">{{ i + 1 }}</span>
               <div class="min-w-0 flex-1 basis-40">
                 <p class="truncate text-sm font-medium text-fg">{{ s.employee.name }}</p>
                 <p class="truncate text-2xs text-fg-muted">{{ [s.employee.designation, s.employee.department].filter(Boolean).join(' · ') }} · {{ nineBox(s.nineBox) }}</p>
                 <p v-if="s.developmentNotes" class="mt-0.5 line-clamp-2 text-2xs text-fg-subtle">{{ s.developmentNotes }}</p>
               </div>
+              <div v-if="p.canManage" class="flex shrink-0">
+                <AppButton size="xs" variant="ghost" :icon="ChevronUp" :disabled="i === 0" :aria-label="`Move ${s.employee.name} up`" @click="moveRank(p, i, -1)" />
+                <AppButton size="xs" variant="ghost" :icon="ChevronDown" :disabled="i === p.successors.length - 1" :aria-label="`Move ${s.employee.name} down`" @click="moveRank(p, i, 1)" />
+              </div>
               <AppSelect v-if="p.canManage" :model-value="s.readiness" :options="READINESS" size="sm" :aria-label="`Readiness of ${s.employee.name}`" class="w-44" @update:model-value="(v) => v && setReadiness(p, s.id, v as SuccessorReadiness)" />
               <AppBadge v-else size="sm" :tone="s.readiness === 'READY_NOW' ? 'success' : 'neutral'">{{ SUCCESSOR_READINESS_LABELS[s.readiness] }}</AppBadge>
+              <AppButton v-if="p.canManage" size="xs" variant="ghost" :icon="Pencil" :aria-label="`Development notes for ${s.employee.name}`" @click="openNotes(p, s)" />
               <AppButton v-if="p.canManage" size="xs" variant="ghost" :icon="Trash2" :aria-label="`Remove ${s.employee.name}`" @click="removeSuccessor(p, s.id, s.employee.name)" />
             </li>
           </ol>
@@ -185,6 +226,7 @@ async function removeSuccessor(p: SuccessionPlanView, id: string, name: string) 
         <AppAlert v-if="formError">{{ formError }}</AppAlert>
         <AppInput v-model="planForm.title" label="Role" required placeholder="e.g. Head of engineering" :error="fieldErrors.title" />
         <AppSelect v-model="planForm.incumbentEmployeeId" label="Current holder" placeholder="Vacant" :options="people" searchable remote clearable :error="fieldErrors.incumbentEmployeeId" @search="search" />
+        <AppSelect v-model="planForm.departmentId" label="Department" placeholder="Holder's department" :options="departmentOptions" searchable clearable :error="fieldErrors.departmentId" />
         <div class="grid gap-3 sm:grid-cols-2">
           <AppSelect v-model="planForm.criticality" label="How critical the role is" :options="LEVELS" />
           <AppSelect v-model="planForm.riskOfLoss" label="Risk of losing the holder" :options="LEVELS" />
@@ -195,6 +237,16 @@ async function removeSuccessor(p: SuccessionPlanView, id: string, name: string) 
       <template #footer>
         <AppButton variant="secondary" @click="planModal = false">Cancel</AppButton>
         <AppButton form="plan-form" type="submit" :loading="busy" :disabled="planForm.title.trim().length < 2">{{ editing ? 'Save' : 'Create plan' }}</AppButton>
+      </template>
+    </AppModal>
+
+    </AppModal>
+
+    <AppModal :open="!!notesFor" :title="notesFor ? `Development notes · ${notesFor.name}` : ''" size="sm" @close="notesFor = null">
+      <AppTextarea v-model="notesText" label="What they need to be ready" :rows="4" :maxlength="2000" />
+      <template #footer>
+        <AppButton variant="secondary" @click="notesFor = null">Cancel</AppButton>
+        <AppButton :loading="busy" @click="saveNotes">Save</AppButton>
       </template>
     </AppModal>
 

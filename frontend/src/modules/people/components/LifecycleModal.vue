@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import type { EmployeeStatus, LifecycleAction } from '@contracts';
 import { employeesApi, structureApi } from '@/modules/people/api/people.api';
+import { usePersonSearch } from '@/modules/people/composables/use-person-search';
 import type { EmployeeDetail, LifecycleInput } from '@/modules/people/types';
 import { LIFECYCLE_LABELS, employeeStatusOptions } from '@/modules/people/utils/labels';
 import { AppAlert, AppButton, AppDatePicker, AppModal, AppSelect, AppTextarea } from '@/shared/components';
@@ -17,7 +18,8 @@ const designations = useAsync(() => structureApi.designations());
 const locations = useAsync(() => structureApi.locations());
 const grades = useAsync(() => structureApi.grades());
 const costCenters = useAsync(() => structureApi.costCenters());
-const managers = useAsync(() => employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }));
+const excludeSelf = computed(() => props.employee.id);
+const { options: managerOptions, search: searchManagers, pin: pinManager, remember: rememberManager } = usePersonSearch(excludeSelf);
 
 const today = localToday();
 const { fieldErrors, formError, handle, reset } = useFormErrors();
@@ -33,6 +35,7 @@ const form = reactive({
   status: null as EmployeeStatus | null,
   note: '',
 });
+watch(() => form.managerId, (managerId) => rememberManager(managerId));
 
 watch(
   () => props.open,
@@ -50,11 +53,13 @@ watch(
       status: null,
       note: '',
     });
+    const manager = props.employee.manager;
+    pinManager(manager && manager.id !== props.employee.id ? { value: manager.id, label: manager.name, description: manager.employeeCode } : null);
+    searchManagers('');
   },
 );
 
 const options = <T extends { id: string; name: string; isActive: boolean }>(rows: T[] | null) => (rows ?? []).filter((r) => r.isActive).map((r) => ({ value: r.id, label: r.name }));
-const managerOptions = computed(() => (managers.data.value?.items ?? []).filter((m) => m.id !== props.employee.id).map((m) => ({ value: m.id, label: `${m.fullName} (${m.employeeCode})`, description: m.designation?.name })));
 const statusOptions = computed(() => employeeStatusOptions.filter((o) => o.value !== props.employee.status));
 const costCenterOptions = computed(() => (costCenters.data.value ?? []).filter((c) => c.isActive).map((c) => ({ value: c.id, label: `${c.code} – ${c.name}` })));
 
@@ -100,7 +105,7 @@ async function save() {
         <AppSelect v-model="form.designationId" label="New designation" :options="options(designations.data.value)" :error="fieldErrors.designationId" />
         <AppSelect v-model="form.gradeId" label="New grade" placeholder="Unchanged" :options="options(grades.data.value)" :error="fieldErrors.gradeId" />
       </template>
-      <AppSelect v-else-if="action === 'MANAGER_CHANGE'" v-model="form.managerId" label="Reports to" placeholder="No manager" :options="managerOptions" searchable :error="fieldErrors.managerId" />
+      <AppSelect v-else-if="action === 'MANAGER_CHANGE'" v-model="form.managerId" label="Reports to" placeholder="No manager" :options="managerOptions" searchable remote :error="fieldErrors.managerId" @search="searchManagers" />
       <AppSelect v-else-if="action === 'STATUS_CHANGE'" v-model="form.status" label="New status" required :options="statusOptions" :error="fieldErrors.status" />
       <AppDatePicker
         v-model="form.effectiveDate"

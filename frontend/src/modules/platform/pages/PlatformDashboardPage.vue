@@ -67,7 +67,7 @@ const shortcuts = computed(() => [
     <AppHero eyebrow="Platform" title="Platform overview" :summary="summary" :loading="dashboard.loading.value">
       <template #actions>
         <AppButton variant="secondary" :icon="CreditCard" to="/platform/plans">Plans</AppButton>
-        <AppButton to="/platform/organizations?create=1" :icon="Building2">New organization</AppButton>
+        <AppButton v-if="auth.canPlatform('platform.organizations.manage')" to="/platform/organizations?create=1" :icon="Building2">New organization</AppButton>
       </template>
     </AppHero>
     <AppErrorState v-if="dashboard.error.value" :error="dashboard.error.value" @retry="dashboard.run" />

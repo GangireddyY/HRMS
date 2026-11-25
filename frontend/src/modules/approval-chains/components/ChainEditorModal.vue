@@ -33,6 +33,21 @@ const minAmount = ref<string | number | null>(null);
 const steps = ref<Step[]>([]);
 const saving = ref(false);
 const members = ref<{ value: string; label: string }[]>([]);
+const knownMembers = ref(new Map<string, string>());
+let memberTimer: ReturnType<typeof setTimeout> | undefined;
+function searchMembers(q: string) {
+  clearTimeout(memberTimer);
+  memberTimer = setTimeout(async () => {
+    const page = await usersApi.list({ page: 1, pageSize: 20, status: 'ACTIVE', search: q || undefined }).catch(() => null);
+    const found = (page?.items ?? []).map((m) => ({ value: m.id, label: `${m.firstName} ${m.lastName} · ${m.email}` }));
+    for (const o of found) knownMembers.value.set(o.value, o.label);
+    const ids = new Set(found.map((o) => o.value));
+    const kept = steps.value
+      .filter((s) => s.membershipId && !ids.has(s.membershipId))
+      .map((s) => ({ value: s.membershipId!, label: knownMembers.value.get(s.membershipId!) ?? 'Named person' }));
+    members.value = [...kept, ...found];
+  }, 250);
+}
 
 watch(
   () => props.open,
@@ -47,10 +62,8 @@ watch(
     minDays.value = c?.conditions.minDays ?? null;
     minAmount.value = c?.conditions.minAmount ?? null;
     steps.value = c ? c.steps.map((s) => ({ ...s, slaHours: s.slaHours ?? null })) : [{ label: 'Manager', approver: 'MANAGER', slaHours: 48 }];
-    if (!members.value.length) {
-      const page = await usersApi.list({ page: 1, pageSize: 100, status: 'ACTIVE' }).catch(() => null);
-      members.value = (page?.items ?? []).map((m) => ({ value: m.id, label: `${m.firstName} ${m.lastName} · ${m.email}` }));
-    }
+    for (const s of c?.steps ?? []) if (s.membershipId && s.approverName) knownMembers.value.set(s.membershipId, s.approverName);
+    searchMembers('');
   },
   { immediate: true },
 );
@@ -128,7 +141,7 @@ async function save() {
               <AppSelect v-model="s.approver" label="Who decides" :options="approverOptions" />
               <AppInput v-model="s.slaHours" type="number" label="Deadline" suffix="h" :min="1" :max="720" help="Then escalate" />
               <AppSelect v-if="s.approver === 'PERMISSION'" v-model="s.permission" class="sm:col-span-3" label="Permission (department- or organization-wide holders)" :options="permissionOptions" searchable :error="fieldErrors[`steps.${i}.permission`]" />
-              <AppSelect v-if="s.approver === 'USER'" v-model="s.membershipId" class="sm:col-span-3" label="Approver" :options="members" searchable :error="fieldErrors[`steps.${i}.membershipId`]" />
+              <AppSelect v-if="s.approver === 'USER'" v-model="s.membershipId" class="sm:col-span-3" label="Approver" :options="members" searchable remote :error="fieldErrors[`steps.${i}.membershipId`]" @search="searchMembers" />
             </div>
           </li>
         </ol>

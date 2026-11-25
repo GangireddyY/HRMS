@@ -6,12 +6,16 @@ import type { AttendancePeriod } from '@/modules/attendance/types';
 import { formatMinutes, monthLabel } from '@/modules/attendance/utils/attendance-format';
 import { localToday, plural, relativeDay } from '@/modules/attendance/utils/attendance-ops';
 import { AppBadge, AppButton, AppEmptyState, AppErrorState, AppPageHeader, AppSkeleton, AppStatStrip, type StripItem } from '@/shared/components';
+import { useAuthStore } from '@/core/auth/auth.store';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDateTime } from '@/shared/utils/format';
 
 /** Month-end close: check each ended month is ready (no open corrections or overtime), lock it, reopen if needed. */
 const feedback = useFeedbackStore();
+const auth = useAuthStore();
+/** The approvals queue needs its own permission; closers without it must not be sent there. */
+const canReview = computed(() => auth.can('attendance.regularize.approve', 'TEAM'));
 const year = ref(new Date().getFullYear());
 const periods = useAsync(() => attendanceApi.periods(year.value));
 watch(year, () => {
@@ -86,13 +90,13 @@ const steps = computed(() => {
       done: !p.pendingRegularizations,
       title: 'Corrections reviewed',
       detail: p.pendingRegularizations ? `${plural(p.pendingRegularizations, 'regularization')} still pending` : 'No pending regularizations',
-      to: p.pendingRegularizations ? '/hr/attendance/regularizations' : undefined,
+      to: p.pendingRegularizations && canReview.value ? '/hr/attendance/regularizations' : undefined,
     },
     {
       done: !p.pendingOvertime,
       title: 'Overtime decided',
       detail: p.pendingOvertime ? `${plural(p.pendingOvertime, 'overtime entry', 'overtime entries')} to approve or reject` : 'No overtime waiting',
-      to: p.pendingOvertime ? '/hr/attendance/regularizations?tab=overtime' : undefined,
+      to: p.pendingOvertime && canReview.value ? '/hr/attendance/regularizations?tab=overtime' : undefined,
     },
   ];
 });
@@ -205,16 +209,16 @@ const summaryTiles = (p: AttendancePeriod) => {
             <li :class="['flex items-center gap-2', p.pendingRegularizations ? 'font-medium text-warning-fg' : 'text-fg-muted']">
               <component :is="p.pendingRegularizations ? CircleAlert : CircleCheck" :size="13" :class="p.pendingRegularizations ? '' : 'text-success-fg'" aria-hidden="true" />
               <template v-if="p.pendingRegularizations">
-                {{ plural(p.pendingRegularizations, 'pending regularization') }} –
-                <RouterLink to="/hr/attendance/regularizations" class="underline">review</RouterLink>
+                {{ plural(p.pendingRegularizations, 'pending regularization') }}<template v-if="canReview"> –
+                <RouterLink to="/hr/attendance/regularizations" class="underline">review</RouterLink></template>
               </template>
               <template v-else>Corrections reviewed</template>
             </li>
             <li :class="['flex items-center gap-2', p.pendingOvertime ? 'font-medium text-warning-fg' : 'text-fg-muted']">
               <component :is="p.pendingOvertime ? CircleAlert : CircleCheck" :size="13" :class="p.pendingOvertime ? '' : 'text-success-fg'" aria-hidden="true" />
               <template v-if="p.pendingOvertime">
-                {{ p.pendingOvertime }} overtime entr{{ p.pendingOvertime === 1 ? 'y' : 'ies' }} to approve –
-                <RouterLink to="/hr/attendance/regularizations?tab=overtime" class="underline">review</RouterLink>
+                {{ p.pendingOvertime }} overtime entr{{ p.pendingOvertime === 1 ? 'y' : 'ies' }} to approve<template v-if="canReview"> –
+                <RouterLink to="/hr/attendance/regularizations?tab=overtime" class="underline">review</RouterLink></template>
               </template>
               <template v-else>Overtime decided</template>
             </li>

@@ -245,6 +245,7 @@ const tileOf = (iso: string) => {
 
           <template v-else-if="requestTab === 'wfh'">
             <AppSkeleton v-if="wfh.loading.value && !wfh.data.value" :lines="2" />
+            <AppErrorState v-else-if="wfh.error.value" :error="wfh.error.value" @retry="wfh.run" />
             <AppEmptyState v-else-if="!wfh.data.value?.items.length" compact :icon="House" title="No work-from-home requests" description="Planning to work remotely? Ask your manager in advance.">
               <AppButton size="sm" :icon="House" @click="askingWfh = true">Request work from home</AppButton>
             </AppEmptyState>

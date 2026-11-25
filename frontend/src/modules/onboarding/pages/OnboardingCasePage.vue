@@ -23,7 +23,7 @@ import {
   phaseOf,
   stageTone,
 } from '@/modules/onboarding/utils/onboarding-format';
-import { employeesApi } from '@/modules/people/api/people.api';
+import { usePersonSearch } from '@/modules/people/composables/use-person-search';
 import { AppAlert, AppAvatar, AppBadge, AppButton, AppCard, AppErrorState, AppModal, AppPageHeader, AppSegmented, AppSelect, AppSkeleton, AppTextarea } from '@/shared/components';
 import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -44,9 +44,17 @@ function onUpdated(next: CaseDetail) {
   detail.data.value = next;
 }
 
-const colleagues = useAsync(() => (manage.value ? employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }) : Promise.resolve(null)), { immediate: false });
-watch(manage, (m) => m && !colleagues.data.value && void colleagues.run(), { immediate: true });
-const buddyOptions = computed(() => (colleagues.data.value?.items ?? []).filter((e) => e.id !== d.value?.employee.id).map((e) => ({ value: e.id, label: e.fullName, description: e.designation?.name })));
+const { options: buddyOptions, search: searchBuddies, pin: pinBuddy } = usePersonSearch(computed(() => d.value?.employee.id));
+watch(
+  manage,
+  (m) => {
+    if (!m) return;
+    const buddy = d.value?.buddy;
+    pinBuddy(buddy ? { value: buddy.id, label: buddy.name } : null);
+    searchBuddies('');
+  },
+  { immediate: true },
+);
 async function setBuddy(buddyId: string | null | undefined) {
   try {
     detail.data.value = await onboardingApi.update(id.value, { buddyId: buddyId ?? null });
@@ -313,7 +321,7 @@ const CIRC = 2 * Math.PI * 42;
               </li>
             </ul>
             <div v-if="manage" class="mt-4 border-t border-line/70 pt-3">
-              <AppSelect :model-value="d.buddy?.id ?? null" :options="buddyOptions" label="Buddy" :placeholder="d.buddy ? 'No buddy' : 'Assign a buddy'" searchable size="sm" @update:model-value="setBuddy" />
+              <AppSelect :model-value="d.buddy?.id ?? null" :options="buddyOptions" label="Buddy" :placeholder="d.buddy ? 'No buddy' : 'Assign a buddy'" searchable remote size="sm" @search="searchBuddies" @update:model-value="setBuddy" />
               <p v-if="!d.buddy" class="mt-1.5 text-2xs text-fg-subtle">A colleague who helps them settle in; they are notified.</p>
             </div>
             <template v-if="d.permissions.manage" #footer>

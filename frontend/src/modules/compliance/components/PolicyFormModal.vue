@@ -21,7 +21,18 @@ const auth = useAuthStore();
 const { fieldErrors, formError, handle, reset } = useFormErrors();
 const departments = useAsync(() => structureApi.departments(), { immediate: false });
 const locations = useAsync(() => structureApi.locations(), { immediate: false });
-const members = useAsync(() => usersApi.list({ page: 1, pageSize: 100, status: 'ACTIVE' }), { immediate: false });
+const members = ref<{ value: string; label: string; description?: string }[]>([]);
+let memberTimer: ReturnType<typeof setTimeout> | undefined;
+function searchMembers(q: string) {
+  clearTimeout(memberTimer);
+  memberTimer = setTimeout(async () => {
+    const page = await usersApi.list({ page: 1, pageSize: 20, status: 'ACTIVE', search: q || undefined }).catch(() => null);
+    const found = (page?.items ?? []).map((m) => ({ value: m.userId, label: `${m.firstName} ${m.lastName}`.trim(), description: m.email }));
+    const owner = props.policy?.owner;
+    const kept = owner && !found.some((o) => o.value === owner.id) ? [{ value: owner.id, label: owner.name }] : [];
+    members.value = [...kept, ...found];
+  }, 250);
+}
 const form = reactive({
   title: '',
   category: 'HR' as PolicyCategory,
@@ -42,7 +53,7 @@ watch(
     if (!open) return;
     reset();
     for (const s of [departments, locations]) if (!s.data.value) void s.run();
-    if (auth.can('user.view', 'ORGANIZATION') && !members.data.value) void members.run();
+    if (auth.can('user.view', 'ORGANIZATION')) searchMembers('');
     const p = props.policy;
     Object.assign(form, {
       title: p?.title ?? '',
@@ -62,7 +73,7 @@ watch(
 );
 const categoryOptions = POLICY_CATEGORIES.map((c) => ({ value: c, label: POLICY_CATEGORY_LABELS[c] }));
 const toOptions = (rows: { id: string; name: string; isActive?: boolean }[] | null | undefined) => (rows ?? []).filter((r) => r.isActive !== false).map((r) => ({ value: r.id, label: r.name }));
-const ownerOptions = computed(() => (members.data.value?.items ?? []).map((m) => ({ value: m.userId, label: `${m.firstName} ${m.lastName}`.trim(), description: m.email })));
+const ownerOptions = computed(() => members.value);
 function toggleType(t: EmploymentType, on: boolean) {
   form.employmentTypes = on ? [...form.employmentTypes, t] : form.employmentTypes.filter((x) => x !== t);
 }
@@ -102,7 +113,7 @@ async function save() {
         <AppSelect v-model="form.category" label="Category" :options="categoryOptions" :clearable="false" />
       </div>
       <AppTextarea v-model="form.summary" label="Summary" :rows="2" :maxlength="1000" help="One or two lines shown in the policy list." />
-      <AppSelect v-if="auth.can('user.view', 'ORGANIZATION')" v-model="form.ownerUserId" label="Owner" placeholder="No owner" :options="ownerOptions" searchable :error="fieldErrors.ownerUserId" />
+      <AppSelect v-if="auth.can('user.view', 'ORGANIZATION')" v-model="form.ownerUserId" label="Owner" placeholder="No owner" :options="ownerOptions" searchable remote :error="fieldErrors.ownerUserId" @search="searchMembers" />
       <fieldset class="space-y-4 rounded-xl p-4 ring-1 ring-line">
         <legend class="px-1 text-sm font-medium text-fg">Who it applies to</legend>
         <div class="grid gap-4 sm:grid-cols-2">

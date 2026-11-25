@@ -7,7 +7,6 @@ import type { Obligation } from '@/modules/compliance/types';
 import { OBLIGATION_CATEGORY_LABELS, localIso, scheduleLabel } from '@/modules/compliance/utils/compliance-format';
 import { usersApi } from '@/modules/users/api/users.api';
 import { AppAlert, AppButton, AppCheckbox, AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components';
-import { useAsync } from '@/shared/composables/use-async';
 import { useFormErrors } from '@/shared/composables/use-form-errors';
 
 /** A statutory obligation: what, to whom, and its yearly due dates (monthly on a day, or specific dates). */
@@ -16,7 +15,18 @@ const emit = defineEmits<{ close: []; saved: [o: Obligation] }>();
 
 const auth = useAuthStore();
 const { fieldErrors, formError, handle, reset } = useFormErrors();
-const members = useAsync(() => usersApi.list({ page: 1, pageSize: 100, status: 'ACTIVE' }), { immediate: false });
+const members = ref<{ value: string; label: string; description?: string }[]>([]);
+let memberTimer: ReturnType<typeof setTimeout> | undefined;
+function searchMembers(q: string) {
+  clearTimeout(memberTimer);
+  memberTimer = setTimeout(async () => {
+    const page = await usersApi.list({ page: 1, pageSize: 20, status: 'ACTIVE', search: q || undefined }).catch(() => null);
+    const found = (page?.items ?? []).map((m) => ({ value: m.userId, label: `${m.firstName} ${m.lastName}`.trim(), description: m.email }));
+    const owner = props.obligation?.owner;
+    const kept = owner && !found.some((o) => o.value === owner.id) ? [{ value: owner.id, label: owner.name }] : [];
+    members.value = [...kept, ...found];
+  }, 250);
+}
 const form = reactive({
   title: '',
   category: 'OTHER' as ComplianceCategory,
@@ -37,7 +47,7 @@ watch(
   (open) => {
     if (!open) return;
     reset();
-    if (auth.can('user.view', 'ORGANIZATION') && !members.data.value) void members.run();
+    if (auth.can('user.view', 'ORGANIZATION')) searchMembers('');
     const o = props.obligation;
     const monthly = o ? isMonthly(o.dueDates) : true;
     Object.assign(form, {
@@ -61,7 +71,7 @@ const modeOptions = [
   { value: 'MONTHLY', label: 'Every month' },
   { value: 'DATES', label: 'On specific dates each year' },
 ];
-const ownerOptions = computed(() => (members.data.value?.items ?? []).map((m) => ({ value: m.userId, label: `${m.firstName} ${m.lastName}`.trim(), description: m.email })));
+const ownerOptions = computed(() => members.value);
 const dueDates = computed(() =>
   form.mode === 'MONTHLY'
     ? Array.from({ length: 12 }, (_, i) => `${String(i + 1).padStart(2, '0')}-${String(Math.min(31, Math.max(1, Number(form.day) || 1))).padStart(2, '0')}`)
@@ -118,7 +128,7 @@ async function save() {
         <AppDatePicker v-model="form.startsOn" label="Tracked from" required :error="fieldErrors.startsOn" />
         <AppDatePicker v-model="form.endsOn" label="Until" help="Leave empty while it applies." :error="fieldErrors.endsOn" />
       </div>
-      <AppSelect v-if="auth.can('user.view', 'ORGANIZATION')" v-model="form.ownerUserId" label="Owner" placeholder="No owner" :options="ownerOptions" searchable :error="fieldErrors.ownerUserId" />
+      <AppSelect v-if="auth.can('user.view', 'ORGANIZATION')" v-model="form.ownerUserId" label="Owner" placeholder="No owner" :options="ownerOptions" searchable remote :error="fieldErrors.ownerUserId" @search="searchMembers" />
       <AppCheckbox v-if="obligation" v-model="form.active" label="Active" description="Inactive obligations are hidden from the calendar; their filings are kept." />
     </form>
     <template #footer>

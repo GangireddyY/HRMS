@@ -240,7 +240,7 @@ const actions = computed(() =>
     { key: 'employee', label: 'Add employee', icon: UserPlus, to: '/hr/employees/new', show: auth.can('employee.create') },
     { key: 'job', label: 'Post a job', icon: Briefcase, to: '/hr/recruitment/jobs', show: auth.can('recruitment.manage') && auth.hasFeature('recruitment') },
     { key: 'payroll', label: 'Payroll', icon: Wallet, to: '/hr/payroll/runs', show: auth.can('payroll.process') && auth.hasFeature('payroll') },
-    { key: 'announce', label: 'Announce', icon: Megaphone, to: '/hr/engagement/announcements', show: auth.can('engagement.manage') && auth.hasFeature('engagement') },
+    { key: 'announce', label: 'Announce', icon: Megaphone, to: '/hr/engagement/announcements', show: auth.can('engagement.announcement.manage') && auth.hasFeature('engagement') },
     { key: 'reports', label: 'Reports', icon: BarChart3, to: '/hr/reports', show: can.headcount },
   ].filter((a) => a.show),
 );

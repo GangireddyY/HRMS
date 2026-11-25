@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { REQUISITION_REASONS, type EmploymentType, type RequisitionReason } from '@contracts';
-import { employeesApi, structureApi } from '@/modules/people/api/people.api';
+import { structureApi } from '@/modules/people/api/people.api';
+import { usePersonSearch } from '@/modules/people/composables/use-person-search';
 import { employmentTypeOptions } from '@/modules/people/utils/labels';
 import { recruitmentApi } from '@/modules/recruitment/api/recruitment.api';
 import type { Requisition } from '@/modules/recruitment/types';
@@ -19,7 +20,7 @@ const saving = ref<'draft' | 'submit' | null>(null);
 const departments = useAsync(() => structureApi.departments(), { immediate: false });
 const designations = useAsync(() => structureApi.designations(), { immediate: false });
 const locations = useAsync(() => structureApi.locations(), { immediate: false });
-const people = useAsync(() => employeesApi.list({ status: 'ACTIVE', pageSize: 100, sort: 'name:asc' }).catch(() => null), { immediate: false });
+const { options: managerOptions, search: searchManagers, pin: pinManager, remember: rememberManager } = usePersonSearch();
 const form = reactive({
   title: '',
   departmentId: null as string | null,
@@ -34,14 +35,17 @@ const form = reactive({
   budgetMax: '' as number | string,
   targetDate: undefined as string | undefined,
 });
+watch(() => form.hiringManagerId, (id) => rememberManager(id));
 
 watch(
   () => props.open,
   (open) => {
     if (!open) return;
     reset();
-    for (const a of [departments, designations, locations, people]) if (!a.data.value) void a.run();
+    for (const a of [departments, designations, locations]) if (!a.data.value) void a.run();
     const r = props.requisition;
+    pinManager(r?.hiringManager ? { value: r.hiringManager.id, label: r.hiringManager.name, description: r.hiringManager.employeeCode } : null);
+    searchManagers('');
     Object.assign(form, {
       title: r?.title ?? '',
       departmentId: r?.department?.id ?? null,
@@ -61,7 +65,6 @@ watch(
 );
 
 const opts = (rows: { id: string; name: string; isActive?: boolean }[] | null | undefined) => (rows ?? []).filter((r) => r.isActive !== false).map((r) => ({ value: r.id, label: r.name }));
-const managerOptions = computed(() => (people.data.value?.items ?? []).map((e) => ({ value: e.id, label: e.fullName, description: e.designation?.name })));
 const reasonOptions = REQUISITION_REASONS.map((r) => ({ value: r, label: REASON_LABELS[r] }));
 const n = (v: number | string) => (v === '' ? null : Number(v));
 const canSave = computed(() => form.title.trim().length >= 2 && form.justification.trim().length >= 10);
@@ -75,7 +78,6 @@ async function save(submit: boolean) {
     budgetMin: n(form.budgetMin),
     budgetMax: n(form.budgetMax),
     targetDate: form.targetDate ?? null,
-    ...(people.data.value ? {} : { hiringManagerId: undefined }),
     submit,
   };
   try {
@@ -106,7 +108,7 @@ async function save(submit: boolean) {
         <AppSelect v-model="form.reason" label="Reason" :options="reasonOptions" :clearable="false" />
         <AppDatePicker v-model="form.targetDate" label="Needed by" />
       </div>
-      <AppSelect v-if="people.data.value" v-model="form.hiringManagerId" label="Hiring manager" placeholder="You" :options="managerOptions" searchable />
+      <AppSelect v-model="form.hiringManagerId" label="Hiring manager" placeholder="You" :options="managerOptions" searchable remote @search="searchManagers" />
       <div class="grid gap-4 sm:grid-cols-2">
         <AppInput v-model="form.budgetMin" label="Budget from (annual CTC)" type="number" :min="0" :error="fieldErrors.budgetMin" />
         <AppInput v-model="form.budgetMax" label="Budget to (annual CTC)" type="number" :min="0" :error="fieldErrors.budgetMax" />

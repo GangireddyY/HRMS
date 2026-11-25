@@ -123,10 +123,24 @@ async function viewResume() {
 
 // Interviews and offers
 const scheduleOpen = ref(false);
-function onScheduled(d: ApplicationDetail) {
+const editingInterview = ref<InterviewItem | null>(null);
+function openSchedule() {
+  editingInterview.value = null;
+  scheduleOpen.value = true;
+}
+function openReschedule(interview: InterviewItem) {
+  editingInterview.value = interview;
+  scheduleOpen.value = true;
+}
+function closeSchedule() {
   scheduleOpen.value = false;
+  editingInterview.value = null;
+}
+function onScheduled(d: ApplicationDetail) {
+  const updated = !!editingInterview.value;
+  closeSchedule();
   app.data.value = d;
-  feedback.success('Interview scheduled', 'The interviewers have been notified.');
+  feedback.success(updated ? 'Interview updated' : 'Interview scheduled', updated ? 'The panel has the new time.' : 'The interviewers have been notified.');
 }
 const offerFormOpen = ref(false);
 async function onOfferSaved() {
@@ -281,7 +295,7 @@ const keyDates = computed(() => {
         </template>
         <template v-if="canManage && active" #actions>
           <AppButton variant="ghost" :icon="XCircle" :disabled="offerOpen" :title="offerOpen ? 'Withdraw the offer first' : undefined" @click="rejecting = 'REJECTED'; note = ''">Reject</AppButton>
-          <AppButton variant="secondary" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule interview</AppButton>
+          <AppButton variant="secondary" :icon="CalendarPlus" @click="openSchedule">Schedule interview</AppButton>
           <AppButton v-if="nextStage" :icon-right="ArrowRight" :loading="busy === 'move'" @click="act('move', () => recruitmentApi.move(id, nextStage!), `Moved to ${STAGE_LABELS[nextStage!].toLowerCase()}`)">Move to {{ STAGE_LABELS[nextStage] }}</AppButton>
         </template>
         <template v-else-if="canManage && (a.stage === 'REJECTED' || a.stage === 'WITHDRAWN')" #actions>
@@ -338,7 +352,7 @@ const keyDates = computed(() => {
           <AppCard title="Interviews & scorecards" :icon="MessageSquareText" :padded="false">
             <template v-if="canManage && active" #actions><AppButton size="sm" variant="secondary" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule</AppButton></template>
             <AppEmptyState v-if="!a.interviews.length" compact :icon="CalendarClock" :title="active ? 'No interviews yet' : 'No interviews were recorded'" :description="canManage && active ? 'Schedule a round; the panel is notified and can leave a scorecard afterwards.' : undefined">
-              <AppButton v-if="canManage && active" size="sm" :icon="CalendarPlus" @click="scheduleOpen = true">Schedule interview</AppButton>
+              <AppButton v-if="canManage && active" size="sm" :icon="CalendarPlus" @click="openSchedule">Schedule interview</AppButton>
             </AppEmptyState>
             <template v-else>
               <dl class="grid grid-cols-2 gap-px border-b border-line/70 bg-line/60 sm:grid-cols-4">
@@ -380,6 +394,8 @@ const keyDates = computed(() => {
                     </div>
                     <div class="flex items-center gap-2">
                       <AppBadge :tone="interviewStatus(i).tone" size="sm" dot>{{ interviewStatus(i).label }}</AppBadge>
+                      <AppButton v-if="canManage && i.status === 'SCHEDULED' && isPast(i)" size="xs" variant="ghost" :loading="busy === `done-${i.id}`" @click="act(`done-${i.id}`, () => recruitmentApi.completeInterview(i.id), 'Interview marked completed')">Mark completed</AppButton>
+                      <AppButton v-if="canManage && i.status === 'SCHEDULED'" size="xs" variant="ghost" @click="openReschedule(i)">Reschedule</AppButton>
                       <AppButton v-if="canManage && i.status === 'SCHEDULED'" size="xs" variant="ghost" :loading="busy === `int-${i.id}`" @click="act(`int-${i.id}`, () => recruitmentApi.cancelInterview(i.id), 'Interview cancelled')">Cancel</AppButton>
                     </div>
                   </div>
@@ -495,7 +511,7 @@ const keyDates = computed(() => {
         </aside>
       </div>
 
-      <ScheduleInterviewModal :open="scheduleOpen" :application-id="a.id" @close="scheduleOpen = false" @saved="onScheduled" />
+      <ScheduleInterviewModal :open="scheduleOpen" :application-id="a.id" :interview="editingInterview" @close="closeSchedule" @saved="onScheduled" />
       <OfferFormModal :open="offerFormOpen" :application-id="a.id" :offer="a.offer && a.offer.status === 'DRAFT' ? a.offer : null" @close="offerFormOpen = false" @saved="onOfferSaved" />
 
       <AppModal :open="!!rejecting" :title="rejecting === 'REJECTED' ? `Reject ${a.candidate.name}?` : 'Candidate withdrew?'" size="sm" @close="rejecting = null">

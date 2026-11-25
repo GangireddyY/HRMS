@@ -129,7 +129,7 @@ function onInvited(member: Member) {
           <AppEmptyState v-else-if="table.isFiltered.value" :icon="SearchX" title="No matches" description="Nothing matches your search or filters.">
             <AppButton variant="secondary" size="sm" :icon="FilterX" @click="table.clearFilters()">Clear filters</AppButton>
           </AppEmptyState>
-          <AppEmptyState v-else :icon="Users" title="No users found" description="Try a different search or filter.">
+          <AppEmptyState v-else :icon="Users" title="No users yet" description="Invite someone to give them access to this organization.">
             <AppButton v-if="auth.can('user.invite')" :icon="UserPlus" :disabled="!roles.data.value" @click="inviteOpen = true">Invite user</AppButton>
           </AppEmptyState>
           <AppPagination
@@ -153,8 +153,8 @@ function onInvited(member: Member) {
         :meta="table.meta.value"
         clickable
         caption="Organization users"
-        empty-title="No users found"
-        empty-description="Try a different search or filter."
+        empty-title="No users yet"
+        empty-description="Invite someone to give them access to this organization."
         @page="table.setPage"
         @retry="table.load"
         @row-click="(row) => router.push(`/admin/users/${row.id}`)"
