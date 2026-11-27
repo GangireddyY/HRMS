@@ -141,7 +141,14 @@ function onDay(iso: string) {
 
 <template>
   <div>
-    <AppPageHeader title="Holidays" description="Public holidays are non-working days in attendance; optional holidays are shown but remain working days. A holiday can apply to every location or only some.">
+    <AppPageHeader
+      title="Holidays"
+      :description="
+        canManage
+          ? 'Public holidays are non-working days in attendance; optional holidays are shown but remain working days. A holiday can apply to every location or only some.'
+          : 'Company holidays for the year. Public holidays are non-working days; optional holidays are marked but remain working days.'
+      "
+    >
       <template #actions>
         <div class="flex items-center gap-1">
           <AppButton size="sm" variant="ghost" :icon="ChevronLeft" aria-label="Previous year" @click="year--" />

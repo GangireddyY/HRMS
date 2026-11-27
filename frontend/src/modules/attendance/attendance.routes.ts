@@ -1,9 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-/** My Workspace (/me): own attendance. */
+/** My Workspace (/me): own attendance and the organization holiday calendar (read-only unless they can manage it). */
 export const attendanceSelfRoutes: RouteRecordRaw[] = [
   { path: 'attendance', name: 'me-attendance', component: () => import('./pages/MyAttendancePage.vue'), meta: { title: 'My attendance', access: { permissions: ['attendance.view'] } } },
   { path: 'timesheets', name: 'me-timesheets', component: () => import('./pages/MyTimesheetPage.vue'), meta: { title: 'Timesheets', access: { permissions: ['attendance.timesheet.submit'], feature: 'attendance' } } },
+  { path: 'holidays', name: 'me-holidays', component: () => import('./pages/HolidaysPage.vue'), meta: { title: 'Holidays', access: { tenant: true } } },
 ];
 
 /** HR operations (/hr): registers, approvals, closing and shifts. */

@@ -142,6 +142,7 @@ const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((w)
       </AppCard>
 
       <AppCard v-if="can.holidays" title="Upcoming holidays">
+        <template #actions><AppButton variant="ghost" size="sm" to="/me/holidays">View all</AppButton></template>
         <p v-if="!holidays.loading.value && !holidays.data.value?.length" class="text-sm text-fg-muted">No upcoming holidays on the calendar.</p>
         <ul v-else class="-my-2 divide-y divide-line/60">
           <li v-for="h in holidays.data.value ?? []" :key="h.id" class="flex items-center gap-3 py-2">

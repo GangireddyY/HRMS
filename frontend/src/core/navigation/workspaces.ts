@@ -375,6 +375,7 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Attendance', to: '/me/attendance', icon: Fingerprint, access: { permissions: ['attendance.view'] } },
           { label: 'Timesheets', to: '/me/timesheets', icon: CalendarClock, access: { permissions: ['attendance.timesheet.submit'], feature: 'attendance' } },
           { label: 'Leave', to: '/me/leave', icon: Plane, access: { permissions: ['leave.view'] } },
+          { label: 'Holidays', to: '/me/holidays', icon: CalendarDays, access: { tenant: true } },
           { label: 'Performance', to: '/me/performance', icon: Target, access: { tenant: true, feature: 'performance' } },
           { label: 'OKRs', to: '/me/performance/okrs', icon: Crosshair, access: { tenant: true, feature: 'performance' } },
           { label: '1:1s', to: '/me/performance/one-on-ones', icon: MessagesSquare, access: { tenant: true, feature: 'performance' } },
