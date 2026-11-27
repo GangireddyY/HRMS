@@ -1,4 +1,4 @@
-# Build context: repository root (the build also needs backend/src/contracts).
+# Build context: repository root (the build reads backend/src/contracts).
 #   docker build -f frontend/Dockerfile -t hrms-frontend .
 FROM node:22-bookworm-slim AS build
 WORKDIR /app/frontend

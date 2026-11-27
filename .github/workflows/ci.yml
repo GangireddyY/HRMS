@@ -22,11 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci --no-fund --no-audit
       - name: Check commit messages
-        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        run: npx --yes -p @commitlint/cli@19.8.1 -p @commitlint/config-conventional@19.8.1 commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
   test:
     runs-on: ubuntu-latest

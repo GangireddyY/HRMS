@@ -1,7 +1,8 @@
 /**
  * Conventional Commits (https://www.conventionalcommits.org): `type(scope): summary`, e.g.
  * `feat(payroll): pay settlements by bank file` or `fix(auth): refuse breached passwords`.
- * Checked in CI for every commit in a pull request, and locally by `.githooks/commit-msg` (`npm run hooks:install`).
+ * Checked in CI for every commit in a pull request, and locally by `.githooks/commit-msg`
+ * (`git config core.hooksPath .githooks`).
  */
 module.exports = {
   extends: ['@commitlint/config-conventional'],

@@ -46,9 +46,7 @@ Newer majors exist (NestJS 12, TypeScript 7, Vitest 5; Sequelize 7 is still pre-
 
 ```
 HRMS/
-├── package.json                 helper scripts only (no dependencies, no workspaces)
-├── docker-compose.yml           postgres, redis, minio, migrate(+bootstrap), backend, frontend
-├── .env.docker.example          compose infrastructure secrets (Postgres, Redis, MinIO)
+├── deploy/                      docker compose, infrastructure secrets example, Prometheus alerts
 ├── .dockerignore                build context rules for frontend/Dockerfile (root context)
 ├── .github/workflows/ci.yml     typecheck → unit → integration (Postgres) → build → Playwright → images
 ├── docs/                        PRD, FRD, ARCHITECTURE, DATABASE, API, RBAC, SECURITY, DEPLOYMENT, TESTING, CHANGELOG
@@ -229,4 +227,4 @@ UX building blocks: collapsible sidebar (persisted), mobile drawer, 7 color them
 
 BullMQ on Redis ≥ 6.2: one queue per domain (`notifications`, `reminders`, `payroll`, `documents`), repeatable jobs for reminders, idempotency keys (`<type>:<org>:<entity>:<date>`), exponential backoff retries, a dead-letter queue, failure logging to `job_failures`, and a monitoring view. Jobs run in a separate worker process using `RequestContext.runForTenant()` so tenant models stay scoped. Business-critical jobs never rely on frontend timers.
 
-> The local Windows Redis is 3.0.504, which BullMQ does not support. Use the Redis 7 container from `docker-compose.yml` (or Memurai on Windows) before Phase 9.
+> The local Windows Redis is 3.0.504, which BullMQ does not support. Use the Redis 7 container from `deploy/docker-compose.yml` (or Memurai on Windows) before Phase 9.

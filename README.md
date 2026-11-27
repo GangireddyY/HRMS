@@ -44,23 +44,23 @@ Full instructions: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Scripts
 
-The root `package.json` only holds commitlint (dev); its other scripts run the matching script inside each folder.
+Run these inside `backend/` or `frontend/`. Each folder has its own `package.json`.
 
-| Command (from the root) | Purpose |
-|---|---|
-| `npm run install:all` | `npm install` in backend and frontend |
-| `npm run dev:backend` / `npm run dev:frontend` | API in watch mode / Vite dev server (run in two terminals) |
-| `npm run build` | Build backend and frontend |
-| `npm run typecheck` | Type-check backend and frontend |
-| `npm run db:migrate` / `npm run db:seed` | Apply SQL migrations / seed development data |
-| `npm run test` | Backend unit, backend integration, frontend unit tests |
-| `npm run test:e2e:frontend` | Build the backend, then run Playwright end-to-end tests |
-| `npm run docs:rbac` | Regenerate the RBAC matrix in `docs/RBAC.md` |
-| `npm run hooks:install` | Check commit messages locally (Conventional Commits) with the `.githooks/commit-msg` hook |
+| Where | Command | Purpose |
+|---|---|---|
+| `backend` | `npm run start:dev` | API in watch mode |
+| `frontend` | `npm run dev` | Vite dev server |
+| `backend` | `npm run build` / `npm run typecheck` | Build or type-check the API |
+| `frontend` | `npm run build` / `npm run typecheck` | Build or type-check the site |
+| `backend` | `npm run db:migrate` / `npm run db:seed` | Apply SQL migrations / seed development data |
+| `backend` | `npm test` / `npm run test:e2e` | Unit tests / API integration tests |
+| `frontend` | `npm test` | Unit tests |
+| `frontend` | `npm run test:e2e` | Playwright, after `npm run build` in `backend` |
+| `backend` | `npm run docs:rbac` | Regenerate the RBAC matrix in `docs/RBAC.md` |
 
 ## Commits
 
-Commit messages follow [Conventional Commits](https://www.conventionalcommits.org): `type(scope): summary`, for example `feat(payroll): pay settlements by bank file` or `fix(auth): refuse breached passwords`. Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; scopes are the module names in `commitlint.config.cjs`. CI checks every commit in a pull request.
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org): `type(scope): summary`, for example `feat(payroll): pay settlements by bank file` or `fix(auth): refuse breached passwords`. Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; scopes are the module names in `commitlint.config.cjs`. CI checks every commit in a pull request. Locally: `git config core.hooksPath .githooks`.
 
 ## Documentation
 

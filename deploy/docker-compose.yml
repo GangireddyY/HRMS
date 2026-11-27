@@ -1,7 +1,7 @@
 # Full local stack: PostgreSQL, Redis, MinIO (S3-compatible storage), backend and frontend. Email goes through SendGrid.
-#   cp .env.docker.example .env.docker                  # infrastructure secrets
-#   cp backend/.env.docker.example backend/.env.docker  # backend app secrets
-#   docker compose --env-file .env.docker up -d --build
+#   cp deploy/.env.docker.example deploy/.env.docker
+#   cp backend/.env.docker.example backend/.env.docker
+#   docker compose --env-file deploy/.env.docker -f deploy/docker-compose.yml up -d --build
 name: hrms
 
 x-backend-env: &backend-env
@@ -19,8 +19,8 @@ x-backend-env: &backend-env
   REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
 
 x-backend: &backend
-  build: { context: ./backend }
-  env_file: ./backend/.env.docker
+  build: { context: ../backend }
+  env_file: ../backend/.env.docker
   environment: *backend-env
 
 services:
@@ -90,7 +90,7 @@ services:
       clamav: { condition: service_healthy }
 
   frontend:
-    build: { context: ., dockerfile: frontend/Dockerfile }
+    build: { context: .., dockerfile: frontend/Dockerfile }
     ports: ['127.0.0.1:8080:8080']
     depends_on: [backend]
 

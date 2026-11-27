@@ -1,7 +1,7 @@
 # RBAC – Roles, Permissions & Access Control
 
 > Source of truth: `backend/src/contracts/permissions.ts` (catalog) and `backend/src/contracts/roles.ts` (system role templates).
-> The matrix at the bottom is generated — run `npm run docs:rbac` after changing either file.
+> The matrix at the bottom is generated — run `npm run docs:rbac` in `backend/` after changing either file.
 
 ## 1. Model
 

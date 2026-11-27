@@ -28,11 +28,10 @@ Migrations are also exercised end-to-end in CI (`up` → three `down`s → `up` 
 ## 3. Running tests
 
 ```bash
-npm run test                           # backend unit + backend integration + frontend unit (from the root)
 cd backend  && npm test                # backend unit (includes src/contracts catalog & role-template tests)
 cd backend  && npm run test:e2e        # backend integration (requires backend/.env.test → *test* database)
 cd frontend && npm test                # frontend unit
-npm run test:e2e:frontend              # builds the backend, then Playwright (backend :3001, frontend :5174)
+cd backend  && npm run build           # then, from frontend/: npm run test:e2e (backend :3001, frontend :5174)
 ```
 
 Safety: integration and E2E setups refuse to run unless the database name contains `test`. `backend/.env.test` holds test-only secrets, the seeded Super Admin (`SUPERADMIN_*`) and the e2e organization owner (`E2E_ORG_ADMIN_*`) (git-ignored; CI generates it with random values).

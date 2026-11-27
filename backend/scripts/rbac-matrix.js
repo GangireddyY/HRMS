@@ -1,7 +1,7 @@
 /**
  * Generates the RBAC permission matrix from the compiled contracts and writes it into docs/RBAC.md
  * between the RBAC-MATRIX markers (or prints it with --stdout).
- * Usage: npm run docs:rbac
+ * Usage: npm run docs:rbac   (from backend/)
  */
 const fs = require('node:fs');
 const path = require('node:path');

@@ -16,22 +16,22 @@ Each application owns its environment files. Real values are git-ignored; `*.exa
 | `frontend/.env` ← `frontend/.env.example` | Vite dev server | `VITE_API_BASE_URL`, `VITE_APP_NAME`, `DEV_SERVER_PORT`, `DEV_API_PROXY_TARGET` |
 | `frontend/.env.e2e` (committed) | `vite --mode e2e` for Playwright | port 5174, proxy to the test backend on :3001 |
 | `frontend/.env.production` (committed) | `vite build` | public build-time values |
-| `.env.docker` ← `.env.docker.example` (root) | docker compose | infrastructure secrets only (Postgres, Redis, MinIO) |
+| `deploy/.env.docker` ← `deploy/.env.docker.example` | docker compose | infrastructure secrets only (Postgres, Redis, MinIO) |
 
 `VITE_*` variables are compiled into the browser bundle, so the frontend never holds secrets.
 
 ```bash
-npm run install:all              # npm install in backend/ and frontend/ (each has its own lock file);
-                                 # npm 11 only runs install scripts listed in each package.json "allowScripts"
+npm --prefix backend install     # each app has its own lock file;
+npm --prefix frontend install    # npm 11 only runs install scripts listed in that package.json "allowScripts"
 cp backend/.env.example backend/.env             # fill DB_*, JWT_ACCESS_SECRET, DATA_ENCRYPTION_KEY, SUPERADMIN_*
 cp backend/.env.test.example backend/.env.test   # test database + test secrets
 cp frontend/.env.example frontend/.env
 # Create a least-privilege DB role that owns the databases:
 #   CREATE ROLE hrms LOGIN PASSWORD '...'; CREATE DATABASE hrms_dev OWNER hrms; CREATE DATABASE hrms_test OWNER hrms;
-npm run db:migrate               # Sequelize/Umzug SQL migrations
-npm run db:seed                  # plans + the Super Admin (SUPERADMIN_*); no organizations
-npm run dev:backend              # backend :3000 (watch)
-npm run dev:frontend             # second terminal: frontend :5173 (Vite proxy → API)
+npm --prefix backend run db:migrate    # Sequelize/Umzug SQL migrations
+npm --prefix backend run db:seed       # plans + the Super Admin (SUPERADMIN_*); no organizations
+npm --prefix backend run start:dev     # backend :3000 (watch)
+npm --prefix frontend run dev          # second terminal: frontend :5173 (Vite proxy → API)
 ```
 
 Open http://localhost:5173 and sign in with `SUPERADMIN_*` (platform console). Organizations are created by their owners at http://localhost:5173/register (requires `ALLOW_ORGANIZATION_SIGNUP=true`): the person who signs up becomes the **Organization Admin** and is signed straight in. The Super Admin can also create organizations from the platform console, which emails an invitation to the organization's first admin.
@@ -71,9 +71,9 @@ Click and open tracking are disabled on every message: the links contain one-tim
 ## 2. Docker Compose stack
 
 ```bash
-cp .env.docker.example .env.docker                    # infrastructure secrets
-cp backend/.env.docker.example backend/.env.docker    # backend app secrets
-docker compose --env-file .env.docker up -d --build
+cp deploy/.env.docker.example deploy/.env.docker          # infrastructure secrets
+cp backend/.env.docker.example backend/.env.docker        # backend app secrets
+docker compose --env-file deploy/.env.docker -f deploy/docker-compose.yml up -d --build
 ```
 
 Services: `postgres` (17), `redis` (7.4, password-protected), `minio` (S3, console :9001), `migrate` (runs `node dist/database/migrate.js up` + `node dist/cli/bootstrap.js`, then exits), `backend`, `frontend` (unprivileged nginx on http://localhost:8080 serving the SPA and proxying `/api` to `backend`). Only `frontend` and tooling ports are published, bound to 127.0.0.1.
@@ -86,7 +86,7 @@ Topology: TLS load balancer → `web` (nginx, static SPA + `/api` proxy) → `ap
 
 Release steps:
 
-1. Build images in CI: `docker build -t hrms-backend backend` (context = `backend/`) and `docker build -f frontend/Dockerfile -t hrms-frontend .` (context = repository root, because the frontend compiles `backend/src/contracts`). `.dockerignore` files keep `node_modules`, build output and `.env` secrets out of both contexts.
+1. Build images in CI: `docker build -t hrms-backend backend` and `docker build -f frontend/Dockerfile -t hrms-frontend .` (context is the repository root, because the site compiles `backend/src/contracts`). Deploy the backend image, and deploy the frontend image's static files (`frontend/dist` locally). `.dockerignore` keeps `node_modules`, build output and `.env` secrets out of the frontend build.
 2. Run the **release job** once per deploy: `node dist/database/migrate.js up && node dist/database/reencrypt.js && node dist/cli/bootstrap.js` (idempotent; `reencrypt.js` moves encrypted values written in an older format or under a previous key to the current one and encrypts contact details still in plain text — `--dry-run` only counts, exit code 2 when a value can't be read; syncs the permission catalog, creates missing plans, creates the first Super Admin if `SUPERADMIN_*` are provided — remove them afterwards).
 3. Roll out API replicas (liveness `GET /api/v1/health/live`, readiness `GET /api/v1/health/ready`), then web.
 
