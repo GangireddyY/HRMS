@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { AlertTriangle } from '@lucide/vue';
 import { WORKSPACES, type WorkspaceKey } from '@/core/navigation/workspaces';
@@ -13,6 +13,7 @@ import SessionTimeoutDialog from '@/layouts/shell/SessionTimeoutDialog.vue';
 import OfflineBanner from '@/layouts/shell/OfflineBanner.vue';
 import StepUpDialog from '@/layouts/shell/StepUpDialog.vue';
 import AssistantPanel from '@/modules/assistant/components/AssistantPanel.vue';
+import { useVectorStore } from '@/modules/integrations/vector.store';
 import { useDevice } from '@/shared/composables/use-device';
 import { openFormPages } from '@/shared/composables/use-form-page';
 
@@ -22,11 +23,24 @@ import { openFormPages } from '@/shared/composables/use-form-page';
  */
 const props = defineProps<{ workspace: WorkspaceKey }>();
 const auth = useAuthStore();
+const vector = useVectorStore();
 const ws = computed(() => WORKSPACES.find((w) => w.key === props.workspace)!);
 const route = useRoute();
 const fill = computed(() => !!route.meta.fill);
 const { isDesktop } = useDevice();
 const showTabBar = computed(() => !isDesktop.value && openFormPages.value === 0);
+
+watch(
+  () => auth.organization?.id,
+  (orgId) => {
+    if (!orgId) {
+      vector.clear();
+      return;
+    }
+    void vector.refresh();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

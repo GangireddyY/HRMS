@@ -3,7 +3,10 @@ import { Check } from '@lucide/vue';
 import type { RoleSummary } from '@/modules/roles/types';
 import { AppBadge } from '@/shared/components';
 
-defineProps<{ roles: RoleSummary[]; error?: string }>();
+withDefaults(defineProps<{ roles: RoleSummary[]; error?: string; required?: boolean; label?: string }>(), {
+  required: true,
+  label: 'Roles',
+});
 const model = defineModel<string[]>({ required: true });
 
 function toggle(id: string) {
@@ -14,7 +17,7 @@ function toggle(id: string) {
 <template>
   <fieldset>
     <legend class="label flex w-full items-center justify-between">
-      <span>Roles <span class="text-danger" aria-hidden="true">*</span></span>
+      <span>{{ label }} <span v-if="required" class="text-danger" aria-hidden="true">*</span></span>
       <AppBadge v-if="model.length" tone="brand" size="sm">{{ model.length }} selected</AppBadge>
     </legend>
     <div :class="['grid gap-2 sm:grid-cols-2 xl:grid-cols-3', error && 'rounded-md ring-1 ring-danger ring-offset-2 ring-offset-surface']">

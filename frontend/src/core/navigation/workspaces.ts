@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 import {
   Activity,
+  AppWindow,
   Award,
   BarChart3,
   BadgeCheck,
@@ -87,6 +88,8 @@ export interface NavItem {
   access?: AccessRule;
   /** Highlight only on exact path match. */
   exact?: boolean;
+  /** Hide until a runtime flag is true (e.g. Vector connector enabled). */
+  require?: 'vectorConnected';
 }
 
 export interface NavSection {
@@ -190,6 +193,10 @@ export const WORKSPACES: Workspace[] = [
       {
         title: 'Developers',
         items: [{ label: 'Integrations', to: '/admin/integrations', icon: Webhook, access: { permissions: ['integration.manage'] } }],
+      },
+      {
+        title: 'Apps',
+        items: [{ label: 'Vector', to: '/admin/vector', icon: AppWindow, exact: true, access: { permissions: ['integration.manage'] }, require: 'vectorConnected' }],
       },
     ],
   },
@@ -385,6 +392,10 @@ export const WORKSPACES: Workspace[] = [
           { label: 'Grievances', to: '/me/grievances', icon: ShieldAlert, access: { permissions: ['grievance.submit'], feature: 'grievance' } },
           { label: 'Resignation & exit', to: '/me/exit', icon: DoorOpen, access: { permissions: ['exit.resign'], feature: 'exit' } },
         ],
+      },
+      {
+        title: 'Apps',
+        items: [{ label: 'Vector', to: '/me/vector', icon: AppWindow, exact: true, access: { tenant: true }, require: 'vectorConnected' }],
       },
       {
         title: 'Account',

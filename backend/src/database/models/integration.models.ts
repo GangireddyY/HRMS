@@ -90,6 +90,30 @@ export class ApiKey extends Model<InferAttributes<ApiKey>, InferCreationAttribut
   @UpdatedAt updatedAt: CreationOptional<Date>;
 }
 
+/** Vector workspace embed keys for opening Vector inside HRMS (partner connector). */
+@Table({ tableName: 'organization_vector_connectors', underscored: true })
+export class OrganizationVectorConnector extends Model<InferAttributes<OrganizationVectorConnector>, InferCreationAttributes<OrganizationVectorConnector>> {
+  @PrimaryKey @Column(DataType.UUID)
+  organizationId: string;
+
+  @Column(DataType.STRING(300)) apiBaseUrl: string;
+  @Column(DataType.STRING(300)) appOrigin: CreationOptional<string | null>;
+  @Column(DataType.STRING(64)) publishableKey: string;
+  @Column(DataType.TEXT) secretKeyEncrypted: string;
+  @Column(DataType.STRING(20)) secretPrefix: string;
+  @Column(DataType.BOOLEAN) enabled: CreationOptional<boolean>;
+  /** Organization role ids that may open Vector (managers with integration.manage always can). */
+  @Column(DataType.ARRAY(DataType.UUID)) allowedRoleIds: CreationOptional<string[]>;
+  /** User ids blocked from Vector even when their role is allowed. */
+  @Column(DataType.ARRAY(DataType.UUID)) deniedUserIds: CreationOptional<string[]>;
+  @Column(DataType.STRING(200)) vectorOrgName: CreationOptional<string | null>;
+  @Column(DataType.STRING(120)) vectorOrgSlug: CreationOptional<string | null>;
+  @Column(DataType.DATE) lastConnectedAt: CreationOptional<Date | null>;
+  @Column(DataType.UUID) updatedById: CreationOptional<string | null>;
+  @CreatedAt createdAt: CreationOptional<Date>;
+  @UpdatedAt updatedAt: CreationOptional<Date>;
+}
+
 @Table({ tableName: 'webhook_endpoints', underscored: true })
 export class WebhookEndpoint extends Model<InferAttributes<WebhookEndpoint>, InferCreationAttributes<WebhookEndpoint>> {
   @PrimaryKey @Default(DataType.UUIDV4) @Column(DataType.UUID)

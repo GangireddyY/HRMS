@@ -1,5 +1,5 @@
 import { http } from '@/core/http/http-client';
-import type { ApiKeyRow, GrantablePermission, WebhookDelivery, WebhookDetail, WebhookInput, WebhookRow } from './types';
+import type { ApiKeyRow, GrantablePermission, VectorAccessList, VectorAccessStatus, VectorConnectResult, VectorConnectorSettings, WebhookDelivery, WebhookDetail, WebhookInput, WebhookRow } from './types';
 
 export const integrationsApi = {
   apiKeys: () => http.get<ApiKeyRow[]>('/integrations/api-keys'),
@@ -16,4 +16,20 @@ export const integrationsApi = {
   rotateSecret: (id: string) => http.post<WebhookRow & { secret: string }>(`/integrations/webhooks/${id}/rotate-secret`),
   testWebhook: (id: string) => http.post<WebhookDelivery>(`/integrations/webhooks/${id}/test`),
   redeliver: (id: string, deliveryId: string) => http.post<WebhookDelivery>(`/integrations/webhooks/${id}/deliveries/${deliveryId}/redeliver`),
+
+  vector: () => http.get<VectorConnectorSettings>('/integrations/vector'),
+  vectorStatus: () => http.get<VectorAccessStatus>('/integrations/vector/status'),
+  vectorAccess: () => http.get<VectorAccessList>('/integrations/vector/access'),
+  denyVectorAccess: (userId: string) => http.post<VectorAccessList>('/integrations/vector/access/deny', { userId }),
+  restoreVectorAccess: (userId: string) => http.post<VectorAccessList>('/integrations/vector/access/restore', { userId }),
+  saveVector: (body: {
+    apiBaseUrl: string;
+    appOrigin?: string | null;
+    publishableKey: string;
+    secretKey?: string | null;
+    enabled?: boolean;
+    allowedRoleIds?: string[];
+  }) => http.put<VectorConnectorSettings>('/integrations/vector', body),
+  removeVector: () => http.delete<{ deleted: boolean }>('/integrations/vector'),
+  connectVector: (body: { email: string; password: string; path?: string | null }) => http.post<VectorConnectResult>('/integrations/vector/connect', body),
 };

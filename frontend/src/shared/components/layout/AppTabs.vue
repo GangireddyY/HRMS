@@ -50,6 +50,6 @@ function onKey(e: KeyboardEvent, tabs: { key: string }[], index: number) {
     </div>
     <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2 pb-1.5"><slot name="actions" /></div>
     </div>
-    <div role="tabpanel" :class="fill && 'lg:min-h-0 lg:flex-1'"><slot /></div>
+    <div role="tabpanel" :class="fill && 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto'"><slot /></div>
   </div>
 </template>

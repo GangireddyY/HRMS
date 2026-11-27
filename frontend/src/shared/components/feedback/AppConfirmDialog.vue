@@ -23,7 +23,7 @@ watch(pending, () => {
         <AlertTriangle :size="18" aria-hidden="true" />
       </div>
       <div class="space-y-3 text-sm text-fg-muted">
-        <p>{{ pending?.message }}</p>
+        <p class="whitespace-pre-line">{{ pending?.message }}</p>
         <AppInput v-if="pending?.requireText" v-model="typed" :label="`Type ${pending.requireText} to confirm`" autocomplete="off" />
       </div>
     </div>

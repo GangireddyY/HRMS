@@ -13,4 +13,10 @@ export const accountRoutes: RouteRecordRaw[] = [
     component: () => import('./pages/ApprovalCoverPage.vue'),
     meta: { title: 'Approval cover', access: { permissions: [...DELEGABLE_PERMISSIONS], scope: 'TEAM' } },
   },
+  {
+    path: 'vector',
+    name: 'me-vector',
+    component: () => import('@/modules/integrations/pages/VectorWorkspacePage.vue'),
+    meta: { title: 'Vector', fill: true, access: { tenant: true } },
+  },
 ];

@@ -5,6 +5,7 @@ import { Building2, Check, ChevronRight, LogOut, Moon, Sun } from '@lucide/vue';
 import { useAccessSubject } from '@/core/auth/use-access-subject';
 import { useAuthStore } from '@/core/auth/auth.store';
 import { accessibleWorkspaces, homePath, visibleSections, type NavItem, type Workspace } from '@/core/navigation/workspaces';
+import { useVectorStore } from '@/modules/integrations/vector.store';
 import { useThemeStore } from '@/core/theme/theme.store';
 import { AppAvatar } from '@/shared/components';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -14,6 +15,7 @@ import { useUiStore } from '@/shared/stores/ui.store';
 const props = defineProps<{ workspace: Workspace }>();
 const ui = useUiStore();
 const auth = useAuthStore();
+const vector = useVectorStore();
 const theme = useThemeStore();
 const feedback = useFeedbackStore();
 const route = useRoute();
@@ -21,7 +23,11 @@ const router = useRouter();
 const subject = useAccessSubject();
 const panel = ref<HTMLElement | null>(null);
 
-const sections = computed(() => visibleSections(props.workspace, subject.value));
+const sections = computed(() =>
+  visibleSections(props.workspace, subject.value)
+    .map((s) => ({ ...s, items: s.items.filter((i) => i.require !== 'vectorConnected' || vector.connected) }))
+    .filter((s) => s.items.length > 0),
+);
 const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((ws) => visibleSections(ws, subject.value).length));
 const organizations = computed(() => auth.context?.organizations ?? []);
 const displayName = computed(() => (auth.user ? `${auth.user.firstName} ${auth.user.lastName}` : 'User'));

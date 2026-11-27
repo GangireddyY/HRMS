@@ -26,6 +26,7 @@ export const ctx = {
   grievanceNote: (noteId: string) => fieldContext('grievance_notes', 'body', noteId),
   offerPrejoining: (offerId: string) => fieldContext('offers', 'prejoining', offerId),
   ssoClientSecret: (organizationId: string) => fieldContext('organization_sso_configs', 'client_secret', organizationId),
+  vectorSecretKey: (organizationId: string) => fieldContext('organization_vector_connectors', 'secret_key', organizationId),
   webhookSecret: (endpointId: string) => fieldContext('webhook_endpoints', 'secret', endpointId),
   webhookUrl: (endpointId: string) => fieldContext('webhook_endpoints', 'url', endpointId),
 };
@@ -67,6 +68,7 @@ export const ENCRYPTED_FIELDS: EncryptedField[] = [
   { table: 'grievance_notes', column: 'body_encrypted', key: 'id', context: ctx.grievanceNote },
   { table: 'offers', column: 'prejoining_encrypted', key: 'id', context: ctx.offerPrejoining },
   { table: 'organization_sso_configs', column: 'client_secret_encrypted', key: 'organization_id', rowId: 'organization_id', context: ctx.ssoClientSecret },
+  { table: 'organization_vector_connectors', column: 'secret_key_encrypted', key: 'organization_id', rowId: 'organization_id', context: ctx.vectorSecretKey },
   { table: 'webhook_endpoints', column: 'secret_encrypted', key: 'id', context: ctx.webhookSecret },
   { table: 'webhook_endpoints', column: 'url_encrypted', key: 'id', context: ctx.webhookUrl },
 ];

@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthContext } from '../../common/auth/auth-context';
-import { CurrentAuth, RequirePermissions } from '../../common/auth/decorators';
+import { CurrentAuth, RequirePermissions, RequireTenant } from '../../common/auth/decorators';
 import { ApiKeysService } from './api-keys.service';
-import { ApiKeyDto, UpdateWebhookDto, WebhookDto } from './integrations.dto';
+import { ApiKeyDto, UpdateWebhookDto, VectorAccessUserDto, VectorConnectDto, VectorConnectorDto, WebhookDto } from './integrations.dto';
+import { VectorConnectorService } from './vector-connector.service';
 import { WebhooksService } from './webhooks.service';
 
 const UUID = new ParseUUIDPipe();
@@ -15,6 +16,7 @@ export class IntegrationsController {
   constructor(
     private readonly keys: ApiKeysService,
     private readonly webhooks: WebhooksService,
+    private readonly vector: VectorConnectorService,
   ) {}
 
   // ---- API keys --------------------------------------------------------------------------------
@@ -103,5 +105,63 @@ export class IntegrationsController {
   @RequirePermissions('integration.manage')
   redeliver(@CurrentAuth() auth: AuthContext, @Param('id', UUID) id: string, @Param('deliveryId', UUID) deliveryId: string) {
     return this.webhooks.redeliver(auth, id, deliveryId);
+  }
+
+  // ---- Vector workspace embed ------------------------------------------------------------------
+
+  @Get('vector')
+  @RequirePermissions('integration.manage')
+  @ApiOperation({ summary: 'Vector workspace embed connector settings' })
+  vectorView(@CurrentAuth() auth: AuthContext) {
+    return this.vector.view(auth);
+  }
+
+  @Get('vector/status')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Whether the current person may open the Vector workspace' })
+  vectorStatus(@CurrentAuth() auth: AuthContext) {
+    return this.vector.status(auth);
+  }
+
+  @Get('vector/access')
+  @RequirePermissions('integration.manage')
+  @ApiOperation({ summary: 'People who can open Vector, and those individually removed' })
+  vectorAccess(@CurrentAuth() auth: AuthContext) {
+    return this.vector.listAccess(auth);
+  }
+
+  @Post('vector/access/deny')
+  @RequirePermissions('integration.manage')
+  @ApiOperation({ summary: 'Remove one person’s Vector access (keeps their HRMS role)' })
+  vectorDeny(@CurrentAuth() auth: AuthContext, @Body() dto: VectorAccessUserDto) {
+    return this.vector.denyAccess(auth, dto.userId);
+  }
+
+  @Post('vector/access/restore')
+  @RequirePermissions('integration.manage')
+  @ApiOperation({ summary: 'Restore Vector access for a previously removed person' })
+  vectorRestore(@CurrentAuth() auth: AuthContext, @Body() dto: VectorAccessUserDto) {
+    return this.vector.restoreAccess(auth, dto.userId);
+  }
+
+  @Put('vector')
+  @RequirePermissions('integration.manage')
+  @ApiOperation({ summary: 'Save Vector keys and which roles may open the workspace' })
+  vectorUpsert(@CurrentAuth() auth: AuthContext, @Body() dto: VectorConnectorDto) {
+    return this.vector.upsert(auth, dto);
+  }
+
+  @Delete('vector')
+  @RequirePermissions('integration.manage')
+  @ApiOperation({ summary: 'Remove the Vector connector' })
+  vectorRemove(@CurrentAuth() auth: AuthContext) {
+    return this.vector.remove(auth);
+  }
+
+  @Post('vector/connect')
+  @RequireTenant()
+  @ApiOperation({ summary: 'Open Vector with the caller’s Vector email/password (returns embedUrl)' })
+  vectorConnect(@CurrentAuth() auth: AuthContext, @Body() dto: VectorConnectDto) {
+    return this.vector.connect(auth, dto);
   }
 }

@@ -71,7 +71,7 @@ import { OrganizationSsoConfig, SsoLoginState } from './sso.models';
 import { Invoice, InvoicePayment, OrganizationSubscription } from './billing.models';
 import { NativePushToken, PushSubscription } from './push.models';
 import { ApprovalChain, ApprovalInstance } from './approval-chain.models';
-import { ApiKey, CustomFieldDefinition, ReportSchedule, SavedReport, WebhookDelivery, WebhookEndpoint } from './integration.models';
+import { ApiKey, CustomFieldDefinition, OrganizationVectorConnector, ReportSchedule, SavedReport, WebhookDelivery, WebhookEndpoint } from './integration.models';
 import { ExchangeRate, LegalEntity } from './entity.models';
 import { StatutoryContributionRate, StatutoryTaxRules } from './statutory.models';
 
@@ -120,6 +120,7 @@ export const ALL_MODELS = [
   OrganizationLogo,
   OrganizationMembership,
   OrganizationSsoConfig,
+  OrganizationVectorConnector,
   PushSubscription,
   NativePushToken,
   ApprovalChain,
@@ -286,6 +287,7 @@ export const TENANT_MODELS = [
   ApprovalChain,
   ApprovalInstance,
   OrganizationSsoConfig,
+  OrganizationVectorConnector,
   OrganizationSubscription,
   Invoice,
   InvoicePayment,

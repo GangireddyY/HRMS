@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from 'vue';
-import { Ban, Hash, KeyRound, MessagesSquare, Pencil, Plus, Power, RefreshCw, RotateCcw, Send, Trash2, Webhook } from '@lucide/vue';
+import { AppWindow, Ban, Hash, KeyRound, MessagesSquare, Pencil, Plus, Power, RefreshCw, RotateCcw, Send, Trash2, Webhook } from '@lucide/vue';
 import type { WebhookFormat } from '@contracts';
 import ApiKeyModal from '@/modules/integrations/components/ApiKeyModal.vue';
 import SecretRevealModal from '@/modules/integrations/components/SecretRevealModal.vue';
+import VectorConnectorPanel from '@/modules/integrations/components/VectorConnectorPanel.vue';
 import WebhookModal from '@/modules/integrations/components/WebhookModal.vue';
 import { integrationsApi } from '@/modules/integrations/integrations.api';
 import type { ApiKeyRow, WebhookDelivery, WebhookDetail, WebhookRow } from '@/modules/integrations/types';
@@ -12,16 +13,18 @@ import { useAsync } from '@/shared/composables/use-async';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
 import { formatDateTime, timeAgo } from '@/shared/utils/format';
 
-/** Developer integrations: read-only API keys and webhooks with their delivery log. */
+/** Developer integrations: read-only API keys, webhooks, and the Vector workspace embed connector. */
 const feedback = useFeedbackStore();
-const tab = ref<'keys' | 'webhooks'>('keys');
+const tab = ref<'keys' | 'webhooks' | 'vector'>('keys');
 const keys = useAsync(() => integrationsApi.apiKeys());
 const grantable = useAsync(() => integrationsApi.grantable());
 const hooks = useAsync(() => integrationsApi.webhooks());
 const catalog = useAsync(() => integrationsApi.events());
+const vector = useAsync(() => integrationsApi.vector());
 const tabs = computed(() => [
   { key: 'keys', label: 'API keys', icon: KeyRound, count: keys.data.value?.filter((k) => k.status === 'ACTIVE').length ?? null },
   { key: 'webhooks', label: 'Webhooks & alerts', icon: Webhook, count: hooks.data.value?.length ?? null },
+  { key: 'vector', label: 'Vector', icon: AppWindow, count: vector.data.value?.configured ? 1 : 0 },
 ]);
 const origin = window.location.origin;
 
@@ -115,16 +118,15 @@ const expanded = ref<string | null>(null);
 </script>
 
 <template>
-  <div class="space-y-4">
-    <AppPageHeader title="Integrations" description="Connect other systems: read-only API keys for pulling data, webhooks that push events as they happen, and alerts to Slack or Microsoft Teams channels.">
+  <div class="flex h-full min-h-0 flex-col gap-4">
+    <AppPageHeader title="Integrations" description="Connect other systems: read-only API keys for pulling data, webhooks that push events as they happen, Slack or Teams alerts, and the Vector workspace embed." class="shrink-0">
       <template #actions>
         <AppButton v-if="tab === 'keys'" :icon="Plus" @click="keyModal = true">New API key</AppButton>
-        <AppButton v-else :icon="Plus" @click="hookModal = { open: true, webhook: null }">Add webhook or alert</AppButton>
+        <AppButton v-else-if="tab === 'webhooks'" :icon="Plus" @click="hookModal = { open: true, webhook: null }">Add webhook or alert</AppButton>
       </template>
     </AppPageHeader>
 
-    <AppTabs v-model="tab" :tabs="tabs">
-      <!-- API keys -->
+    <AppTabs v-model="tab" :tabs="tabs" :fill="true" class="min-h-0 flex-1">
       <AppCard v-if="tab === 'keys'" :padded="false">
         <AppDataTable :columns="keyColumns" :rows="keys.data.value ?? []" :loading="keys.loading.value" :error="keys.error.value" caption="API keys" empty-title="No API keys yet" empty-description="Create a key for a reporting tool or script that needs to read HR data." :grid="false" @retry="keys.run">
           <template #cell-name="{ row }">
@@ -151,8 +153,7 @@ const expanded = ref<string | null>(null);
         </AppDataTable>
       </AppCard>
 
-      <!-- Webhooks -->
-      <template v-else>
+      <template v-else-if="tab === 'webhooks'">
         <AppSkeleton v-if="hooks.loading.value && !hooks.data.value" :lines="4" />
         <AppErrorState v-else-if="hooks.error.value" :error="hooks.error.value" @retry="hooks.run" />
         <div v-else-if="!hooks.data.value?.length" class="card">
@@ -190,6 +191,8 @@ const expanded = ref<string | null>(null);
           </li>
         </ul>
       </template>
+
+      <VectorConnectorPanel v-else />
     </AppTabs>
 
     <ApiKeyModal :open="keyModal" :grantable="grantable.data.value ?? []" @close="keyModal = false" @created="keyCreated" />

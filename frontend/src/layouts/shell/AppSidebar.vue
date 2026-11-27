@@ -7,6 +7,7 @@ import { accessibleWorkspaces, homePath, visibleSections, type NavItem, type Wor
 import { useAuthStore } from '@/core/auth/auth.store';
 import { apiAssetUrl } from '@/core/http/http-client';
 import { useThemeStore } from '@/core/theme/theme.store';
+import { useVectorStore } from '@/modules/integrations/vector.store';
 import { contrastRatio, cssColorLuminance, useLogoAppearance } from '@/shared/composables/use-logo-appearance';
 import { AppDropdown, AppLogo } from '@/shared/components';
 import { useFeedbackStore } from '@/shared/stores/feedback.store';
@@ -16,13 +17,22 @@ const props = defineProps<{ workspace: Workspace }>();
 const ui = useUiStore();
 const theme = useThemeStore();
 const auth = useAuthStore();
+const vector = useVectorStore();
 const feedback = useFeedbackStore();
 const route = useRoute();
 const router = useRouter();
 const subject = useAccessSubject();
 const switching = ref(false);
 
-const sections = computed(() => visibleSections(props.workspace, subject.value));
+function itemAllowed(item: NavItem): boolean {
+  if (item.require === 'vectorConnected' && !vector.connected) return false;
+  return true;
+}
+const sections = computed(() =>
+  visibleSections(props.workspace, subject.value)
+    .map((s) => ({ ...s, items: s.items.filter(itemAllowed) }))
+    .filter((s) => s.items.length > 0),
+);
 const workspaces = computed(() => accessibleWorkspaces(subject.value).filter((ws) => visibleSections(ws, subject.value).length));
 const organizations = computed(() => auth.context?.organizations ?? []);
 const expanded = computed(() => !ui.sidebarCollapsed || ui.mobileNavOpen);

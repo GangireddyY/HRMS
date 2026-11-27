@@ -60,3 +60,49 @@ export interface WebhookInput {
   events: string[];
   enabled?: boolean;
 }
+
+export interface VectorConnectorSettings {
+  configured: boolean;
+  enabled: boolean;
+  apiBaseUrl: string | null;
+  appOrigin: string | null;
+  publishableKey: string | null;
+  hasSecretKey: boolean;
+  secretPrefix: string | null;
+  allowedRoleIds: string[];
+  deniedUserIds: string[];
+  vectorOrgName: string | null;
+  vectorOrgSlug: string | null;
+  lastConnectedAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface VectorAccessPerson {
+  userId: string;
+  membershipId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  via: 'role' | 'admin' | 'both';
+  roleNames: string[];
+  removable: boolean;
+}
+
+export interface VectorAccessList {
+  people: VectorAccessPerson[];
+  denied: VectorAccessPerson[];
+}
+
+export interface VectorAccessStatus {
+  available: boolean;
+  configured: boolean;
+  enabled: boolean;
+  vectorOrgName: string | null;
+}
+
+export interface VectorConnectResult {
+  embedUrl: string;
+  organization: { id: string; name: string; slug: string } | null;
+  user: { id: string; name: string; email: string; role: string } | null;
+}

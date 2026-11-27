@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsISO8601, IsOptional, IsString, IsUrl, Length, Matches, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsEmail, IsIn, IsISO8601, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { WEBHOOK_EVENT_PATTERN, WEBHOOK_FORMATS, type WebhookFormat } from '../../contracts';
 import { emptyToNull, optionalNullable, trim } from '../../common/validation/transforms';
 
@@ -26,4 +26,28 @@ export class UpdateWebhookDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(40) @ArrayUnique() @IsString({ each: true }) @Matches(WEBHOOK_EVENT_PATTERN, { each: true, message: 'Use "*", "leave.*" or an exact event name' }) events?: string[];
   @ApiPropertyOptional() @IsOptional() @IsBoolean() enabled?: boolean;
+}
+
+/** Save Vector workspace embed keys (from Vector → Organization settings → Integrations → Workspace embed). */
+export class VectorConnectorDto {
+  @ApiProperty({ example: 'https://vector.example.com/api' }) @Transform(trim) @IsUrl({ require_protocol: true, protocols: ['https', 'http'], require_tld: false }) @MaxLength(300) apiBaseUrl!: string;
+  @ApiPropertyOptional({ example: 'https://vector.example.com', description: 'Vector UI origin for the embedded workspace' })
+  @IsOptional() @Transform(emptyToNull) @optionalNullable @IsUrl({ require_protocol: true, protocols: ['https', 'http'], require_tld: false }) @MaxLength(300) appOrigin?: string | null;
+  @ApiProperty({ example: 'pk_live_…' }) @Transform(trim) @IsString() @Matches(/^pk_live_/, { message: 'Must start with pk_live_' }) @Length(16, 64) publishableKey!: string;
+  @ApiPropertyOptional({ description: 'Required on first save; leave empty to keep the stored secret' }) @IsOptional() @Transform(emptyToNull) @optionalNullable @IsString() @Matches(/^sk_live_/, { message: 'Must start with sk_live_' }) @MinLength(24) @MaxLength(80) secretKey?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() enabled?: boolean;
+  @ApiPropertyOptional({ type: [String], description: 'Organization role ids that may open Vector (in addition to people with integration.manage)' })
+  @IsOptional() @IsArray() @ArrayMaxSize(80) @ArrayUnique() @IsUUID('4', { each: true }) allowedRoleIds?: string[];
+}
+
+/** Open Vector as a Vector organization admin using the stored embed keys. */
+export class VectorConnectDto {
+  @ApiProperty({ example: 'admin@acme.com' }) @Transform(trim) @IsEmail() @MaxLength(190) email!: string;
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(200) password!: string;
+  @ApiPropertyOptional({ description: 'Path inside Vector after connect' }) @IsOptional() @Transform(emptyToNull) @optionalNullable @IsString() @MaxLength(500) path?: string | null;
+}
+
+/** Block or restore one person’s Vector access (role grants still apply after restore). */
+export class VectorAccessUserDto {
+  @ApiProperty() @IsUUID('4') userId!: string;
 }
