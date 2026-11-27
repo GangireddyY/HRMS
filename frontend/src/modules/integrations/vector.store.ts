@@ -26,15 +26,15 @@ export const useVectorStore = defineStore('vector', () => {
     }
   }
 
-  /** After an admin saves connector settings (they always have access when enabled). */
+  /** After an admin saves connector settings (live only when Vector Access is on). */
   function apply(next: VectorConnectorSettings | null) {
     settings.value = next;
-    if (next?.configured && next.enabled) {
+    if (next?.configured && next.enabled && next.remoteStatus === 'live') {
       available.value = true;
       orgLabel.value = next.vectorOrgName;
     } else {
       available.value = false;
-      orgLabel.value = null;
+      orgLabel.value = next?.vectorOrgName ?? null;
     }
     loaded.value = true;
   }

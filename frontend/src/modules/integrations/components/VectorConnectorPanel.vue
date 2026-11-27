@@ -61,6 +61,28 @@ const canSave = computed(
     form.publishableKey.trim().startsWith('pk_live_') &&
     (form.secretKey.trim().startsWith('sk_live_') || !!settings.data.value?.hasSecretKey),
 );
+
+const connectionBadge = computed(() => {
+  const s = settings.data.value;
+  if (!s?.configured) return { tone: 'neutral' as const, label: 'Not set' };
+  if (!s.enabled) return { tone: 'neutral' as const, label: 'Off in HRMS' };
+  if (s.remoteStatus === 'live') return { tone: 'success' as const, label: 'Connected' };
+  if (s.remoteStatus === 'off') return { tone: 'warning' as const, label: 'Off on Vector' };
+  if (s.remoteStatus === 'unreachable') return { tone: 'danger' as const, label: 'Vector unreachable' };
+  return { tone: 'neutral' as const, label: 'Keys saved' };
+});
+
+const remoteHint = computed(() => {
+  const s = settings.data.value;
+  if (!s?.configured || !s.enabled) return null;
+  if (s.remoteStatus === 'off') {
+    return 'Vector has Access off for this partner app, or these keys no longer match. Turn Access on in Vector → Integrations, or paste the current publishable and secret keys and save.';
+  }
+  if (s.remoteStatus === 'unreachable') {
+    return 'HRMS cannot reach Vector at the API base URL. Confirm Vector is running and the URL is correct.';
+  }
+  return null;
+});
 const saving = ref(false);
 async function save() {
   reset();
@@ -125,9 +147,10 @@ async function disconnect() {
         <template v-else-if="settings.data.value?.updatedAt">Last saved {{ timeAgo(settings.data.value.updatedAt) }}</template>
         <template v-else>Connect Vector, choose who may open it, then manage people.</template>
       </p>
-      <AppBadge v-if="settings.data.value" :tone="settings.data.value.configured && settings.data.value.enabled ? 'success' : 'neutral'" dot>
-        {{ settings.data.value.configured ? (settings.data.value.enabled ? 'Connected' : 'Off') : 'Not set' }}
-      </AppBadge>
+      <div class="flex items-center gap-2">
+        <AppButton v-if="settings.data.value?.configured" size="sm" variant="ghost" @click="settings.run">Refresh status</AppButton>
+        <AppBadge v-if="settings.data.value" :tone="connectionBadge.tone" dot>{{ connectionBadge.label }}</AppBadge>
+      </div>
     </div>
 
     <AppSkeleton v-if="settings.loading.value && !settings.data.value" :lines="6" />
@@ -136,6 +159,7 @@ async function disconnect() {
       <AppCard v-if="tab === 'keys'" :padded="false" class="min-h-0 overflow-y-auto">
         <form class="space-y-5 px-5 py-6" novalidate @submit.prevent="save">
           <AppAlert v-if="formError">{{ formError }}</AppAlert>
+          <AppAlert v-else-if="remoteHint" tone="warning">{{ remoteHint }}</AppAlert>
           <div v-if="!settings.data.value.configured" class="rounded-xl bg-surface-muted/60 p-4 text-sm">
             <p class="font-medium text-fg">In Vector</p>
             <ol class="mt-1 list-decimal space-y-0.5 ps-4 text-xs text-fg-muted">

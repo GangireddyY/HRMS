@@ -61,6 +61,9 @@ export interface WebhookInput {
   enabled?: boolean;
 }
 
+/** Live check against Vector: Access off / wrong key → off; Vector down → unreachable. */
+export type VectorRemoteStatus = 'live' | 'off' | 'unreachable' | 'unknown';
+
 export interface VectorConnectorSettings {
   configured: boolean;
   enabled: boolean;
@@ -71,6 +74,7 @@ export interface VectorConnectorSettings {
   secretPrefix: string | null;
   allowedRoleIds: string[];
   deniedUserIds: string[];
+  remoteStatus: VectorRemoteStatus;
   vectorOrgName: string | null;
   vectorOrgSlug: string | null;
   lastConnectedAt: string | null;
@@ -98,6 +102,7 @@ export interface VectorAccessStatus {
   available: boolean;
   configured: boolean;
   enabled: boolean;
+  remoteStatus: VectorRemoteStatus;
   vectorOrgName: string | null;
 }
 

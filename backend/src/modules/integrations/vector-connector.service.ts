@@ -51,25 +51,34 @@ export class VectorConnectorService {
         secretPrefix: null as string | null,
         allowedRoleIds: [] as string[],
         deniedUserIds: [] as string[],
+        remoteStatus: 'unknown' as VectorRemoteStatus,
         vectorOrgName: null as string | null,
         vectorOrgSlug: null as string | null,
         lastConnectedAt: null as string | null,
         updatedAt: null as string | null,
       };
     }
-    return this.toView(row);
+    const remoteStatus = await this.probeRemote(row.apiBaseUrl, row.publishableKey);
+    return this.toView(row, remoteStatus);
   }
 
   /** Lightweight check for the sidebar: may this person open Vector? */
   async status(auth: AuthContext) {
     const row = await OrganizationVectorConnector.findByPk(auth.organizationId!);
+    if (!row) {
+      return { available: false, configured: false, enabled: false, remoteStatus: 'unknown' as VectorRemoteStatus, vectorOrgName: null as string | null };
+    }
+    const remoteStatus = await this.probeRemote(row.apiBaseUrl, row.publishableKey);
     const available =
-      !!row && row.enabled && this.userMayOpen(auth, row.allowedRoleIds ?? [], row.deniedUserIds ?? []);
+      row.enabled &&
+      remoteStatus === 'live' &&
+      this.userMayOpen(auth, row.allowedRoleIds ?? [], row.deniedUserIds ?? []);
     return {
       available,
-      configured: !!row,
-      enabled: row?.enabled ?? false,
-      vectorOrgName: row?.vectorOrgName ?? null,
+      configured: true,
+      enabled: row.enabled,
+      remoteStatus,
+      vectorOrgName: row.vectorOrgName ?? null,
     };
   }
 
@@ -307,6 +316,13 @@ export class VectorConnectorService {
     if (!this.userMayOpen(auth, row.allowedRoleIds ?? [], row.deniedUserIds ?? [])) {
       throw AppError.forbidden('Your role is not allowed to open Vector. Ask an administrator.');
     }
+    const remote = await this.probeRemote(row.apiBaseUrl, row.publishableKey);
+    if (remote === 'off') {
+      throw AppError.badRequest('Vector has Access off for this partner app. Turn Access on in Vector → Integrations, or paste the current keys.');
+    }
+    if (remote === 'unreachable') {
+      throw AppError.badRequest('Could not reach Vector. Check the API base URL and that Vector is running.');
+    }
     const secretKey = this.crypto.decrypt(row.secretKeyEncrypted, fields.vectorSecretKey(row.organizationId));
 
     let data: VectorConnectResponse;
@@ -406,7 +422,7 @@ export class VectorConnectorService {
     return unique;
   }
 
-  private toView(row: OrganizationVectorConnector) {
+  private toView(row: OrganizationVectorConnector, remoteStatus: VectorRemoteStatus = 'unknown') {
     return {
       configured: true,
       enabled: row.enabled,
@@ -417,6 +433,7 @@ export class VectorConnectorService {
       secretPrefix: row.secretPrefix,
       allowedRoleIds: row.allowedRoleIds ?? [],
       deniedUserIds: row.deniedUserIds ?? [],
+      remoteStatus,
       vectorOrgName: row.vectorOrgName,
       vectorOrgSlug: row.vectorOrgSlug,
       lastConnectedAt: row.lastConnectedAt?.toISOString() ?? null,
@@ -424,24 +441,39 @@ export class VectorConnectorService {
     };
   }
 
-  private async probePublic(apiBaseUrl: string, publishableKey: string) {
+  /**
+   * Live check against Vector. When Access is off (or the key was removed), Vector returns 404 for the public pk lookup.
+   */
+  private async probeRemote(apiBaseUrl: string, publishableKey: string): Promise<VectorRemoteStatus> {
     try {
       const res = await fetch(`${apiBaseUrl}/embed/apps/${encodeURIComponent(publishableKey)}`, {
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(8_000),
       });
-      if (res.status === 404) {
-        throw AppError.validation([{ field: 'publishableKey', message: 'Vector does not recognise this publishable key' }]);
-      }
-      if (!res.ok) {
-        throw new AppError('UPSTREAM_UNAVAILABLE', `Vector returned HTTP ${res.status} while checking the key`);
-      }
-    } catch (e) {
-      if (e instanceof AppError) throw e;
-      throw AppError.validation([{ field: 'apiBaseUrl', message: 'Could not reach Vector at this API base URL' }]);
+      if (res.ok) return 'live';
+      if (res.status === 404) return 'off';
+      return 'unreachable';
+    } catch {
+      return 'unreachable';
     }
   }
+
+  private async probePublic(apiBaseUrl: string, publishableKey: string) {
+    const remote = await this.probeRemote(apiBaseUrl, publishableKey);
+    if (remote === 'live') return;
+    if (remote === 'off') {
+      throw AppError.validation([
+        {
+          field: 'publishableKey',
+          message: 'Vector has Access off for this key, or the key was removed. Turn Access on in Vector, or paste the current publishable and secret keys.',
+        },
+      ]);
+    }
+    throw AppError.validation([{ field: 'apiBaseUrl', message: 'Could not reach Vector at this API base URL' }]);
+  }
 }
+
+type VectorRemoteStatus = 'live' | 'off' | 'unreachable' | 'unknown';
 
 type VectorAccessPerson = {
   userId: string;
